@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Galeria da unidade</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;background:#E9E5DB}a{color:#1F4D3A}a:hover{color:#163828}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; background: #F4F1EA; color: #1B221F; font-family: Figtree, system-ui, sans-serif; overflow: hidden; position: relative">
+<header style="flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 10px 12px">
+<a href="Inicio-Conselheiro.dc.html" aria-label="Voltar" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: #1B221F"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></a>
+<div style="flex-grow: 1; display: flex; flex-direction: column"><span style="font-weight: 700; font-size: 17px">Galeria da unidade</span><span style="font-size: 13px; color: #5B645F">Águias · 46 fotos</span></div>
+</header>
+<main style="flex-grow: 1; overflow-y: auto; padding: 4px 20px 100px; display: flex; flex-direction: column; gap: 18px">
+<sc-for list="{{albuns}}" as="a" hint-placeholder-count="3">
+<section style="display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; justify-content: space-between; align-items: baseline"><h2 style="margin: 0; font-size: 15px; font-weight: 700">{{a.titulo}}</h2><span style="font-size: 13px; color: #5B645F">{{a.info}}</span></div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+<sc-for list="{{a.fotos}}" as="f" hint-placeholder-count="6">
+<button type="button" aria-label="Abrir foto" style="{{f}}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.6"></circle><path d="M21 16l-5-5-8 8"></path></svg></button>
+</sc-for>
+</div>
+</section>
+</sc-for>
+</main>
+<div style="position: absolute; left: 20px; right: 20px; bottom: 20px; display: flex; gap: 10px">
+<button type="button" style="flex-grow: 1; height: 54px; border-radius: 14px; border: 0; background: #1F4D3A; color: #FFFFFF; font-family: inherit; font-weight: 700; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 6px 18px rgba(31,77,58,0.28)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg>Enviar fotos</button>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+var tones = ['#C9D8CE','#E3D3B8','#BFCBE0','#D9C4C1','#CFC6DE','#D6D1C2'];
+var mk = function (n, o) { var a = []; for (var i = 0; i < n; i++) a.push('aspect-ratio: 1 / 1; border: 0; border-radius: 10px; background: ' + tones[(i + o) % 6] + '; color: rgba(27,34,31,0.45); display: flex; align-items: center; justify-content: center'); return a; };
+return { albuns: [
+{ titulo: 'Reunião · 20 set', info: '6 fotos · Thiago', fotos: mk(6, 0) },
+{ titulo: 'Treino de ordem unida · 06 set', info: '9 fotos', fotos: mk(9, 2) },
+{ titulo: 'Passeio ecológico · 23 ago', info: '6 fotos', fotos: mk(6, 4) }
+] };
+}
+}
+</script>
+</body>
+</html>

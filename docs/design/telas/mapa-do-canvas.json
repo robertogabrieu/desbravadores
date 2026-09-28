@@ -1,0 +1,50 @@
+{
+  "v": 3,
+  "createdOnFiles": {"v": 1, "at": "2026-09-26T23:45:00Z"},
+  "title": "Aplicativo do Desbravador",
+  "launch": {"view": "canvas"},
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {"x": 0, "y": 0, "w": 390, "h": 844, "title": "Login", "is_interactive": true},
+    "Inicio-Conselheiro.dc.html": {"x": 470, "y": 0, "w": 390, "h": 844, "title": "Início · Conselheiro", "is_interactive": true},
+    "Inicio-Instrutor.dc.html": {"x": 940, "y": 0, "w": 390, "h": 844, "title": "Início · Instrutor", "is_interactive": true},
+    "Ranking.dc.html": {"x": 1410, "y": 0, "w": 390, "h": 844, "title": "Ranking DBV Destaque", "is_interactive": true},
+    "Perfil-DBV.dc.html": {"x": 1880, "y": 0, "w": 390, "h": 844, "title": "Perfil do DBV", "is_interactive": true},
+
+    "Minha-Unidade.dc.html": {"x": 0, "y": 1244, "w": 390, "h": 844, "title": "Minha unidade", "is_interactive": true},
+    "Registro-Reuniao.dc.html": {"x": 470, "y": 1244, "w": 390, "h": 844, "title": "Registro de reunião", "is_interactive": true},
+    "Historico-Reunioes.dc.html": {"x": 940, "y": 1244, "w": 390, "h": 844, "title": "Histórico de reuniões", "is_interactive": true},
+    "Galeria.dc.html": {"x": 1410, "y": 1244, "w": 390, "h": 844, "title": "Galeria da unidade", "is_interactive": true},
+
+    "Minhas-Classes.dc.html": {"x": 0, "y": 2488, "w": 390, "h": 844, "title": "Minhas classes", "is_interactive": true},
+    "Cronograma.dc.html": {"x": 470, "y": 2488, "w": 390, "h": 844, "title": "Cronograma", "is_interactive": true},
+    "Registro-Aula.dc.html": {"x": 940, "y": 2488, "w": 390, "h": 844, "title": "Registro de aula", "is_interactive": true},
+    "Materiais.dc.html": {"x": 1410, "y": 2488, "w": 390, "h": 844, "title": "Materiais de apoio", "is_interactive": true},
+    "Observacoes.dc.html": {"x": 1880, "y": 2488, "w": 390, "h": 844, "title": "Observações", "is_interactive": true},
+    "Progresso-Classe.dc.html": {"x": 2350, "y": 2488, "w": 390, "h": 844, "title": "Progresso da classe", "is_interactive": true},
+    "Especialidades.dc.html": {"x": 2820, "y": 2488, "w": 390, "h": 844, "title": "Especialidades", "is_interactive": true},
+
+    "Adm-Inicio.dc.html": {"x": 0, "y": 3732, "w": 1280, "h": 832, "title": "Adm · Visão geral", "is_interactive": true},
+    "Adm-Desbravadores.dc.html": {"x": 1360, "y": 3732, "w": 1280, "h": 832, "title": "Adm · Cadastro de desbravadores", "is_interactive": true},
+    "Adm-Usuarios.dc.html": {"x": 2720, "y": 3732, "w": 1280, "h": 832, "title": "Adm · Cadastro de usuários", "is_interactive": true},
+    "Adm-Unidades.dc.html": {"x": 4080, "y": 3732, "w": 1280, "h": 832, "title": "Adm · Unidades", "is_interactive": true},
+    "Adm-Classes.dc.html": {"x": 0, "y": 4684, "w": 1280, "h": 832, "title": "Adm · Classes e especialidades", "is_interactive": true},
+    "Adm-Ranking.dc.html": {"x": 1360, "y": 4684, "w": 1280, "h": 832, "title": "Adm · Configuração do ranking", "is_interactive": true},
+    "Adm-Relatorios.dc.html": {"x": 2720, "y": 4684, "w": 1280, "h": 832, "title": "Adm · Relatórios gerais", "is_interactive": true},
+    "Adm-Calendario.dc.html": {"x": 4080, "y": 4684, "w": 1280, "h": 832, "title": "Adm · Calendário do clube", "is_interactive": true},
+    "Montar-Cronograma.dc.html": {"x": 0, "y": 5636, "w": 1280, "h": 832, "title": "Montar cronograma da classe (Adm ou instrutor liberado)", "is_interactive": true}
+  },
+  "order": [
+    "Main.dc.html", "Inicio-Conselheiro.dc.html", "Inicio-Instrutor.dc.html", "Ranking.dc.html", "Perfil-DBV.dc.html",
+    "Minha-Unidade.dc.html", "Registro-Reuniao.dc.html", "Historico-Reunioes.dc.html", "Galeria.dc.html",
+    "Minhas-Classes.dc.html", "Cronograma.dc.html", "Registro-Aula.dc.html", "Materiais.dc.html", "Observacoes.dc.html", "Progresso-Classe.dc.html", "Especialidades.dc.html",
+    "Adm-Inicio.dc.html", "Adm-Desbravadores.dc.html", "Adm-Usuarios.dc.html", "Adm-Unidades.dc.html", "Adm-Classes.dc.html", "Adm-Ranking.dc.html", "Adm-Relatorios.dc.html", "Adm-Calendario.dc.html", "Montar-Cronograma.dc.html"
+  ],
+  "notes": {
+    "t-comuns": {"x": 0, "y": -300, "text": "Telas comuns · PWA (celular)", "kind": "title1", "maxW": 2270},
+    "t-conselheiro": {"x": 0, "y": 944, "text": "Módulo Conselheiro · Secretaria da Unidade", "kind": "title1", "maxW": 1800},
+    "t-instrutor": {"x": 0, "y": 2188, "text": "Módulo Instrutor · Planejamento de Classe", "kind": "title1", "maxW": 3210},
+    "t-adm": {"x": 0, "y": 3432, "text": "Módulo Adm · Sistema web (desktop)", "kind": "title1", "maxW": 5360}
+  },
+  "designSystems": []
+}

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Ranking DBV Destaque</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;background:#E9E5DB}a{color:#1F4D3A}a:hover{color:#163828}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; background: #F4F1EA; color: #1B221F; font-family: Figtree, system-ui, sans-serif; overflow: hidden">
+<div style="background: #1F4D3A; color: #FFFFFF; padding: 22px 20px 20px; display: flex; flex-direction: column; gap: 16px; flex-shrink: 0">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 13px; font-weight: 600; color: #CFE0D6">Ranking público · setembro</span>
+<h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 28px; font-weight: 800">DBV Destaque</h1>
+</div>
+<div role="tablist" aria-label="Período" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; background: #163828; padding: 4px; border-radius: 12px">
+<button type="button" role="tab" aria-selected="{{isMes}}" onClick="{{pickMes}}" style="{{tabMes}}">Mês</button>
+<button type="button" role="tab" aria-selected="{{isTri}}" onClick="{{pickTri}}" style="{{tabTri}}">Trimestre</button>
+<button type="button" role="tab" aria-selected="{{isAno}}" onClick="{{pickAno}}" style="{{tabAno}}">Ano</button>
+</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: end">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px">
+<span style="width: 52px; height: 52px; border-radius: 26px; background: #2F5FB3; border: 3px solid #C9CDD1; display: flex; align-items: center; justify-content: center; font-weight: 700">PH</span>
+<span style="font-size: 13px; font-weight: 700; text-align: center">Pedro H.</span>
+<div style="width: 100%; height: 62px; background: #2A5E48; border-radius: 12px 12px 0 0; display: flex; flex-direction: column; align-items: center; justify-content: center"><span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 800">2º</span><span style="font-size: 12px; color: #CFE0D6">428 pts</span></div>
+</div>
+<a href="Perfil-DBV.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 6px; color: #FFFFFF; text-decoration: none">
+<span style="width: 64px; height: 64px; border-radius: 32px; background: #B3362F; border: 3px solid #E8B54A; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px">AC</span>
+<span style="font-size: 13px; font-weight: 700; text-align: center">Ana Clara</span>
+<div style="width: 100%; height: 86px; background: #F3E3C8; color: #1F4D3A; border-radius: 12px 12px 0 0; display: flex; flex-direction: column; align-items: center; justify-content: center"><span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; font-weight: 800">1º</span><span style="font-size: 12px; font-weight: 600">446 pts</span></div>
+</a>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px">
+<span style="width: 52px; height: 52px; border-radius: 26px; background: #6D3FA8; border: 3px solid #C98A5A; display: flex; align-items: center; justify-content: center; font-weight: 700">MV</span>
+<span style="font-size: 13px; font-weight: 700; text-align: center">Mateus V.</span>
+<div style="width: 100%; height: 48px; background: #2A5E48; border-radius: 12px 12px 0 0; display: flex; flex-direction: column; align-items: center; justify-content: center"><span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 800">3º</span><span style="font-size: 12px; color: #CFE0D6">415 pts</span></div>
+</div>
+</div>
+</div>
+
+<main style="flex-grow: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; gap: 8px; overflow-x: auto">
+<button type="button" style="height: 36px; padding: 0 14px; border-radius: 18px; border: 0; background: #1B221F; color: #FFFFFF; font-family: inherit; font-weight: 600; font-size: 13px; white-space: nowrap">Todas as unidades</button>
+<button type="button" style="height: 36px; padding: 0 14px; border-radius: 18px; border: 1px solid #D9D3C5; background: #FFFFFF; color: #1B221F; font-family: inherit; font-weight: 600; font-size: 13px; white-space: nowrap">Águias</button>
+<button type="button" style="height: 36px; padding: 0 14px; border-radius: 18px; border: 1px solid #D9D3C5; background: #FFFFFF; color: #1B221F; font-family: inherit; font-weight: 600; font-size: 13px; white-space: nowrap">Leões</button>
+<button type="button" style="height: 36px; padding: 0 14px; border-radius: 18px; border: 1px solid #D9D3C5; background: #FFFFFF; color: #1B221F; font-family: inherit; font-weight: 600; font-size: 13px; white-space: nowrap">Gaviões</button>
+</div>
+<ol style="list-style: none; margin: 0; padding: 0; background: #FFFFFF; border-radius: 16px">
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="7">
+<li style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid #EFEBE1">
+<span style="width: 22px; font-weight: 800; color: #5B645F">{{r.pos}}</span>
+<span style="{{r.avatar}}">{{r.ini}}</span>
+<span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 700; font-size: 15px">{{r.nome}}</span><span style="font-size: 12px; color: #5B645F">{{r.unidade}} · {{r.classe}}</span></span>
+<span style="display: flex; flex-direction: column; align-items: flex-end; gap: 2px"><span style="font-weight: 800">{{r.pts}}</span><span style="{{r.deltaStyle}}">{{r.delta}}</span></span>
+</li>
+</sc-for>
+</ol>
+<p style="margin: 0; font-size: 12px; color: #5B645F; text-align: center">Pontuação: presença, pontualidade, uniforme, Bíblia, requisitos e especialidades.</p>
+</main>
+
+<nav aria-label="Navegação principal" style="height: 76px; flex-shrink: 0; background: #FFFFFF; border-top: 1px solid #E4DFD3; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding-bottom: 8px">
+<a href="Inicio-Conselheiro.dc.html" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 600; text-decoration: none; color: #5B645F"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7v9h-5v-6h-6v6H4z"></path></svg>Início</a>
+<a href="Minha-Unidade.dc.html" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 600; text-decoration: none; color: #5B645F"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 4.5a3.5 3.5 0 0 1 0 7M18 14c2 .8 3 3 3 6"></path></svg>Unidade</a>
+<a href="Historico-Reunioes.dc.html" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 600; text-decoration: none; color: #5B645F"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"></rect><path d="M9 4V3h6v1M9 13l2 2 4-4"></path></svg>Reuniões</a>
+<a href="Ranking.dc.html" aria-current="page" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 700; text-decoration: none; color: #1F4D3A"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"></path><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8"></path></svg>Ranking</a>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(p) { super(p); this.state = { tab: 'mes' }; }
+renderVals() {
+var t = this.state.tab;
+var on = 'height: 40px; border: 0; border-radius: 9px; background: #F3E3C8; color: #1F4D3A; font-family: inherit; font-weight: 700; font-size: 14px';
+var off = 'height: 40px; border: 0; border-radius: 9px; background: transparent; color: #CFE0D6; font-family: inherit; font-weight: 600; font-size: 14px';
+var colors = { Amigo: '#2F5FB3', Companheiro: '#B3362F', Pesquisador: '#2E7D4F', Pioneiro: '#5F6670', Excursionista: '#6D3FA8', Guia: '#8A6410' };
+var data = [
+['4','Júlia Ramos','JR','Águias','Pesquisador',398,'+2'],
+['5','Lucas Oliveira','LO','Leões','Pioneiro',387,'−1'],
+['6','Beatriz Costa','BC','Gaviões','Amigo',371,'+4'],
+['7','Samuel Rocha','SR','Leões','Guia',360,'='],
+['8','Isabela Martins','IM','Águias','Companheiro',342,'−2'],
+['9','Rafael Pires','RP','Gaviões','Excursionista',336,'+1'],
+['10','Davi Carvalho','DC','Águias','Amigo',318,'−3']
+];
+var rows = data.map(function (d) {
+var up = d[6].charAt(0) === '+', down = d[6].charAt(0) === '−';
+return { pos: d[0], nome: d[1], ini: d[2], unidade: d[3], classe: d[4], pts: d[5] + ' pts', delta: d[6] === '=' ? 'mantém' : d[6],
+avatar: 'width: 38px; height: 38px; border-radius: 19px; flex-shrink: 0; background: ' + colors[d[4]] + '; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px',
+deltaStyle: 'font-size: 12px; font-weight: 700; color: ' + (up ? '#1F7A45' : down ? '#B42318' : '#5B645F') };
+});
+var self = this;
+return { rows: rows,
+isMes: t === 'mes', isTri: t === 'tri', isAno: t === 'ano',
+tabMes: t === 'mes' ? on : off, tabTri: t === 'tri' ? on : off, tabAno: t === 'ano' ? on : off,
+pickMes: function () { self.setState({ tab: 'mes' }); }, pickTri: function () { self.setState({ tab: 'tri' }); }, pickAno: function () { self.setState({ tab: 'ano' }); } };
+}
+}
+</script>
+</body>
+</html>

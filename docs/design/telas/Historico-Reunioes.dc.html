@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Histórico de reuniões</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;background:#E9E5DB}a{color:#1F4D3A}a:hover{color:#163828}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; background: #F4F1EA; color: #1B221F; font-family: Figtree, system-ui, sans-serif; overflow: hidden">
+<main style="flex-grow: 1; overflow-y: auto; padding: 24px 20px; display: flex; flex-direction: column; gap: 16px">
+<header style="display: flex; align-items: flex-end; gap: 12px">
+<div style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 13px; font-weight: 600; color: #5B645F">Unidade Águias</span>
+<h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; font-weight: 800">Reuniões</h1>
+</div>
+<a href="Registro-Reuniao.dc.html" style="height: 44px; padding: 0 16px; border-radius: 12px; background: #1F4D3A; color: #FFFFFF; display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 14px; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Nova</a>
+</header>
+
+<div role="tablist" aria-label="Visão" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; background: #E8E3D7; padding: 4px; border-radius: 12px">
+<button type="button" role="tab" aria-selected="{{isReun}}" onClick="{{pickReun}}" style="{{tabReun}}">Por reunião</button>
+<button type="button" role="tab" aria-selected="{{isDbv}}" onClick="{{pickDbv}}" style="{{tabDbv}}">Por DBV</button>
+</div>
+
+<sc-if value="{{isReun}}" hint-placeholder-val="{{true}}">
+<ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px">
+<sc-for list="{{reunioes}}" as="r" hint-placeholder-count="6">
+<li style="background: #FFFFFF; border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; gap: 14px">
+<span style="width: 48px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; background: #F4F1EA; border-radius: 12px; padding: 6px 0"><span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 800; line-height: 1">{{r.dia}}</span><span style="font-size: 11px; font-weight: 700; color: #5B645F">{{r.mes}}</span></span>
+<span style="flex-grow: 1; display: flex; flex-direction: column; gap: 6px">
+<span style="font-weight: 700; font-size: 15px">{{r.titulo}}</span>
+<span style="display: flex; gap: 10px; font-size: 12px; color: #5B645F"><span>{{r.pres}} presentes</span><span>{{r.atr}} atrasos</span><span>{{r.uni}} uniforme</span></span>
+</span>
+<span style="{{r.pctStyle}}">{{r.pct}}</span>
+</li>
+</sc-for>
+</ul>
+</sc-if>
+
+<sc-if value="{{isDbv}}" hint-placeholder-val="{{false}}">
+<div style="background: #FFFFFF; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; color: #5B645F"><span>Últimas 8 reuniões</span><span style="display: flex; gap: 10px"><span style="display: flex; align-items: center; gap: 4px"><span style="width: 10px; height: 10px; border-radius: 3px; background: #1F4D3A"></span>presente</span><span style="display: flex; align-items: center; gap: 4px"><span style="width: 10px; height: 10px; border-radius: 3px; background: #D97706"></span>atraso</span><span style="display: flex; align-items: center; gap: 4px"><span style="width: 10px; height: 10px; border-radius: 3px; background: #E4DFD3"></span>falta</span></span></div>
+<sc-for list="{{porDbv}}" as="d" hint-placeholder-count="8">
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="width: 108px; flex-shrink: 0; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{d.nome}}</span>
+<span style="flex-grow: 1; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 3px">
+<sc-for list="{{d.cells}}" as="c" hint-placeholder-count="8"><span style="{{c}}"></span></sc-for>
+</span>
+<span style="width: 38px; text-align: right; font-weight: 800; font-size: 14px">{{d.pct}}</span>
+</div>
+</sc-for>
+</div>
+</sc-if>
+</main>
+<nav aria-label="Navegação principal" style="height: 76px; flex-shrink: 0; background: #FFFFFF; border-top: 1px solid #E4DFD3; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding-bottom: 8px">
+<a href="Inicio-Conselheiro.dc.html" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 600; text-decoration: none; color: #5B645F"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7v9h-5v-6h-6v6H4z"></path></svg>Início</a>
+<a href="Minha-Unidade.dc.html" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 600; text-decoration: none; color: #5B645F"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 4.5a3.5 3.5 0 0 1 0 7M18 14c2 .8 3 3 3 6"></path></svg>Unidade</a>
+<a href="Historico-Reunioes.dc.html" aria-current="page" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 700; text-decoration: none; color: #1F4D3A"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"></rect><path d="M9 4V3h6v1M9 13l2 2 4-4"></path></svg>Reuniões</a>
+<a href="Ranking.dc.html" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 600; text-decoration: none; color: #5B645F"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"></path><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8"></path></svg>Ranking</a>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(p) { super(p); this.state = { v: 'reun' }; }
+renderVals() {
+var self = this, v = this.state.v;
+var on = 'height: 40px; border: 0; border-radius: 9px; background: #FFFFFF; color: #1F4D3A; font-family: inherit; font-weight: 700; font-size: 14px; box-shadow: 0 1px 3px rgba(27,34,31,0.12)';
+var off = 'height: 40px; border: 0; border-radius: 9px; background: transparent; color: #4A524E; font-family: inherit; font-weight: 600; font-size: 14px';
+var r = [['20','SET','Reunião regular',7,1,6],['13','SET','Reunião regular',6,2,5],['06','SET','Treino de ordem unida',8,0,8],['30','AGO','Reunião regular',6,1,4],['23','AGO','Passeio ecológico',5,0,5],['16','AGO','Reunião regular',7,3,6]];
+var reunioes = r.map(function (x) { var p = Math.round(x[3] / 8 * 100); return { dia: x[0], mes: x[1], titulo: x[2], pres: x[3] + '/8', atr: x[4], uni: x[5], pct: p + '%', pctStyle: 'font-weight: 800; font-size: 16px; color: ' + (p < 70 ? '#B42318' : '#1F4D3A') }; });
+var cor = { P: '#1F4D3A', A: '#D97706', F: '#E4DFD3' };
+var d = [['Ana Clara','PPPPAPPP'],['Pedro Henrique','PAPPPPPP'],['Júlia','PPPFPPPP'],['Isabela','PPAPPFPP'],['Lívia','FPPPPPAP'],['Enzo','PPFPAPFP'],['Gabriel','FFPAPFPF'],['Davi','PAFPFPFA']];
+var porDbv = d.map(function (x) { var s = x[1].split(''); var ok = s.filter(function (c) { return c !== 'F'; }).length; return { nome: x[0], pct: Math.round(ok / 8 * 100) + '%', cells: s.map(function (c) { return 'height: 22px; border-radius: 4px; background: ' + cor[c]; }) }; });
+return { reunioes: reunioes, porDbv: porDbv, isReun: v === 'reun', isDbv: v === 'dbv', tabReun: v === 'reun' ? on : off, tabDbv: v === 'dbv' ? on : off,
+pickReun: function () { self.setState({ v: 'reun' }); }, pickDbv: function () { self.setState({ v: 'dbv' }); } };
+}
+}
+</script>
+</body>
+</html>
