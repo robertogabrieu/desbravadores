@@ -1,0 +1,324 @@
+{
+  "fonte": "Caderno_de_Atividades_4_-_Pioneiro_13_ANOS.pdf",
+  "classes": [
+    {
+      "nome": "Pioneiro",
+      "idade": 13,
+      "tipo": "REGULAR",
+      "secoes": [
+        {
+          "codigo": "G",
+          "nome": "Gerais",
+          "ordem": 1,
+          "requisitos": [
+            {
+              "codigo": "G1",
+              "texto": "Ter, no mínimo, 13 anos de idade.",
+              "campo": false,
+              "pagina": 3
+            },
+            {
+              "codigo": "G2",
+              "texto": "Ser membro ativo do Clube de Desbravadores.",
+              "campo": false,
+              "pagina": 4
+            },
+            {
+              "codigo": "G3",
+              "texto": "Memorizar e entender o Alvo e o Lema JA.",
+              "campo": false,
+              "pagina": 6
+            },
+            {
+              "codigo": "G4",
+              "texto": "Ler o livro do Clube de Leitura Juvenil do ano em curso e resumi-lo em uma página.",
+              "campo": false,
+              "pagina": 8
+            },
+            {
+              "codigo": "G5",
+              "texto": "Ler o livro A História da Vida.",
+              "campo": false,
+              "pagina": 9
+            }
+          ]
+        },
+        {
+          "codigo": "DE",
+          "nome": "Descoberta espiritual",
+          "ordem": 2,
+          "requisitos": [
+            {
+              "codigo": "DE1",
+              "texto": "Memorizar e demonstrar o seu conhecimento: a) Bem-Aventuranças: O Sermão da Montanha.",
+              "campo": false,
+              "pagina": 10
+            },
+            {
+              "codigo": "DE2",
+              "texto": "Ler e explicar os versos: Isaías 26:3; João 14:1-3; Filipenses 3:12-14; I Samuel 15:22; Romanos 12:12; Salmo 37:5; Salmo 23.",
+              "campo": false,
+              "pagina": 12
+            },
+            {
+              "codigo": "DE3",
+              "texto": "Conversar em seu clube ou unidade sobre: a) o que é o cristianismo; b) quais são as características de um verdadeiro discípulo; c) o que fazer para ser um cristão verdadeiro.",
+              "campo": false,
+              "pagina": 13
+            },
+            {
+              "codigo": "DE4",
+              "texto": "Participar de um estudo especial sobre a inspiração da Bíblia, com a ajuda de um pastor, trabalhando os conceitos de inspiração, revelação e iluminação.",
+              "campo": false,
+              "pagina": 18
+            },
+            {
+              "codigo": "DE5",
+              "texto": "Convidar três ou mais pessoas para assistirem a uma classe bíblica ou pequeno grupo.",
+              "campo": false,
+              "pagina": 20
+            },
+            {
+              "codigo": "DE6",
+              "texto": "Leitura bíblica: Eclesiastes 3, 5, 7, 11 e 12; Isaías 5, 11, 26:1-12 e 35, 40, 43, 52:13-15 e 53, 58, 60, 61; Jeremias 9:23-26, 10:1-16, 18:1-6, 26, 36, 52:1-11; Daniel 1 a 12; Joel 2:12-31; Amós 7:10-16 e 8:4-11; Jonas 1, 2, 3 e 4; Miqueias 4; Ageu 2; Zacarias 4; Malaquias 3 e 4; Mateus 1 a 23.",
+              "campo": false,
+              "pagina": 20
+            }
+          ]
+        },
+        {
+          "codigo": "SO",
+          "nome": "Servindo aos outros",
+          "ordem": 3,
+          "requisitos": [
+            {
+              "codigo": "SO1",
+              "texto": "Participar em dois projetos missionários definidos por seu clube.",
+              "campo": false,
+              "pagina": 21
+            },
+            {
+              "codigo": "SO2",
+              "texto": "Dedicar, no mínimo, oito horas trabalhando em um projeto comunitário de sua igreja, escola ou comunidade.",
+              "campo": false,
+              "pagina": 22
+            }
+          ]
+        },
+        {
+          "codigo": "DA",
+          "nome": "Desenvolvendo amizade",
+          "ordem": 4,
+          "requisitos": [
+            {
+              "codigo": "DA1",
+              "texto": "Participar de um debate e fazer uma avaliação pessoal sobre suas atitudes em dois dos seguintes temas: a) auto-estima; b) amizade; c) relacionamentos; d) otimismo e pessimismo.",
+              "campo": false,
+              "pagina": 22
+            }
+          ]
+        },
+        {
+          "codigo": "SA",
+          "nome": "Saúde e aptidão física",
+          "ordem": 5,
+          "requisitos": [
+            {
+              "codigo": "SA1",
+              "texto": "Preparar um programa pessoal de exercícios físicos diários e conversar com seu líder ou conselheiro sobre os princípios de aptidão física. Fazer e assinar um compromisso pessoal de realizar exercícios físicos regularmente.",
+              "campo": false,
+              "pagina": 23
+            },
+            {
+              "codigo": "SA2",
+              "texto": "Discutir as vantagens do estilo de vida Adventista de acordo com o que a Bíblia ensina.",
+              "campo": false,
+              "pagina": 24
+            }
+          ]
+        },
+        {
+          "codigo": "OL",
+          "nome": "Organização e liderança",
+          "ordem": 6,
+          "requisitos": [
+            {
+              "codigo": "OL1",
+              "texto": "Assistir a um seminário ou treinamento, oferecido pela sua igreja ou distrito, nos departamentos: a) Ministério Pessoal; b) Evangelismo.",
+              "campo": false,
+              "pagina": 26
+            },
+            {
+              "codigo": "OL2",
+              "texto": "Participar de uma atividade social de sua igreja.",
+              "campo": false,
+              "pagina": 27
+            }
+          ]
+        },
+        {
+          "codigo": "EN",
+          "nome": "Estudo da natureza",
+          "ordem": 7,
+          "requisitos": [
+            {
+              "codigo": "EN1",
+              "texto": "Estudar a história do dilúvio e o processo de fossilização.",
+              "campo": false,
+              "pagina": 28
+            },
+            {
+              "codigo": "EN2",
+              "texto": "Completar uma especialidade, não realizada anteriormente, em Estudo da natureza.",
+              "campo": false,
+              "pagina": 30
+            }
+          ]
+        },
+        {
+          "codigo": "AC",
+          "nome": "Arte de acampar",
+          "ordem": 8,
+          "requisitos": [
+            {
+              "codigo": "AC1",
+              "texto": "Fazer um fogo refletor e demonstrar seu uso.",
+              "campo": true,
+              "pagina": 30
+            },
+            {
+              "codigo": "AC2",
+              "texto": "Participar de um acampamento de final de semana, arrumando de forma apropriada sua bolsa ou mochila com o equipamento pessoal necessário.",
+              "campo": true,
+              "pagina": 31
+            },
+            {
+              "codigo": "AC3",
+              "texto": "Completar a especialidade de Resgate básico: 1. O que é resgate de emergência? 2. Demonstrar como resgatar, com segurança, uma pessoa nas seguintes situações: a) em contato com cabo elétrico; b) em ambiente cheio de fumaça ou gás; c) com as roupas em chamas; d) afogando-se, sem qualquer equipamento de resgate; e) em um acidente no gelo. 3. Conhecer três maneiras de atrair e comunicar-se com um resgate aéreo. 4. Conhecer seis atitudes indicadas em caso de necessidade de resgate imediato. 5. Conhecer seis procedimentos a seguir antes de remover uma vítima de situação que apresenta risco de morte. 6. Conhecer as maneiras apropriadas de ajudar uma vítima, em perigo, nas seguintes situações: a) puxar a vítima; b) içar/levantar a vítima; c) ajudar a vítima a caminhar. 7. Conhecer a forma adequada de ajudar uma vítima, com ajuda de outros, nas seguintes situações: a) carregar uma pessoa sentada; b) carregar uma pessoa deitada; c) carregar com duas mãos, ou quatro mãos; d) carregar com cobertor; e) carregar, em três, vítima em rede, em decúbito dorsal e ventral; f) carregar em três ou quatro pessoas. 8. Fazer uma maca improvisada e carregar uma pessoa nela. 9. Cumprir os seguintes itens: a) atar, pelo menos, 3 nós para juntar cordas; b) atar um nó para diminuir corda; c) atar um nó para usar ao redor de alguém num resgate; d) enrolar e jogar corretamente uma corda leve e uma pesada, de 15 metros cada. 10. Que passos devem ser dados antes de comunicar que alguém está desaparecido? Que informações serão necessárias ao informar à polícia o desaparecimento de alguém? Como devem ser conduzidas as buscas por alguém perdido numa área selvagem?",
+              "campo": false,
+              "pagina": 33
+            }
+          ]
+        },
+        {
+          "codigo": "EV",
+          "nome": "Enriquecendo a vida",
+          "ordem": 9,
+          "requisitos": [
+            {
+              "codigo": "EV1",
+              "texto": "Completar uma especialidade não realizada anteriormente em uma das seguintes áreas: a) atividades missionárias; b) atividades profissionais; c) atividades agrícolas.",
+              "campo": false,
+              "pagina": 34
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Pioneiro de Novas Fronteiras",
+      "idade": 13,
+      "tipo": "AVANCADA",
+      "secoes": [
+        {
+          "codigo": "AV",
+          "nome": "Classe avançada",
+          "ordem": 1,
+          "requisitos": [
+            {
+              "codigo": "AV1",
+              "texto": "Completar a especialidade de Cidadania cristã, caso não tenha sido realizada anteriormente: 1. Defina o termo Cidadania. 2. Descrever as seguintes bandeiras: a) do seu país; b) do seu Estado; c) do seu Município; d) dos Jovens Adventistas; e) dos Desbravadores. 3. Pesquise e relate o significado das cores, símbolos, curiosidades e história (se houver) das bandeiras do item 2. 4. Demonstrar como dobrar as bandeiras do item 2. Explicar como e onde devem ser guardadas. 5. Saber quando as bandeiras podem e quando devem ser hasteadas. 6. Fazer o seguinte: a) explicar a razão para a existência do Hino Nacional; b) selecionar e pesquisar o significado das palavras do hino nacional que você não conhece; c) recitar a letra de memória; d) cantar corretamente o hino nacional; e) recitar o hino dos Desbravadores e explicar seu significado; f) recitar os ideais dos Desbravadores e seu significado; g) explicar o significado da posição Maranata. 7. Explicar o significado da declaração que Jesus fez em Mateus 22:21: \"Deem a César o que é de César e a Deus o que é de Deus\". 8. Por que as leis são importantes? Qual foi o objetivo de Deus ao nos dar a Lei? Por que um país precisa de leis? 9. Pesquise a Constituição do seu país e liste, ao menos, 10 direitos importantes que ela assegura. 10. Quais são os deveres mais importantes de um cidadão do seu país? Em que eles são semelhantes ou diferentes dos deveres de um cidadão do céu? O que fazer quando os deveres de um cidadão do seu país atrapalham a cumprir os deveres de um cidadão do céu? 11. Explicar o sistema de governo em seu país. 12. Fazer uma entrevista com uma autoridade pública (municipal, estadual ou federal) e perguntar-lhe sobre os deveres e atividades inerentes à sua função. 13. Fazer uma pesquisa sobre uma pessoa famosa de seu país, citando o que ela fez para se destacar diante da sociedade, e apresentar o resultado de uma das formas: a) redação com, pelo menos, 1 folha; b) apresentação para os membros do clube com, pelo menos, 2 minutos de duração. 14. Fazer uma lista com, pelo menos, 10 itens de um dos seguintes: a) citações famosas de líderes de seu país; b) lugares históricos famosos em seu país; c) eventos históricos muito conhecidos em seu país. 15. Descrever o que você pode fazer como cidadão para ajudar sua igreja e seu país. 16. Pesquisar e explicar quais são os requisitos para um estrangeiro conseguir a cidadania em seu país.",
+              "campo": false,
+              "pagina": 34
+            },
+            {
+              "codigo": "AV2",
+              "texto": "Dar dois estudos bíblicos a uma pessoa não batizada na Igreja Adventista.",
+              "campo": false,
+              "pagina": 36
+            },
+            {
+              "codigo": "AV3",
+              "texto": "Encenar a história do bom samaritano (Lucas 10:25-37), demonstrando como ajudar as pessoas e auxiliar de forma prática três pessoas ou mais.",
+              "campo": false,
+              "pagina": 37
+            },
+            {
+              "codigo": "AV4",
+              "texto": "Participar de uma das seguintes atividades, apresentando ao final um relatório escrito contendo, no mínimo, duas páginas: a) caminhar 10 quilômetros; b) cavalgar 2 quilômetros; c) viajar de canoa durante 2 horas; d) praticar 15 quilômetros de ciclismo; e) nadar 200 metros; f) correr 1500 m; g) rodar 2 km de patins ou roller.",
+              "campo": true,
+              "pagina": 38
+            },
+            {
+              "codigo": "AV5",
+              "texto": "Completar a especialidade de Ordem unida, caso não tenha sido realizada anteriormente: 1. Explicar, pelo menos, cinco objetivos da ordem unida. 2. Definir: a) formação; b) linha; c) fila/fileira; d) distância; e) intervalo; f) coluna; g) alinhamento; h) cobertura; i) cerra-fila; j) homem base; k) coluna base; l) testa; m) cauda; n) frente; o) cobrir. 3. Explicar o que é cadência. 4. Descrever os quatro tipos de passos a seguir e saber executar corretamente todos eles: a) passo estrada; b) passo ordinário; c) passo acelerado; d) sem cadência. 5. Saber quais são as três etapas da voz de comando. 6. Explicar com detalhes a execução dos seguintes comandos: a) descansar; b) frente para direita/esquerda/retaguarda; c) sentido; d) cobrir; e) esquerda/direita/meia-volta volver; f) sentado/de pé; g) perfilar; h) última forma. 7. Executar corretamente os seguintes movimentos a pé firme: a) atenção; b) sentido; c) cobrir; d) firme; e) direita volver; f) olhar à direita; g) olhar à esquerda; h) olhar frente; i) esquerda volver; j) meia-volta volver; k) sem intervalo, cobrir; l) firme; m) descansar; n) frente para a retaguarda; o) frente para a esquerda; p) frente para a direita; q) fora de forma, marche; r) à vontade/atenção. 8. Executar corretamente os seguintes movimentos em deslocamento (passo ordinário): a) ordinário marche; b) alto; c) marcar passo; d) em frente; e) conversão à direita; f) conversão à esquerda; g) em direção à direita, marche; h) em direção à esquerda, marche; i) olhar à direita; j) olhar frente; k) olhar à esquerda; l) direita volver; m) esquerda volver; n) meia-volta volver; o) trocar passo; p) alto; q) 5 passos em frente, marche. 9. Explicar e demonstrar como usar, exibir e cuidar da bandeira nacional, incluindo como dobrá-la adequadamente.",
+              "campo": false,
+              "pagina": 40
+            },
+            {
+              "codigo": "AV6",
+              "texto": "Completar a especialidade de Mapa e bússola. Seção I - Mapa. 1. Saber o seguinte: a) o que é um mapa topográfico; b) o que é encontrado em um mapa topográfico; c) dar 3 usos para um mapa topográfico. 2. O que é um mapa ortofoto? 3. Ser capaz de identificar, pelo menos, 20 sinais e símbolos encontrados em mapas topográficos, alguns deles das categorias: a) construções humanas; b) locais com água; c) características da vegetação. 4. Conhecer e explicar, com relação à topografia: a) elevação; b) intervalo entre curvas de nível; c) formas de relevo (vales, cumes, penhasco, escarpas, montes, montanhas etc.) definidas pelas curvas de nível. 5. Conhecer e explicar, com relação à distância: a) como as distâncias são definidas; b) a escala do mapa; c) como medir a distância linear; d) como converter para a distância real. 6. Conhecer e explicar, com relação ao mapa: a) o que é sistema Grid; b) o que é grid UTM; c) quantos fusos UTM temos no território da Divisão Sul-Americana; d) identificar em qual fuso fica sua localidade e como é nomeado este fuso; e) explicar como usar um sistema de coordenadas UTM; f) como usar um sistema de grade de 6 dígitos. 7. Conhecer e explicar, com relação à leitura de mapas: a) norte da quadrícula; b) norte verdadeiro; c) norte magnético; d) declinação magnética; e) convergência meridiana. Seção II - Bússola. 1. Quais são os 8 principais pontos cardeais, suas abreviações e graus correspondentes? 2. Identificar o tipo de bússola mais popular entre trilheiros. 3. Conhecer as partes de uma bússola. 4. Conhecer e explicar, relacionado à bússola, azimute e coordenadas: a) o que é azimute; b) como calcular a coordenada pelo mapa; c) como converter uma coordenada geográfica para uma coordenada magnética (azimute); d) como converter uma coordenada magnética (azimute) para uma coordenada geográfica; e) o que é desvio e como corrigir isto; f) como calcular e seguir um contra-azimute. 5. Conhecer e explicar os seguintes métodos de descobrir a localização atual em um mapa: a) o que é ressecção; b) usar o método de 2 pontos; c) usar o método de 3 pontos; d) explicar como usar o triângulo de erro de Lehmann. 6. Saber e explicar como orientar-se usando seu mapa por: a) inspeção visual; b) usando a bússola. 7. Construir uma \"bússola de emergência\" utilizando materiais improvisados. Seção III - Direção sem o auxílio de uma bússola. 1. Demonstrar como encontrar direção sem uma bússola usando: a) Cruzeiro do Sul; b) relógio com ponteiros; c) constelação de Órion; d) a sombra de 2 varas. Seção IV - Prática. 1. Demonstrar como: a) ler 6 coordenadas usando o Grid UTM; b) calcular uma coordenada pelo mapa; c) converter uma coordenada geográfica para uma coordenada magnética; d) determinar o azimute; e) localizar uma posição com a ressecção. 2. Com base no conhecimento adquirido no item \"c\" do requisito 4 da Seção II, navegar até uma coordenada geográfica utilizando um azimute magnético. 3. Provar sua habilidade no uso de um mapa e bússola, seguindo um curso de cross-country com, pelo menos, 10 leituras dadas ou pontos de controle. 4. Durante o cumprimento dos requisitos 2 e 3 desta seção, manter um registro detalhando: a) referências do mapa utilizado (incluindo dados da Grid, escala etc.); b) coordenadas geográficas e magnéticas e os azimutes; c) observações sobre o percurso tomado.",
+              "campo": true,
+              "pagina": 41
+            },
+            {
+              "codigo": "AV7",
+              "texto": "Demonstrar habilidade no uso correto de uma machadinha.",
+              "campo": true,
+              "pagina": 43
+            },
+            {
+              "codigo": "AV8",
+              "texto": "Ser capaz de acender uma fogueira em dia de chuva, saber como conseguir lenha seca e manter o fogo aceso.",
+              "campo": true,
+              "pagina": 44
+            },
+            {
+              "codigo": "AV9",
+              "texto": "Completar um dos seguintes itens: a) pesquisar e identificar dez variedades de plantas silvestres comestíveis; b) ser capaz de enviar e receber 35 letras por minuto pelo código semafórico; c) ser capaz de enviar e receber 35 letras por minuto através do código náutico, usando o código internacional; d) ser capaz de apresentar e entender Mateus 24 em LIBRAS (língua de sinais); e) preparar o Salmo 23 em braile.",
+              "campo": false,
+              "pagina": 45
+            },
+            {
+              "codigo": "AV10",
+              "texto": "Pesquisar e identificar, através de fotografia, exposição ou ao vivo, um dos seguintes itens: a) 25 folhas de árvores; b) 25 rochas e minerais; c) 25 flores silvestres; d) 25 borboletas e mariposas; e) 25 conchas.",
+              "campo": false,
+              "pagina": 52
+            },
+            {
+              "codigo": "AV11",
+              "texto": "Completar uma especialidade, não realizada anteriormente, em Atividades recreativas.",
+              "campo": false,
+              "pagina": 52
+            },
+            {
+              "codigo": "AV12",
+              "texto": "Completar uma especialidade, não realizada anteriormente, em Artes e habilidades manuais.",
+              "campo": false,
+              "pagina": 55
+            },
+            {
+              "codigo": "AV13",
+              "texto": "Completar a especialidade de Fogueiras e cozinha ao ar livre: 1. Preparar, entre as seguintes, cinco diferentes tipos de fogueiras e saber o uso específico de cada uma, sendo dois próprios para cozinhar alimentos: a) Fogo do Conselho; b) Altar de Cozinha; c) Fogo de Trincheira; d) Cercadura de Pedra; e) Cama Rápida; f) Fogo Estrela; g) Fogo de Caçador; h) Fogo Refletor. 2. Preparar madeira e gravetos com segurança. 3. Demonstrar as técnicas corretas de começar uma fogueira. 4. Começar uma fogueira com um palito de fósforo e mantê-la acesa por, no mínimo, 10 minutos. 5. Conhecer e praticar cinco regras de segurança. 6. Demonstrar como cortar corretamente madeira para fogueira. 7. Demonstrar habilidade para começar uma fogueira em tempo chuvoso. 8. Demonstrar habilidade para refogar, cozinhar, fritar e assar alimentos, assando um pão num espeto e outro alimento em papel alumínio. 9. Conhecer um método natural, além do gelo, para manter os alimentos gelados/frios enquanto estiver acampando. 10. Conhecer maneiras de manter o alimento e utensílios a salvo de ataque de animais e insetos. 11. Por que é importante manter limpos os utensílios usados para cozinhar e comer? 12. Demonstrar conhecimento da nutrição apropriada e combinação de alimentos e fazer um cardápio completo e balanceado para seis refeições de acampamento, incluindo: a) um desjejum, almoço ou jantar para um dia de caminhada, no qual a alimentação leve é importante (a refeição não deve ser cozida, pois perde muito de seus valores nutritivos); b) as cinco refeições restantes, que podem ser feitas com qualquer tipo de comida: alimentos enlatados, frescos, congelados ou desidratados. 13. Fazer uma lista dos suprimentos que serão necessários para preparar as seis refeições acima. 14. Saber como preparar os alimentos com segurança, dispor do lixo adequadamente e lavar os utensílios.",
+              "campo": true,
+              "pagina": 56
+            }
+          ]
+        }
+      ],
+      "classeBase": "Pioneiro"
+    }
+  ],
+  "avisos": [
+    "Caderno do Pioneiro tem texto de digitalização com ruído; requisitos conferidos visualmente nas páginas 10-13, 20-30, 34-38, 43-45 e 52-56, o restante lido do texto extraído.",
+    "Seção IX do caderno se chama 'Estilo de vida' (não 'Enriquecendo a vida'); usado o código EV.",
+    "Seção III aparece como 'Servindo a outros'; usado o código SO. Seção VII 'Estudo da natureza' e VIII 'Arte de acampar' no caderno: EN e AC.",
+    "Classe AVANÇADA 'Pioneiro de Novas Fronteiras' (páginas 34-56): o caderno numera os requisitos de 1 a 13 SEM dividir em seções. Redistribuí por assunto e mantive a ordem original dentro de cada seção. Numeração original: 1 Cidadania cristã (EV1), 2 dois estudos bíblicos (DE1), 3 bom samaritano (SO1), 4 atividade física (SA1), 5 Ordem unida (OL1), 6 Mapa e bússola (AC1), 7 machadinha (AC2), 8 fogueira na chuva (AC3), 9 um dos itens plantas/códigos (EV2), 10 especialidade Atividades recreativas (EV3), 11 identificar 25 itens da natureza (EN1), 12 especialidade Artes e habilidades manuais (EV4), 13 Fogueiras e cozinha ao ar livre (AC4). A atribuição de seção é minha, não do caderno; os códigos por seção seguem a ordem das seções, não a numeração impressa.",
+    "Página 40 (Ordem unida): o número do requisito está ilegível no texto extraído; deduzido 5 pela sequência.",
+    "Especialidades (Resgate básico, Cidadania cristã, Ordem unida, Mapa e bússola, Fogueiras e cozinha) trazem no caderno a lista de sub-itens; foram mantidas dentro do texto do requisito. Resgate básico (AC3 regular) marcado campo=false por ser conhecimento/demonstração misto; rever se quiser campo=true.",
+    "Campo duvidoso, marcado false: EV2 avançada (plantas silvestres é uma das cinco opções), EN1 avançada (identificar 25 itens por fotografia, exposição ou ao vivo), EN2 regular (especialidade de Estudo da natureza, sem especificar), SO2 regular (projeto comunitário). Marcado true: SA1 avançada (caminhada/canoa/ciclismo etc.).",
+    "Páginas 39, 46-51 e 53-55 são espaços para colar figuras, quadro de código Morse/semafórico/braile e material de apoio: sem requisitos.",
+    "Ficha pessoal, informações médicas, textos explicativos (fósseis, remédios naturais, mochila) e 'Para saber mais' foram ignorados.",
+    "Padronização: a avançada 'Pioneiro de Novas Fronteiras' foi reunida na seção única AV, em ordem de página; códigos renumerados (EV1→AV1, DE1→AV2, SO1→AV3, SA1→AV4, OL1→AV5, AC1→AV6, AC2→AV7, AC3→AV8, EV2→AV9, EN1→AV10, EV3→AV11, EV4→AV12, AC4→AV13). Conferir a ordem com a numeração impressa no caderno."
+  ]
+}

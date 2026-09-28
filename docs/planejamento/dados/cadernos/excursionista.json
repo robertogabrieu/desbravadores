@@ -1,0 +1,301 @@
+{
+  "fonte": "Caderno_de_Atividades_5_-_Excursionista_14_ANOS.pdf",
+  "classes": [
+    {
+      "nome": "Excursionista",
+      "idade": 14,
+      "tipo": "REGULAR",
+      "secoes": [
+        {
+          "codigo": "G",
+          "nome": "Gerais",
+          "ordem": 1,
+          "requisitos": [
+            {
+              "codigo": "G1",
+              "texto": "Ter, no mínimo, 14 anos de idade.",
+              "campo": false,
+              "pagina": 3
+            },
+            {
+              "codigo": "G2",
+              "texto": "Ser membro ativo do Clube de Desbravadores.",
+              "campo": false,
+              "pagina": 4
+            },
+            {
+              "codigo": "G3",
+              "texto": "Memorizar e explicar o significado do Objetivo JA.",
+              "campo": false,
+              "pagina": 6
+            },
+            {
+              "codigo": "G4",
+              "texto": "Ler o livro do Clube de Leitura Juvenil do ano em curso e resumi-lo em uma página.",
+              "campo": false,
+              "pagina": 7
+            },
+            {
+              "codigo": "G5",
+              "texto": "Ler o livro Nos Bastidores da Mídia.",
+              "campo": false,
+              "pagina": 8
+            }
+          ]
+        },
+        {
+          "codigo": "DE",
+          "nome": "Descoberta espiritual",
+          "ordem": 2,
+          "requisitos": [
+            {
+              "codigo": "DE1",
+              "texto": "Memorizar e demonstrar o seu conhecimento: a) 12 apóstolos: o nome dos 12 apóstolos de Cristo; b) Fruto do Espírito: a relação de adjetivos do caráter do cristão.",
+              "campo": false,
+              "pagina": 9
+            },
+            {
+              "codigo": "DE2",
+              "texto": "Ler e explicar os versos: Romanos 8:28; II Pedro 1:20-21; II Crônicas 20:30; Apocalipse 21:1-3; I João 2:14; Salmo 46.",
+              "campo": false,
+              "pagina": 10
+            },
+            {
+              "codigo": "DE3",
+              "texto": "Estudar e entender a pessoa do Espírito Santo, como Ele se relaciona, e qual o Seu papel no crescimento espiritual de cada ser humano.",
+              "campo": false,
+              "pagina": 12
+            },
+            {
+              "codigo": "DE4",
+              "texto": "Estudar, com sua unidade, os eventos finais e a segunda vinda de Cristo.",
+              "campo": false,
+              "pagina": 14
+            },
+            {
+              "codigo": "DE5",
+              "texto": "Através do estudo da Bíblia, descobrir o verdadeiro significado da observância do sábado.",
+              "campo": false,
+              "pagina": 16
+            },
+            {
+              "codigo": "DE6",
+              "texto": "Leitura bíblica: Mt 24; Mt 25; Mt 26:1-35; Mt 26:36-75; Mt 27:1-31; Mt 27:32-56; Mt 27:57-66; Mt 28; Mc 7; Mc 9; Mc 10; Mc 11; Mc 12; Mc 16; Lc 1:4-25; Lc 1:26-66; Lc 2:21-38; Lc 2:39-52; Lc 7:18-28; Lc 8; Lc 10:1-37; Lc 10:38-42 e 11:1-13; Lc 12; Lc 13; Lc 14; Lc 15; Lc 16:1-17; Lc 17; Lc 18; Lc 19; Lc 21; Lc 22; Lc 23; Lc 24; Jo 1; Jo 2; Jo 3; Jo 4; Jo 5; Jo 6:1-21; Jo 6:22-71; Jo 8:1-38; Jo 9; Jo 10; Jo 11:1-46; Jo 12; Jo 13; Jo 14; Jo 15; Jo 17; Jo 18; Jo 19; Jo 20; Jo 21; At 1; At 2; At 3; At 4; At 5; At 6; At 7; At 8.",
+              "campo": false,
+              "pagina": 17
+            }
+          ]
+        },
+        {
+          "codigo": "SO",
+          "nome": "Servindo aos outros",
+          "ordem": 3,
+          "requisitos": [
+            {
+              "codigo": "SO1",
+              "texto": "Convidar um amigo para participar de uma atividade social de sua igreja ou da Associação/Missão.",
+              "campo": false,
+              "pagina": 17
+            },
+            {
+              "codigo": "SO2",
+              "texto": "Participar de um projeto comunitário desde o planejamento, organização até a execução.",
+              "campo": false,
+              "pagina": 18
+            },
+            {
+              "codigo": "SO3",
+              "texto": "Discutir como os jovens adventistas devem se relacionar com as pessoas nas diferentes situações do dia a dia, tais como: a) Vizinhos; b) Escola; c) Atividades sociais; d) Atividades recreativas.",
+              "campo": false,
+              "pagina": 19
+            }
+          ]
+        },
+        {
+          "codigo": "DA",
+          "nome": "Desenvolvendo amizade",
+          "ordem": 4,
+          "requisitos": [
+            {
+              "codigo": "DA1",
+              "texto": "Através de uma conversa em grupo ou avaliação pessoal, examinar suas atitudes em dois dos seguintes temas: a) Auto-estima; b) Relacionamento familiar; c) Finanças pessoais; d) Pressão de grupo.",
+              "campo": false,
+              "pagina": 21
+            },
+            {
+              "codigo": "DA2",
+              "texto": "Preparar uma lista contendo cinco sugestões de atividades recreativas para ajudar pessoas com necessidades específicas e colaborar na organização de uma dessas atividades para essas pessoas.",
+              "campo": false,
+              "pagina": 28
+            }
+          ]
+        },
+        {
+          "codigo": "SA",
+          "nome": "Saúde e aptidão física",
+          "ordem": 5,
+          "requisitos": [
+            {
+              "codigo": "SA1",
+              "texto": "Completar a especialidade de Temperança.",
+              "campo": false,
+              "pagina": 29
+            }
+          ]
+        },
+        {
+          "codigo": "OL",
+          "nome": "Organização e liderança",
+          "ordem": 6,
+          "requisitos": [
+            {
+              "codigo": "OL1",
+              "texto": "Preparar um organograma da igreja local e relacionar as funções dos departamentos.",
+              "campo": false,
+              "pagina": 31
+            },
+            {
+              "codigo": "OL2",
+              "texto": "Participar de dois programas envolvendo diferentes departamentos da igreja local.",
+              "campo": false,
+              "pagina": 33
+            },
+            {
+              "codigo": "OL3",
+              "texto": "Completar a especialidade de Aventuras com Cristo.",
+              "campo": false,
+              "pagina": 34
+            },
+            {
+              "codigo": "OL4",
+              "texto": "Completar a especialidade de Ordem unida, caso não tenha sido realizada anteriormente.",
+              "campo": false,
+              "pagina": 35
+            }
+          ]
+        },
+        {
+          "codigo": "EN",
+          "nome": "Estudo da natureza",
+          "ordem": 7,
+          "requisitos": [
+            {
+              "codigo": "EN1",
+              "texto": "Recapitular a história de Nicodemos e relacioná-la com o ciclo de vida da lagarta ou borboleta, acrescentando um significado espiritual.",
+              "campo": false,
+              "pagina": 37
+            },
+            {
+              "codigo": "EN2",
+              "texto": "Completar uma especialidade em Estudos da natureza, não realizada anteriormente.",
+              "campo": false,
+              "pagina": 38
+            }
+          ]
+        },
+        {
+          "codigo": "AC",
+          "nome": "Arte de acampar",
+          "ordem": 8,
+          "requisitos": [
+            {
+              "codigo": "AC1",
+              "texto": "Com um grupo de, no mínimo, quatro pessoas e com a presença de um conselheiro adulto e experiente, andar pelo menos 20 quilômetros numa área rural ou deserta, incluindo uma noite ao ar livre ou em barraca. Planejar a expedição em detalhes antes da saída. Durante a caminhada, efetuar anotações sobre o terreno, flora e fauna observados. Depois, usando as anotações, participar de uma discussão em grupo, dirigida por seu conselheiro.",
+              "campo": true,
+              "pagina": 38
+            },
+            {
+              "codigo": "AC2",
+              "texto": "Completar a especialidade de Pioneirismo.",
+              "campo": true,
+              "pagina": 41
+            },
+            {
+              "codigo": "AC3",
+              "texto": "Completar a especialidade de Vida silvestre.",
+              "campo": true,
+              "pagina": 42
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Excursionista na Mata",
+      "idade": 14,
+      "tipo": "AVANCADA",
+      "secoes": [
+        {
+          "codigo": "AV",
+          "nome": "Classe avançada",
+          "ordem": 1,
+          "requisitos": [
+            {
+              "codigo": "AV1",
+              "texto": "Acompanhar seu pastor ou ancião numa visita missionária ou estudo bíblico.",
+              "campo": false,
+              "pagina": 44
+            },
+            {
+              "codigo": "AV2",
+              "texto": "Completar a especialidade de Testemunho juvenil.",
+              "campo": false,
+              "pagina": 45
+            },
+            {
+              "codigo": "AV3",
+              "texto": "Apresentar cinco atividades na natureza, para serem realizadas no sábado à tarde.",
+              "campo": false,
+              "pagina": 46
+            },
+            {
+              "codigo": "AV4",
+              "texto": "Com sua unidade, construir cinco móveis de acampamento e um portal para o clube.",
+              "campo": true,
+              "pagina": 47
+            },
+            {
+              "codigo": "AV5",
+              "texto": "Através da supervisão de seu líder ou conselheiro, conversar em sua unidade ou clube sobre um dos seguintes temas: a) Modéstia cristã; b) Recreação; c) Saúde; d) Observância do sábado.",
+              "campo": false,
+              "pagina": 49
+            },
+            {
+              "codigo": "AV6",
+              "texto": "Demonstrar conhecimento para encontrar alimentos, através de plantas silvestres de sua região e saber diferenciá-las de plantas tóxicas/venenosas.",
+              "campo": true,
+              "pagina": 51
+            },
+            {
+              "codigo": "AV7",
+              "texto": "Demonstrar conhecimento quanto aos procedimentos necessários em caso de ferimentos por diferentes animais peçonhentos e não peçonhentos.",
+              "campo": false,
+              "pagina": 52
+            },
+            {
+              "codigo": "AV8",
+              "texto": "Demonstrar técnicas para percorrer trilhas em diferentes tipos de terrenos, como: desertos, florestas, pântanos e rios.",
+              "campo": true,
+              "pagina": 53
+            }
+          ]
+        }
+      ],
+      "classeBase": "Excursionista"
+    }
+  ],
+  "avisos": [
+    "O PDF não traz as páginas impressas 44 e 45 (a paginação impressa salta de 43 para 46 no arquivo). Faltam o cabeçalho da classe avançada e o seu requisito de número 1; os itens da avançada aparecem numerados de 2 a 9 e foram codificados CA1 a CA8 em sequência (número impresso = código + 1).",
+    "O nome 'Excursionista na Mata' para a classe avançada não consta no PDF (a página de título está ausente); foi inferido do padrão das classes avançadas de Desbravadores.",
+    "Não foi possível saber a que seções pertencem os itens da avançada, por isso ficaram todos numa seção provisória 'CA'.",
+    "Requisitos 'Completar a especialidade de X' (Temperança, Aventuras com Cristo, Ordem unida, Pioneirismo, Vida silvestre, Testemunho juvenil) trazem o conteúdo detalhado da especialidade no PDF (páginas 29-30, 34-36, 41-43, 45); o conteúdo foi omitido e ficou só o enunciado.",
+    "Leitura bíblica (DE6): o enunciado é só 'Leitura bíblica'; a lista de capítulos é uma caixa de marcação e foi anexada ao texto.",
+    "Numeração impressa das seções: as seções do PDF aparecem como I a VIII; VI (Organização e liderança) inclui Aventuras com Cristo e Ordem unida por ficarem antes do cabeçalho VII.",
+    "Seção EV (Enriquecendo a vida) não existe nesta classe regular.",
+    "Página 46: 'Apresentar cinco atividades na natureza' marcado campo=false por ser planejamento/redação de sugestões, apesar do tema ser natureza (dúvida).",
+    "Página 42-43 (Vida silvestre): a especialidade inclui acampamentos, mas o requisito da classe é 'completar a especialidade'; marcado campo=true.",
+    "Página 41 (Pioneirismo): marcado campo=true (fogueira, machado, excursão) mesmo sendo 'completar especialidade'.",
+    "Texto do PDF muito ruidoso; enunciados conferidos visualmente nas imagens das páginas 3-12, 17, 21, 28, 38, 41-54.",
+    "Padronização: a avançada 'Excursionista na Mata' foi reunida na seção única AV, em ordem de página; códigos renumerados (CA1→AV1, CA2→AV2, CA3→AV3, CA4→AV4, CA5→AV5, CA6→AV6, CA7→AV7, CA8→AV8). Conferir a ordem com a numeração impressa no caderno."
+  ]
+}
