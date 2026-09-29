@@ -1,6 +1,17 @@
-import { GradeFrequenciaSaida, ReuniaoDetalhe, ReuniaoResumo } from '@desbravadores/shared'
-import { useQuery } from '@tanstack/react-query'
+import {
+  CabecalhoReuniaoEnvio,
+  GradeFrequenciaSaida,
+  MarcacaoChamadaEnvio,
+  ReuniaoDetalhe,
+  ReuniaoResumo,
+} from '@desbravadores/shared'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import { z } from 'zod'
+import { apagarRascunho, enfileirar, useConexao } from '../offline'
+import type { PayloadReuniaoFila } from '../offline/tipos/reuniao'
+import { useSessao } from '../sessao/useSessao'
 import { montarConsulta, requisitar } from './cliente'
 
 // Dividido entre dois pacotes: B5 é dono das leituras, B4 da mutação. Cada um edita só o seu bloco.
@@ -13,6 +24,10 @@ export const chavesReunioes = {
 }
 
 // ── Leituras (B5) ────────────────────────────────────────────────────────────
+
+/** Frequência (%) abaixo da qual a tela pinta de vermelho. O padrão de `ConfiguracaoClube.limiarFrequenciaAlerta`;
+ *  nenhum contrato da API entrega o valor configurado do clube ainda. */
+export const LIMIAR_FREQUENCIA_ALERTA = 70
 
 /** `mes` no formato AAAA-MM. */
 export function useReunioes(unidadeId: string, mes: string) {
@@ -38,4 +53,49 @@ export function useGradeFrequencia(unidadeId: string) {
 }
 
 // ── Mutação (B4) ─────────────────────────────────────────────────────────────
-// `useSalvarChamada()` enfileira um item REUNIAO (chave `<unidadeId>:<data>`); não chama a API direto.
+
+export interface EntradaSalvarChamada {
+  unidadeId: string
+  unidadeNome: string
+  data: string
+  /** Id da reunião existente, ou o UUID novo que a chamada carrega desde o primeiro toque. */
+  reuniaoId: string
+  correcao: boolean
+  cabecalho: z.infer<typeof CabecalhoReuniaoEnvio> | null
+  linhas: z.infer<typeof MarcacaoChamadaEnvio>[]
+  pontosProvisorios: number
+}
+
+/** Não chama a API: guarda a chamada na fila (que a envia, com ou sem internet) e volta ao histórico. */
+export function useSalvarChamada() {
+  const navegar = useNavigate()
+  const { eu } = useSessao()
+  const { modo } = useConexao()
+  return useMutation({
+    mutationFn: async (entrada: EntradaSalvarChamada) => {
+      const payload: PayloadReuniaoFila = {
+        reuniaoId: entrada.reuniaoId,
+        correcao: entrada.correcao,
+        unidadeNome: entrada.unidadeNome,
+        pontosProvisorios: entrada.pontosProvisorios,
+        corpo: {
+          versaoPayload: 1,
+          envioId: crypto.randomUUID(),
+          unidadeId: entrada.unidadeId,
+          data: entrada.data,
+          feitaNoAparelhoEm: new Date().toISOString(),
+          cabecalho: entrada.cabecalho,
+          linhas: entrada.linhas,
+        },
+      }
+      await enfileirar({ tipo: 'REUNIAO', chave: `${entrada.unidadeId}:${entrada.data}`, payload })
+      if (eu) await apagarRascunho(eu.usuario.id, `${entrada.unidadeId}:${entrada.data}`)
+    },
+    onSuccess: () => {
+      toast.success('Chamada salva', {
+        description: modo === 'SEM_CONEXAO' ? 'Vai ser enviada quando houver internet.' : 'Enviando agora.',
+      })
+      void navegar('/reunioes')
+    },
+  })
+}

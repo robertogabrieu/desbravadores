@@ -16,7 +16,7 @@ const ITENS_ADM: ItemDeNavegacao[] = [
   { rotulo: 'Classes e especialidades', icone: GraduationCap },
   { rotulo: 'Calendário do clube', icone: CalendarDays },
   { rotulo: 'Cronogramas', icone: ClipboardList },
-  { rotulo: 'Ranking', icone: Trophy },
+  { rotulo: 'Ranking', icone: Trophy, para: '/ranking' },
   { rotulo: 'Relatórios', icone: FileText },
 ]
 
