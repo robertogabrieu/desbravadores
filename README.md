@@ -55,7 +55,7 @@ A carga recusa aplicar se desativaria mais de 10% dos itens existentes de um tip
 npm run clube:criar -w api -- --nome "Clube Exemplo" --slug clube-exemplo --adm-nome "Fulano" --adm-email fulano@exemplo.org
 ```
 
-`--slug` aceita só minúsculas, números e hífens. O convite do administrador é enviado por e-mail e o link também sai no terminal.
+`--slug` aceita só minúsculas, números e hífens. Se o e-mail do administrador ainda não tem conta, o convite é enviado por e-mail e o link também sai no terminal; se já tem, ele só recebe o aviso de que foi acrescentado ao clube.
 
 ## Produção
 
