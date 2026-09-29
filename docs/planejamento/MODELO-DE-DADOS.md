@@ -87,6 +87,9 @@ avançada que acumula as avançadas das idades anteriores (seções AN, CE, PC, 
 requisitos das duas trilhas são **registros diferentes**, mesmo quando o texto coincide: o
 progresso de uma nunca conta na outra.
 
+A carga é **reexecutável**: casa cada requisito pela chave (classe + código) e atualiza texto e
+CAMPO sem trocar o id — o progresso já registrado continua apontando para o mesmo requisito.
+
 Os dados `OFICIAL` vêm da carga inicial (`docs/planejamento/dados/cadernos/*.json`) e são
 **compartilhados por todos os clubes** (sem `clubeId`). Um clube pode desativar ou acrescentar os
 seus (`origem=CLUBE`, com `clubeId`).

@@ -1,7 +1,8 @@
 # Cadernos de classe — dados extraídos
 
 Requisitos extraídos dos PDFs oficiais "Caderno de Atividades" (7 arquivos, fora do repositório),
-para a carga inicial do app. **Ainda não revisados por uma pessoa** — ver "Revisão" abaixo.
+para a carga inicial do app. **Entram no app como foram extraídos**; o mantenedor revisa antes do lançamento público — ver
+"Revisão" abaixo.
 
 Só o enunciado de cada requisito entrou. Ficha pessoal, ficha médica, espaços de resposta,
 ilustrações e o conteúdo detalhado das especialidades ficaram de fora.
@@ -54,7 +55,11 @@ O caderno traz também as 6 avançadas numa versão própria do supletivo. Pela 
 idade, elas foram reunidas em uma **avançada agrupada por idade**, que acumula as das idades
 anteriores; cada avançada individual vira uma seção (AN, CE, PC, PN, EM, GE).
 
-## Revisão antes da carga
+## Revisão antes do lançamento público
+
+Correções são feitas **neste arquivo** e aplicadas rodando a carga de novo: ela atualiza texto e
+CAMPO pelo código do requisito, sem apagar o progresso de ninguém. O texto oficial não é editável
+pela tela do Adm, porque é o mesmo para todos os clubes.
 
 1. **Excursionista na Mata** — o PDF não tem as páginas impressas 44–45: falta o requisito 1 e o
    nome (deduzido). A versão das Agrupadas começa com "Fazer uma apresentação escrita ou falada

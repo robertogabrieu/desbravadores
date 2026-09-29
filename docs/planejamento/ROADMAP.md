@@ -20,7 +20,7 @@ Os números entre colchetes são as histórias do [BACKLOG](BACKLOG.md).
   frequência, bloqueio de data) com testes.
 - Banco: clubes, usuários, vínculos, DBVs, unidades, membros, classes, seções, requisitos,
   especialidades, matrícula, configuração do clube.
-- Carga inicial: cadernos das classes (`dados/cadernos/*.json`, revisados), catálogo de
+- Carga inicial: cadernos das classes (`dados/cadernos/*.json`, como extraídos), catálogo de
   especialidades, critérios padrão do ranking.
 - Login, convite por e-mail, recuperação de senha, troca de papel.
 - Adm mínimo: cadastrar DBV, unidade (com membros) e usuário com vínculo [A1, A2, A3]. Pode ser
@@ -32,7 +32,8 @@ Os números entre colchetes são as histórias do [BACKLOG](BACKLOG.md).
 - Você convida um conselheiro de teste, ele recebe o e-mail, define a senha, instala o app no
   celular e vê a lista da unidade dele — e **não** vê a de outra unidade.
 - Um teste automatizado prova que um usuário do clube A não lê nada do clube B.
-- As 7 classes (+ avançadas) aparecem com as seções e requisitos revisados.
+- As classes individuais e agrupadas (com avançadas) aparecem com seções e requisitos.
+- Rodar a carga de novo com um texto corrigido atualiza o requisito e mantém quem já o concluiu.
 - O backup de ontem foi restaurado num banco limpo, e o app abriu com os dados.
 
 ## Fase 1 — Conselheiro (3–4 semanas)
@@ -128,6 +129,14 @@ simples (lista de datas × requisitos), ou por carga de planilha feita por você
 Montar cronograma no celular · notificações push · relatórios em PDF · importar planilha de DBVs ·
 importar calendário da Associação · integração com o Desbravadores Finance · tela para
 pais/DBV · lançamento em massa a partir de um evento do calendário.
+
+## Antes do lançamento público
+
+O piloto (Fase 1 em diante) usa os requisitos como extraídos. Antes de abrir o app para todo o
+clube:
+- revisão dos requisitos pelo mantenedor, corrigida no JSON e aplicada pela carga;
+- itens marcados **[decidir]** em INCONSISTENCIAS resolvidos;
+- aviso de privacidade publicado e autorizações de imagem colhidas.
 
 ## Marcos de uso
 

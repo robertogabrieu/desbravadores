@@ -75,6 +75,8 @@ Cada uma com a decisão tomada — discorde de qualquer uma e eu ajusto os docum
 
 ## 3b. Segunda rodada de telas — onde divergiam do plano
 
+Todas as adaptações abaixo foram **aprovadas em 29/09**.
+
 | # | Tela | Divergência | Adotado |
 |---|---|---|---|
 | 1 | Montar cronograma (celular) | "Enviar para o Adm publicar" cria um passo que o plano não tinha | Status novo **Enviado**; notifica o Adm; editar volta a rascunho |
@@ -94,8 +96,8 @@ Cada uma com a decisão tomada — discorde de qualquer uma e eu ajusto os docum
 
 ## 4. Cadernos oficiais
 
-Os requisitos foram extraídos dos PDFs para `dados/cadernos/*.json`. **Precisam de revisão humana
-antes da carga.** Contagens em [dados/cadernos/LEIA-ME.md](dados/cadernos/LEIA-ME.md).
+Os requisitos foram extraídos dos PDFs para `dados/cadernos/*.json` e **entram no app como estão**.
+O mantenedor revisa e corrige antes do lançamento público (decidido em 29/09). Contagens em [dados/cadernos/LEIA-ME.md](dados/cadernos/LEIA-ME.md).
 
 | # | Problema | O que falta |
 |---|---|---|
