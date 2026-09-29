@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Cronograma</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;background:#E9E5DB}a{color:#1F4D3A}a:hover{color:#163828}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; background: #F4F1EA; color: #1B221F; font-family: Figtree, system-ui, sans-serif; overflow: hidden; position: relative">
+<main style="flex-grow: 1; overflow-y: auto; padding: 24px 20px 90px; display: flex; flex-direction: column; gap: 16px">
+<header style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 13px; font-weight: 600; color: #5B645F">Planejamento de classe</span>
+<h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; font-weight: 800">Cronograma</h1>
+</header>
+<div style="display: flex; gap: 8px">
+<button type="button" aria-pressed="{{isComp}}" onClick="{{pickComp}}" style="{{chipComp}}"><span style="width: 10px; height: 10px; border-radius: 5px; background: #B3362F"></span>Companheiro</button>
+<button type="button" aria-pressed="{{isAmigo}}" onClick="{{pickAmigo}}" style="{{chipAmigo}}"><span style="width: 10px; height: 10px; border-radius: 5px; background: #2F5FB3"></span>Amigo</button>
+</div>
+<ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0">
+<sc-for list="{{aulas}}" as="a" hint-placeholder-count="5">
+<li style="display: flex; gap: 14px">
+<div style="width: 48px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center">
+<span style="{{a.dateBox}}"><span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 800; line-height: 1">{{a.dia}}</span><span style="font-size: 10px; font-weight: 700">{{a.mes}}</span></span>
+<span style="flex-grow: 1; width: 2px; background: #DDD7C9; margin: 4px 0"></span>
+</div>
+<div style="{{a.card}}">
+<div style="display: flex; justify-content: space-between; align-items: center"><span style="{{a.tagStyle}}">{{a.tag}}</span><span style="font-size: 12px; color: #5B645F">{{a.hora}}</span></div>
+<span style="font-weight: 700; font-size: 15px">{{a.titulo}}</span>
+<ul style="margin: 0; padding: 0 0 0 16px; font-size: 13px; color: #4A524E; display: flex; flex-direction: column; gap: 3px">
+<sc-for list="{{a.reqs}}" as="r" hint-placeholder-count="2"><li>{{r}}</li></sc-for>
+</ul>
+</div>
+</li>
+</sc-for>
+</ol>
+</main>
+<a href="Montar-Cronograma-Instrutor.dc.html" style="position: absolute; right: 20px; bottom: 96px; height: 56px; padding: 0 20px; border-radius: 18px; background: #1F4D3A; color: #FFFFFF; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; font-size: 15px; text-decoration: none; box-shadow: 0 8px 20px rgba(31,77,58,0.3)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 6h10M10 12h10M10 18h10"></path><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"></path></svg>Montar cronograma</a>
+<nav aria-label="Navegação principal" style="height: 76px; flex-shrink: 0; background: #FFFFFF; border-top: 1px solid #E4DFD3; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding-bottom: 8px">
+<a href="Inicio-Instrutor.dc.html" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 600; text-decoration: none; color: #5B645F"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7v9h-5v-6h-6v6H4z"></path></svg>Início</a>
+<a href="Minhas-Classes.dc.html" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 600; text-decoration: none; color: #5B645F"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"></path><path d="M4 19V5"></path></svg>Classes</a>
+<a href="Cronograma.dc.html" aria-current="page" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 700; text-decoration: none; color: #1F4D3A"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>Cronograma</a>
+<a href="Ranking.dc.html" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 600; text-decoration: none; color: #5B645F"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"></path><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8"></path></svg>Ranking</a>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(p) { super(p); this.state = { c: 'comp' }; }
+renderVals() {
+var self = this, c = this.state.c;
+var cor = c === 'comp' ? '#B3362F' : '#2F5FB3';
+var chip = function (on) { return 'height: 40px; padding: 0 14px; border-radius: 20px; display: flex; align-items: center; gap: 8px; font-family: inherit; font-size: 14px; font-weight: 700; ' + (on ? 'border: 1px solid #1B221F; background: #1B221F; color: #FFFFFF' : 'border: 1px solid #D9D3C5; background: #FFFFFF; color: #1B221F'); };
+var comp = [
+['20','SET','Dada','Gerais: Voto e Lei','9h15',['G 3 · Ilustrar o Voto do Desbravador','G 4 · Livro do Clube de Leitura']],
+['27','SET','Hoje','Descoberta espiritual','9h15',['DE 1 · Memorizar os 10 Mandamentos','DE 2 · Parábolas de Jesus']],
+['04','OUT','Planejada','Servindo aos outros','9h15',['SO 3 · Atividade missionária com um amigo']],
+['11','OUT','Planejada','Saúde e aptidão física','9h15',['SA 1 · Males do cigarro e outras drogas','SA 3 · Primeiros socorros']],
+['18','OUT','Planejada','Estudo da natureza','Saída de campo',['EN 2 · Identificar 10 árvores']]
+];
+var amigo = [
+['20','SET','Dada','Arte de acampar','9h15',['AC 2 · Nós básicos','AC 3 · Montar uma barraca']],
+['04','OUT','Planejada','Descoberta espiritual','9h15',['DE 1 · Criação','DE 3 · Histórias de Jesus']],
+['11','OUT','Planejada','Estudo da natureza','9h15',['EN 1 · Especialidade de Gatos ou Cães']]
+];
+var src = c === 'comp' ? comp : amigo;
+var aulas = src.map(function (a) {
+var hoje = a[2] === 'Hoje', dada = a[2] === 'Dada';
+return { dia: a[0], mes: a[1], tag: a[2], titulo: a[3], hora: a[4], reqs: a[5],
+dateBox: 'width: 48px; height: 48px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; ' + (hoje ? 'background: ' + cor + '; color: #FFFFFF' : 'background: #FFFFFF; color: #1B221F'),
+card: 'flex-grow: 1; margin-bottom: 12px; background: #FFFFFF; border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; ' + (hoje ? 'border: 2px solid ' + cor : 'border: 2px solid #FFFFFF') + (dada ? '; opacity: 0.72' : ''),
+tagStyle: 'font-size: 11px; font-weight: 800; letter-spacing: 0.4px; padding: 3px 8px; border-radius: 999px; ' + (hoje ? 'background: ' + cor + '; color: #FFFFFF' : dada ? 'background: #E3EEE7; color: #1F4D3A' : 'background: #F4F1EA; color: #4A524E') };
+});
+return { aulas: aulas, isComp: c === 'comp', isAmigo: c === 'amigo', chipComp: chip(c === 'comp'), chipAmigo: chip(c === 'amigo'),
+pickComp: function () { self.setState({ c: 'comp' }); }, pickAmigo: function () { self.setState({ c: 'amigo' }); } };
+}
+}
+</script>
+</body>
+</html>

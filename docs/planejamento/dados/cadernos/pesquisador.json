@@ -1,0 +1,307 @@
+{
+  "fonte": "Caderno_de_Atividades_3_-_Pesquisador_12_ANOS.pdf",
+  "classes": [
+    {
+      "nome": "Pesquisador",
+      "idade": 12,
+      "tipo": "REGULAR",
+      "trilha": "INDIVIDUAL",
+      "secoes": [
+        {
+          "codigo": "G",
+          "nome": "Gerais",
+          "ordem": 1,
+          "requisitos": [
+            {
+              "codigo": "G1",
+              "texto": "Ter, no mínimo, 12 anos de idade.",
+              "campo": false,
+              "pagina": 3
+            },
+            {
+              "codigo": "G2",
+              "texto": "Ser membro ativo do Clube de Desbravadores.",
+              "campo": false,
+              "pagina": 4
+            },
+            {
+              "codigo": "G3",
+              "texto": "Demonstrar sua compreensão do significado da Lei do Desbravador por meio de uma das seguintes atividades: a) Representação b) Debate c) Redação.",
+              "campo": false,
+              "pagina": 6
+            },
+            {
+              "codigo": "G4",
+              "texto": "Ler o livro do Clube de Leitura Juvenil do ano em curso e escrever dois parágrafos sobre o que mais lhe chamou a atenção ou considerou importante.",
+              "campo": false,
+              "pagina": 8
+            },
+            {
+              "codigo": "G5",
+              "texto": "Ler o livro Além da Magia.",
+              "campo": false,
+              "pagina": 9
+            },
+            {
+              "codigo": "G6",
+              "texto": "Participar ativamente da classe bíblica do seu clube.",
+              "campo": false,
+              "pagina": 10
+            }
+          ]
+        },
+        {
+          "codigo": "DE",
+          "nome": "Descoberta espiritual",
+          "ordem": 2,
+          "requisitos": [
+            {
+              "codigo": "DE1",
+              "texto": "Memorizar e demonstrar o seu conhecimento de Levítico 11: as regras dos alimentos considerados comestíveis e não comestíveis. Ilustrar, por meio de fotos, desenhos ou colagens, quais animais são considerados puros e quais são impuros.",
+              "campo": false,
+              "pagina": 11
+            },
+            {
+              "codigo": "DE2",
+              "texto": "Ler e explicar os versos: Eclesiastes 12:13-14; Apocalipse 1:3; Salmo 51:10; Romanos 6:23; Isaías 43:1-2; Salmo 16.",
+              "campo": false,
+              "pagina": 12
+            },
+            {
+              "codigo": "DE3",
+              "texto": "Leitura bíblica: ler os trechos listados no caderno (1 Rs 1:28-53; 3; 4:20-34; 5, 6; 8:12-60; 10; 11:6-43; 12; 16:29-33 e 17:1-7; 17:8-24; 18; 19; 21; 2 Rs 2; 4:1-7; 4:8-41; 5; 6:1-23; 6:24-33 e 7; 20; 22; 23:36-37, 24 e 25:1-7; 2 Cr 24:1-14; 36; Ed 1; 3 e 6:14-15; Ne 1; 2; 4; 8; Et 1; 2; 3; 4; 5; 6; 7, 8; Jó 1; 2; 42; Sl 1, 15, 19; 23, 24, 27; 37; 39; 42; 46; 67; 90, 91; 92, 97; 98, 100, 117; 119:1-80; 119:81-176; 121, 125, 150; Pv 1; 3; 4; 10; 15; 20; 25; Ec 1).",
+              "campo": false,
+              "pagina": 13
+            },
+            {
+              "codigo": "DE4",
+              "texto": "Conversar com seu líder e escolher uma das seguintes histórias: a) João 3 - Nicodemos b) João 4 - A mulher samaritana c) Lucas 10 - O bom samaritano d) Lucas 15 - O filho pródigo e) Lucas 19 - Zaqueu. Através da história escolhida, demonstrar sua compreensão de como Jesus salva as pessoas, usando um dos métodos: a) Conversar em grupo com a participação de seu líder b) Apresentar uma mensagem em uma reunião do clube c) Fazer uma série de cartazes ou uma maquete d) Escrever uma poesia ou hino.",
+              "campo": false,
+              "pagina": 13
+            }
+          ]
+        },
+        {
+          "codigo": "SO",
+          "nome": "Servindo aos outros",
+          "ordem": 3,
+          "requisitos": [
+            {
+              "codigo": "SO1",
+              "texto": "Conhecer os projetos comunitários desenvolvidos em sua cidade e participar em pelo menos um deles com sua unidade ou clube.",
+              "campo": false,
+              "pagina": 15
+            },
+            {
+              "codigo": "SO2",
+              "texto": "Participar em três atividades missionárias da igreja.",
+              "campo": false,
+              "pagina": 16
+            }
+          ]
+        },
+        {
+          "codigo": "DA",
+          "nome": "Desenvolvendo amizade",
+          "ordem": 4,
+          "requisitos": [
+            {
+              "codigo": "DA1",
+              "texto": "Participar de um debate ou representação sobre a pressão de grupo e identificar a influência que isto exerce sobre suas decisões.",
+              "campo": false,
+              "pagina": 18
+            },
+            {
+              "codigo": "DA2",
+              "texto": "Visitar um órgão público de sua cidade ou bairro e descobrir de que maneiras o clube pode ser útil à sua comunidade.",
+              "campo": false,
+              "pagina": 21
+            }
+          ]
+        },
+        {
+          "codigo": "SA",
+          "nome": "Saúde e aptidão física",
+          "ordem": 5,
+          "requisitos": [
+            {
+              "codigo": "SA1",
+              "texto": "Escolher uma das atividades abaixo e escrever um texto pessoal para um estilo de vida livre do álcool: a) Participar de uma discussão em classe sobre os efeitos do álcool no organismo. b) Assistir a um vídeo sobre o efeito do álcool ou outras drogas no corpo humano e conversar sobre o assunto.",
+              "campo": false,
+              "pagina": 22
+            }
+          ]
+        },
+        {
+          "codigo": "OL",
+          "nome": "Organização e liderança",
+          "ordem": 6,
+          "requisitos": [
+            {
+              "codigo": "OL1",
+              "texto": "Dirigir uma cerimônia de abertura da reunião semanal em seu clube ou um programa de Escola Sabatina.",
+              "campo": false,
+              "pagina": 24
+            },
+            {
+              "codigo": "OL2",
+              "texto": "Ajudar a organizar a classe bíblica do seu clube.",
+              "campo": false,
+              "pagina": 25
+            }
+          ]
+        },
+        {
+          "codigo": "EN",
+          "nome": "Estudo da natureza",
+          "ordem": 7,
+          "requisitos": [
+            {
+              "codigo": "EN1",
+              "texto": "Identificar a estrela Alfa da constelação do Centauro e a constelação de Órion. Conhecer o significado espiritual de Órion, como descrito no livro Primeiros Escritos, de Ellen White, pág. 41.",
+              "campo": true,
+              "pagina": 26
+            },
+            {
+              "codigo": "EN2",
+              "texto": "Completar uma das especialidades abaixo: a) Astronomia b) Cactos c) Climatologia d) Flores e) Rastreio de animais.",
+              "campo": false,
+              "pagina": 28
+            }
+          ]
+        },
+        {
+          "codigo": "AC",
+          "nome": "Arte de acampar",
+          "ordem": 8,
+          "requisitos": [
+            {
+              "codigo": "AC1",
+              "texto": "Apresentar seis segredos para um bom acampamento. Participar de um acampamento de final de semana, planejando e cozinhando duas refeições.",
+              "campo": true,
+              "pagina": 32
+            },
+            {
+              "codigo": "AC2",
+              "texto": "Completar as seguintes especialidades: a) Acampamento III b) Primeiros socorros - básico.",
+              "campo": true,
+              "pagina": 36
+            },
+            {
+              "codigo": "AC3",
+              "texto": "Aprender a usar uma bússola ou um GPS (urbano ou campo) e demonstrar sua habilidade encontrando endereços em uma zona urbana.",
+              "campo": false,
+              "pagina": 38
+            }
+          ]
+        },
+        {
+          "codigo": "EV",
+          "nome": "Enriquecendo a vida",
+          "ordem": 9,
+          "requisitos": [
+            {
+              "codigo": "EV1",
+              "texto": "Completar uma especialidade, não realizada anteriormente, em Artes e habilidades manuais.",
+              "campo": false,
+              "pagina": 39
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Pesquisador de Campo e Bosque",
+      "idade": 12,
+      "tipo": "AVANCADA",
+      "trilha": "INDIVIDUAL",
+      "classeBase": "Pesquisador",
+      "secoes": [
+        {
+          "codigo": "AV",
+          "nome": "Classe avançada",
+          "ordem": 1,
+          "requisitos": [
+            {
+              "codigo": "AV1",
+              "texto": "Conhecer e saber usar de forma adequada a Bandeira dos Desbravadores, o bandeirim de unidade e os comandos de ordem unida.",
+              "campo": false,
+              "pagina": 39
+            },
+            {
+              "codigo": "AV2",
+              "texto": "Ler a história de J. N. Andrews ou de um pioneiro de seu país e discutir a importância do trabalho de missionários e por que Cristo ordenou a Grande Comissão (Mateus 28:18-20).",
+              "campo": false,
+              "pagina": 41
+            },
+            {
+              "codigo": "AV3",
+              "texto": "Convidar uma pessoa para assistir um dos seguintes programas: a) Clube de Desbravadores b) Classe bíblica c) Pequeno grupo.",
+              "campo": false,
+              "pagina": 42
+            },
+            {
+              "codigo": "AV4",
+              "texto": "Fazer uma das seguintes especialidades: a) Asseio e cortesia cristã b) Vida familiar.",
+              "campo": false,
+              "pagina": 42
+            },
+            {
+              "codigo": "AV5",
+              "texto": "Participar de uma caminhada de 10 quilômetros e fazer uma lista dos equipamentos necessários, incluindo a roupa e o calçado que devem ser usados.",
+              "campo": true,
+              "pagina": 45
+            },
+            {
+              "codigo": "AV6",
+              "texto": "Participar na organização de um dos eventos especiais do Clube: a) Investidura b) Admissão em Lenço c) Dia do Desbravador.",
+              "campo": false,
+              "pagina": 47
+            },
+            {
+              "codigo": "AV7",
+              "texto": "Identificar seis pegadas de animais ou aves. Fazer um modelo em gesso, massa de modelar ou biscuit de três dessas pegadas.",
+              "campo": true,
+              "pagina": 48
+            },
+            {
+              "codigo": "AV8",
+              "texto": "Aprender a fazer as quatro amarras básicas e construir um móvel de acampamento.",
+              "campo": true,
+              "pagina": 49
+            },
+            {
+              "codigo": "AV9",
+              "texto": "Planejar um cardápio vegetariano para sua unidade, para um acampamento de 3 dias, e apresentar ao seu instrutor.",
+              "campo": false,
+              "pagina": 50
+            },
+            {
+              "codigo": "AV10",
+              "texto": "Enviar e receber uma mensagem através das seguintes formas de comunicação: a) Alfabeto com semáforos b) Código Morse, com lanterna c) Alfabeto LIBRAS (língua de sinais) d) Alfabeto Braille.",
+              "campo": false,
+              "pagina": 52
+            },
+            {
+              "codigo": "AV11",
+              "texto": "Completar a especialidade de Excursionismo pedestre com mochila.",
+              "campo": true,
+              "pagina": 55
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "avisos": [
+    "Classe avançada (Pesquisador de Campo e Bosque): o caderno não tem cabeçalhos de seção; os 11 requisitos numerados foram reunidos numa seção criada 'AV' (Requisitos da classe avançada). Reclassifique nas seções oficiais se necessário.",
+    "O texto extraído do PDF perdeu alguns enunciados (ex.: DE4 na página 13); todos os requisitos foram conferidos e completados olhando as páginas como imagem.",
+    "Requisitos com especialidade (EN2, AC2, AV4, AV11, EV1): guardado só o enunciado; os itens internos de cada especialidade não foram incluídos.",
+    "AV7 (página 48): a primeira letra do enunciado está cortada na digitalização; texto reconstruído ('Identificar seis pegadas...').",
+    "SO2 (páginas 16-17): a consulta ao diretor do Ministério Pessoal (descrever os dois últimos projetos) é atividade de apoio do requisito e não foi incluída no texto.",
+    "Seção Saúde e aptidão física tem só 1 requisito neste caderno (SA1).",
+    "campo=false por dúvida: EN2 (especialidades de astronomia/flores/rastreio podem exigir observação), AC3 (bússola/GPS, o caderno pede endereços em zona urbana), AV9 (cardápio para acampamento, planejamento em papel), AV10 (sinais/comunicação).",
+    "campo=true: EN1 (identificar estrelas em pernoite ao ar livre), AC1, AC2, AV5, AV7, AV8, AV11.",
+    "Números de página são as do PDF (coincidem com a numeração impressa no caderno Pesquisador)."
+  ]
+}

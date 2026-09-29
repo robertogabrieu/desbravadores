@@ -1,0 +1,300 @@
+{
+  "fonte": "Caderno_de_Atividades_1_-_Amigo_10_ANOS.pdf",
+  "classes": [
+    {
+      "nome": "Amigo",
+      "idade": 10,
+      "tipo": "REGULAR",
+      "trilha": "INDIVIDUAL",
+      "secoes": [
+        {
+          "codigo": "G",
+          "nome": "Gerais",
+          "ordem": 1,
+          "requisitos": [
+            {
+              "codigo": "G1",
+              "texto": "Ter, no mínimo, 10 anos de idade.",
+              "campo": false,
+              "pagina": 3
+            },
+            {
+              "codigo": "G2",
+              "texto": "Ser membro ativo do Clube de Desbravadores.",
+              "campo": false,
+              "pagina": 4
+            },
+            {
+              "codigo": "G3",
+              "texto": "Memorizar e explicar o Voto e a Lei do Desbravador.",
+              "campo": false,
+              "pagina": 6
+            },
+            {
+              "codigo": "G4",
+              "texto": "Ler o livro do Clube de Leitura Juvenil do ano em curso.",
+              "campo": false,
+              "pagina": 8
+            },
+            {
+              "codigo": "G5",
+              "texto": "Ler o livro Pela Graça de Deus.",
+              "campo": false,
+              "pagina": 9
+            },
+            {
+              "codigo": "G6",
+              "texto": "Participar ativamente da classe bíblica do seu clube.",
+              "campo": false,
+              "pagina": 10
+            }
+          ]
+        },
+        {
+          "codigo": "DE",
+          "nome": "Descoberta espiritual",
+          "ordem": 2,
+          "requisitos": [
+            {
+              "codigo": "DE1",
+              "texto": "Memorizar e demonstrar o seu conhecimento: a) Criação: o que Deus criou em cada dia da Criação. b) 10 Pragas: quais as pragas que caíram sobre o Egito. c) 12 Tribos: o nome de cada uma das 12 tribos de Israel. d) 39 livros do Antigo Testamento e demonstrar habilidade para encontrar qualquer um deles.",
+              "campo": false,
+              "pagina": 11
+            },
+            {
+              "codigo": "DE2",
+              "texto": "Leitura bíblica: ler os trechos de Gênesis e Êxodo listados no caderno (Gn 1; 2; 3; 4:1-16; 6:11-22; 7; 8; 9:1-19; 11:1-9; 12:1-10; 13; 14:18-24; 15; 17:1-8, 15-22; 18:1-15; 18:16-33; 19:1-29; 21:1-21; 22:1-19; 23; 24:1-46, 48; 24:52-67; 27; 28; 29; 30:25-31 e 31:2-3, 17-18; 32; 33; 37; 39; 40; 41; 42; 43; 44; 45; 47; 50; Êx 1; 2; 3; 4:1-17 e 27-31; 5; 7; 8; 9; 10 e 11; 12; 13:17-22 e 14; 15:22-27 e 16; 17; 18; 19; 20; 24; 32; 33; 34:1-14 e 29-35; 35:4-29 e 40).",
+              "campo": false,
+              "pagina": 15
+            }
+          ]
+        },
+        {
+          "codigo": "SO",
+          "nome": "Servindo aos outros",
+          "ordem": 3,
+          "requisitos": [
+            {
+              "codigo": "SO1",
+              "texto": "Dedicar duas horas ajudando alguém em sua comunidade, por meio de duas das seguintes atividades: a) Visitar alguém que precisa de amizade e orar com essa pessoa. b) Oferecer alimento a alguém carente. c) Participar de um projeto ecológico ou educativo. Fazer um relatório das atividades realizadas e descrever o último projeto realizado pela ADRA da sua igreja, conversando com o diretor da ADRA.",
+              "campo": false,
+              "pagina": 15
+            },
+            {
+              "codigo": "SO2",
+              "texto": "Escrever uma redação explicando como ser um bom cidadão no lar e na escola (folha A4, fonte Arial 12).",
+              "campo": false,
+              "pagina": 17
+            }
+          ]
+        },
+        {
+          "codigo": "DA",
+          "nome": "Desenvolvendo amizade",
+          "ordem": 4,
+          "requisitos": [
+            {
+              "codigo": "DA1",
+              "texto": "Mencionar dez qualidades de um bom amigo e apresentar quatro situações diárias em que você praticou a Regra Áurea de Mateus 7:12.",
+              "campo": false,
+              "pagina": 19
+            },
+            {
+              "codigo": "DA2",
+              "texto": "Saber cantar o Hino Nacional de seu país e conhecer sua história. Saber o nome do autor da letra e da música do hino.",
+              "campo": false,
+              "pagina": 21
+            }
+          ]
+        },
+        {
+          "codigo": "SA",
+          "nome": "Saúde e aptidão física",
+          "ordem": 5,
+          "requisitos": [
+            {
+              "codigo": "SA1",
+              "texto": "Completar uma das seguintes especialidades: Natação principiante I ou Cultura Física.",
+              "campo": false,
+              "pagina": 22
+            },
+            {
+              "codigo": "SA2",
+              "texto": "Utilizando a experiência de Daniel: a) Explicar os princípios de temperança que ele defendeu ou participar de uma apresentação ou encenação sobre Daniel. b) Memorizar e explicar Daniel 1:8. c) Escrever seu compromisso pessoal de seguir um estilo de vida saudável.",
+              "campo": false,
+              "pagina": 24
+            },
+            {
+              "codigo": "SA3",
+              "texto": "Aprender os princípios de uma dieta saudável e ajudar a preparar um quadro com os grupos básicos de alimentos.",
+              "campo": false,
+              "pagina": 25
+            }
+          ]
+        },
+        {
+          "codigo": "OL",
+          "nome": "Organização e liderança",
+          "ordem": 6,
+          "requisitos": [
+            {
+              "codigo": "OL1",
+              "texto": "Através da observação, acompanhar todo o processo de planejamento até a execução de uma caminhada de 5 quilômetros.",
+              "campo": true,
+              "pagina": 30
+            }
+          ]
+        },
+        {
+          "codigo": "EN",
+          "nome": "Estudo da natureza",
+          "ordem": 7,
+          "requisitos": [
+            {
+              "codigo": "EN1",
+              "texto": "Completar uma das seguintes especialidades: a) Felinos b) Cães c) Mamíferos d) Sementes e) Aves de estimação.",
+              "campo": false,
+              "pagina": 31
+            },
+            {
+              "codigo": "EN2",
+              "texto": "Aprender e demonstrar uma maneira para purificar a água e escrever um parágrafo destacando o significado de Jesus como a água da vida.",
+              "campo": false,
+              "pagina": 36
+            },
+            {
+              "codigo": "EN3",
+              "texto": "Aprender e montar três diferentes tipos de barracas em locais apropriados.",
+              "campo": true,
+              "pagina": 37
+            }
+          ]
+        },
+        {
+          "codigo": "AC",
+          "nome": "Arte de acampar",
+          "ordem": 8,
+          "requisitos": [
+            {
+              "codigo": "AC1",
+              "texto": "Demonstrar como cuidar corretamente de uma corda. Fazer e explicar o uso prático dos seguintes nós: a) Simples b) Cego c) Direito d) Cirurgião e) Lais de guia f) Lais de guia duplo g) Escota h) Catau i) Pescador j) Fateixa k) Volta do fiel l) Nó de gancho m) Volta da ribeira n) Ordinário.",
+              "campo": false,
+              "pagina": 37
+            },
+            {
+              "codigo": "AC2",
+              "texto": "Completar a especialidade de Acampamento I.",
+              "campo": true,
+              "pagina": 40
+            },
+            {
+              "codigo": "AC3",
+              "texto": "Apresentar 10 regras para uma caminhada e explicar o que fazer quando estiver perdido.",
+              "campo": true,
+              "pagina": 41
+            },
+            {
+              "codigo": "AC4",
+              "texto": "Aprender os sinais para seguir uma pista. Preparar e seguir uma pista de, no mínimo, 10 sinais, que também possa ser seguida por outros.",
+              "campo": true,
+              "pagina": 44
+            }
+          ]
+        },
+        {
+          "codigo": "EV",
+          "nome": "Enriquecendo a vida",
+          "ordem": 9,
+          "requisitos": [
+            {
+              "codigo": "EV1",
+              "texto": "Completar uma especialidade na área de Artes e habilidades manuais.",
+              "campo": false,
+              "pagina": 45
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Amigo da Natureza",
+      "idade": 10,
+      "tipo": "AVANCADA",
+      "trilha": "INDIVIDUAL",
+      "classeBase": "Amigo",
+      "secoes": [
+        {
+          "codigo": "AV",
+          "nome": "Classe avançada",
+          "ordem": 1,
+          "requisitos": [
+            {
+              "codigo": "AV1",
+              "texto": "Memorizar, cantar ou tocar o Hino dos Desbravadores e conhecer a história do hino.",
+              "campo": false,
+              "pagina": 45
+            },
+            {
+              "codigo": "AV2",
+              "texto": "Em consulta com seu líder, escolher um dos seguintes personagens do Antigo Testamento e conversar com seu grupo sobre o amor e cuidado de Deus e o livramento demonstrado na vida do personagem escolhido: a) José b) Jonas c) Ester d) Rute.",
+              "campo": false,
+              "pagina": 46
+            },
+            {
+              "codigo": "AV3",
+              "texto": "Levar pelo menos dois amigos não adventistas à Escola Sabatina ou ao Clube de Desbravadores.",
+              "campo": false,
+              "pagina": 47
+            },
+            {
+              "codigo": "AV4",
+              "texto": "Conhecer os princípios de higiene, de boas maneiras à mesa e como se comportar diante de pessoas que tenham diferentes idades. Demonstrar e explicar como estas boas maneiras podem ser úteis nas reuniões e acampamentos do clube.",
+              "campo": false,
+              "pagina": 47
+            },
+            {
+              "codigo": "AV5",
+              "texto": "Fazer a especialidade de Arte de acampar.",
+              "campo": true,
+              "pagina": 48
+            },
+            {
+              "codigo": "AV6",
+              "texto": "Conhecer e identificar 10 flores silvestres e 10 insetos de sua região.",
+              "campo": true,
+              "pagina": 49
+            },
+            {
+              "codigo": "AV7",
+              "texto": "Começar uma fogueira com apenas um fósforo, usando materiais naturais, e mantê-la acesa.",
+              "campo": true,
+              "pagina": 53
+            },
+            {
+              "codigo": "AV8",
+              "texto": "Demonstrar o uso seguro da faca, do facão e da machadinha, e citar as regras de segurança no seu uso.",
+              "campo": true,
+              "pagina": 54
+            },
+            {
+              "codigo": "AV9",
+              "texto": "Escolher e completar uma especialidade em uma das áreas abaixo: a) Atividades missionárias b) Atividades agrícolas.",
+              "campo": false,
+              "pagina": 54
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "avisos": [
+    "Caderno numera o requisito de Leitura bíblica como 3 na seção Descoberta espiritual e não traz requisito 2 em nenhuma página; DE2 aqui é esse requisito, numerado em sequência.",
+    "Classe avançada (Amigo da Natureza): o caderno não tem cabeçalhos de seção; os 9 requisitos numerados foram reunidos numa seção criada 'AV' (Requisitos da classe avançada). Reclassifique nas seções oficiais se necessário.",
+    "Página 54 (AV8): o enunciado do requisito 8 não aparece no PDF (falta uma página na digitalização; só restam as regras de segurança da faca, do facão e da machadinha). Texto reconstruído pelo conteúdo da página; confirmar com o caderno oficial.",
+    "Requisitos com especialidade (SA1, EN1, AC2, AV5, AV9, EV1): guardado só o enunciado; os itens internos de cada especialidade (ex.: Acampamento I, Arte de acampar, Natação principiante I) não foram incluídos.",
+    "SO1 (página 16): a consulta ao diretor da ADRA foi anexada ao mesmo requisito por estar na sequência dele; é atividade de apoio, remova se preferir.",
+    "campo=false por dúvida: EN1 (especialidades de animais/sementes, podem exigir observação), EN2 (purificar água, demonstração), AC1 (nós; o caderno não exige uso em campo).",
+    "campo=true: OL1 (caminhada de 5 km), EN3, AC2, AC3, AC4, AV5 a AV8.",
+    "Números de página são as do PDF; a numeração impressa no caderno é uma unidade acima a partir da capa (ex.: PDF 47 = impressa 48)."
+  ]
+}

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Enviar fotos</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;background:#E9E5DB}a{color:#1F4D3A}a:hover{color:#163828}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; background: #F4F1EA; color: #1B221F; font-family: Figtree, system-ui, sans-serif; overflow: hidden">
+<header style="flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 10px 12px">
+<a href="Galeria.dc.html" aria-label="Cancelar e voltar" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: #1B221F"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></a>
+<div style="flex-grow: 1; display: flex; flex-direction: column"><span style="font-weight: 700; font-size: 17px">Enviar fotos</span><span style="font-size: 13px; color: #5B645F">Galeria da Unidade Águias</span></div>
+</header>
+<main style="flex-grow: 1; overflow-y: auto; padding: 4px 20px 16px; display: flex; flex-direction: column; gap: 16px">
+<fieldset style="border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px">
+<legend style="font-size: 13px; font-weight: 700; padding: 0; margin-bottom: 8px">Álbum</legend>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<sc-for list="{{albuns}}" as="a" hint-placeholder-count="3">
+<button type="button" role="radio" aria-checked="{{a.on}}" onClick="{{a.pick}}" style="{{a.style}}">
+<span style="{{a.radio}}"></span>
+<span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px; text-align: left"><span style="font-weight: 700; font-size: 14px">{{a.nome}}</span><span style="font-size: 12px; color: #5B645F">{{a.sub}}</span></span>
+</button>
+</sc-for>
+</div>
+</fieldset>
+
+<section style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; justify-content: space-between; align-items: baseline"><h2 style="margin: 0; font-size: 13px; font-weight: 700">Fotos selecionadas</h2><span style="font-size: 13px; color: #5B645F">{{qtd}} · {{tamanho}}</span></div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+<sc-for list="{{fotos}}" as="f" hint-placeholder-count="5">
+<div style="{{f.box}}">
+<sc-if value="{{f.podeRemover}}" hint-placeholder-val="{{true}}">
+<button type="button" aria-label="Remover foto" onClick="{{f.remover}}" style="position: absolute; top: 4px; right: 4px; width: 28px; height: 28px; border-radius: 14px; border: 0; background: rgba(27,34,31,0.72); color: #FFFFFF; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+</sc-if>
+<sc-if value="{{f.enviando}}" hint-placeholder-val="{{false}}">
+<span style="position: absolute; left: 6px; right: 6px; bottom: 6px; display: flex; flex-direction: column; gap: 3px">
+<span style="font-size: 10px; font-weight: 800; color: #FFFFFF; text-shadow: 0 1px 2px rgba(0,0,0,0.5)">{{f.label}}</span>
+<span style="height: 4px; border-radius: 2px; background: rgba(255,255,255,0.5)"><span style="{{f.bar}}"></span></span>
+</span>
+</sc-if>
+</div>
+</sc-for>
+<sc-if value="{{podeAdicionar}}" hint-placeholder-val="{{true}}">
+<div style="aspect-ratio: 1 / 1; display: grid; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 6px">
+<button type="button" style="border-radius: 10px; border: 2px dashed #B8C9BE; background: #EEF4F0; color: #1F4D3A; font-family: inherit; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 4px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3"></circle></svg>Câmera</button>
+<button type="button" style="border-radius: 10px; border: 2px dashed #B8C9BE; background: #EEF4F0; color: #1F4D3A; font-family: inherit; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 4px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.6"></circle><path d="M21 16l-5-5-8 8"></path></svg>Galeria</button>
+</div>
+</sc-if>
+</div>
+<span style="font-size: 12px; color: #5B645F">As fotos são reduzidas automaticamente antes do envio (máx. 2 MB cada).</span>
+</section>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="legenda" style="font-size: 13px; font-weight: 700">Legenda (opcional)</label>
+<textarea id="legenda" rows="2" placeholder="Ex.: ensaio do grito de guerra" style="border: 1px solid #D9D3C5; border-radius: 12px; padding: 10px 12px; font-family: inherit; font-size: 16px; background: #FFFFFF; color: #1B221F; resize: none"></textarea>
+</div>
+
+<div style="display: flex; gap: 10px; align-items: flex-start; background: #FFFFFF; border-radius: 14px; padding: 12px 14px">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1F4D3A" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+<span style="font-size: 13px; line-height: 1.45; color: #3A423E">Fotos de desbravadores ficam visíveis só para líderes do clube. Elas não aparecem no ranking público.</span>
+</div>
+</main>
+<div style="flex-shrink: 0; padding: 12px 20px 20px; border-top: 1px solid #E4DFD3; display: flex; flex-direction: column; gap: 8px">
+<sc-if value="{{enviando}}" hint-placeholder-val="{{false}}">
+<span style="font-size: 12px; color: #5B645F; text-align: center">Você pode sair desta tela: o envio continua em segundo plano.</span>
+</sc-if>
+<button type="button" onClick="{{enviar}}" disabled="{{botaoOff}}" style="{{botao}}">{{botaoTxt}}</button>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(p) { super(p); this.state = { album: 0, fotos: [0, 1, 2, 3, 4], enviando: false }; }
+renderVals() {
+var self = this, S = this.state;
+var A = [['Reunião · 27 set','Hoje · 0 fotos'],['Acampamento do clube · 16–18 out','Evento do calendário'],['Novo álbum','Dê um nome ao álbum']];
+var albuns = A.map(function (a, i) { var on = i === S.album; return { nome: a[0], sub: a[1], on: on,
+style: 'min-height: 56px; display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-radius: 14px; font-family: inherit; color: #1B221F; ' + (on ? 'border: 2px solid #1F4D3A; background: #F3F8F5' : 'border: 2px solid #FFFFFF; background: #FFFFFF'),
+radio: 'width: 20px; height: 20px; border-radius: 10px; flex-shrink: 0; box-sizing: border-box; ' + (on ? 'border: 6px solid #1F4D3A; background: #FFFFFF' : 'border: 2px solid #CFC8B8'),
+pick: function () { if (!S.enviando) self.setState({ album: i }); } }; });
+var tones = ['#C9D8CE','#E3D3B8','#BFCBE0','#D9C4C1','#CFC6DE'];
+var prog = [100, 100, 62, 0, 0];
+var fotos = S.fotos.map(function (id, k) { var p = prog[k];
+return { podeRemover: !S.enviando, enviando: S.enviando,
+label: p === 100 ? 'Enviada' : p > 0 ? p + '%' : 'Na fila',
+bar: 'display: block; height: 4px; border-radius: 2px; background: #FFFFFF; width: ' + p + '%',
+box: 'position: relative; aspect-ratio: 1 / 1; border-radius: 10px; overflow: hidden; background: ' + tones[id] + (S.enviando && p === 0 ? '; opacity: 0.6' : ''),
+remover: function () { self.setState({ fotos: S.fotos.filter(function (x) { return x !== id; }) }); } }; });
+var n = S.fotos.length;
+var done = S.enviando ? prog.slice(0, n).filter(function (p) { return p === 100; }).length : 0;
+return { albuns: albuns, fotos: fotos, qtd: n + (n === 1 ? ' foto' : ' fotos'), tamanho: (n * 1.8).toFixed(1).replace('.', ',') + ' MB',
+podeAdicionar: !S.enviando, enviando: S.enviando, botaoOff: n === 0 || S.enviando,
+botaoTxt: S.enviando ? 'Enviando ' + done + ' de ' + n + '…' : n === 0 ? 'Selecione fotos' : 'Enviar ' + n + (n === 1 ? ' foto' : ' fotos'),
+botao: 'height: 54px; border-radius: 14px; border: 0; font-family: inherit; font-weight: 700; font-size: 16px; ' + (S.enviando ? 'background: #E3EEE7; color: #1F4D3A' : n === 0 ? 'background: #E4DFD3; color: #5B645F' : 'background: #1F4D3A; color: #FFFFFF'),
+enviar: function () { self.setState({ enviando: true }); } };
+}
+}
+</script>
+</body>
+</html>

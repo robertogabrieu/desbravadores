@@ -1,0 +1,66 @@
+/* Aplicativo do Desbravador — design tokens */
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Tipografia */
+  --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
+  --font-body: 'Figtree', system-ui, sans-serif;
+
+  /* Marca */
+  --color-primary: #1F4D3A;        /* verde-mata: botões, menu lateral, destaques */
+  --color-primary-dark: #163828;   /* hover, fundo de controles sobre o verde */
+  --color-primary-soft: #E3EEE7;   /* fundo de chip/estado ativo */
+  --color-primary-tint: #F3F8F5;   /* linha selecionada em tabela */
+  --color-accent: #F3E3C8;         /* creme sobre o verde */
+  --color-on-primary-muted: #CFE0D6;
+
+  /* Neutros */
+  --color-bg: #F4F1EA;
+  --color-bg-deep: #E8E3D7;        /* trilho de segmented control */
+  --color-surface: #FFFFFF;
+  --color-surface-muted: #F9F7F2;  /* cabeçalho de tabela */
+  --color-text: #1B221F;
+  --color-text-secondary: #5B645F;
+  --color-text-tertiary: #4A524E;
+  --color-border: #D9D3C5;
+  --color-divider: #EFEBE1;
+
+  /* Estados */
+  --color-success: #1F7A45;
+  --color-danger: #B42318;
+  --color-warning: #9A3412;
+  --color-warning-bg: #FBEFE3;
+  --color-field: #3F6212;          /* acampamento / requisito de campo */
+  --color-field-bg: #E6F0D4;
+
+  /* Calendário do clube */
+  --cal-reuniao-bg: #E3EEE7;  --cal-reuniao-fg: #1F4D3A;
+  --cal-sem-bg: #FBE4E1;      --cal-sem-fg: #9F2A20;
+  --cal-acamp-bg: #E6F0D4;    --cal-acamp-fg: #3F6212;
+  --cal-evento-bg: #EDE4F6;   --cal-evento-fg: #5B3391;
+  --cal-feriado-bg: #FBEFE3;  --cal-feriado-fg: #9A3412;
+
+  /* Cores oficiais das classes regulares (tons ajustados p/ contraste com texto branco) */
+  --classe-amigo: #2F5FB3;          /* azul    · 10 anos */
+  --classe-companheiro: #B3362F;    /* vermelho · 11 anos */
+  --classe-pesquisador: #2E7D4F;    /* verde   · 12 anos */
+  --classe-pioneiro: #5F6670;       /* cinza   · 13 anos */
+  --classe-excursionista: #6D3FA8;  /* roxo    · 14 anos */
+  --classe-guia: #8A6410;           /* amarelo/dourado · 15 anos (escurecido para legibilidade) */
+
+  /* Raios */
+  --radius-sm: 9px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-pill: 999px;
+
+  /* Tamanhos */
+  --touch-min: 44px;
+  --bottom-nav-h: 76px;
+  --sidebar-w: 248px;
+
+  /* Sombras */
+  --shadow-segment: 0 1px 3px rgba(27, 34, 31, 0.12);
+  --shadow-fab: 0 8px 20px rgba(31, 77, 58, 0.3);
+}

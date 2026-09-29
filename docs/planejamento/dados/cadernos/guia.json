@@ -1,0 +1,328 @@
+{
+  "fonte": "Caderno_de_Atividades_6_-_Guia_15_ANOS.pdf",
+  "classes": [
+    {
+      "nome": "Guia",
+      "idade": 15,
+      "tipo": "REGULAR",
+      "trilha": "INDIVIDUAL",
+      "secoes": [
+        {
+          "codigo": "G",
+          "nome": "Gerais",
+          "ordem": 1,
+          "requisitos": [
+            {
+              "codigo": "G1",
+              "texto": "Ter, no mínimo, 15 anos de idade.",
+              "campo": false,
+              "pagina": 3
+            },
+            {
+              "codigo": "G2",
+              "texto": "Ser membro ativo do Clube de Desbravadores.",
+              "campo": false,
+              "pagina": 4
+            },
+            {
+              "codigo": "G3",
+              "texto": "Memorizar e explicar o Voto de Fidelidade à Bíblia.",
+              "campo": false,
+              "pagina": 5
+            },
+            {
+              "codigo": "G4",
+              "texto": "Ler o livro do Clube de Leitura Juvenil do ano em curso e resumi-lo em uma página.",
+              "campo": false,
+              "pagina": 6
+            },
+            {
+              "codigo": "G5",
+              "texto": "Ler um livro sobre a história da Igreja Adventista, com destaque especial para a realidade de seu país.",
+              "campo": false,
+              "pagina": 7
+            },
+            {
+              "codigo": "G6",
+              "texto": "Ler o livro Nossa Herança.",
+              "campo": false,
+              "pagina": 8
+            }
+          ]
+        },
+        {
+          "codigo": "DE",
+          "nome": "Descoberta espiritual",
+          "ordem": 2,
+          "requisitos": [
+            {
+              "codigo": "DE1",
+              "texto": "Memorizar e demonstrar o seu conhecimento: a) 3 Mensagens Angélicas: reveladas em Apocalipse 14:6-12; b) 7 Igrejas: o nome das igrejas do Apocalipse; c) Pedras preciosas: os 12 fundamentos da Cidade Santa, a nova Jerusalém.",
+              "campo": false,
+              "pagina": 9
+            },
+            {
+              "codigo": "DE2",
+              "texto": "Ler e explicar os versos: I Coríntios 13; II Crônicas 7:14; Apocalipse 22:18-20; II Timóteo 4:6-7; Romanos 8:38-39; Mateus 6:33-34.",
+              "campo": false,
+              "pagina": 10
+            },
+            {
+              "codigo": "DE3",
+              "texto": "Descrever os dons espirituais mencionados nos escritos de Paulo (Coríntios, Efésios, Filipenses) e para quais objetivos a igreja recebe estes dons.",
+              "campo": false,
+              "pagina": 11
+            },
+            {
+              "codigo": "DE4",
+              "texto": "Estudar a estrutura e serviço do santuário no Antigo Testamento e relacionar com o ministério pessoal de Jesus e a cruz.",
+              "campo": false,
+              "pagina": 14
+            },
+            {
+              "codigo": "DE5",
+              "texto": "Ler e resumir três histórias de pioneiros adventistas. Contar estas histórias na reunião do clube, no culto JA, ou na Escola Sabatina.",
+              "campo": false,
+              "pagina": 18
+            },
+            {
+              "codigo": "DE6",
+              "texto": "Leitura bíblica: At 9:1-31; At 9:32-43; At 10; At 11; At 12; At 13; At 14; At 16; At 17:1-15; At 17:16-34; At 18; At 19:1-22; At 19:23-41; At 20; At 21:17-40 e 22:1-16; At 23; At 24; At 25; At 26; At 27; At 28; Rm 12; Rm 13 e 14; 1Co 13; 2Co 5:11-21; 2Co 11:16-33 e 12:1-10; Gl 5:16-26 e 6:1-10; Ef 5:1-21; Ef 6; Fp 4; Cl 3; 1Ts 4:13-18; 1Ts 5; 2Ts 2 e 3; 1Tm 4:6-16; 1Tm 5:1-16 e 6:11-21; 2Tm 2; 2Tm 3; Fm; Hb 11; Tg 1; Tg 3; Tg 5:7-20; 1Pe 1; 1Pe 5:1-11; 2Pe 3; 1Jo 2; 1Jo 3; 1Jo 4; 1Jo 5; Jd 1:17-25; Ap 1; Ap 2; Ap 3; Ap 7:9-17; Ap 12; Ap 13; Ap 14; Ap 19; Ap 20; Ap 21.",
+              "campo": false,
+              "pagina": 19
+            }
+          ]
+        },
+        {
+          "codigo": "SO",
+          "nome": "Servindo aos outros",
+          "ordem": 3,
+          "requisitos": [
+            {
+              "codigo": "SO1",
+              "texto": "Ajudar a organizar e participar de uma das seguintes atividades: a) Fazer uma visita de cortesia a uma pessoa doente; b) Adotar uma pessoa ou família em necessidade e ajudá-los; c) Um projeto de sua escolha aprovado por seu líder.",
+              "campo": false,
+              "pagina": 20
+            },
+            {
+              "codigo": "SO2",
+              "texto": "Discutir com sua unidade os métodos de evangelismo pessoal e colocar alguns princípios em prática.",
+              "campo": false,
+              "pagina": 20
+            }
+          ]
+        },
+        {
+          "codigo": "DA",
+          "nome": "Desenvolvendo amizade",
+          "ordem": 4,
+          "requisitos": [
+            {
+              "codigo": "DA1",
+              "texto": "Assistir a uma palestra ou aula e examinar suas atitudes em relação a dois dos seguintes temas: a) A importância da escolha profissional; b) Como se relacionar com os pais; c) A escolha da pessoa certa para namorar; d) O plano de Deus para o sexo.",
+              "campo": false,
+              "pagina": 22
+            }
+          ]
+        },
+        {
+          "codigo": "SA",
+          "nome": "Saúde e aptidão física",
+          "ordem": 5,
+          "requisitos": [
+            {
+              "codigo": "SA1",
+              "texto": "Fazer uma apresentação, para alunos do ensino fundamental, sobre os oito remédios naturais dados por Deus.",
+              "campo": false,
+              "pagina": 29
+            },
+            {
+              "codigo": "SA2",
+              "texto": "Completar uma das seguintes atividades: a) Escrever uma poesia ou artigo sobre saúde para ser divulgado em uma revista, boletim ou jornal da igreja; b) Individualmente ou em grupo, organizar e participar de uma corrida ou atividade similar e apresentar com antecedência um programa de treinamento físico para este evento; c) Ler as páginas 102-125 do livro Temperança, de Ellen White, e apresentar em uma página ou mais, 10 textos selecionados da leitura; d) Completar a especialidade de Nutrição ou liderar um grupo para a especialidade de Cultura física.",
+              "campo": false,
+              "pagina": 33
+            }
+          ]
+        },
+        {
+          "codigo": "OL",
+          "nome": "Organização e liderança",
+          "ordem": 6,
+          "requisitos": [
+            {
+              "codigo": "OL1",
+              "texto": "Preparar um organograma da estrutura administrativa da Igreja Adventista em sua Divisão.",
+              "campo": false,
+              "pagina": 37
+            },
+            {
+              "codigo": "OL2",
+              "texto": "Participar em um dos itens abaixo: a) Curso para conselheiros; b) Convenção de liderança da Associação/Missão; c) 6 reuniões de diretoria do seu clube.",
+              "campo": false,
+              "pagina": 38
+            },
+            {
+              "codigo": "OL3",
+              "texto": "Planejar e ensinar, no mínimo, dois requisitos de uma especialidade para um grupo ou unidade de desbravadores.",
+              "campo": false,
+              "pagina": 38
+            },
+            {
+              "codigo": "OL4",
+              "texto": "Completar a especialidade de Orçamento familiar.",
+              "campo": false,
+              "pagina": 39
+            }
+          ]
+        },
+        {
+          "codigo": "EN",
+          "nome": "Estudo da natureza",
+          "ordem": 7,
+          "requisitos": [
+            {
+              "codigo": "EN1",
+              "texto": "Ler o capítulo 7 do livro O Desejado de Todas as Nações sobre a infância de Jesus. Apresentar para um grupo, clube ou unidade as lições encontradas, demonstrando a importância que o estudo da natureza exerceu na educação e ministério de Jesus.",
+              "campo": false,
+              "pagina": 40
+            },
+            {
+              "codigo": "EN2",
+              "texto": "Completar uma das seguintes especialidades: a) Ecologia; b) Conservação ambiental.",
+              "campo": false,
+              "pagina": 40
+            }
+          ]
+        },
+        {
+          "codigo": "AC",
+          "nome": "Arte de acampar",
+          "ordem": 8,
+          "requisitos": [
+            {
+              "codigo": "AC1",
+              "texto": "Participar com sua unidade de um acampamento com estrutura de pioneiria, planejar o que deve ser levado e o que vai acontecer neste acampamento.",
+              "campo": true,
+              "pagina": 42
+            },
+            {
+              "codigo": "AC2",
+              "texto": "Planejar, preparar e cozinhar três refeições ao ar livre.",
+              "campo": true,
+              "pagina": 43
+            },
+            {
+              "codigo": "AC3",
+              "texto": "Construir e utilizar um móvel de acampamento em tamanho real, com nós e amarras.",
+              "campo": true,
+              "pagina": 44
+            },
+            {
+              "codigo": "AC4",
+              "texto": "Completar uma especialidade, não realizada anteriormente, que possa ser contada para um dos Mestrados abaixo: a) Aquática; b) Esportes; c) Atividades recreativas; d) Vida campestre.",
+              "campo": false,
+              "pagina": 45
+            },
+            {
+              "codigo": "AC5",
+              "texto": "Completar a especialidade de Liderança campestre.",
+              "campo": true,
+              "pagina": 45
+            }
+          ]
+        },
+        {
+          "codigo": "EV",
+          "nome": "Enriquecendo a vida",
+          "ordem": 9,
+          "requisitos": [
+            {
+              "codigo": "EV1",
+              "texto": "Completar uma especialidade, não realizada anteriormente, em uma das seguintes áreas: a) Atividades recreativas; b) Ciência e saúde; c) Habilidades domésticas; d) Atividades profissionais.",
+              "campo": false,
+              "pagina": 46
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Guia de Exploração",
+      "idade": 15,
+      "tipo": "AVANCADA",
+      "trilha": "INDIVIDUAL",
+      "classeBase": "Guia",
+      "secoes": [
+        {
+          "codigo": "AV",
+          "nome": "Classe avançada",
+          "ordem": 1,
+          "requisitos": [
+            {
+              "codigo": "AV1",
+              "texto": "Completar a especialidade de Mordomia.",
+              "campo": false,
+              "pagina": 46
+            },
+            {
+              "codigo": "AV2",
+              "texto": "Ler o livro O Maior Discurso de Cristo e escrever uma página sobre o efeito da leitura em sua vida.",
+              "campo": false,
+              "pagina": 49
+            },
+            {
+              "codigo": "AV3",
+              "texto": "Cumprir um dos seguintes itens: a) Trazer dois amigos para assistir a duas diferentes reuniões da igreja; b) Ajudar a planejar e participar de, no mínimo, quatro domingos em uma série de evangelismo jovem.",
+              "campo": false,
+              "pagina": 50
+            },
+            {
+              "codigo": "AV4",
+              "texto": "Escrever uma página ou apresentar uma palestra sobre como influenciar amigos para Cristo.",
+              "campo": false,
+              "pagina": 50
+            },
+            {
+              "codigo": "AV5",
+              "texto": "Observar durante o período de dois meses o trabalho dos diáconos, apresentando um relatório detalhado de suas atividades, contendo: a) Cuidado da propriedade da igreja; b) Cerimônia de lava-pés; c) Cerimônia de batismo; d) Recolhimento dos dízimos e ofertas.",
+              "campo": false,
+              "pagina": 51
+            },
+            {
+              "codigo": "AV6",
+              "texto": "Completar o mestrado em Vida campestre.",
+              "campo": true,
+              "pagina": 53
+            },
+            {
+              "codigo": "AV7",
+              "texto": "Projetar três tipos diferentes de abrigo, explicar seu uso e utilizar um deles em um acampamento.",
+              "campo": true,
+              "pagina": 53
+            },
+            {
+              "codigo": "AV8",
+              "texto": "Assistir a um seminário ou apresentar uma palestra sobre dois dos seguintes temas: a) Aborto; b) Bullying; c) Violência; d) Drogas; e) Doenças sexualmente transmissíveis.",
+              "campo": false,
+              "pagina": 55
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "avisos": [
+    "O nome da classe avançada, 'Guia de Exploração', vem do título da página 46 ('CLASSE AVANÇADA GUIA DE EXPLORAÇÃO').",
+    "A classe avançada não tem cabeçalhos de seção no PDF; os 8 itens ficaram numa seção provisória 'CA' (CA1 a CA8, na ordem do caderno, numeração impressa 1 a 8).",
+    "Requisitos 'Completar a especialidade de X' (Orçamento familiar, Liderança campestre, Mordomia, Nutrição/Cultura física dentro de SA2, Ecologia/Conservação ambiental) trazem o conteúdo detalhado da especialidade no PDF; foi omitido e ficou só o enunciado.",
+    "Leitura bíblica (DE6): o enunciado é só 'Leitura bíblica'; a lista de capítulos (caixas de marcação, texto ruidoso: p. 19) foi anexada ao texto. Lista conferida na imagem da página 19.",
+    "DE1 (p. 9): o enunciado cita três itens (a, b, c); as páginas 9-10 trazem apenas exercícios (caça-palavras, cruzadinha).",
+    "AC4 (p. 45): 'Mestrado' pede especialidade que conte para um mestrado de Aquática/Esportes/Atividades recreativas/Vida campestre; campo=false por ser dúvida (depende da escolha).",
+    "AC5 Liderança campestre (p. 45-46): inclui itens ao ar livre (acampamento, excursão, abrigo); marcado campo=true.",
+    "EN2 (Ecologia/Conservação ambiental, p. 40-42): inclui observação de riacho e visita; marcado campo=false por dúvida.",
+    "OL2/OL3, EV1 e SA2 têm opções (a, b, c...) mantidas no mesmo texto.",
+    "Avançada CA5 (diáconos): a instrução 'Ler no Manual da Igreja o capítulo ...' foi omitida por ser orientação de preenchimento.",
+    "Texto do PDF muito ruidoso (página 12, 22-28 e cruzadinhas); enunciados conferidos visualmente nas páginas 22, 33, 40, 45, 46, 50 e por texto nas demais.",
+    "Padronização: a avançada 'Guia de Exploração' foi reunida na seção única AV, em ordem de página; códigos renumerados (CA1→AV1, CA2→AV2, CA3→AV3, CA4→AV4, CA5→AV5, CA6→AV6, CA7→AV7, CA8→AV8). Conferir a ordem com a numeração impressa no caderno."
+  ]
+}

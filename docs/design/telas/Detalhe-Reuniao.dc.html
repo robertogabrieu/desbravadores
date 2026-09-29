@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Detalhe da reunião</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;background:#E9E5DB}a{color:#1F4D3A}a:hover{color:#163828}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; background: #F4F1EA; color: #1B221F; font-family: Figtree, system-ui, sans-serif; overflow: hidden">
+<header style="flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 10px 12px 4px">
+<a href="Historico-Reunioes.dc.html" aria-label="Voltar" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: #1B221F"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></a>
+<div style="flex-grow: 1; display: flex; flex-direction: column"><span style="font-weight: 700; font-size: 17px">Reunião · 20 set</span><span style="font-size: 13px; color: #5B645F">Domingo · Unidade Águias</span></div>
+<a href="Registro-Reuniao.dc.html" style="height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid #D9D3C5; background: #FFFFFF; display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; text-decoration: none; color: #1B221F"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"></path></svg>Editar</a>
+</header>
+<main style="flex-grow: 1; overflow-y: auto; padding: 8px 20px 24px; display: flex; flex-direction: column; gap: 14px">
+<section style="background: #1F4D3A; color: #FFFFFF; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 800">Reunião regular</span>
+<span style="font-size: 12px; color: #CFE0D6">registrada por Thiago · 10h40</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+<div style="background: #163828; border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 800">7/8</span><span style="font-size: 11px; color: #CFE0D6; font-weight: 600">presentes</span></div>
+<div style="background: #163828; border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 800">1</span><span style="font-size: 11px; color: #CFE0D6; font-weight: 600">atraso</span></div>
+<div style="background: #163828; border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 800">6</span><span style="font-size: 11px; color: #CFE0D6; font-weight: 600">uniforme</span></div>
+<div style="background: #F3E3C8; color: #1F4D3A; border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 800">145</span><span style="font-size: 11px; font-weight: 700">pontos</span></div>
+</div>
+</section>
+
+<div style="display: flex; gap: 8px">
+<sc-for list="{{filtros}}" as="f" hint-placeholder-count="3"><button type="button" aria-pressed="{{f.on}}" onClick="{{f.pick}}" style="{{f.style}}">{{f.nome}}</button></sc-for>
+</div>
+
+<ul style="list-style: none; margin: 0; padding: 0; background: #FFFFFF; border-radius: 16px">
+<sc-for list="{{lista}}" as="d" hint-placeholder-count="8">
+<li style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid #EFEBE1">
+<span style="{{d.dot}}"></span>
+<span style="flex-grow: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0">
+<span style="{{d.nomeStyle}}">{{d.nome}}</span>
+<span style="display: flex; gap: 6px; flex-wrap: wrap">
+<sc-for list="{{d.tags}}" as="t" hint-placeholder-count="3"><span style="{{t.s}}">{{t.n}}</span></sc-for>
+</span>
+</span>
+<span style="{{d.ptsStyle}}">{{d.pts}}</span>
+</li>
+</sc-for>
+</ul>
+
+<section style="background: #FFFFFF; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px">
+<h2 style="margin: 0; font-size: 14px; font-weight: 700; color: #5B645F">Observações</h2>
+<p style="margin: 0; font-size: 14px; line-height: 1.45">Ensaio do grito de guerra para o acampamento. Combinar com as famílias a autorização de saída até 04/10.</p>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; justify-content: space-between; align-items: baseline"><h2 style="margin: 0; font-size: 15px; font-weight: 700">Fotos desta reunião</h2><a href="Galeria.dc.html" style="font-size: 14px; font-weight: 600">Ver álbum (6)</a></div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px">
+<span style="aspect-ratio: 1 / 1; border-radius: 10px; background: #C9D8CE"></span>
+<span style="aspect-ratio: 1 / 1; border-radius: 10px; background: #E3D3B8"></span>
+<span style="aspect-ratio: 1 / 1; border-radius: 10px; background: #BFCBE0"></span>
+<a href="Enviar-Fotos.dc.html" aria-label="Adicionar fotos a esta reunião" style="aspect-ratio: 1 / 1; border-radius: 10px; border: 2px dashed #B8C9BE; background: #EEF4F0; color: #1F4D3A; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></a>
+</div>
+</section>
+<p style="margin: 0; font-size: 12px; color: #5B645F; text-align: center">Alterações na chamada recalculam os pontos do ranking e ficam registradas no histórico.</p>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(p) { super(p); this.state = { f: 'todos' }; }
+renderVals() {
+var self = this, F = this.state.f;
+var D = [
+{ n: 'Ana Clara Souza', p: true, a: false, u: true, b: true },
+{ n: 'Pedro Henrique Lima', p: true, a: true, u: true, b: true },
+{ n: 'Júlia Ramos', p: true, a: false, u: true, b: true },
+{ n: 'Isabela Martins', p: true, a: false, u: false, b: true },
+{ n: 'Lívia Fernandes', p: true, a: false, u: true, b: false },
+{ n: 'Enzo Barros', p: true, a: false, u: true, b: true },
+{ n: 'Gabriel Nunes', p: false, a: false, u: false, b: false, just: 'Falta sem justificativa' },
+{ n: 'Davi Carvalho', p: true, a: false, u: true, b: false }
+];
+var ok = 'font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: #E3EEE7; color: #1F4D3A';
+var no = 'font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: #F4F1EA; color: #5B645F; text-decoration: line-through';
+var warn = 'font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: #FBEFE3; color: #9A3412';
+var lista = D.filter(function (x) { return F === 'todos' || (F === 'pres' ? x.p : !x.p); }).map(function (x) {
+var pts = x.p ? 10 + (x.a ? 0 : 5) + (x.u ? 5 : 0) + (x.b ? 3 : 0) : 0;
+var tags = x.p ? [{ n: x.a ? 'Atrasou' : 'Pontual', s: x.a ? warn : ok }, { n: 'Uniforme', s: x.u ? ok : no }, { n: 'Bíblia', s: x.b ? ok : no }] : [{ n: x.just, s: 'font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: #FBE4E1; color: #9F2A20' }];
+return { nome: x.n, tags: tags, pts: x.p ? '+' + pts : '0',
+dot: 'width: 10px; height: 10px; border-radius: 5px; flex-shrink: 0; background: ' + (x.p ? '#1F7A45' : '#B42318'),
+nomeStyle: 'font-weight: 700; font-size: 15px; ' + (x.p ? '' : 'color: #5B645F'),
+ptsStyle: 'font-weight: 800; font-size: 15px; color: ' + (x.p ? '#1F4D3A' : '#8A918D') };
+});
+var filtros = [['todos','Todos · 8'],['pres','Presentes · 7'],['aus','Ausentes · 1']].map(function (f) { var on = f[0] === F; return { nome: f[1], on: on,
+style: 'height: 36px; padding: 0 14px; border-radius: 18px; font-family: inherit; font-size: 13px; font-weight: 700; ' + (on ? 'border: 1px solid #1B221F; background: #1B221F; color: #FFFFFF' : 'border: 1px solid #D9D3C5; background: #FFFFFF; color: #1B221F'),
+pick: function () { self.setState({ f: f[0] }); } }; });
+return { lista: lista, filtros: filtros };
+}
+}
+</script>
+</body>
+</html>

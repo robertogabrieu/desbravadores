@@ -1,0 +1,2191 @@
+{
+  "fonte": "Manual de Especialidades da Divisão Sul-Americana, transcrito no repositório iasd-tucuruvi (src/data/especialidades.ts, commit eb05473)",
+  "observacao": "Só os nomes, por área. Requisitos e conteúdo de cada especialidade ficam no manual. pagina = página na edição transcrita; não exibir.",
+  "areas": [
+    {
+      "codigo": "AD",
+      "nome": "ADRA",
+      "ordem": 1,
+      "especialidades": [
+        {
+          "nome": "Alfabetização",
+          "pagina": 19
+        },
+        {
+          "nome": "Alívio da fome",
+          "pagina": 19
+        },
+        {
+          "nome": "Avaliação da comunidade",
+          "pagina": 20
+        },
+        {
+          "nome": "Desenvolvimento comunitário",
+          "pagina": 20
+        },
+        {
+          "nome": "Resolução de conflitos",
+          "pagina": 22
+        },
+        {
+          "nome": "Resposta a emergências e desastres",
+          "pagina": 22
+        },
+        {
+          "nome": "Resposta a emergências e desastres – avançado",
+          "pagina": 23
+        },
+        {
+          "nome": "Serviço comunitário",
+          "pagina": 24
+        }
+      ]
+    },
+    {
+      "codigo": "HM",
+      "nome": "Artes e Habilidades Manuais",
+      "ordem": 2,
+      "especialidades": [
+        {
+          "nome": "Aeromodelismo",
+          "pagina": 27
+        },
+        {
+          "nome": "Amigurumi",
+          "pagina": 27
+        },
+        {
+          "nome": "Apitos",
+          "pagina": 27
+        },
+        {
+          "nome": "Arte com barbante",
+          "pagina": 28
+        },
+        {
+          "nome": "Arte de fazer esteiras",
+          "pagina": 29
+        },
+        {
+          "nome": "Arte de oleiro",
+          "pagina": 29
+        },
+        {
+          "nome": "Arte de trançar",
+          "pagina": 29
+        },
+        {
+          "nome": "Arte de trançar – avançado",
+          "pagina": 30
+        },
+        {
+          "nome": "Arte digital",
+          "pagina": 30
+        },
+        {
+          "nome": "Automodelismo",
+          "pagina": 31
+        },
+        {
+          "nome": "Biscuit",
+          "pagina": 31
+        },
+        {
+          "nome": "Bordado em ponto cruz",
+          "pagina": 32
+        },
+        {
+          "nome": "Cerâmica",
+          "pagina": 32
+        },
+        {
+          "nome": "Cestaria",
+          "pagina": 33
+        },
+        {
+          "nome": "Construção nativa",
+          "pagina": 33
+        },
+        {
+          "nome": "Corrida de carrinhos de madeira",
+          "pagina": 34
+        },
+        {
+          "nome": "Crochê",
+          "pagina": 34
+        },
+        {
+          "nome": "Crochê – avançado",
+          "pagina": 35
+        },
+        {
+          "nome": "Cultura indígena",
+          "pagina": 35
+        },
+        {
+          "nome": "Cultura indígena – avançado",
+          "pagina": 36
+        },
+        {
+          "nome": "Decoração de bolos",
+          "pagina": 37
+        },
+        {
+          "nome": "Decoupage",
+          "pagina": 37
+        },
+        {
+          "nome": "Desenho e pintura",
+          "pagina": 38
+        },
+        {
+          "nome": "Desenho vetorial",
+          "pagina": 38
+        },
+        {
+          "nome": "E.V.A.",
+          "pagina": 39
+        },
+        {
+          "nome": "Embalagem",
+          "pagina": 39
+        },
+        {
+          "nome": "Entalhe em madeira",
+          "pagina": 40
+        },
+        {
+          "nome": "Escultura",
+          "pagina": 40
+        },
+        {
+          "nome": "Esmaltado em cobre",
+          "pagina": 41
+        },
+        {
+          "nome": "Espaçomodelismo",
+          "pagina": 41
+        },
+        {
+          "nome": "Estofamento",
+          "pagina": 42
+        },
+        {
+          "nome": "Fabricação de velas",
+          "pagina": 42
+        },
+        {
+          "nome": "Faróis",
+          "pagina": 42
+        },
+        {
+          "nome": "Ferreomodelismo",
+          "pagina": 43
+        },
+        {
+          "nome": "Fotografia digital",
+          "pagina": 44
+        },
+        {
+          "nome": "Fuxico",
+          "pagina": 45
+        },
+        {
+          "nome": "Genealogia",
+          "pagina": 45
+        },
+        {
+          "nome": "Gravura em vidros",
+          "pagina": 46
+        },
+        {
+          "nome": "Herança cultural",
+          "pagina": 47
+        },
+        {
+          "nome": "História em quadrinhos",
+          "pagina": 48
+        },
+        {
+          "nome": "Lapidação",
+          "pagina": 48
+        },
+        {
+          "nome": "Letreiros e cartazes",
+          "pagina": 49
+        },
+        {
+          "nome": "Lettering",
+          "pagina": 49
+        },
+        {
+          "nome": "Macramê",
+          "pagina": 50
+        },
+        {
+          "nome": "Modelagem e fabricação de sabão",
+          "pagina": 50
+        },
+        {
+          "nome": "Modelagem e fabricação de sabão – avançado",
+          "pagina": 50
+        },
+        {
+          "nome": "Modelagem em gesso",
+          "pagina": 51
+        },
+        {
+          "nome": "Música – avançado",
+          "pagina": 52
+        },
+        {
+          "nome": "Música – básico",
+          "pagina": 51
+        },
+        {
+          "nome": "Música – intermediário",
+          "pagina": 52
+        },
+        {
+          "nome": "Nautimodelismo",
+          "pagina": 53
+        },
+        {
+          "nome": "Origami",
+          "pagina": 53
+        },
+        {
+          "nome": "Origami – avançado",
+          "pagina": 54
+        },
+        {
+          "nome": "Ornamentação",
+          "pagina": 54
+        },
+        {
+          "nome": "Ornamentação com flores",
+          "pagina": 55
+        },
+        {
+          "nome": "Papel machê",
+          "pagina": 56
+        },
+        {
+          "nome": "Papercraft",
+          "pagina": 56
+        },
+        {
+          "nome": "Patchwork",
+          "pagina": 57
+        },
+        {
+          "nome": "Pintura em tecido",
+          "pagina": 57
+        },
+        {
+          "nome": "Pintura em vidro",
+          "pagina": 58
+        },
+        {
+          "nome": "Pirografia",
+          "pagina": 58
+        },
+        {
+          "nome": "Plastimodelismo",
+          "pagina": 59
+        },
+        {
+          "nome": "Plástico canvas",
+          "pagina": 59
+        },
+        {
+          "nome": "Quilling",
+          "pagina": 60
+        },
+        {
+          "nome": "Quilling – avançado",
+          "pagina": 60
+        },
+        {
+          "nome": "Scrapbooking",
+          "pagina": 61
+        },
+        {
+          "nome": "Scrapbooking – avançado",
+          "pagina": 61
+        },
+        {
+          "nome": "Serigrafia",
+          "pagina": 62
+        },
+        {
+          "nome": "Serigrafia – avançado",
+          "pagina": 62
+        },
+        {
+          "nome": "Tecelagem",
+          "pagina": 63
+        },
+        {
+          "nome": "Telhados",
+          "pagina": 63
+        },
+        {
+          "nome": "Tie-dye",
+          "pagina": 64
+        },
+        {
+          "nome": "Trabalhos com agulha",
+          "pagina": 64
+        },
+        {
+          "nome": "Trabalhos em acrílico",
+          "pagina": 65
+        },
+        {
+          "nome": "Trabalhos em couro",
+          "pagina": 65
+        },
+        {
+          "nome": "Trabalhos em couro – avançado",
+          "pagina": 66
+        },
+        {
+          "nome": "Trabalhos em feltro",
+          "pagina": 66
+        },
+        {
+          "nome": "Trabalhos em madeira",
+          "pagina": 67
+        },
+        {
+          "nome": "Trabalhos em metal",
+          "pagina": 67
+        },
+        {
+          "nome": "Trabalhos em vidro",
+          "pagina": 68
+        },
+        {
+          "nome": "Tricô",
+          "pagina": 68
+        },
+        {
+          "nome": "Tricô – avançado",
+          "pagina": 69
+        },
+        {
+          "nome": "Violão",
+          "pagina": 69
+        },
+        {
+          "nome": "Violão – avançado",
+          "pagina": 70
+        },
+        {
+          "nome": "Xilogravura",
+          "pagina": 71
+        }
+      ]
+    },
+    {
+      "codigo": "AA",
+      "nome": "Atividades Agrícolas",
+      "ordem": 3,
+      "especialidades": [
+        {
+          "nome": "Agricultura",
+          "pagina": 75
+        },
+        {
+          "nome": "Agricultura familiar de subsistência",
+          "pagina": 75
+        },
+        {
+          "nome": "Apicultura",
+          "pagina": 76
+        },
+        {
+          "nome": "Avicultura",
+          "pagina": 77
+        },
+        {
+          "nome": "Criação de cabras",
+          "pagina": 78
+        },
+        {
+          "nome": "Criação de cavalos",
+          "pagina": 79
+        },
+        {
+          "nome": "Criação de gado leiteiro",
+          "pagina": 80
+        },
+        {
+          "nome": "Criação de ovelhas",
+          "pagina": 80
+        },
+        {
+          "nome": "Criação de pombos",
+          "pagina": 81
+        },
+        {
+          "nome": "Floricultura",
+          "pagina": 82
+        },
+        {
+          "nome": "Jardinagem e horticultura",
+          "pagina": 83
+        },
+        {
+          "nome": "Paisagismo",
+          "pagina": 83
+        },
+        {
+          "nome": "Pecuária",
+          "pagina": 84
+        },
+        {
+          "nome": "Pescaria",
+          "pagina": 84
+        },
+        {
+          "nome": "Pomicultura",
+          "pagina": 85
+        },
+        {
+          "nome": "Pomicultura II – frutas pequenas",
+          "pagina": 86
+        }
+      ]
+    },
+    {
+      "codigo": "AP",
+      "nome": "Atividades Profissionais",
+      "ordem": 4,
+      "especialidades": [
+        {
+          "nome": "Administração",
+          "pagina": 143
+        },
+        {
+          "nome": "Alvenaria",
+          "pagina": 143
+        },
+        {
+          "nome": "Barbearia",
+          "pagina": 144
+        },
+        {
+          "nome": "Biblioteconomia",
+          "pagina": 144
+        },
+        {
+          "nome": "Carpintaria",
+          "pagina": 146
+        },
+        {
+          "nome": "Colocação de papel de parede",
+          "pagina": 147
+        },
+        {
+          "nome": "Computação I",
+          "pagina": 148
+        },
+        {
+          "nome": "Computação II",
+          "pagina": 148
+        },
+        {
+          "nome": "Computação III",
+          "pagina": 149
+        },
+        {
+          "nome": "Computação IV",
+          "pagina": 150
+        },
+        {
+          "nome": "Computação V",
+          "pagina": 151
+        },
+        {
+          "nome": "Conserto de sapatos",
+          "pagina": 152
+        },
+        {
+          "nome": "Contabilidade",
+          "pagina": 152
+        },
+        {
+          "nome": "Corte e costura",
+          "pagina": 153
+        },
+        {
+          "nome": "Corte e costura – avançado",
+          "pagina": 153
+        },
+        {
+          "nome": "Cuidados e manutenção de violões",
+          "pagina": 154
+        },
+        {
+          "nome": "Cães – cuidado e treinamento",
+          "pagina": 145
+        },
+        {
+          "nome": "Código Morse",
+          "pagina": 146
+        },
+        {
+          "nome": "Código semafórico",
+          "pagina": 147
+        },
+        {
+          "nome": "Desenvolvimento de software",
+          "pagina": 154
+        },
+        {
+          "nome": "Eletricidade",
+          "pagina": 155
+        },
+        {
+          "nome": "Eletrônica",
+          "pagina": 156
+        },
+        {
+          "nome": "Encadernação",
+          "pagina": 156
+        },
+        {
+          "nome": "Evangelismo",
+          "pagina": 157
+        },
+        {
+          "nome": "Fotografia",
+          "pagina": 158
+        },
+        {
+          "nome": "Hidráulica",
+          "pagina": 158
+        },
+        {
+          "nome": "Informática programável",
+          "pagina": 159
+        },
+        {
+          "nome": "Internet",
+          "pagina": 159
+        },
+        {
+          "nome": "Internet – avançado",
+          "pagina": 160
+        },
+        {
+          "nome": "Intérprete de língua de sinais",
+          "pagina": 161
+        },
+        {
+          "nome": "Jornalismo",
+          "pagina": 162
+        },
+        {
+          "nome": "Logística",
+          "pagina": 163
+        },
+        {
+          "nome": "Magistério",
+          "pagina": 164
+        },
+        {
+          "nome": "Manutenção de bicicletas",
+          "pagina": 165
+        },
+        {
+          "nome": "Marcenaria",
+          "pagina": 165
+        },
+        {
+          "nome": "Marketing",
+          "pagina": 166
+        },
+        {
+          "nome": "Marketing – avançado",
+          "pagina": 167
+        },
+        {
+          "nome": "Mecânica automotiva",
+          "pagina": 168
+        },
+        {
+          "nome": "Mecânica de pequenos motores",
+          "pagina": 168
+        },
+        {
+          "nome": "Modelagem têxtil",
+          "pagina": 169
+        },
+        {
+          "nome": "Montagem e manutenção de computadores",
+          "pagina": 169
+        },
+        {
+          "nome": "Noções de direito",
+          "pagina": 170
+        },
+        {
+          "nome": "Noções de economia",
+          "pagina": 171
+        },
+        {
+          "nome": "Ofício de alfaiate",
+          "pagina": 172
+        },
+        {
+          "nome": "Operação e manutenção de impressoras",
+          "pagina": 172
+        },
+        {
+          "nome": "Pintura de paredes exteriores",
+          "pagina": 173
+        },
+        {
+          "nome": "Pintura de paredes interiores",
+          "pagina": 174
+        },
+        {
+          "nome": "Produção de vídeo",
+          "pagina": 174
+        },
+        {
+          "nome": "Radioamadorismo",
+          "pagina": 175
+        },
+        {
+          "nome": "Restauro e conservação documental",
+          "pagina": 176
+        },
+        {
+          "nome": "Secretariado",
+          "pagina": 177
+        },
+        {
+          "nome": "Segurança contra incêndios",
+          "pagina": 177
+        },
+        {
+          "nome": "Segurança nas redes sociais",
+          "pagina": 178
+        },
+        {
+          "nome": "Silvicultura",
+          "pagina": 179
+        },
+        {
+          "nome": "Soldagem",
+          "pagina": 180
+        },
+        {
+          "nome": "Taquigrafia",
+          "pagina": 181
+        },
+        {
+          "nome": "Tipografia",
+          "pagina": 181
+        },
+        {
+          "nome": "Vendas",
+          "pagina": 182
+        },
+        {
+          "nome": "Web designer",
+          "pagina": 183
+        },
+        {
+          "nome": "Web designer – avançado",
+          "pagina": 183
+        }
+      ]
+    },
+    {
+      "codigo": "AR",
+      "nome": "Atividades Recreativas",
+      "ordem": 5,
+      "especialidades": [
+        {
+          "nome": "Acampamento consciente",
+          "pagina": 187
+        },
+        {
+          "nome": "Acampamento em baixas temperaturas",
+          "pagina": 187
+        },
+        {
+          "nome": "Acampamento I",
+          "pagina": 188
+        },
+        {
+          "nome": "Acampamento II",
+          "pagina": 188
+        },
+        {
+          "nome": "Acampamento III",
+          "pagina": 189
+        },
+        {
+          "nome": "Acampamento IV",
+          "pagina": 190
+        },
+        {
+          "nome": "Acampamento seguro",
+          "pagina": 190
+        },
+        {
+          "nome": "Acampamento seguro – avançado",
+          "pagina": 191
+        },
+        {
+          "nome": "Areia",
+          "pagina": 191
+        },
+        {
+          "nome": "Arte de acampar",
+          "pagina": 192
+        },
+        {
+          "nome": "Artes mateiras",
+          "pagina": 193
+        },
+        {
+          "nome": "Atletismo",
+          "pagina": 193
+        },
+        {
+          "nome": "Basquete",
+          "pagina": 194
+        },
+        {
+          "nome": "Boliche",
+          "pagina": 195
+        },
+        {
+          "nome": "Bolinha de gude",
+          "pagina": 196
+        },
+        {
+          "nome": "Caiaque",
+          "pagina": 196
+        },
+        {
+          "nome": "Campori seguro",
+          "pagina": 197
+        },
+        {
+          "nome": "Canoagem",
+          "pagina": 197
+        },
+        {
+          "nome": "Carrinho de rolimã",
+          "pagina": 198
+        },
+        {
+          "nome": "Ciclismo",
+          "pagina": 198
+        },
+        {
+          "nome": "Ciclismo – avançado",
+          "pagina": 199
+        },
+        {
+          "nome": "Colecionador",
+          "pagina": 199
+        },
+        {
+          "nome": "Comida mateira",
+          "pagina": 200
+        },
+        {
+          "nome": "Construção de canoas",
+          "pagina": 200
+        },
+        {
+          "nome": "Construções rústicas de grande porte",
+          "pagina": 201
+        },
+        {
+          "nome": "Cozinha com forno holandês",
+          "pagina": 202
+        },
+        {
+          "nome": "Cozinha segura",
+          "pagina": 202
+        },
+        {
+          "nome": "Cubo mágico",
+          "pagina": 203
+        },
+        {
+          "nome": "Cultura física",
+          "pagina": 204
+        },
+        {
+          "nome": "Equitação",
+          "pagina": 205
+        },
+        {
+          "nome": "Escalada",
+          "pagina": 205
+        },
+        {
+          "nome": "Escalada em árvores",
+          "pagina": 206
+        },
+        {
+          "nome": "Escalada – avançado",
+          "pagina": 206
+        },
+        {
+          "nome": "Esportes adaptados",
+          "pagina": 207
+        },
+        {
+          "nome": "Esqui aquático",
+          "pagina": 207
+        },
+        {
+          "nome": "Evolução em ordem unida",
+          "pagina": 208
+        },
+        {
+          "nome": "Excursionismo pedestre",
+          "pagina": 208
+        },
+        {
+          "nome": "Excursionismo pedestre com mochila",
+          "pagina": 210
+        },
+        {
+          "nome": "Excursionismo pedestre com mochila – avançado",
+          "pagina": 211
+        },
+        {
+          "nome": "Excursionismo pedestre na neve",
+          "pagina": 212
+        },
+        {
+          "nome": "Excursionismo pedestre – avançado",
+          "pagina": 209
+        },
+        {
+          "nome": "Exploração de cavernas",
+          "pagina": 212
+        },
+        {
+          "nome": "Exploração de cavernas – avançado",
+          "pagina": 213
+        },
+        {
+          "nome": "Fanfarra",
+          "pagina": 213
+        },
+        {
+          "nome": "Filatelia",
+          "pagina": 214
+        },
+        {
+          "nome": "Fogueiras e cozinha ao ar livre",
+          "pagina": 215
+        },
+        {
+          "nome": "Futebol",
+          "pagina": 215
+        },
+        {
+          "nome": "Futebol de botão",
+          "pagina": 216
+        },
+        {
+          "nome": "Futsal",
+          "pagina": 217
+        },
+        {
+          "nome": "Geocaching",
+          "pagina": 217
+        },
+        {
+          "nome": "Geocaching – avançado",
+          "pagina": 218
+        },
+        {
+          "nome": "Ginástica acrobática",
+          "pagina": 218
+        },
+        {
+          "nome": "Handebol",
+          "pagina": 219
+        },
+        {
+          "nome": "Liderança campestre",
+          "pagina": 220
+        },
+        {
+          "nome": "Liderança campestre – avançado",
+          "pagina": 221
+        },
+        {
+          "nome": "Liderança na selva",
+          "pagina": 221
+        },
+        {
+          "nome": "Liderança na selva – avançado",
+          "pagina": 222
+        },
+        {
+          "nome": "Mapa e bússola",
+          "pagina": 222
+        },
+        {
+          "nome": "Mergulho autônomo",
+          "pagina": 223
+        },
+        {
+          "nome": "Mergulho livre",
+          "pagina": 224
+        },
+        {
+          "nome": "Mountain biking",
+          "pagina": 224
+        },
+        {
+          "nome": "Natação intermediário I",
+          "pagina": 225
+        },
+        {
+          "nome": "Natação intermediário II",
+          "pagina": 226
+        },
+        {
+          "nome": "Natação principiante I",
+          "pagina": 225
+        },
+        {
+          "nome": "Natação principiante II",
+          "pagina": 225
+        },
+        {
+          "nome": "Natação – avançado",
+          "pagina": 226
+        },
+        {
+          "nome": "Navegação",
+          "pagina": 227
+        },
+        {
+          "nome": "Numismática",
+          "pagina": 230
+        },
+        {
+          "nome": "Numismática – avançado",
+          "pagina": 230
+        },
+        {
+          "nome": "Nós e amarras",
+          "pagina": 227
+        },
+        {
+          "nome": "Nós e amarras – avançado",
+          "pagina": 228
+        },
+        {
+          "nome": "Ordem unida",
+          "pagina": 231
+        },
+        {
+          "nome": "Ordem unida – avançado",
+          "pagina": 232
+        },
+        {
+          "nome": "Ordem unida – instrutor",
+          "pagina": 233
+        },
+        {
+          "nome": "Orientação com GPS",
+          "pagina": 233
+        },
+        {
+          "nome": "Patins",
+          "pagina": 234
+        },
+        {
+          "nome": "Pioneirias",
+          "pagina": 236
+        },
+        {
+          "nome": "Pioneirias – avançado",
+          "pagina": 236
+        },
+        {
+          "nome": "Pioneirismo",
+          "pagina": 237
+        },
+        {
+          "nome": "Pipas",
+          "pagina": 238
+        },
+        {
+          "nome": "Pião",
+          "pagina": 235
+        },
+        {
+          "nome": "Rafting",
+          "pagina": 239
+        },
+        {
+          "nome": "Rapel",
+          "pagina": 240
+        },
+        {
+          "nome": "Rapel – avançado",
+          "pagina": 241
+        },
+        {
+          "nome": "Rapel – instrutor",
+          "pagina": 242
+        },
+        {
+          "nome": "Remo",
+          "pagina": 242
+        },
+        {
+          "nome": "Saltos ornamentais",
+          "pagina": 243
+        },
+        {
+          "nome": "Salvamento de afogados",
+          "pagina": 243
+        },
+        {
+          "nome": "Salvamento de afogados – avançado",
+          "pagina": 244
+        },
+        {
+          "nome": "Segurança básica na água",
+          "pagina": 244
+        },
+        {
+          "nome": "Skate",
+          "pagina": 244
+        },
+        {
+          "nome": "Slackline",
+          "pagina": 245
+        },
+        {
+          "nome": "Softbol",
+          "pagina": 246
+        },
+        {
+          "nome": "Triathlon",
+          "pagina": 247
+        },
+        {
+          "nome": "Trilha de sinais",
+          "pagina": 247
+        },
+        {
+          "nome": "Troca de pins",
+          "pagina": 248
+        },
+        {
+          "nome": "Tênis de mesa",
+          "pagina": 247
+        },
+        {
+          "nome": "Vela",
+          "pagina": 248
+        },
+        {
+          "nome": "Viagem e turismo",
+          "pagina": 249
+        },
+        {
+          "nome": "Viagem e turismo – avançado",
+          "pagina": 250
+        },
+        {
+          "nome": "Vida silvestre",
+          "pagina": 250
+        },
+        {
+          "nome": "Vôlei",
+          "pagina": 251
+        },
+        {
+          "nome": "Waveboarding",
+          "pagina": 252
+        }
+      ]
+    },
+    {
+      "codigo": "CS",
+      "nome": "Ciência e Saúde",
+      "ordem": 6,
+      "especialidades": [
+        {
+          "nome": "Alerta vermelho",
+          "pagina": 255
+        },
+        {
+          "nome": "Anatomia humana básica",
+          "pagina": 255
+        },
+        {
+          "nome": "Bioquímica",
+          "pagina": 256
+        },
+        {
+          "nome": "Biossegurança",
+          "pagina": 257
+        },
+        {
+          "nome": "Cientistas cristãos",
+          "pagina": 257
+        },
+        {
+          "nome": "Coração e circulação",
+          "pagina": 258
+        },
+        {
+          "nome": "Digestão",
+          "pagina": 259
+        },
+        {
+          "nome": "Enfermagem básica",
+          "pagina": 259
+        },
+        {
+          "nome": "Experimentos científicos",
+          "pagina": 260
+        },
+        {
+          "nome": "Física",
+          "pagina": 260
+        },
+        {
+          "nome": "Habilidades em matemática I",
+          "pagina": 261
+        },
+        {
+          "nome": "Habilidades em matemática II",
+          "pagina": 261
+        },
+        {
+          "nome": "Hereditariedade",
+          "pagina": 262
+        },
+        {
+          "nome": "Higiene oral",
+          "pagina": 263
+        },
+        {
+          "nome": "Higiene oral – avançado",
+          "pagina": 263
+        },
+        {
+          "nome": "Metodologia de estudo",
+          "pagina": 264
+        },
+        {
+          "nome": "Microscopia",
+          "pagina": 264
+        },
+        {
+          "nome": "Nutrição",
+          "pagina": 265
+        },
+        {
+          "nome": "Nutrição – avançado",
+          "pagina": 266
+        },
+        {
+          "nome": "Ossos, músculos e articulações",
+          "pagina": 268
+        },
+        {
+          "nome": "Patrimônio histórico",
+          "pagina": 269
+        },
+        {
+          "nome": "Plantas medicinais",
+          "pagina": 269
+        },
+        {
+          "nome": "Prevenção de doenças tropicais",
+          "pagina": 270
+        },
+        {
+          "nome": "Primeiros socorros – avançado",
+          "pagina": 272
+        },
+        {
+          "nome": "Primeiros socorros – básico",
+          "pagina": 270
+        },
+        {
+          "nome": "Primeiros socorros – intermediário",
+          "pagina": 271
+        },
+        {
+          "nome": "Química",
+          "pagina": 272
+        },
+        {
+          "nome": "Reanimação cardiopulmonar",
+          "pagina": 273
+        },
+        {
+          "nome": "Remédios da natureza",
+          "pagina": 274
+        },
+        {
+          "nome": "Resgate básico",
+          "pagina": 275
+        },
+        {
+          "nome": "Sangue e defesas do corpo",
+          "pagina": 275
+        },
+        {
+          "nome": "Saúde e cura",
+          "pagina": 276
+        },
+        {
+          "nome": "Saúde mental",
+          "pagina": 277
+        },
+        {
+          "nome": "Sexualidade humana",
+          "pagina": 278
+        },
+        {
+          "nome": "Sistema nervoso",
+          "pagina": 279
+        },
+        {
+          "nome": "Sistema respiratório",
+          "pagina": 280
+        },
+        {
+          "nome": "Trânsito seguro",
+          "pagina": 280
+        },
+        {
+          "nome": "Vacinas",
+          "pagina": 281
+        },
+        {
+          "nome": "Zoonoses",
+          "pagina": 281
+        },
+        {
+          "nome": "Óptica",
+          "pagina": 267
+        }
+      ]
+    },
+    {
+      "codigo": "EB",
+      "nome": "Ensinos Bíblicos",
+      "ordem": 7,
+      "especialidades": [
+        {
+          "nome": "Adoração cristã",
+          "pagina": 91
+        },
+        {
+          "nome": "Apocalipse",
+          "pagina": 92
+        },
+        {
+          "nome": "Arqueologia bíblica",
+          "pagina": 92
+        },
+        {
+          "nome": "Arte da pregação cristã",
+          "pagina": 93
+        },
+        {
+          "nome": "Arte da pregação cristã – avançado",
+          "pagina": 93
+        },
+        {
+          "nome": "Arte de contar histórias cristãs",
+          "pagina": 94
+        },
+        {
+          "nome": "Arte em fantoches",
+          "pagina": 95
+        },
+        {
+          "nome": "Arte em fantoches – avançado",
+          "pagina": 95
+        },
+        {
+          "nome": "Asseio e cortesia cristã",
+          "pagina": 96
+        },
+        {
+          "nome": "Aventuras com Cristo",
+          "pagina": 97
+        },
+        {
+          "nome": "Aventuras com Cristo – avançado",
+          "pagina": 97
+        },
+        {
+          "nome": "Batismo",
+          "pagina": 135
+        },
+        {
+          "nome": "Boa conduta escolar",
+          "pagina": 98
+        },
+        {
+          "nome": "Braille",
+          "pagina": 98
+        },
+        {
+          "nome": "Ceia do Senhor",
+          "pagina": 135
+        },
+        {
+          "nome": "Cerimônias",
+          "pagina": 99
+        },
+        {
+          "nome": "Cidadania cristã",
+          "pagina": 100
+        },
+        {
+          "nome": "Colportagem",
+          "pagina": 101
+        },
+        {
+          "nome": "Conduta cristã",
+          "pagina": 138
+        },
+        {
+          "nome": "Criacionismo",
+          "pagina": 101
+        },
+        {
+          "nome": "Criacionismo – avançado",
+          "pagina": 102
+        },
+        {
+          "nome": "Criação do mundo",
+          "pagina": 131
+        },
+        {
+          "nome": "Crítico de mídia",
+          "pagina": 103
+        },
+        {
+          "nome": "Cultura sul-americana",
+          "pagina": 104
+        },
+        {
+          "nome": "Desfile com carros alegóricos",
+          "pagina": 105
+        },
+        {
+          "nome": "Deus Espírito Santo",
+          "pagina": 131
+        },
+        {
+          "nome": "Deus Filho",
+          "pagina": 131
+        },
+        {
+          "nome": "Deus Pai",
+          "pagina": 130
+        },
+        {
+          "nome": "Dom de profecia",
+          "pagina": 136
+        },
+        {
+          "nome": "Dons e ministérios espirituais",
+          "pagina": 136
+        },
+        {
+          "nome": "Dramatização cristã",
+          "pagina": 105
+        },
+        {
+          "nome": "Educação inclusiva",
+          "pagina": 106
+        },
+        {
+          "nome": "Escatologia",
+          "pagina": 107
+        },
+        {
+          "nome": "Escrituras sagradas",
+          "pagina": 129
+        },
+        {
+          "nome": "Espírito de Profecia",
+          "pagina": 108
+        },
+        {
+          "nome": "Estudo de línguas",
+          "pagina": 108
+        },
+        {
+          "nome": "Estudo de línguas – avançado",
+          "pagina": 109
+        },
+        {
+          "nome": "Etnologia missionária",
+          "pagina": 109
+        },
+        {
+          "nome": "Evangelismo pessoal",
+          "pagina": 110
+        },
+        {
+          "nome": "Evangelismo web",
+          "pagina": 111
+        },
+        {
+          "nome": "Evangelismo web – avançado",
+          "pagina": 112
+        },
+        {
+          "nome": "Experiência da salvação",
+          "pagina": 133
+        },
+        {
+          "nome": "Grande conflito",
+          "pagina": 132
+        },
+        {
+          "nome": "Historiador eclesiástico",
+          "pagina": 113
+        },
+        {
+          "nome": "Igreja",
+          "pagina": 134
+        },
+        {
+          "nome": "Inteligência emocional",
+          "pagina": 114
+        },
+        {
+          "nome": "Intercessor",
+          "pagina": 115
+        },
+        {
+          "nome": "Investigador bíblico",
+          "pagina": 116
+        },
+        {
+          "nome": "Lei de Deus",
+          "pagina": 136
+        },
+        {
+          "nome": "Liderança juvenil",
+          "pagina": 117
+        },
+        {
+          "nome": "Lives – transmissão de cultos online",
+          "pagina": 118
+        },
+        {
+          "nome": "Livro de Daniel",
+          "pagina": 119
+        },
+        {
+          "nome": "Língua de sinais",
+          "pagina": 118
+        },
+        {
+          "nome": "Língua de sinais – avançado",
+          "pagina": 118
+        },
+        {
+          "nome": "Marcação bíblica",
+          "pagina": 119
+        },
+        {
+          "nome": "Marcação bíblica – avançado",
+          "pagina": 120
+        },
+        {
+          "nome": "Matrimônio e família",
+          "pagina": 138
+        },
+        {
+          "nome": "Mensageira de Deus",
+          "pagina": 120
+        },
+        {
+          "nome": "Milênio e o fim do pecado",
+          "pagina": 140
+        },
+        {
+          "nome": "Ministério de Cristo no santuário celestial",
+          "pagina": 138
+        },
+        {
+          "nome": "Mordomia",
+          "pagina": 137
+        },
+        {
+          "nome": "Morte e ressurreição",
+          "pagina": 139
+        },
+        {
+          "nome": "Natureza da humanidade",
+          "pagina": 132
+        },
+        {
+          "nome": "Nova Terra",
+          "pagina": 140
+        },
+        {
+          "nome": "Pacificador",
+          "pagina": 121
+        },
+        {
+          "nome": "Pacificador – avançado",
+          "pagina": 121
+        },
+        {
+          "nome": "Parábolas de Jesus",
+          "pagina": 122
+        },
+        {
+          "nome": "Patriotismo",
+          "pagina": 122
+        },
+        {
+          "nome": "Pioneiros adventistas",
+          "pagina": 123
+        },
+        {
+          "nome": "Pregador evangelista",
+          "pagina": 123
+        },
+        {
+          "nome": "Pregador evangelista – avançado",
+          "pagina": 124
+        },
+        {
+          "nome": "Relacionamentos saudáveis",
+          "pagina": 124
+        },
+        {
+          "nome": "Remanescente e sua missão",
+          "pagina": 134
+        },
+        {
+          "nome": "Santuário",
+          "pagina": 125
+        },
+        {
+          "nome": "Segunda vinda de Cristo",
+          "pagina": 139
+        },
+        {
+          "nome": "Sonoplastia",
+          "pagina": 125
+        },
+        {
+          "nome": "Sonoplastia – avançado",
+          "pagina": 126
+        },
+        {
+          "nome": "Sábado",
+          "pagina": 137
+        },
+        {
+          "nome": "Temperança",
+          "pagina": 127
+        },
+        {
+          "nome": "Testemunho juvenil",
+          "pagina": 128
+        },
+        {
+          "nome": "Trindade",
+          "pagina": 130
+        },
+        {
+          "nome": "Unidade no corpo de Cristo",
+          "pagina": 135
+        },
+        {
+          "nome": "Vida familiar",
+          "pagina": 129
+        },
+        {
+          "nome": "Vida, morte e ressurreição de Cristo",
+          "pagina": 133
+        }
+      ]
+    },
+    {
+      "codigo": "EN",
+      "nome": "Estudos da Natureza",
+      "ordem": 8,
+      "especialidades": [
+        {
+          "nome": "Abelhas e vespas",
+          "pagina": 285
+        },
+        {
+          "nome": "Algas",
+          "pagina": 285
+        },
+        {
+          "nome": "Anfíbios",
+          "pagina": 286
+        },
+        {
+          "nome": "Anfíbios – avançado",
+          "pagina": 286
+        },
+        {
+          "nome": "Animais ameaçados de extinção",
+          "pagina": 287
+        },
+        {
+          "nome": "Animais migratórios",
+          "pagina": 288
+        },
+        {
+          "nome": "Animais nocivos",
+          "pagina": 288
+        },
+        {
+          "nome": "Animais noturnos",
+          "pagina": 289
+        },
+        {
+          "nome": "Animais peçonhentos",
+          "pagina": 289
+        },
+        {
+          "nome": "Aquarismo",
+          "pagina": 290
+        },
+        {
+          "nome": "Aranhas",
+          "pagina": 291
+        },
+        {
+          "nome": "Araras, papagaios e periquitos",
+          "pagina": 292
+        },
+        {
+          "nome": "Arbustos",
+          "pagina": 293
+        },
+        {
+          "nome": "Arbustos – avançado",
+          "pagina": 293
+        },
+        {
+          "nome": "Astronomia",
+          "pagina": 295
+        },
+        {
+          "nome": "Astronomia – avançado",
+          "pagina": 295
+        },
+        {
+          "nome": "Aves",
+          "pagina": 296
+        },
+        {
+          "nome": "Aves de estimação",
+          "pagina": 297
+        },
+        {
+          "nome": "Aves de rapina",
+          "pagina": 298
+        },
+        {
+          "nome": "Aves domésticas",
+          "pagina": 298
+        },
+        {
+          "nome": "Aves – avançado",
+          "pagina": 296
+        },
+        {
+          "nome": "Bactérias",
+          "pagina": 299
+        },
+        {
+          "nome": "Briófitas",
+          "pagina": 300
+        },
+        {
+          "nome": "Bromélias",
+          "pagina": 300
+        },
+        {
+          "nome": "Cactos",
+          "pagina": 301
+        },
+        {
+          "nome": "Cactos – avançado",
+          "pagina": 301
+        },
+        {
+          "nome": "Camelos",
+          "pagina": 302
+        },
+        {
+          "nome": "Cetáceos",
+          "pagina": 303
+        },
+        {
+          "nome": "Cigarras",
+          "pagina": 304
+        },
+        {
+          "nome": "Citologia",
+          "pagina": 304
+        },
+        {
+          "nome": "Ciência planetária",
+          "pagina": 303
+        },
+        {
+          "nome": "Climatologia",
+          "pagina": 305
+        },
+        {
+          "nome": "Climatologia – avançado",
+          "pagina": 305
+        },
+        {
+          "nome": "Compostagem doméstica",
+          "pagina": 306
+        },
+        {
+          "nome": "Conservação ambiental",
+          "pagina": 306
+        },
+        {
+          "nome": "Crustáceos",
+          "pagina": 308
+        },
+        {
+          "nome": "Cães",
+          "pagina": 302
+        },
+        {
+          "nome": "Dinossauros",
+          "pagina": 308
+        },
+        {
+          "nome": "Ecologia",
+          "pagina": 309
+        },
+        {
+          "nome": "Ecologia – avançado",
+          "pagina": 310
+        },
+        {
+          "nome": "Energias renováveis",
+          "pagina": 310
+        },
+        {
+          "nome": "Equinodermos",
+          "pagina": 311
+        },
+        {
+          "nome": "Ervas",
+          "pagina": 312
+        },
+        {
+          "nome": "Estuário",
+          "pagina": 312
+        },
+        {
+          "nome": "Eucaliptos",
+          "pagina": 313
+        },
+        {
+          "nome": "Fauna marinha",
+          "pagina": 313
+        },
+        {
+          "nome": "Felinos",
+          "pagina": 314
+        },
+        {
+          "nome": "Felinos – avançado",
+          "pagina": 315
+        },
+        {
+          "nome": "Fisiologia vegetal",
+          "pagina": 315
+        },
+        {
+          "nome": "Flores",
+          "pagina": 316
+        },
+        {
+          "nome": "Flores – avançado",
+          "pagina": 316
+        },
+        {
+          "nome": "Formigas",
+          "pagina": 317
+        },
+        {
+          "nome": "Fungos",
+          "pagina": 318
+        },
+        {
+          "nome": "Fósseis",
+          "pagina": 317
+        },
+        {
+          "nome": "Geologia",
+          "pagina": 319
+        },
+        {
+          "nome": "Gramíneas",
+          "pagina": 320
+        },
+        {
+          "nome": "Insetos",
+          "pagina": 320
+        },
+        {
+          "nome": "Insetos – avançado",
+          "pagina": 321
+        },
+        {
+          "nome": "Líquens",
+          "pagina": 322
+        },
+        {
+          "nome": "Mamíferos",
+          "pagina": 322
+        },
+        {
+          "nome": "Mamíferos marinhos",
+          "pagina": 323
+        },
+        {
+          "nome": "Mamíferos – avançado",
+          "pagina": 322
+        },
+        {
+          "nome": "Mariposas e borboletas",
+          "pagina": 324
+        },
+        {
+          "nome": "Marsupiais",
+          "pagina": 324
+        },
+        {
+          "nome": "Mimetismo e camuflagem",
+          "pagina": 325
+        },
+        {
+          "nome": "Moluscos",
+          "pagina": 325
+        },
+        {
+          "nome": "Moluscos – avançado",
+          "pagina": 326
+        },
+        {
+          "nome": "Morcegos",
+          "pagina": 327
+        },
+        {
+          "nome": "Morcegos – avançado",
+          "pagina": 328
+        },
+        {
+          "nome": "Odonata",
+          "pagina": 328
+        },
+        {
+          "nome": "Orquídeas",
+          "pagina": 329
+        },
+        {
+          "nome": "Orquídeas – avançado",
+          "pagina": 329
+        },
+        {
+          "nome": "Palmeiras",
+          "pagina": 330
+        },
+        {
+          "nome": "Peixes",
+          "pagina": 330
+        },
+        {
+          "nome": "Peixes ornamentais",
+          "pagina": 331
+        },
+        {
+          "nome": "Pequenos mamíferos de estimação",
+          "pagina": 332
+        },
+        {
+          "nome": "Plantas carnívoras",
+          "pagina": 333
+        },
+        {
+          "nome": "Plantas caseiras",
+          "pagina": 333
+        },
+        {
+          "nome": "Plantas silvestres comestíveis",
+          "pagina": 334
+        },
+        {
+          "nome": "Poríferos e cnidários",
+          "pagina": 335
+        },
+        {
+          "nome": "Preservação de recursos hídricos",
+          "pagina": 335
+        },
+        {
+          "nome": "Primatas",
+          "pagina": 336
+        },
+        {
+          "nome": "Protozoários",
+          "pagina": 337
+        },
+        {
+          "nome": "Quedas d'água",
+          "pagina": 337
+        },
+        {
+          "nome": "Quelônios",
+          "pagina": 338
+        },
+        {
+          "nome": "Rastreio de animais",
+          "pagina": 339
+        },
+        {
+          "nome": "Rastreio de animais – avançado",
+          "pagina": 339
+        },
+        {
+          "nome": "Rebanhos domésticos",
+          "pagina": 340
+        },
+        {
+          "nome": "Reciclagem e sustentabilidade",
+          "pagina": 340
+        },
+        {
+          "nome": "Reciclagem e sustentabilidade – avançado",
+          "pagina": 341
+        },
+        {
+          "nome": "Rochas e minerais",
+          "pagina": 342
+        },
+        {
+          "nome": "Rochas e minerais – avançado",
+          "pagina": 343
+        },
+        {
+          "nome": "Répteis",
+          "pagina": 341
+        },
+        {
+          "nome": "Répteis – avançado",
+          "pagina": 342
+        },
+        {
+          "nome": "Samambaias",
+          "pagina": 343
+        },
+        {
+          "nome": "Sementes",
+          "pagina": 344
+        },
+        {
+          "nome": "Sementes – avançado",
+          "pagina": 344
+        },
+        {
+          "nome": "Solos",
+          "pagina": 345
+        },
+        {
+          "nome": "Tubarões",
+          "pagina": 345
+        },
+        {
+          "nome": "Vermes",
+          "pagina": 346
+        },
+        {
+          "nome": "Vermes – avançado",
+          "pagina": 346
+        },
+        {
+          "nome": "Vulcões",
+          "pagina": 347
+        },
+        {
+          "nome": "Vírus",
+          "pagina": 347
+        },
+        {
+          "nome": "Árvores",
+          "pagina": 293
+        },
+        {
+          "nome": "Árvores – avançado",
+          "pagina": 294
+        }
+      ]
+    },
+    {
+      "codigo": "HD",
+      "nome": "Habilidades Domésticas",
+      "ordem": 9,
+      "especialidades": [
+        {
+          "nome": "Arte culinária",
+          "pagina": 351
+        },
+        {
+          "nome": "Arte culinária – avançado",
+          "pagina": 351
+        },
+        {
+          "nome": "Comidas típicas",
+          "pagina": 352
+        },
+        {
+          "nome": "Congelamento de alimentos",
+          "pagina": 352
+        },
+        {
+          "nome": "Costura básica",
+          "pagina": 353
+        },
+        {
+          "nome": "Cuidado de bebês",
+          "pagina": 354
+        },
+        {
+          "nome": "Cuidados da casa",
+          "pagina": 354
+        },
+        {
+          "nome": "Desidratação de alimentos",
+          "pagina": 355
+        },
+        {
+          "nome": "Orçamento familiar",
+          "pagina": 355
+        },
+        {
+          "nome": "Panificação",
+          "pagina": 356
+        },
+        {
+          "nome": "Produção de pizza",
+          "pagina": 357
+        },
+        {
+          "nome": "Técnicas de fazer conserva",
+          "pagina": 357
+        },
+        {
+          "nome": "Técnicas de lavanderia",
+          "pagina": 358
+        }
+      ]
+    }
+  ],
+  "mestrados": [
+    {
+      "nome": "Mestrado em ADRA",
+      "pagina": 363
+    },
+    {
+      "nome": "Mestrado em aquática",
+      "pagina": 365
+    },
+    {
+      "nome": "Mestrado em artes e habilidades manuais",
+      "pagina": 363
+    },
+    {
+      "nome": "Mestrado em atividades agrícolas",
+      "pagina": 363
+    },
+    {
+      "nome": "Mestrado em atividades profissionais",
+      "pagina": 364
+    },
+    {
+      "nome": "Mestrado em atividades recreativas",
+      "pagina": 366
+    },
+    {
+      "nome": "Mestrado em botânica",
+      "pagina": 368
+    },
+    {
+      "nome": "Mestrado em ciência e tecnologia",
+      "pagina": 364
+    },
+    {
+      "nome": "Mestrado em ecologia",
+      "pagina": 368
+    },
+    {
+      "nome": "Mestrado em ensinos bíblicos",
+      "pagina": 369
+    },
+    {
+      "nome": "Mestrado em esportes",
+      "pagina": 365
+    },
+    {
+      "nome": "Mestrado em habilidades domésticas",
+      "pagina": 369
+    },
+    {
+      "nome": "Mestrado em saúde",
+      "pagina": 367
+    },
+    {
+      "nome": "Mestrado em testificação",
+      "pagina": 363
+    },
+    {
+      "nome": "Mestrado em vida campestre",
+      "pagina": 366
+    },
+    {
+      "nome": "Mestrado em zoologia",
+      "pagina": 367
+    }
+  ]
+}

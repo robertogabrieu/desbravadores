@@ -1,0 +1,338 @@
+{
+  "fonte": "Caderno_de_Atividades_2_-_Companheiro_11_ANOS.pdf",
+  "classes": [
+    {
+      "nome": "Companheiro",
+      "idade": 11,
+      "tipo": "REGULAR",
+      "trilha": "INDIVIDUAL",
+      "secoes": [
+        {
+          "codigo": "G",
+          "nome": "Gerais",
+          "ordem": 1,
+          "requisitos": [
+            {
+              "codigo": "G1",
+              "texto": "Ter, no mínimo, 11 anos de idade.",
+              "campo": false,
+              "pagina": 3
+            },
+            {
+              "codigo": "G2",
+              "texto": "Ser membro ativo do Clube de Desbravadores.",
+              "campo": false,
+              "pagina": 4
+            },
+            {
+              "codigo": "G3",
+              "texto": "Ilustrar de forma criativa o significado do Voto do Desbravador.",
+              "campo": false,
+              "pagina": 5
+            },
+            {
+              "codigo": "G4",
+              "texto": "Ler o livro do Clube de Leitura Juvenil do ano em curso e escrever um parágrafo sobre o que mais lhe chamou atenção ou considerou importante.",
+              "campo": false,
+              "pagina": 6
+            },
+            {
+              "codigo": "G5",
+              "texto": "Ler o livro Caminho a Cristo.",
+              "campo": false,
+              "pagina": 7
+            },
+            {
+              "codigo": "G6",
+              "texto": "Participar ativamente da classe bíblica do seu clube.",
+              "campo": false,
+              "pagina": 7
+            }
+          ]
+        },
+        {
+          "codigo": "DE",
+          "nome": "Descoberta espiritual",
+          "ordem": 2,
+          "requisitos": [
+            {
+              "codigo": "DE1",
+              "texto": "Memorizar e demonstrar o seu conhecimento: a) 10 Mandamentos: A Lei de Deus dada a Moisés. b) 27 livros do Novo Testamento e demonstrar habilidade para encontrar qualquer um deles.",
+              "campo": false,
+              "pagina": 7
+            },
+            {
+              "codigo": "DE2",
+              "texto": "Ler e explicar os versos abaixo: Isaías 41:9-10; Provérbios 22:6; Salmo 8; Hebreus 13:5; I João 1:9.",
+              "campo": false,
+              "pagina": 10
+            },
+            {
+              "codigo": "DE3",
+              "texto": "Leitura bíblica: Lv 11; Nm 9:15-23; Nm 11; Nm 12; Nm 13; Nm 14:1-38; Nm 16; Nm 17; Nm 20:1-13, 22-29; Nm 21:4-9; Nm 22; Nm 23 e 24:1-10; Dt 1:1-17 e 4:1-8; Dt 32:1-43; Dt 33; Dt 34; Js 1; Js 2; Js 3; Js 4; Js 5:10 e 6; Js 7; Js 9; Js 24:1-15 e 29; Jz 6; Jz 7; Jz 13:1-18 e 14; Jz 15; Jz 16; Rt 1; Rt 2 e 3; Rt 4; 1 Sm 1; 1 Sm 2; 1 Sm 3; 1 Sm 4; 1 Sm 5; 1 Sm 6; 1 Sm 8; 1 Sm 9; 1 Sm 10 e 11:12-15; 1 Sm 12; 1 Sm 13; 1 Sm 15; 1 Sm 16; 1 Sm 17; 1 Sm 18:1-19; 1 Sm 20; 1 Sm 21:1-7 e 22; 1 Sm 24; 1 Sm 25; 1 Sm 26; 1 Sm 31; 2 Sm 1; 2 Sm 5; 2 Sm 6; 2 Sm 7; 2 Sm 9; 2 Sm 11 e 12:1-25; 2 Sm 15; 2 Sm 18.",
+              "campo": false,
+              "pagina": 11
+            },
+            {
+              "codigo": "DE4",
+              "texto": "Em consulta com o seu conselheiro, escolher um dos seguintes temas: a) Uma parábola de Jesus; b) Um milagre de Jesus; c) O Sermão da Montanha; d) Um sermão sobre a Segunda Vinda de Cristo. Escolher um item abaixo para demonstrar seu conhecimento sobre o tema escolhido: a) Troca de ideias com o seu conselheiro; b) Atividade que integre todo o grupo; c) Redação. No caso de escolha dos itens a e b, fazer uma encenação sobre o tema na reunião do Clube. No caso de escolha dos itens c e d, fazer um devocional sobre o tema na reunião do Clube.",
+              "campo": false,
+              "pagina": 11
+            }
+          ]
+        },
+        {
+          "codigo": "SO",
+          "nome": "Servindo aos outros",
+          "ordem": 3,
+          "requisitos": [
+            {
+              "codigo": "SO1",
+              "texto": "Planejar e dedicar pelo menos duas horas servindo sua comunidade e demonstrando companheirismo a alguém, de maneira prática. Atividades sugeridas: visita a hospital, orfanato, creche ou asilo; distribuição de alimentos aos necessitados; ajuda a uma pessoa carente (doente, idoso, portador de necessidades especiais) em alguma de suas atividades diárias.",
+              "campo": false,
+              "pagina": 12
+            },
+            {
+              "codigo": "SO2",
+              "texto": "Dedicar pelo menos cinco horas participando de um projeto que beneficiará sua comunidade ou igreja. Atividades sugeridas: plantar flores para presentear; participar de melhorias ecológicas; participar de reforma da igreja ou sala; ajudar no trabalho da secretaria da igreja; ser fiel e ajudar a fortalecer o grupo de juvenis da igreja.",
+              "campo": false,
+              "pagina": 13
+            }
+          ]
+        },
+        {
+          "codigo": "DA",
+          "nome": "Desenvolvendo amizade",
+          "ordem": 4,
+          "requisitos": [
+            {
+              "codigo": "DA1",
+              "texto": "Conversar com seu conselheiro ou unidade sobre como respeitar pessoas de diferentes culturas, raça e sexo.",
+              "campo": false,
+              "pagina": 14
+            }
+          ]
+        },
+        {
+          "codigo": "SA",
+          "nome": "Saúde e aptidão física",
+          "ordem": 5,
+          "requisitos": [
+            {
+              "codigo": "SA1",
+              "texto": "Memorizar e explicar I Coríntios 9:24-27.",
+              "campo": false,
+              "pagina": 15
+            },
+            {
+              "codigo": "SA2",
+              "texto": "Conversar com seu líder sobre a aptidão física e os exercícios físicos regulares que se relacionam com uma vida saudável.",
+              "campo": false,
+              "pagina": 16
+            },
+            {
+              "codigo": "SA3",
+              "texto": "Aprender sobre os prejuízos que o cigarro causa à saúde e escrever seu compromisso de não fazer uso do fumo.",
+              "campo": false,
+              "pagina": 17
+            },
+            {
+              "codigo": "SA4",
+              "texto": "Completar uma das seguintes especialidades: a) Natação principiante II; b) Acampamento II.",
+              "campo": false,
+              "pagina": 19
+            }
+          ]
+        },
+        {
+          "codigo": "OL",
+          "nome": "Organização e liderança",
+          "ordem": 6,
+          "requisitos": [
+            {
+              "codigo": "OL1",
+              "texto": "Dirigir ou colaborar em uma meditação criativa para sua unidade ou Clube.",
+              "campo": false,
+              "pagina": 20
+            },
+            {
+              "codigo": "OL2",
+              "texto": "Ajudar no planejamento de uma excursão ou acampamento com sua unidade ou clube, envolvendo pelo menos um pernoite.",
+              "campo": true,
+              "pagina": 22
+            }
+          ]
+        },
+        {
+          "codigo": "EN",
+          "nome": "Estudo da natureza",
+          "ordem": 7,
+          "requisitos": [
+            {
+              "codigo": "EN1",
+              "texto": "Participar de jogos na natureza ou caminhada ecológica, pelo período de uma hora.",
+              "campo": true,
+              "pagina": 23
+            },
+            {
+              "codigo": "EN2",
+              "texto": "Completar duas das seguintes especialidades: a) Anfíbios; b) Aves; c) Aves domésticas; d) Pecuária; e) Répteis; f) Moluscos; g) Árvores; h) Arbustos.",
+              "campo": false,
+              "pagina": 24
+            },
+            {
+              "codigo": "EN3",
+              "texto": "Recapitular o estudo da Criação e fazer um diário por sete dias registrando suas observações do que foi criado em cada dia correspondente.",
+              "campo": false,
+              "pagina": 31
+            }
+          ]
+        },
+        {
+          "codigo": "AC",
+          "nome": "Arte de acampar",
+          "ordem": 8,
+          "requisitos": [
+            {
+              "codigo": "AC1",
+              "texto": "Descobrir os pontos cardeais sem a ajuda de uma bússola e desenhar a Rosa dos Ventos.",
+              "campo": true,
+              "pagina": 38
+            },
+            {
+              "codigo": "AC2",
+              "texto": "Participar de um acampamento de final de semana e fazer um relatório destacando o que mais lhe impressionou positivamente.",
+              "campo": true,
+              "pagina": 39
+            },
+            {
+              "codigo": "AC3",
+              "texto": "Aprender ou recapitular os seguintes nós: a) Oito; b) Volta do salteador; c) Duplo; d) Caminhoneiro; e) Direito; f) Volta do fiel; g) Escota; h) Lais de guia; i) Simples.",
+              "campo": false,
+              "pagina": 39
+            }
+          ]
+        },
+        {
+          "codigo": "EV",
+          "nome": "Enriquecendo a vida",
+          "ordem": 9,
+          "requisitos": [
+            {
+              "codigo": "EV1",
+              "texto": "Completar uma especialidade não realizada anteriormente na seção de Artes e Habilidades Manuais.",
+              "campo": false,
+              "pagina": 41
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Companheiro de Excursionismo",
+      "idade": 11,
+      "tipo": "AVANCADA",
+      "trilha": "INDIVIDUAL",
+      "classeBase": "Companheiro",
+      "secoes": [
+        {
+          "codigo": "AV",
+          "nome": "Classe avançada",
+          "ordem": 1,
+          "requisitos": [
+            {
+              "codigo": "AV1",
+              "texto": "Aprender e demonstrar a composição, significado e uso correto da Bandeira Nacional.",
+              "campo": false,
+              "pagina": 41
+            },
+            {
+              "codigo": "AV2",
+              "texto": "Ler a primeira visão de Ellen White e discutir como Deus usa os profetas para apresentar Sua mensagem à igreja (ver Primeiros Escritos, págs. 13 a 20).",
+              "campo": false,
+              "pagina": 43
+            },
+            {
+              "codigo": "AV3",
+              "texto": "Participar de uma atividade missionária ou comunitária, envolvendo também um amigo.",
+              "campo": false,
+              "pagina": 47
+            },
+            {
+              "codigo": "AV4",
+              "texto": "Conversar com seu conselheiro ou unidade sobre como demonstrar respeito pelos seus pais ou responsáveis e fazer uma lista mostrando como cuidam de você.",
+              "campo": false,
+              "pagina": 47
+            },
+            {
+              "codigo": "AV5",
+              "texto": "Participar de uma caminhada de 6 quilômetros, preparando, ao final, um relatório de uma página.",
+              "campo": true,
+              "pagina": 48
+            },
+            {
+              "codigo": "AV6",
+              "texto": "Escolher um dos seguintes itens: a) Assistir a um \"Curso como deixar de fumar\"; b) Assistir a dois filmes sobre saúde; c) Elaborar um cartaz sobre o prejuízo das drogas; d) Ajudar a preparar material para uma exposição ou passeata sobre saúde; e) Pesquisar na internet informações sobre saúde e escrever uma página sobre os resultados encontrados.",
+              "campo": false,
+              "pagina": 49
+            },
+            {
+              "codigo": "AV7",
+              "texto": "Identificar e descrever 12 aves nativas e 12 árvores nativas.",
+              "campo": true,
+              "pagina": 51
+            },
+            {
+              "codigo": "AV8",
+              "texto": "Participar de uma das seguintes cerimônias e sugerir ideias criativas de como realizá-las: a) Investidura; b) Admissão em lenço; c) Dia do Desbravador.",
+              "campo": false,
+              "pagina": 53
+            },
+            {
+              "codigo": "AV9",
+              "texto": "Preparar uma refeição em uma fogueira durante um acampamento do clube ou unidade.",
+              "campo": true,
+              "pagina": 54
+            },
+            {
+              "codigo": "AV10",
+              "texto": "Preparar um quadro com 15 nós diferentes.",
+              "campo": false,
+              "pagina": 54
+            },
+            {
+              "codigo": "AV11",
+              "texto": "Completar a especialidade de Excursionismo pedestre.",
+              "campo": true,
+              "pagina": 55
+            },
+            {
+              "codigo": "AV12",
+              "texto": "Completar uma especialidade não realizada anteriormente: a) Habilidades domésticas; b) Ciência e saúde; c) Atividades missionárias; d) Atividades agrícolas.",
+              "campo": false,
+              "pagina": 56
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "avisos": [
+    "Caderno sem camada de texto: tudo lido como imagem; texto conferido visualmente, sem ruído de OCR.",
+    "Página 41: a classe avançada (Companheiro de Excursionismo) é numerada de 1 a 12 seguidos no caderno, sem títulos de seção. A divisão em seções (G, DE, SO, DA, SA, EN, OL, AC, EV) foi inferida pelo assunto de cada requisito; no caderno os números são 1 bandeira, 2 primeira visão, 3 atividade missionária, 4 respeito aos pais, 5 caminhada de 6 km, 6 escolha de item de saúde, 7 aves e árvores, 8 cerimônias, 9 refeição na fogueira, 10 quadro de nós, 11 excursionismo pedestre, 12 especialidade.",
+    "Página 41: o nome oficial da avançada é 'Companheiro de Excursionismo' na capa da seção; o cabeçalho impresso diz 'Companheiro de Excursionista'. Usado 'Companheiro de Excursionismo'; conferir.",
+    "Seção IX do caderno chama-se 'Estilo de vida'; mapeada para EV (Enriquecendo a vida) conforme a tabela do briefing. A seção III aparece como 'Servindo a outros'.",
+    "Requisito G3 (Voto do Desbravador) começa na página 4 (fim) mas o enunciado aparece na página 5.",
+    "Página 11 (DE3): a lista de leituras bíblicas foi transcrita da imagem; algumas referências são ambíguas no impresso (ex.: 'Js 5:10;6' reconstruído como 'Js 5:10 e 6'; 'Js 24:1-15; 29'; 'Nm 23; 24:1-10'). Conferir com a Bíblia se necessário.",
+    "Página 11 (DE4): incluídas as instruções de encenação/devocional no texto porque definem o que fazer conforme a escolha.",
+    "SA4 (página 19): campo=false. A opção Acampamento II é de campo e a opção Natação principiante II é na piscina; requisito misto. As especialidades (10 e 14 itens) não foram detalhadas, só listadas as opções.",
+    "EN2 (página 24): campo=false. As oito especialidades (Anfíbios, Aves, Aves domésticas, Pecuária, Répteis, Moluscos, Árvores, Arbustos) têm itens de observação em campo, mas o requisito é escolher duas; itens internos não foram extraídos.",
+    "AC3 regular (página 39): nós marcado campo=false; o caderno pede só aprender e descrever o uso prático.",
+    "AC1 regular (página 38): campo=true por ser orientação pelo sol no terreno, embora o caderno traga exercício em papel.",
+    "Avançada AC3 (página 55): especialidade de Excursionismo pedestre marcada campo=true (caminhadas de 8, 16 e 24 km); itens internos não foram extraídos.",
+    "Avançada EN1 (página 51): campo=true (identificar aves e árvores nativas); no caderno é feito por colagem de fotos.",
+    "Avançada EV1 (página 56): o texto de 'Completar uma especialidade não realizada anteriormente' lista as áreas a), b), c), d).",
+    "Fora do escopo e ignorados: páginas 1-2 (capa, dados pessoais, informações médicas), 57-58 (ficha de autorização), 59 (avaliação e autorização para investidura), 60 (contracapa).",
+    "Padronização: a avançada 'Companheiro de Excursionismo' foi reunida na seção única AV, em ordem de página; códigos renumerados (G1→AV1, DE1→AV2, SO1→AV3, DA1→AV4, SA1→AV5, SA2→AV6, EN1→AV7, OL1→AV8, AC1→AV9, AC2→AV10, AC3→AV11, EV1→AV12). Conferir a ordem com a numeração impressa no caderno."
+  ]
+}

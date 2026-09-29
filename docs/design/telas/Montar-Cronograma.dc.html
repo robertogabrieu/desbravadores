@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Montar cronograma da classe</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;background:#E9E5DB}a{color:#1F4D3A}a:hover{color:#163828}</style>
+</helmet>
+<div style="width: 1280px; height: 832px; box-sizing: border-box; display: flex; background: #F4F1EA; color: #1B221F; font-family: Figtree, system-ui, sans-serif; overflow: hidden">
+<aside style="width: 248px; flex-shrink: 0; background: #1F4D3A; color: #FFFFFF; display: flex; flex-direction: column; padding: 22px 14px; gap: 22px; box-sizing: border-box">
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 6px">
+<span style="width: 38px; height: 38px; border-radius: 11px; background: #F3E3C8; color: #1F4D3A; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M15.5 8.5l-2 5-5 2 2-5z"></path></svg></span>
+<span style="display: flex; flex-direction: column"><span style="font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 16px; line-height: 1.1">Aplicativo do Desbravador</span><span style="font-size: 12px; color: #CFE0D6">[Nome do Clube]</span></span>
+</div>
+<nav aria-label="Administração" style="display: flex; flex-direction: column; gap: 2px">
+<a href="Adm-Inicio.dc.html" style="height: 42px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 600; color: #CFE0D6"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7v9h-5v-6h-6v6H4z"></path></svg>Visão geral</a>
+<a href="Adm-Desbravadores.dc.html" style="height: 42px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 600; color: #CFE0D6"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 4.5a3.5 3.5 0 0 1 0 7M18 14c2 .8 3 3 3 6"></path></svg>Desbravadores</a>
+<a href="Adm-Usuarios.dc.html" style="height: 42px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 600; color: #CFE0D6"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path></svg>Usuários</a>
+<a href="Adm-Unidades.dc.html" style="height: 42px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 600; color: #CFE0D6"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h12l-2 4 2 4H5"></path></svg>Unidades</a>
+<a href="Adm-Classes.dc.html" style="height: 42px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 600; color: #CFE0D6"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"></path><path d="M4 19V5"></path></svg>Classes e especialidades</a>
+<a href="Adm-Calendario.dc.html" style="height: 42px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 600; color: #CFE0D6"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>Calendário do clube</a>
+<a href="Montar-Cronograma.dc.html" aria-current="page" style="height: 42px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 700; background: #F3E3C8; color: #1F4D3A"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 6h10M10 12h10M10 18h10"></path><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"></path></svg>Cronogramas</a>
+<a href="Adm-Ranking.dc.html" style="height: 42px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 600; color: #CFE0D6"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"></path><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8"></path></svg>Ranking</a>
+<a href="Adm-Relatorios.dc.html" style="height: 42px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 600; color: #CFE0D6"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>Relatórios</a>
+</nav>
+<div style="flex-grow: 1"></div>
+<div style="display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 12px; background: #163828">
+<span style="width: 36px; height: 36px; border-radius: 18px; background: #F3E3C8; color: #1F4D3A; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px">AD</span>
+<span style="display: flex; flex-direction: column; flex-grow: 1"><span style="font-size: 14px; font-weight: 700">Diretoria</span><span style="font-size: 12px; color: #CFE0D6">Perfil Adm</span></span>
+<a href="Main.dc.html" aria-label="Sair" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; color: #CFE0D6"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"></path></svg></a>
+</div>
+</aside>
+
+<main style="flex-grow: 1; min-width: 0; padding: 22px 28px 22px 32px; display: flex; flex-direction: column; gap: 14px; box-sizing: border-box">
+<header style="display: flex; align-items: flex-end; gap: 16px">
+<div style="flex-grow: 1; display: flex; flex-direction: column; gap: 6px">
+<span style="display: flex; align-items: center; gap: 8px"><span style="font-size: 12px; font-weight: 800; color: #FFFFFF; background: #B3362F; padding: 4px 10px; border-radius: 999px">Companheiro</span><span style="font-size: 13px; font-weight: 600; color: #5B645F">2º semestre 2026 · reuniões aos domingos, 9h15</span></span>
+<h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 28px; font-weight: 800">Montar cronograma da classe</h1>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end">
+<span style="font-size: 12px; font-weight: 700; color: #5B645F">Quem monta este cronograma</span>
+<div role="radiogroup" aria-label="Quem monta" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; background: #E8E3D7; padding: 4px; border-radius: 12px; width: 300px">
+<button type="button" role="radio" aria-checked="{{isAdm}}" onClick="{{pickAdm}}" style="{{tabAdm}}">Adm</button>
+<button type="button" role="radio" aria-checked="{{isInstr}}" onClick="{{pickInstr}}" style="{{tabInstr}}">Instrutora Priscila</button>
+</div>
+</div>
+<button type="button" style="height: 44px; padding: 0 18px; border-radius: 12px; border: 0; background: #1F4D3A; color: #FFFFFF; font-family: inherit; font-weight: 700; font-size: 14px">Publicar cronograma</button>
+</header>
+
+<div style="{{aviso}}">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path></svg>
+<span>{{avisoTxt}}</span>
+</div>
+
+<div style="display: flex; gap: 14px; flex-grow: 1; min-height: 0">
+<section aria-label="Requisitos do caderno" style="width: 340px; flex-shrink: 0; background: #FFFFFF; border-radius: 18px; display: flex; flex-direction: column; overflow: hidden">
+<div style="padding: 14px 16px 10px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid #EFEBE1">
+<div style="display: flex; justify-content: space-between; align-items: baseline"><h2 style="margin: 0; font-size: 15px; font-weight: 800">Caderno de Companheiro</h2><span style="font-size: 13px; font-weight: 700">{{feitos}}/{{totalR}} agendados</span></div>
+<div style="height: 6px; border-radius: 3px; background: #F1DAD8"><div style="{{progBar}}"></div></div>
+<span style="font-size: 12px; color: #5B645F">1. Escolha um requisito · 2. Clique em “Colocar aqui” na data</span>
+</div>
+<div style="flex-grow: 1; overflow-y: auto; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px">
+<sc-for list="{{reqs}}" as="r" hint-placeholder-count="12">
+<button type="button" aria-pressed="{{r.sel}}" onClick="{{r.pick}}" style="{{r.btn}}">
+<span style="width: 40px; flex-shrink: 0; font-size: 11px; font-weight: 800; color: #5B645F">{{r.cod}}</span>
+<span style="flex-grow: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0">
+<span style="font-size: 13px; font-weight: 700; line-height: 1.3">{{r.nome}}</span>
+<span style="display: flex; gap: 6px; align-items: center">
+<sc-if value="{{r.campo}}" hint-placeholder-val="{{false}}"><span style="font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 5px; background: #E6F0D4; color: #3F6212">CAMPO</span></sc-if>
+<span style="{{r.stStyle}}">{{r.st}}</span>
+</span>
+</span>
+</button>
+</sc-for>
+<span style="font-size: 12px; color: #5B645F; padding: 8px 6px">Mostrando um trecho dos 50 requisitos do caderno.</span>
+</div>
+</section>
+
+<section aria-label="Datas do semestre" style="flex-grow: 1; min-width: 0; background: #FFFFFF; border-radius: 18px; display: flex; flex-direction: column; overflow: hidden">
+<div style="padding: 14px 18px; display: flex; align-items: center; gap: 14px; border-bottom: 1px solid #EFEBE1">
+<h2 style="margin: 0; font-size: 15px; font-weight: 800; flex-grow: 1">Datas · outubro a dezembro</h2>
+<a href="Adm-Calendario.dc.html" style="font-size: 13px; font-weight: 700">Ver calendário do clube</a>
+</div>
+<div style="flex-grow: 1; overflow-y: auto; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px">
+<sc-for list="{{datas}}" as="d" hint-placeholder-count="12">
+<div style="{{d.row}}">
+<div style="width: 64px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1">
+<span style="font-size: 11px; font-weight: 700; color: #5B645F">{{d.sem}}</span>
+<span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 800">{{d.dia}}</span>
+<span style="font-size: 11px; font-weight: 700; color: #5B645F">{{d.mes}}</span>
+</div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 8px 0">
+<sc-if value="{{d.temEvento}}" hint-placeholder-val="{{false}}"><span style="{{d.evStyle}}">{{d.evento}}</span></sc-if>
+<div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center">
+<sc-for list="{{d.chips}}" as="c" hint-placeholder-count="1">
+<span style="display: flex; align-items: center; gap: 4px; height: 30px; padding: 0 4px 0 10px; border-radius: 8px; background: #F9ECEB; color: #7F1D1D; font-size: 12px; font-weight: 700">{{c.cod}} · {{c.curto}}<button type="button" aria-label="Tirar desta data" onClick="{{c.remover}}" style="width: 24px; height: 24px; border: 0; border-radius: 6px; background: transparent; color: #7F1D1D; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></span>
+</sc-for>
+<sc-if value="{{d.vazio}}" hint-placeholder-val="{{false}}"><span style="font-size: 12px; color: #8A918D">{{d.vazioTxt}}</span></sc-if>
+</div>
+</div>
+<sc-if value="{{d.podeColocar}}" hint-placeholder-val="{{false}}">
+<button type="button" onClick="{{d.colocar}}" style="{{d.btn}}">Colocar aqui</button>
+</sc-if>
+</div>
+</sc-for>
+</div>
+</section>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":832}}'>
+class Component extends DCLogic {
+constructor(p) {
+super(p);
+this.state = { quem: 'instr', sel: 'DE2', r: [
+{ c: 'G3', n: 'Ilustrar o Voto do Desbravador', s: 'Ilustrar o Voto', f: false, d: '10-04' },
+{ c: 'DE1', n: 'Memorizar e demonstrar os 10 Mandamentos', s: '10 Mandamentos', f: false, d: '10-04' },
+{ c: 'G4', n: 'Ler o livro do Clube de Leitura do ano', s: 'Clube de Leitura', f: false, d: null },
+{ c: 'DE2', n: 'Estudar três parábolas de Jesus', s: 'Parábolas', f: false, d: null },
+{ c: 'SO3', n: 'Atividade missionária envolvendo um amigo', s: 'Ativ. missionária', f: false, d: null },
+{ c: 'SA1', n: 'Males do cigarro e outras drogas', s: 'Drogas', f: false, d: '10-25' },
+{ c: 'SA3', n: 'Noções de primeiros socorros', s: 'Primeiros socorros', f: false, d: null },
+{ c: 'EN2', n: 'Identificar 10 árvores da região', s: 'Árvores', f: true, d: null },
+{ c: 'EN3', n: 'Observar e registrar aves no campo', s: 'Aves', f: true, d: null },
+{ c: 'AC1', n: 'Montar e desmontar uma barraca', s: 'Barraca', f: true, d: '10-18' },
+{ c: 'AC3', n: 'Preparar uma refeição ao ar livre', s: 'Cozinha ao ar livre', f: true, d: null },
+{ c: 'AC5', n: 'Fazer e explicar 6 nós básicos', s: 'Nós', f: true, d: null },
+{ c: 'EV1', n: 'Iniciar uma especialidade de artes manuais', s: 'Artes manuais', f: false, d: null }
+] };
+}
+renderVals() {
+var self = this, S = this.state;
+var D = [
+['10-04','DOM','04','OUT','reuniao',''],
+['10-11','DOM','11','OUT','sem','Sem reunião · feriado prolongado'],
+['10-18','SEX–DOM','16–18','OUT','acamp','Acampamento do clube · ótimo para requisitos de campo'],
+['10-25','DOM','25','OUT','reuniao',''],
+['11-01','DOM','01','NOV','sem','Sem reunião · emenda de Finados'],
+['11-08','DOM','08','NOV','reuniao',''],
+['11-15','DOM','15','NOV','reuniao','Feriado nacional · reunião mantida'],
+['11-22','DOM','22','NOV','evento','Ensaio da investidura · sem aula de classe'],
+['11-29','DOM','29','NOV','reuniao',''],
+['12-06','DOM','06','DEZ','reuniao','Última aula antes da investidura (05/12)'],
+['12-13','DOM','13','DEZ','evento','Encerramento do ano · sem aula de classe']
+];
+var selR = S.r.filter(function (x) { return x.c === S.sel; })[0];
+var setR = function (c, d) { self.setState({ r: S.r.map(function (x) { return x.c === c ? Object.assign({}, x, { d: d }) : x; }) }); };
+var nomeData = {}; D.forEach(function (d) { nomeData[d[0]] = d[2] + ' ' + d[3].toLowerCase(); });
+var reqs = S.r.map(function (x) { var sel = x.c === S.sel;
+return { cod: x.c, nome: x.n, campo: x.f, sel: sel, st: x.d ? 'agendado · ' + nomeData[x.d] : 'sem data',
+stStyle: 'font-size: 11px; font-weight: 700; color: ' + (x.d ? '#1F7A45' : '#9A3412'),
+btn: 'width: 100%; display: flex; align-items: flex-start; gap: 8px; padding: 9px 10px; border-radius: 10px; font-family: inherit; text-align: left; color: #1B221F; ' + (sel ? 'border: 2px solid #B3362F; background: #FDF6F5' : 'border: 2px solid transparent; background: ' + (x.d ? '#FFFFFF' : '#FAF8F3')) + (x.d && !sel ? '; opacity: 0.7' : ''),
+pick: function () { self.setState({ sel: x.c }); } }; });
+var ev = { sem: ['#FBE4E1','#9F2A20'], acamp: ['#E6F0D4','#3F6212'], evento: ['#EDE4F6','#5B3391'], reuniao: ['#F4F1EA','#4A524E'] };
+var datas = D.map(function (d) {
+var bloq = d[4] === 'sem' || d[4] === 'evento';
+var chips = S.r.filter(function (x) { return x.d === d[0]; }).map(function (x) { return { cod: x.c, curto: x.s, remover: function () { setR(x.c, null); } }; });
+var destaque = selR && selR.f && d[4] === 'acamp';
+var jaAqui = selR && selR.d === d[0];
+return { sem: d[1], dia: d[2], mes: d[3], temEvento: !!d[5], evento: d[5], chips: chips,
+vazio: chips.length === 0, vazioTxt: bloq ? 'Não é possível agendar aula nesta data' : 'Nenhum requisito ainda',
+podeColocar: !bloq && !!selR && !jaAqui,
+evStyle: 'align-self: flex-start; font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: ' + ev[d[4]][0] + '; color: ' + ev[d[4]][1],
+row: 'display: flex; align-items: center; gap: 12px; padding: 4px 12px 4px 4px; border-radius: 12px; min-height: 64px; ' + (bloq ? 'background: repeating-linear-gradient(135deg, #FAF8F3, #FAF8F3 8px, #F3EFE6 8px, #F3EFE6 16px); border: 1px solid #EFEBE1' : destaque ? 'background: #F4F9EC; border: 2px solid #65A30D' : d[4] === 'acamp' ? 'background: #F4F9EC; border: 1px solid #D6E6BD' : 'background: #FFFFFF; border: 1px solid #EFEBE1'),
+btn: 'height: 38px; padding: 0 12px; flex-shrink: 0; border-radius: 10px; font-family: inherit; font-size: 13px; font-weight: 700; ' + (destaque ? 'border: 0; background: #3F6212; color: #FFFFFF' : 'border: 1px solid #1F4D3A; background: #FFFFFF; color: #1F4D3A'),
+colocar: function () { if (selR) setR(selR.c, d[0]); } };
+});
+var feitos = S.r.filter(function (x) { return x.d; }).length;
+var on = 'height: 38px; border: 0; border-radius: 9px; background: #FFFFFF; color: #1F4D3A; font-family: inherit; font-weight: 700; font-size: 13px; box-shadow: 0 1px 3px rgba(27,34,31,0.12)';
+var off = 'height: 38px; border: 0; border-radius: 9px; background: transparent; color: #4A524E; font-family: inherit; font-weight: 600; font-size: 13px';
+var instr = S.quem === 'instr';
+return { reqs: reqs, datas: datas, feitos: feitos, totalR: S.r.length,
+progBar: 'height: 6px; border-radius: 3px; background: #B3362F; width: ' + Math.round(feitos / S.r.length * 100) + '%',
+isAdm: !instr, isInstr: instr, tabAdm: instr ? off : on, tabInstr: instr ? on : off,
+pickAdm: function () { self.setState({ quem: 'adm' }); }, pickInstr: function () { self.setState({ quem: 'instr' }); },
+avisoTxt: instr ? 'Liberado para a instrutora Priscila montar e editar. O Adm continua podendo revisar e publicar.' : 'Só o Adm edita este cronograma. A instrutora vê as datas, mas não pode alterá-las.',
+aviso: 'display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; font-size: 13px; font-weight: 600; ' + (instr ? 'background: #E3EEE7; color: #1F4D3A' : 'background: #FBEFE3; color: #7C2D12') };
+}
+}
+</script>
+</body>
+</html>

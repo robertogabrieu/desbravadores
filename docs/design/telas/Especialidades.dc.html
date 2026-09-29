@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Especialidades</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;background:#E9E5DB}a{color:#1F4D3A}a:hover{color:#163828}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; background: #F4F1EA; color: #1B221F; font-family: Figtree, system-ui, sans-serif; overflow: hidden">
+<header style="flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 10px 12px">
+<a href="Inicio-Instrutor.dc.html" aria-label="Voltar" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: #1B221F"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></a>
+<span style="flex-grow: 1; font-weight: 700; font-size: 17px">Especialidades</span>
+</header>
+<div style="flex-shrink: 0; padding: 0 20px 12px; display: flex; flex-direction: column; gap: 12px">
+<span style="font-size: 13px; font-weight: 700; color: #5B645F">Desbravador</span>
+<div style="display: flex; gap: 10px; overflow-x: auto">
+<sc-for list="{{pessoas}}" as="p" hint-placeholder-count="6">
+<button type="button" aria-pressed="{{p.on}}" onClick="{{p.pick}}" style="display: flex; flex-direction: column; align-items: center; gap: 4px; border: 0; background: transparent; padding: 0; font-family: inherit; width: 58px; flex-shrink: 0; color: #1B221F">
+<span style="{{p.av}}">{{p.ini}}</span>
+<span style="{{p.lbl}}">{{p.nome}}</span>
+</button>
+</sc-for>
+</div>
+<label style="height: 46px; background: #FFFFFF; border: 1px solid #D9D3C5; border-radius: 12px; display: flex; align-items: center; gap: 10px; padding: 0 14px">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5B645F" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden">Buscar especialidade</span>
+<input type="search" placeholder="Buscar especialidade" style="flex-grow: 1; border: 0; outline: none; font-family: inherit; font-size: 16px; background: transparent; color: #1B221F">
+</label>
+</div>
+<main style="flex-grow: 1; overflow-y: auto; padding: 0 20px 16px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-weight: 700">{{sel}}</span><span style="font-size: 13px; font-weight: 700; color: #1F4D3A">{{count}} concluídas</span></div>
+<sc-for list="{{areas}}" as="a" hint-placeholder-count="3">
+<section style="display: flex; flex-direction: column; gap: 8px">
+<h2 style="margin: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #5B645F"><span style="{{a.dot}}"></span>{{a.nome}}</h2>
+<div style="background: #FFFFFF; border-radius: 16px">
+<sc-for list="{{a.itens}}" as="e" hint-placeholder-count="3">
+<button type="button" aria-pressed="{{e.on}}" onClick="{{e.t}}" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 0; border-bottom: 1px solid #EFEBE1; background: transparent; font-family: inherit; text-align: left; color: #1B221F; min-height: 56px">
+<span style="{{e.box}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg></span>
+<span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 700; font-size: 14px">{{e.nome}}</span><span style="font-size: 12px; color: #5B645F">{{e.sub}}</span></span>
+</button>
+</sc-for>
+</div>
+</section>
+</sc-for>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(p) {
+super(p);
+this.state = { who: 0, done: { 0: { 'Nós e Amarras': 1, 'Primeiros Socorros – Básico': 1, 'Acampamento I': 1, 'Arte de Contar Histórias Cristãs': 1, 'Aves': 1, 'Culinária': 1 }, 1: { 'Nós e Amarras': 1 }, 2: {}, 3: { 'Aves': 1 }, 4: {}, 5: {} } };
+}
+renderVals() {
+var self = this, S = this.state;
+var ppl = [['Ana Clara','AC'],['Isabela','IM'],['Gabriel','GN'],['Miguel','MT'],['Sofia','SL'],['Heitor','HA']];
+var pessoas = ppl.map(function (p, i) { var on = S.who === i; return { nome: p[0], ini: p[1], on: on,
+av: 'width: 50px; height: 50px; border-radius: 25px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; ' + (on ? 'background: #1F4D3A; color: #FFFFFF; box-shadow: 0 0 0 3px #F4F1EA, 0 0 0 5px #1F4D3A' : 'background: #FFFFFF; color: #1B221F; border: 1px solid #D9D3C5; box-sizing: border-box'),
+lbl: 'font-size: 12px; ' + (on ? 'font-weight: 800' : 'font-weight: 600; color: #5B645F'),
+pick: function () { self.setState({ who: i }); } }; });
+var d = S.done[S.who] || {};
+var A = [
+['Artes e habilidades manuais', '#6D3FA8', ['Nós e Amarras', 'Arte de Contar Histórias Cristãs', 'Modelagem em Gesso']],
+['Estudo da natureza', '#2E7D4F', ['Aves', 'Árvores', 'Insetos']],
+['Ciência e saúde', '#2F5FB3', ['Primeiros Socorros – Básico', 'Nutrição']],
+['Atividades recreativas', '#C2410C', ['Acampamento I', 'Ciclismo']],
+['Habilidades domésticas', '#8A6410', ['Culinária', 'Lavanderia']]
+];
+var count = 0;
+var areas = A.map(function (a) { return { nome: a[0], dot: 'width: 10px; height: 10px; border-radius: 5px; background: ' + a[1], itens: a[2].map(function (n) {
+var on = !!d[n]; if (on) count++;
+return { nome: n, on: on, sub: on ? 'Concluída · marcada por Priscila' : 'Toque para marcar como concluída',
+box: 'width: 30px; height: 30px; border-radius: 9px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; ' + (on ? 'background: #1F4D3A; color: #FFFFFF' : 'border: 2px solid #CFC8B8; color: transparent; box-sizing: border-box'),
+t: function () { var all = Object.assign({}, S.done); var m = Object.assign({}, all[S.who] || {}); if (m[n]) delete m[n]; else m[n] = 1; all[S.who] = m; self.setState({ done: all }); } };
+}) }; });
+return { pessoas: pessoas, areas: areas, count: count, sel: ppl[S.who][0] };
+}
+}
+</script>
+</body>
+</html>

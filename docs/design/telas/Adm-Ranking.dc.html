@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Adm · Configuração do ranking</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;background:#E9E5DB}a{color:#1F4D3A}a:hover{color:#163828}</style>
+</helmet>
+<div style="width: 1280px; height: 832px; box-sizing: border-box; display: flex; background: #F4F1EA; color: #1B221F; font-family: Figtree, system-ui, sans-serif; overflow: hidden">
+<aside style="width: 248px; flex-shrink: 0; background: #1F4D3A; color: #FFFFFF; display: flex; flex-direction: column; padding: 22px 14px; gap: 22px; box-sizing: border-box">
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 6px">
+<span style="width: 38px; height: 38px; border-radius: 11px; background: #F3E3C8; color: #1F4D3A; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M15.5 8.5l-2 5-5 2 2-5z"></path></svg></span>
+<span style="display: flex; flex-direction: column"><span style="font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 16px; line-height: 1.1">Aplicativo do Desbravador</span><span style="font-size: 12px; color: #CFE0D6">[Nome do Clube]</span></span>
+</div>
+<nav aria-label="Administração" style="display: flex; flex-direction: column; gap: 2px">
+<a href="Adm-Inicio.dc.html" style="height: 42px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 600; color: #CFE0D6"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7v9h-5v-6h-6v6H4z"></path></svg>Visão geral</a>
+<a href="Adm-Desbravadores.dc.html" style="height: 42px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 600; color: #CFE0D6"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 4.5a3.5 3.5 0 0 1 0 7M18 14c2 .8 3 3 3 6"></path></svg>Desbravadores</a>
+<a href="Adm-Usuarios.dc.html" style="height: 42px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 600; color: #CFE0D6"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path></svg>Usuários</a>
+<a href="Adm-Unidades.dc.html" style="height: 42px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 600; color: #CFE0D6"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h12l-2 4 2 4H5"></path></svg>Unidades</a>
+<a href="Adm-Classes.dc.html" style="height: 42px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 600; color: #CFE0D6"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"></path><path d="M4 19V5"></path></svg>Classes e especialidades</a>
+<a href="Adm-Calendario.dc.html" style="height: 42px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 600; color: #CFE0D6"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>Calendário do clube</a>
+<a href="Montar-Cronograma.dc.html" style="height: 42px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 600; color: #CFE0D6"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 6h10M10 12h10M10 18h10"></path><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"></path></svg>Cronogramas</a>
+<a href="Adm-Ranking.dc.html" aria-current="page" style="height: 42px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 700; background: #F3E3C8; color: #1F4D3A"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"></path><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8"></path></svg>Ranking</a>
+<a href="Adm-Relatorios.dc.html" style="height: 42px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 600; color: #CFE0D6"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>Relatórios</a>
+</nav>
+<div style="flex-grow: 1"></div>
+<div style="display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 12px; background: #163828">
+<span style="width: 36px; height: 36px; border-radius: 18px; background: #F3E3C8; color: #1F4D3A; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px">AD</span>
+<span style="display: flex; flex-direction: column; flex-grow: 1"><span style="font-size: 14px; font-weight: 700">Diretoria</span><span style="font-size: 12px; color: #CFE0D6">Perfil Adm</span></span>
+<a href="Main.dc.html" aria-label="Sair" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; color: #CFE0D6"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"></path></svg></a>
+</div>
+</aside>
+
+<main style="flex-grow: 1; min-width: 0; padding: 28px 36px; display: flex; flex-direction: column; gap: 18px; box-sizing: border-box">
+<header style="display: flex; align-items: flex-end; gap: 16px">
+<div style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600; color: #5B645F">Como o DBV Destaque é calculado</span><h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 32px; font-weight: 800">Configuração do ranking</h1></div>
+<button type="button" style="height: 44px; padding: 0 18px; border-radius: 12px; border: 0; background: #1F4D3A; color: #FFFFFF; font-family: inherit; font-weight: 700; font-size: 14px">Salvar critérios</button>
+</header>
+<div style="display: flex; gap: 16px; flex-grow: 1; min-height: 0">
+<section style="flex-grow: 1; background: #FFFFFF; border-radius: 18px; padding: 8px 0; display: flex; flex-direction: column; overflow-y: auto">
+<div style="display: grid; grid-template-columns: 52px minmax(0, 1fr) 150px 120px; gap: 12px; padding: 10px 20px; font-size: 12px; font-weight: 800; color: #5B645F"><span>Ativo</span><span>Critério</span><span>Pontos</span><span>Lançado por</span></div>
+<sc-for list="{{crit}}" as="c" hint-placeholder-count="8">
+<div style="{{c.row}}">
+<label style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden">Ativar {{c.nome}}</span><input type="checkbox" checked="{{c.on}}" onChange="{{c.t}}" style="width: 22px; height: 22px; accent-color: #1F4D3A"></label>
+<span style="display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 700; font-size: 15px">{{c.nome}}</span><span style="font-size: 12px; color: #5B645F">{{c.desc}}</span></span>
+<span style="display: flex; align-items: center; gap: 6px">
+<button type="button" aria-label="Diminuir" onClick="{{c.dec}}" style="width: 36px; height: 36px; border-radius: 9px; border: 1px solid #D9D3C5; background: #FFFFFF; font-family: inherit; font-size: 18px; font-weight: 700; color: #1B221F">−</button>
+<span style="width: 44px; text-align: center; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 800">{{c.pts}}</span>
+<button type="button" aria-label="Aumentar" onClick="{{c.inc}}" style="width: 36px; height: 36px; border-radius: 9px; border: 1px solid #D9D3C5; background: #FFFFFF; font-family: inherit; font-size: 18px; font-weight: 700; color: #1B221F">+</button>
+</span>
+<span style="{{c.quemStyle}}">{{c.quem}}</span>
+</div>
+</sc-for>
+<button type="button" style="margin: 10px 20px; height: 42px; border-radius: 10px; border: 1px dashed #B8C9BE; background: #EEF4F0; color: #1F4D3A; font-family: inherit; font-weight: 700; font-size: 13px">+ Critério personalizado</button>
+</section>
+<aside style="width: 320px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px">
+<section style="background: #1F4D3A; color: #FFFFFF; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 12px">
+<span style="font-size: 13px; font-weight: 700; color: #CFE0D6">Simulação · uma reunião perfeita</span>
+<span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 44px; font-weight: 800; line-height: 1">{{max}} pts</span>
+<span style="font-size: 13px; color: #CFE0D6">Pontos que um DBV ganha num domingo com tudo em dia (sem requisitos nem especialidades).</span>
+</section>
+<section style="background: #FFFFFF; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 700">Período do ranking</h2>
+<div style="display: flex; flex-direction: column; gap: 6px"><label for="per" style="font-size: 13px; font-weight: 700">Zerar pontuação</label><select id="per" style="height: 44px; border: 1px solid #D9D3C5; border-radius: 10px; padding: 0 10px; font-family: inherit; font-size: 15px; background: #FFFFFF; color: #1B221F"><option>A cada trimestre</option><option>A cada mês</option><option>Uma vez por ano</option></select></div>
+<label style="display: flex; align-items: center; gap: 10px; font-size: 14px; min-height: 40px"><input type="checkbox" checked="checked" style="width: 20px; height: 20px; accent-color: #1F4D3A">Mostrar ranking na tela de login</label>
+<label style="display: flex; align-items: center; gap: 10px; font-size: 14px; min-height: 40px"><input type="checkbox" checked="checked" style="width: 20px; height: 20px; accent-color: #1F4D3A">Exibir ranking por unidade</label>
+<label style="display: flex; align-items: center; gap: 10px; font-size: 14px; min-height: 40px"><input type="checkbox" style="width: 20px; height: 20px; accent-color: #1F4D3A">Descontar pontos por falta sem justificativa</label>
+</section>
+</aside>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":832}}'>
+class Component extends DCLogic {
+constructor(p) {
+super(p);
+this.state = { c: [
+{ n: 'Presença', d: 'DBV presente na reunião', p: 10, on: true, q: 'Conselheiro', r: true },
+{ n: 'Pontualidade', d: 'Chegou no horário da abertura', p: 5, on: true, q: 'Conselheiro', r: true },
+{ n: 'Uniforme completo', d: 'Uniforme de gala ou atividade, conforme o dia', p: 5, on: true, q: 'Conselheiro', r: true },
+{ n: 'Bíblia', d: 'Trouxe a Bíblia para a reunião', p: 3, on: true, q: 'Conselheiro', r: true },
+{ n: 'Lição / devocional em dia', d: 'Estudo da lição ou meditação da semana', p: 3, on: false, q: 'Conselheiro', r: true },
+{ n: 'Requisito de classe concluído', d: 'Cada requisito marcado pelo instrutor', p: 4, on: true, q: 'Instrutor', r: false },
+{ n: 'Especialidade concluída', d: 'Cada especialidade marcada pelo instrutor', p: 15, on: true, q: 'Instrutor', r: false },
+{ n: 'Participação em evento', d: 'Campori, acampamento, ação comunitária', p: 20, on: true, q: 'Adm', r: false }
+] };
+}
+renderVals() {
+var self = this, C = this.state.c;
+var set = function (i, patch) { self.setState({ c: C.map(function (x, j) { return j === i ? Object.assign({}, x, patch) : x; }) }); };
+var qc = { Conselheiro: ['#E3EEE7','#1F4D3A'], Instrutor: ['#FBEFE3','#9A3412'], Adm: ['#1B221F','#FFFFFF'] };
+var crit = C.map(function (x, i) { return { nome: x.n, desc: x.d, pts: x.p, on: x.on, quem: x.q,
+row: 'display: grid; grid-template-columns: 52px minmax(0, 1fr) 150px 120px; gap: 12px; align-items: center; padding: 8px 20px; border-top: 1px solid #EFEBE1' + (x.on ? '' : '; opacity: 0.5'),
+quemStyle: 'justify-self: start; font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 999px; background: ' + qc[x.q][0] + '; color: ' + qc[x.q][1],
+t: function () { set(i, { on: !x.on }); }, inc: function () { set(i, { p: x.p + 1 }); }, dec: function () { set(i, { p: Math.max(0, x.p - 1) }); } }; });
+var max = C.filter(function (x) { return x.on && x.r; }).reduce(function (a, x) { return a + x.p; }, 0);
+return { crit: crit, max: max };
+}
+}
+</script>
+</body>
+</html>
