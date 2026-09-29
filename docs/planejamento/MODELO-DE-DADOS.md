@@ -93,8 +93,14 @@ A carga é **reexecutável**: casa cada requisito pela chave (classe + código) 
 CAMPO sem trocar o id — o progresso já registrado continua apontando para o mesmo requisito.
 
 Os dados `OFICIAL` vêm da carga inicial (`docs/planejamento/dados/cadernos/*.json`) e são
-**compartilhados por todos os clubes** (sem `clubeId`). Um clube pode desativar ou acrescentar os
-seus (`origem=CLUBE`, com `clubeId`).
+**compartilhados por todos os clubes** (sem `clubeId`). Um clube pode acrescentar os seus
+(`origem=CLUBE`, com `clubeId`).
+
+**O que o clube escolhe sobre um item oficial não mora na linha oficial** (corrigido na Fase 0,
+D12): a linha é compartilhada, e gravar nela a escolha de um clube a imporia a todos. A escolha
+vai em tabelas por clube — `ClasseClube(clubeId, classeId, ativa, quemMontaCronograma)` e
+`RequisitoAjuste(clubeId, requisitoId, ativo, campo)`. Requisito oficial desativado pela carga
+prevalece sobre o ajuste. Especialidade oficial não tem ajuste por clube nesta fase.
 
 ## 4. Matrícula, progresso e investidura
 
