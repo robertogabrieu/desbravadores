@@ -1,6 +1,7 @@
 // Contrato do módulo offline (SPEC Fase 1 §4.3). Escrito pelo orquestrador: o motor (1a-A2)
 // implementa, a interface (1a-A3) e os tipos da 1b (REUNIAO, FOTO) e da Fase 2 (AULA) consomem.
 // Mudar uma assinatura aqui é mudar o contrato — passa pelo orquestrador.
+import type { PacoteSaida } from '@desbravadores/shared'
 import type { QueryClient } from '@tanstack/react-query'
 import type { z } from 'zod'
 import type { ErroApi, OpcoesRequisicao } from '../api/cliente'
@@ -133,3 +134,20 @@ export type ItensDaChave = (chave: string) => Promise<ItemFila[]>
 export type UseConexao = () => { modo: ModoConexao }
 export type UseModoSessao = () => ModoSessao
 export type LimparDadosDoUsuario = (usuarioId: string, opcoes: { manterFila: true }) => Promise<void>
+
+// Acrescentado na onda 0 da 1b: o que as telas da chamada, do início e da galeria leem do aparelho.
+
+/** Pacote do domingo guardado para o usuário e o vínculo da sessão; muda quando uma versão nova é gravada. */
+export interface PacoteGuardado {
+  pacote: z.infer<typeof PacoteSaida> | null
+  /** `true` só até a primeira leitura do banco local. */
+  carregando: boolean
+  /** Quando o pacote guardado foi baixado (epoch ms); nulo sem pacote. */
+  baixadoEm: number | null
+}
+export type UsePacote = () => PacoteGuardado
+
+/** Rascunho local por usuário e chave (REUNIAO usa `<unidadeId>:<data>`). O valor volta cru: quem lê valida. */
+export type LerRascunho = (usuarioId: string, chave: string) => Promise<unknown>
+export type GravarRascunho = (usuarioId: string, chave: string, valor: unknown) => Promise<void>
+export type ApagarRascunho = (usuarioId: string, chave: string) => Promise<void>
