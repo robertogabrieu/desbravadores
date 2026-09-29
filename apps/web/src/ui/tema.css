@@ -1,0 +1,63 @@
+@import 'tailwindcss';
+@import './tokens.css';
+
+/* Nomes em português apontando para as variáveis de tokens.css; os valores vivem lá. */
+@theme inline {
+  --color-marca: var(--color-primary);
+  --color-marca-escura: var(--color-primary-dark);
+  --color-marca-suave: var(--color-primary-soft);
+  --color-marca-tinta: var(--color-primary-tint);
+  --color-creme: var(--color-accent);
+  --color-sobre-marca: var(--color-on-primary-muted);
+
+  --color-fundo: var(--color-bg);
+  --color-trilho: var(--color-bg-deep);
+  --color-superficie: var(--color-surface);
+  --color-superficie-suave: var(--color-surface-muted);
+  --color-texto: var(--color-text);
+  --color-texto-2: var(--color-text-secondary);
+  --color-texto-3: var(--color-text-tertiary);
+  --color-borda: var(--color-border);
+  --color-divisor: var(--color-divider);
+
+  --color-sucesso: var(--color-success);
+  --color-perigo: var(--color-danger);
+  --color-alerta: var(--color-warning);
+  --color-alerta-fundo: var(--color-warning-bg);
+  --color-acampamento: var(--color-field);
+  --color-acampamento-fundo: var(--color-field-bg);
+
+  --color-amigo: var(--classe-amigo);
+  --color-companheiro: var(--classe-companheiro);
+  --color-pesquisador: var(--classe-pesquisador);
+  --color-pioneiro: var(--classe-pioneiro);
+  --color-excursionista: var(--classe-excursionista);
+  --color-guia: var(--classe-guia);
+
+  --radius-controle: var(--radius-sm);
+  --radius-botao: var(--radius-md);
+  --radius-cartao: var(--radius-lg);
+  --radius-folha: var(--radius-xl);
+
+  --font-titulo: var(--font-display);
+  --font-sans: var(--font-body);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+  body {
+    margin: 0;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-body);
+  }
+  h1, h2, h3 {
+    font-family: var(--font-display);
+  }
+  /* 16 px evita o zoom automático do iOS ao focar um campo. */
+  input, select, textarea {
+    font-size: 16px;
+  }
+}

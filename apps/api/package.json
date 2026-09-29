@@ -1,0 +1,49 @@
+{
+  "name": "api",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "postinstall": "prisma generate",
+    "dev": "sh -c 'tsc -p tsconfig.build.json && (tsc -p tsconfig.build.json --watch --preserveWatchOutput & node --env-file-if-exists=../../.env --watch dist/main.js)'",
+    "build": "tsc -p tsconfig.build.json",
+    "tipos": "tsc --noEmit",
+    "teste": "jest",
+    "teste:limpar": "tsx src/scripts/limpar-bancos-teste.ts",
+    "carga": "node --env-file-if-exists=../../.env -r tsx/cjs src/scripts/carga.ts",
+    "clube:criar": "node --env-file-if-exists=../../.env -r tsx/cjs src/scripts/clube-criar.ts"
+  },
+  "dependencies": {
+    "@desbravadores/shared": "0.0.0",
+    "@nestjs/common": "11.1.17",
+    "@nestjs/core": "11.1.17",
+    "@nestjs/jwt": "11.0.2",
+    "@nestjs/platform-express": "11.1.17",
+    "@nestjs/throttler": "6.5.0",
+    "@prisma/adapter-pg": "7.5.0",
+    "@prisma/client": "7.5.0",
+    "argon2": "0.45.1",
+    "cookie-parser": "1.4.7",
+    "dotenv": "18.0.4",
+    "helmet": "8.1.0",
+    "nodemailer": "8.0.4",
+    "pg": "8.20.0",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "11.1.17",
+    "@types/cookie-parser": "1.4.10",
+    "@types/express": "5.0.6",
+    "@types/jest": "30.0.0",
+    "@types/node": "22.19.15",
+    "@types/nodemailer": "7.0.11",
+    "@types/pg": "8.11.11",
+    "@types/supertest": "6.0.3",
+    "jest": "30.3.0",
+    "prisma": "7.5.0",
+    "supertest": "7.2.2",
+    "ts-jest": "29.4.6",
+    "tsx": "4.23.15"
+  }
+}

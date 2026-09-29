@@ -1,0 +1,69 @@
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { Botao } from './Botao'
+
+export interface ColunaTabela<T> {
+  chave: string
+  titulo: string
+  celula: (item: T) => ReactNode
+}
+
+interface Propriedades<T> {
+  colunas: ColunaTabela<T>[]
+  itens: T[]
+  chaveItem: (item: T) => string
+  pagina: number
+  porPagina: number
+  total: number
+  aoMudarPagina: (pagina: number) => void
+  /** Mostrado no lugar da tabela quando `itens` está vazio. */
+  vazio?: ReactNode
+}
+
+export function Tabela<T>({ colunas, itens, chaveItem, pagina, porPagina, total, aoMudarPagina, vazio }: Propriedades<T>) {
+  if (itens.length === 0 && vazio) return <>{vazio}</>
+
+  const primeiro = (pagina - 1) * porPagina + 1
+  const ultimo = Math.min(pagina * porPagina, total)
+  const totalPaginas = Math.max(1, Math.ceil(total / porPagina))
+
+  return (
+    <div className="overflow-hidden rounded-cartao border border-borda bg-superficie">
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-left text-base">
+          <thead className="bg-superficie-suave text-sm text-texto-2">
+            <tr>
+              {colunas.map((coluna) => (
+                <th key={coluna.chave} scope="col" className="px-4 py-3 font-semibold">
+                  {coluna.titulo}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {itens.map((item) => (
+              <tr key={chaveItem(item)} className="border-t border-divisor">
+                {colunas.map((coluna) => (
+                  <td key={coluna.chave} className="px-4 py-3">
+                    {coluna.celula(item)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <nav aria-label="Paginação" className="flex items-center justify-between gap-3 border-t border-divisor px-4 py-2 text-sm text-texto-2">
+        <span>{total === 0 ? '0 de 0' : `${primeiro}–${ultimo} de ${total}`}</span>
+        <div className="flex gap-2">
+          <Botao variante="secundario" aria-label="Página anterior" disabled={pagina <= 1} onClick={() => aoMudarPagina(pagina - 1)}>
+            <ChevronLeft aria-hidden className="size-5" />
+          </Botao>
+          <Botao variante="secundario" aria-label="Próxima página" disabled={pagina >= totalPaginas} onClick={() => aoMudarPagina(pagina + 1)}>
+            <ChevronRight aria-hidden className="size-5" />
+          </Botao>
+        </div>
+      </nav>
+    </div>
+  )
+}

@@ -1,0 +1,458 @@
+// Fase 0 — contrato do banco. A onda 2 copia este arquivo para apps/api/prisma/schema.prisma
+// sem alterar nomes, tipos, relações nem índices. Validado com prisma 7.5.0 (`prisma validate`).
+//
+// Regras que este schema impõe no próprio banco:
+// - relação entre dois modelos de clube usa chave estrangeira COMPOSTA (clubeId, id): o banco
+//   recusa ligar a unidade de um clube ao desbravador de outro;
+// - ids UUID v7 são gerados pelo Prisma Client (não pelo Postgres): toda escrita passa pelo client;
+// - nada com histórico apaga em cascata (onDelete: Restrict).
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "cjs"
+  importFileExtension = "js"
+  previewFeatures     = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Papel {
+  ADM
+  CONSELHEIRO
+  INSTRUTOR
+}
+
+enum StatusUsuario {
+  CONVIDADO
+  ATIVO
+  INATIVO
+}
+
+enum Sexo {
+  F
+  M
+}
+
+enum TipoPessoa {
+  DBV
+  LIDER
+}
+
+enum TipoUnidade {
+  MISTA
+  MASCULINA
+  FEMININA
+}
+
+enum TipoClasse {
+  REGULAR
+  AVANCADA
+}
+
+enum Trilha {
+  INDIVIDUAL
+  AGRUPADAS
+}
+
+enum Origem {
+  OFICIAL
+  CLUBE
+}
+
+enum QuemMonta {
+  ADM
+  INSTRUTOR
+}
+
+enum StatusMatricula {
+  CURSANDO
+  CONCLUIDA
+  INVESTIDA
+  DESISTIU
+}
+
+enum PeriodoRanking {
+  MES
+  TRIMESTRE
+  ANO
+}
+
+enum GatilhoCriterio {
+  PRESENCA
+  PONTUALIDADE
+  UNIFORME
+  BIBLIA
+  LICAO
+  REQUISITO
+  ESPECIALIDADE
+  MANUAL
+}
+
+enum FinalidadeToken {
+  CONVITE
+  SENHA
+}
+
+// ───────────────────────── clube e acesso ─────────────────────────
+
+model Clube {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  nome         String
+  slug         String   @unique
+  cidade       String?
+  igreja       String?
+  associacao   String?
+  criadoEm     DateTime @default(now()) @db.Timestamptz
+  atualizadoEm DateTime @updatedAt @db.Timestamptz
+
+  configuracao     ConfiguracaoClube?
+  vinculos         Vinculo[]
+  vinculosUnidade  VinculoUnidade[]
+  desbravadores    Desbravador[]
+  unidades         Unidade[]
+  membros          MembroUnidade[]
+  classes          Classe[]
+  classesClube     ClasseClube[]
+  requisitoAjustes RequisitoAjuste[]
+  especialidades   Especialidade[]
+  matriculas       MatriculaClasse[]
+  criterios        CriterioRanking[]
+}
+
+model ConfiguracaoClube {
+  clubeId                String         @id @db.Uuid
+  fuso                   String         @default("America/Sao_Paulo")
+  diaReuniao             Int            @default(0)
+  horaReuniao            String         @default("09:00")
+  localReuniaoPadrao     String?
+  inicioAnoClube         String         @default("02-01")
+  limiarFrequenciaAlerta Int            @default(70)
+  limiarProgressoAlerta  Int            @default(40)
+  metaFrequencia         Int            @default(80)
+  rankingPeriodo         PeriodoRanking @default(MES)
+  rankingNoLogin         Boolean        @default(true)
+  rankingPorUnidade      Boolean        @default(true)
+  descontarFalta         Boolean        @default(false)
+  pontosDescontoFalta    Int            @default(0)
+
+  clube Clube @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+}
+
+model Usuario {
+  id             String        @id @default(uuid(7)) @db.Uuid
+  nome           String
+  email          String        @unique
+  senhaHash      String?
+  genero         Sexo?
+  status         StatusUsuario @default(CONVIDADO)
+  ultimoAcessoEm DateTime?     @db.Timestamptz
+  criadoEm       DateTime      @default(now()) @db.Timestamptz
+  atualizadoEm   DateTime      @updatedAt @db.Timestamptz
+
+  vinculos      Vinculo[]
+  tokens        TokenUsoUnico[]
+  refreshTokens RefreshToken[]
+  desbravadores Desbravador[]
+}
+
+model Vinculo {
+  id        String  @id @default(uuid(7)) @db.Uuid
+  usuarioId String  @db.Uuid
+  clubeId   String  @db.Uuid
+  papel     Papel
+  ativo     Boolean @default(true)
+
+  usuario       Usuario           @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  clube         Clube             @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  unidades      VinculoUnidade[]
+  classes       VinculoClasse[]
+  ajustes       PermissaoAjuste[]
+  refreshTokens RefreshToken[]
+
+  @@unique([usuarioId, clubeId, papel])
+  @@unique([clubeId, id])
+  @@index([clubeId, papel, ativo])
+}
+
+model VinculoUnidade {
+  clubeId   String @db.Uuid
+  vinculoId String @db.Uuid
+  unidadeId String @db.Uuid
+
+  clube   Clube   @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  vinculo Vinculo @relation(fields: [clubeId, vinculoId], references: [clubeId, id], onDelete: Restrict)
+  unidade Unidade @relation(fields: [clubeId, unidadeId], references: [clubeId, id], onDelete: Restrict)
+
+  @@id([vinculoId, unidadeId])
+  @@index([clubeId, unidadeId])
+}
+
+// Classe pode ser oficial (sem clube): a pertença é validada no serviço, com teste.
+model VinculoClasse {
+  vinculoId String @db.Uuid
+  classeId  String @db.Uuid
+
+  vinculo Vinculo @relation(fields: [vinculoId], references: [id], onDelete: Restrict)
+  classe  Classe  @relation(fields: [classeId], references: [id], onDelete: Restrict)
+
+  @@id([vinculoId, classeId])
+  @@index([classeId])
+}
+
+model PermissaoAjuste {
+  vinculoId String  @db.Uuid
+  permissao String
+  concedida Boolean
+
+  vinculo Vinculo @relation(fields: [vinculoId], references: [id], onDelete: Restrict)
+
+  @@id([vinculoId, permissao])
+}
+
+model TokenUsoUnico {
+  id         String          @id @default(uuid(7)) @db.Uuid
+  usuarioId  String          @db.Uuid
+  finalidade FinalidadeToken
+  tokenHash  String          @unique
+  expiraEm   DateTime        @db.Timestamptz
+  usadoEm    DateTime?       @db.Timestamptz
+  criadoEm   DateTime        @default(now()) @db.Timestamptz
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+
+  @@index([usuarioId, finalidade])
+}
+
+model RefreshToken {
+  id              String    @id @default(uuid(7)) @db.Uuid
+  usuarioId       String    @db.Uuid
+  vinculoId       String?   @db.Uuid
+  familia         String    @db.Uuid
+  familiaExpiraEm DateTime  @db.Timestamptz
+  tokenHash       String    @unique
+  expiraEm        DateTime  @db.Timestamptz
+  usadoEm         DateTime? @db.Timestamptz
+  revogadoEm      DateTime? @db.Timestamptz
+  aparelho        String?
+  criadoEm        DateTime  @default(now()) @db.Timestamptz
+
+  usuario Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  vinculo Vinculo? @relation(fields: [vinculoId], references: [id], onDelete: Restrict)
+
+  @@index([familia])
+  @@index([usuarioId])
+}
+
+// ───────────────────────── pessoas e unidades ─────────────────────────
+
+model Desbravador {
+  id                  String     @id @default(uuid(7)) @db.Uuid
+  clubeId             String     @db.Uuid
+  nome                String
+  nomePublico         String
+  tipo                TipoPessoa @default(DBV)
+  usuarioId           String?    @db.Uuid
+  nascimento          DateTime   @db.Date
+  sexo                Sexo
+  responsavelNome     String?
+  responsavelTelefone String?
+  responsavelEmail    String?
+  autorizacaoImagem   Boolean    @default(false)
+  autorizacaoImagemEm DateTime?  @db.Date
+  ativo               Boolean    @default(true)
+  entradaEm           DateTime   @db.Date
+  saidaEm             DateTime?  @db.Date
+  criadoEm            DateTime   @default(now()) @db.Timestamptz
+  atualizadoEm        DateTime   @updatedAt @db.Timestamptz
+
+  clube      Clube             @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  usuario    Usuario?          @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  membros    MembroUnidade[]
+  matriculas MatriculaClasse[]
+
+  @@unique([clubeId, id])
+  @@index([clubeId, ativo, nome])
+  @@index([usuarioId])
+}
+
+model Unidade {
+  id            String      @id @default(uuid(7)) @db.Uuid
+  clubeId       String      @db.Uuid
+  nome          String
+  tipo          TipoUnidade @default(MISTA)
+  gritoDeGuerra String?
+  ativa         Boolean     @default(true)
+
+  clube     Clube            @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  membros   MembroUnidade[]
+  vinculos  VinculoUnidade[]
+
+  @@unique([clubeId, nome])
+  @@unique([clubeId, id])
+}
+
+model MembroUnidade {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  clubeId   String    @db.Uuid
+  dbvId     String    @db.Uuid
+  unidadeId String    @db.Uuid
+  inicio    DateTime  @db.Date
+  fim       DateTime? @db.Date
+
+  clube   Clube       @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  dbv     Desbravador @relation(fields: [clubeId, dbvId], references: [clubeId, id], onDelete: Restrict)
+  unidade Unidade     @relation(fields: [clubeId, unidadeId], references: [clubeId, id], onDelete: Restrict)
+
+  @@unique([dbvId], where: { fim: null }, map: "membro_unidade_aberto_por_dbv")
+  @@index([clubeId, unidadeId, fim])
+}
+
+// ───────────────────────── classes, requisitos, especialidades ─────────────────────────
+
+model Classe {
+  id           String     @id @default(uuid(7)) @db.Uuid
+  clubeId      String?    @db.Uuid
+  origem       Origem
+  nome         String
+  idade        Int?
+  tipo         TipoClasse
+  trilha       Trilha
+  classeBaseId String?    @db.Uuid
+  ordem        Int
+
+  clube      Clube?            @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  classeBase Classe?           @relation("ClasseBase", fields: [classeBaseId], references: [id], onDelete: Restrict)
+  avancadas  Classe[]          @relation("ClasseBase")
+  secoes     SecaoRequisito[]
+  clubes     ClasseClube[]
+  vinculos   VinculoClasse[]
+  matriculas MatriculaClasse[]
+
+  @@unique([nome, trilha], where: { clubeId: null }, map: "classe_oficial_nome_trilha")
+  @@unique([clubeId, nome, trilha])
+  @@index([clubeId])
+}
+
+model ClasseClube {
+  clubeId             String    @db.Uuid
+  classeId            String    @db.Uuid
+  ativa               Boolean   @default(true)
+  quemMontaCronograma QuemMonta @default(ADM)
+
+  clube  Clube  @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  classe Classe @relation(fields: [classeId], references: [id], onDelete: Restrict)
+
+  @@id([clubeId, classeId])
+}
+
+model SecaoRequisito {
+  id       String @id @default(uuid(7)) @db.Uuid
+  classeId String @db.Uuid
+  codigo   String
+  nome     String
+  ordem    Int
+
+  classe     Classe      @relation(fields: [classeId], references: [id], onDelete: Restrict)
+  requisitos Requisito[]
+
+  @@unique([classeId, codigo])
+}
+
+model Requisito {
+  id      String  @id @default(uuid(7)) @db.Uuid
+  secaoId String  @db.Uuid
+  codigo  String
+  texto   String
+  campo   Boolean @default(false)
+  ordem   Int
+  pagina  Int?
+  ativo   Boolean @default(true)
+
+  secao   SecaoRequisito    @relation(fields: [secaoId], references: [id], onDelete: Restrict)
+  ajustes RequisitoAjuste[]
+
+  @@unique([secaoId, codigo])
+}
+
+model RequisitoAjuste {
+  clubeId     String   @db.Uuid
+  requisitoId String   @db.Uuid
+  ativo       Boolean?
+  campo       Boolean?
+
+  clube     Clube     @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  requisito Requisito @relation(fields: [requisitoId], references: [id], onDelete: Restrict)
+
+  @@id([clubeId, requisitoId])
+}
+
+model AreaEspecialidade {
+  id     String @id @default(uuid(7)) @db.Uuid
+  codigo String @unique
+  nome   String
+  ordem  Int
+
+  especialidades Especialidade[]
+}
+
+model Especialidade {
+  id      String  @id @default(uuid(7)) @db.Uuid
+  clubeId String? @db.Uuid
+  origem  Origem
+  areaId  String  @db.Uuid
+  nome    String
+  ativa   Boolean @default(true)
+
+  clube Clube?            @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  area  AreaEspecialidade @relation(fields: [areaId], references: [id], onDelete: Restrict)
+
+  @@unique([areaId, nome], where: { clubeId: null }, map: "especialidade_oficial_area_nome")
+  @@unique([clubeId, areaId, nome])
+  @@index([areaId])
+}
+
+model Mestrado {
+  id    String  @id @default(uuid(7)) @db.Uuid
+  nome  String  @unique
+  ativo Boolean @default(true)
+}
+
+// ───────────────────────── matrícula e ranking ─────────────────────────
+
+model MatriculaClasse {
+  id          String          @id @default(uuid(7)) @db.Uuid
+  clubeId     String          @db.Uuid
+  dbvId       String          @db.Uuid
+  classeId    String          @db.Uuid
+  anoClube    Int
+  status      StatusMatricula @default(CURSANDO)
+  investidaEm DateTime?       @db.Date
+
+  clube  Clube       @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  dbv    Desbravador @relation(fields: [clubeId, dbvId], references: [clubeId, id], onDelete: Restrict)
+  classe Classe      @relation(fields: [classeId], references: [id], onDelete: Restrict)
+
+  @@unique([dbvId, classeId, anoClube])
+  @@index([clubeId, classeId, anoClube])
+}
+
+model CriterioRanking {
+  id         String          @id @default(uuid(7)) @db.Uuid
+  clubeId    String          @db.Uuid
+  nome       String
+  descricao  String?
+  pontos     Int
+  ativo      Boolean         @default(true)
+  ordem      Int
+  gatilho    GatilhoCriterio
+  lancadoPor Papel
+  padrao     Boolean         @default(false)
+
+  clube Clube @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+
+  @@unique([clubeId, nome])
+  @@index([clubeId, ordem])
+}

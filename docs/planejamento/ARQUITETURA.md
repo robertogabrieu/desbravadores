@@ -111,6 +111,13 @@ coisa confundem (ver INCONSISTENCIAS).
 A permissão é lida do banco a cada requisição (não do token), para que tirar o acesso de alguém
 valha na hora.
 
+**Usuário é global** (decidido na Fase 0, D21): um e-mail é uma conta só, com vínculos em vários
+clubes. O Adm de um clube cria o usuário ou, se o e-mail já existe, só acrescenta os vínculos —
+com a mesma resposta de um cadastro novo, para não revelar que a conta existia. Ele não edita
+e-mail nem senha de ninguém, edita nome e gênero só de quem ainda não aceitou o convite e não tem vínculo em outro clube, e
+"inativar" desliga os vínculos **neste clube**, nunca a conta. Assim um Adm não sequestra nem
+desliga a conta de quem também é de outro clube.
+
 ## 5. Estratégia offline
 
 **O que funciona sem internet:** abrir o app, ver a unidade e as classes, **fazer e corrigir a
