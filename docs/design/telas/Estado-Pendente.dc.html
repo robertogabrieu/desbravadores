@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Aguardando envio</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;background:#E9E5DB}a{color:#1F4D3A}a:hover{color:#163828}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; background: #F4F1EA; color: #1B221F; font-family: Figtree, system-ui, sans-serif; overflow: hidden">
+<header style="flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 10px 12px 4px">
+<a href="Inicio-Conselheiro.dc.html" aria-label="Voltar" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: #1B221F"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></a>
+<span style="flex-grow: 1; font-weight: 700; font-size: 17px">Aguardando envio</span>
+</header>
+<main style="flex-grow: 1; overflow-y: auto; padding: 8px 20px 20px; display: flex; flex-direction: column; gap: 16px">
+<section role="status" style="{{statusCard}}">
+<div style="display: flex; align-items: center; gap: 12px">
+<span style="{{statusIcon}}">
+<sc-if value="{{isOffline}}" hint-placeholder-val="{{true}}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8.5a15 15 0 0 1 4-2.4M10 5.1A15 15 0 0 1 22 8.5M5 12a10 10 0 0 1 3.5-2M15 10.2A10 10 0 0 1 19 12M8.5 15.5a5 5 0 0 1 7 0M12 19.5h.01M3 3l18 18"></path></svg></sc-if>
+<sc-if value="{{isEnviando}}" hint-placeholder-val="{{false}}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"></path></svg></sc-if>
+<sc-if value="{{isOk}}" hint-placeholder-val="{{false}}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg></sc-if>
+</span>
+<span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 800">{{statusTitulo}}</span><span style="font-size: 13px">{{statusTexto}}</span></span>
+</div>
+<sc-if value="{{isOffline}}" hint-placeholder-val="{{true}}">
+<button type="button" onClick="{{tentar}}" style="height: 46px; border-radius: 12px; border: 0; background: #1F4D3A; color: #FFFFFF; font-family: inherit; font-weight: 700; font-size: 15px">Tentar enviar agora</button>
+</sc-if>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 8px">
+<h2 style="margin: 0; font-size: 13px; font-weight: 700; color: #5B645F">NESTE APARELHO</h2>
+<div style="background: #FFFFFF; border-radius: 16px">
+<sc-for list="{{itens}}" as="it" hint-placeholder-count="4">
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid #EFEBE1">
+<span style="{{it.icon}}">{{it.sigla}}</span>
+<span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+<span style="font-weight: 700; font-size: 14px">{{it.titulo}}</span>
+<span style="font-size: 12px; color: #5B645F">{{it.meta}}</span>
+<sc-if value="{{it.barra}}" hint-placeholder-val="{{false}}"><span style="height: 4px; border-radius: 2px; background: #E3EEE7"><span style="{{it.bar}}"></span></span></sc-if>
+<sc-if value="{{it.erro}}" hint-placeholder-val="{{false}}">
+<span style="display: flex; gap: 8px; margin-top: 2px">
+<button type="button" onClick="{{it.retry}}" style="height: 34px; padding: 0 12px; border-radius: 9px; border: 1px solid #1F4D3A; background: #FFFFFF; color: #1F4D3A; font-family: inherit; font-size: 12px; font-weight: 700">Tentar de novo</button>
+<button type="button" onClick="{{it.descartar}}" style="height: 34px; padding: 0 12px; border-radius: 9px; border: 1px solid #D9D3C5; background: #FFFFFF; color: #B42318; font-family: inherit; font-size: 12px; font-weight: 700">Descartar</button>
+</span>
+</sc-if>
+</span>
+<span style="{{it.stStyle}}">{{it.st}}</span>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-size: 13px; font-weight: 700; color: #5B645F">COMO O APP SINALIZA PENDÊNCIAS</h2>
+<div style="background: #FFFFFF; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 15px; background: #FBEFE3; color: #7C2D12; font-size: 12px; font-weight: 800"><span style="width: 8px; height: 8px; border-radius: 4px; background: #C2410C"></span>{{pill}}</span>
+<span style="font-size: 12px; color: #5B645F">Selo no topo do Início; toque abre esta tela</span>
+</div>
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 8px; background: #F4F1EA; color: #4A524E; font-size: 12px; font-weight: 700"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>não enviado</span>
+<span style="font-size: 12px; color: #5B645F">Marca em listas (reunião, foto) ainda só no aparelho</span>
+</div>
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 8px; background: #3A2A12; color: #FDEBD2; font-size: 12px; font-weight: 700">Sem conexão</span>
+<span style="font-size: 12px; color: #5B645F">Faixa no topo de qualquer tela enquanto estiver offline</span>
+</div>
+</div>
+</section>
+<p style="margin: 0; font-size: 12px; line-height: 1.45; color: #5B645F; text-align: center">Os dados ficam guardados mesmo se o app for fechado. Não saia da sua conta antes de enviar, ou as pendências serão perdidas.</p>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(p) { super(p); this.state = { fase: 'offline', descartado: false, retry: false }; }
+componentWillUnmount() { if (this.tm) clearTimeout(this.tm); }
+renderVals() {
+var self = this, S = this.state, F = S.fase;
+var I = [
+{ k: 'chamada', sigla: 'CH', t: 'Chamada · reunião de 27 set', m: '8 DBVs · 145 pontos', bg: '#E3EEE7', fg: '#1F4D3A' },
+{ k: 'fotos', sigla: 'FT', t: '5 fotos · Reunião 27 set', m: '9,0 MB', bg: '#EDE4F6', fg: '#5B3391' },
+{ k: 'edicao', sigla: 'ED', t: 'Correção na chamada de 20 set', m: 'Davi: uniforme marcado', bg: '#E1E8F5', fg: '#284F95' },
+{ k: 'erro', sigla: 'FT', t: '1 foto · Reunião 27 set', m: 'Arquivo corrompido ou muito grande', bg: '#FBE4E1', fg: '#9F2A20' }
+];
+var lista = I.filter(function (x) { return !(x.k === 'erro' && S.descartado); });
+var itens = lista.map(function (x) {
+var erro = x.k === 'erro' && F !== 'offline' && !S.retry;
+var st, stc, barra = false, pct = 0;
+if (F === 'offline') { st = 'na fila'; stc = '#9A3412'; }
+else if (erro) { st = 'erro'; stc = '#B42318'; }
+else if (F === 'enviando' && (x.k === 'fotos' || x.k === 'erro')) { st = x.k === 'fotos' ? '60%' : 'na fila'; stc = '#1F4D3A'; barra = x.k === 'fotos'; pct = 60; }
+else if (F === 'enviando') { st = 'enviado'; stc = '#1F7A45'; }
+else { st = 'enviado'; stc = '#1F7A45'; }
+return { sigla: x.sigla, titulo: x.t, meta: x.m, st: st, erro: erro, barra: barra,
+bar: 'display: block; height: 4px; border-radius: 2px; background: #1F4D3A; width: ' + pct + '%',
+icon: 'width: 40px; height: 40px; flex-shrink: 0; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; background: ' + x.bg + '; color: ' + x.fg,
+stStyle: 'font-size: 12px; font-weight: 800; white-space: nowrap; color: ' + stc,
+retry: function () { self.setState({ retry: true }); }, descartar: function () { self.setState({ descartado: true }); } };
+});
+var pend = itens.filter(function (x) { return x.st !== 'enviado'; }).length;
+var cards = {
+offline: ['Sem conexão', lista.length + ' itens aguardando envio. Eles sobem sozinhos quando a internet voltar.', '#FBEFE3', '#7C2D12', '#FDEBD2'],
+enviando: ['Enviando…', 'Conexão de volta. Pode continuar usando o app.', '#E3EEE7', '#1F4D3A', '#FFFFFF'],
+ok: pend ? [pend + ' item com problema', 'O restante já está no servidor.', '#FBEFE3', '#7C2D12', '#FDEBD2'] : ['Tudo enviado', 'Nada pendente neste aparelho.', '#E3EEE7', '#1F4D3A', '#FFFFFF']
+};
+var c = cards[F];
+return { itens: itens, isOffline: F === 'offline', isEnviando: F === 'enviando', isOk: F === 'ok',
+statusTitulo: c[0], statusTexto: c[1], pill: (F === 'offline' ? lista.length : pend) + ' aguardando envio',
+statusCard: 'border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 14px; background: ' + c[2] + '; color: ' + c[3],
+statusIcon: 'width: 44px; height: 44px; flex-shrink: 0; border-radius: 22px; display: flex; align-items: center; justify-content: center; background: ' + c[4],
+tentar: function () { self.setState({ fase: 'enviando' }); self.tm = setTimeout(function () { self.setState({ fase: 'ok' }); }, 1800); } };
+}
+}
+</script>
+</body>
+</html>

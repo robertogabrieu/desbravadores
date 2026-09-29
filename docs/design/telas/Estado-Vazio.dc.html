@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Estado vazio</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;background:#E9E5DB}a{color:#1F4D3A}a:hover{color:#163828}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; background: #F4F1EA; color: #1B221F; font-family: Figtree, system-ui, sans-serif; overflow: hidden">
+<header style="flex-shrink: 0; padding: 24px 20px 8px; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 13px; font-weight: 600; color: #5B645F">{{sub}}</span>
+<h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; font-weight: 800">{{titulo}}</h1>
+</header>
+<div style="flex-shrink: 0; padding: 4px 20px 0; display: flex; gap: 6px; overflow-x: auto">
+<sc-for list="{{casos}}" as="c" hint-placeholder-count="4"><button type="button" aria-pressed="{{c.on}}" onClick="{{c.pick}}" style="{{c.style}}">{{c.nome}}</button></sc-for>
+</div>
+<main style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px 36px 40px; text-align: center">
+<div style="width: 132px; height: 132px; border-radius: 66px; background: #E8E3D7; display: flex; align-items: center; justify-content: center; position: relative">
+<div style="width: 96px; height: 96px; border-radius: 48px; background: #FFFFFF; color: #1F4D3A; display: flex; align-items: center; justify-content: center">
+<sc-if value="{{isGaleria}}" hint-placeholder-val="{{true}}"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.8"></circle><path d="M21 16l-5-5-8 8"></path></svg></sc-if>
+<sc-if value="{{isUnidade}}" hint-placeholder-val="{{false}}"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M19 8v6M16 11h6"></path></svg></sc-if>
+<sc-if value="{{isReunioes}}" hint-placeholder-val="{{false}}"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"></rect><path d="M9 4V3h6v1M9 11h6M9 15h4"></path></svg></sc-if>
+<sc-if value="{{isCrono}}" hint-placeholder-val="{{false}}"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4M12 13v3l2 1"></path></svg></sc-if>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 800; line-height: 1.15">{{vTitulo}}</h2>
+<p style="margin: 0; font-size: 15px; line-height: 1.5; color: #4A524E">{{vTexto}}</p>
+</div>
+<sc-if value="{{temAcao}}" hint-placeholder-val="{{true}}">
+<a href="{{acaoHref}}" style="height: 52px; padding: 0 22px; border-radius: 14px; background: #1F4D3A; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; text-decoration: none">{{acaoTxt}}</a>
+</sc-if>
+<sc-if value="{{temSecundaria}}" hint-placeholder-val="{{false}}">
+<button type="button" style="height: 48px; padding: 0 20px; border-radius: 14px; border: 1px solid #D9D3C5; background: #FFFFFF; color: #1B221F; font-family: inherit; font-weight: 700; font-size: 15px">{{secTxt}}</button>
+</sc-if>
+</main>
+<sc-if value="{{navCons}}" hint-placeholder-val="{{true}}">
+<nav aria-label="Navegação principal" style="height: 76px; flex-shrink: 0; background: #FFFFFF; border-top: 1px solid #E4DFD3; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding-bottom: 8px">
+<a href="Inicio-Conselheiro.dc.html" style="{{n0}}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7v9h-5v-6h-6v6H4z"></path></svg>Início</a>
+<a href="Minha-Unidade.dc.html" style="{{n1}}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 4.5a3.5 3.5 0 0 1 0 7M18 14c2 .8 3 3 3 6"></path></svg>Unidade</a>
+<a href="Historico-Reunioes.dc.html" style="{{n2}}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"></rect><path d="M9 4V3h6v1M9 13l2 2 4-4"></path></svg>Reuniões</a>
+<a href="Ranking.dc.html" style="{{n3}}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"></path><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8"></path></svg>Ranking</a>
+</nav>
+</sc-if>
+<sc-if value="{{navInst}}" hint-placeholder-val="{{false}}">
+<nav aria-label="Navegação principal" style="height: 76px; flex-shrink: 0; background: #FFFFFF; border-top: 1px solid #E4DFD3; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding-bottom: 8px">
+<a href="Inicio-Instrutor.dc.html" style="{{n0}}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7v9h-5v-6h-6v6H4z"></path></svg>Início</a>
+<a href="Minhas-Classes.dc.html" style="{{n1}}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"></path><path d="M4 19V5"></path></svg>Classes</a>
+<a href="Cronograma.dc.html" style="{{n2}}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>Cronograma</a>
+<a href="Ranking.dc.html" style="{{n3}}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"></path><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8"></path></svg>Ranking</a>
+</nav>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"caso":{"editor":"enum","options":["galeria","unidade","reunioes","cronograma"],"default":"galeria"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(p) { super(p); this.state = { caso: null }; }
+renderVals() {
+var self = this;
+var caso = this.state.caso || this.props.caso || 'galeria';
+var C = {
+galeria: { nome: 'Galeria', sub: 'Unidade Águias', titulo: 'Galeria', vt: 'Nenhuma foto ainda', vx: 'Guarde aqui os momentos da unidade: reuniões, acampamentos e conquistas.', a: 'Enviar primeiras fotos', h: 'Enviar-Fotos.dc.html', inst: false, nav: 0 },
+unidade: { nome: 'Unidade', sub: 'Conselheiro', titulo: 'Unidade Águias', vt: 'Sua unidade ainda não tem desbravadores', vx: 'O Adm do clube vincula os DBVs à unidade. Assim que isso acontecer, eles aparecem aqui.', s: 'Avisar o Adm', inst: false, nav: 1 },
+reunioes: { nome: 'Reuniões', sub: 'Unidade Águias', titulo: 'Reuniões', vt: 'Nenhuma reunião registrada', vx: 'Depois da primeira chamada, o histórico e a frequência de cada DBV aparecem aqui.', a: 'Fazer a primeira chamada', h: 'Registro-Reuniao.dc.html', inst: false, nav: 2 },
+cronograma: { nome: 'Cronograma', sub: 'Planejamento de classe', titulo: 'Cronograma', vt: 'O cronograma de Companheiro ainda não foi publicado', vx: 'O Adm está montando as datas das aulas. Você recebe um aviso quando ele for publicado.', s: 'Pedir para eu montar', inst: true, nav: 2 }
+};
+var c = C[caso];
+var casos = ['galeria','unidade','reunioes','cronograma'].map(function (k) { var on = k === caso; return { nome: C[k].nome, on: on,
+style: 'height: 32px; padding: 0 12px; border-radius: 16px; font-family: inherit; font-size: 12px; font-weight: 700; white-space: nowrap; ' + (on ? 'border: 1px dashed #1F4D3A; background: #E3EEE7; color: #1F4D3A' : 'border: 1px dashed #CFC8B8; background: transparent; color: #5B645F'),
+pick: function () { self.setState({ caso: k }); } }; });
+var ns = function (i) { return 'display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; text-decoration: none; ' + (i === c.nav ? 'font-weight: 700; color: #1F4D3A' : 'font-weight: 600; color: #5B645F'); };
+return { casos: casos, navCons: !c.inst, navInst: c.inst, n0: ns(0), n1: ns(1), n2: ns(2), n3: ns(3), sub: c.sub, titulo: c.titulo, vTitulo: c.vt, vTexto: c.vx,
+temAcao: !!c.a, acaoTxt: c.a || '', acaoHref: c.h || '#', temSecundaria: !!c.s, secTxt: c.s || '',
+isGaleria: caso === 'galeria', isUnidade: caso === 'unidade', isReunioes: caso === 'reunioes', isCrono: caso === 'cronograma' };
+}
+}
+</script>
+</body>
+</html>

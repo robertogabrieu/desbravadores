@@ -29,13 +29,15 @@
 <sc-if value="{{isReun}}" hint-placeholder-val="{{true}}">
 <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px">
 <sc-for list="{{reunioes}}" as="r" hint-placeholder-count="6">
-<li style="background: #FFFFFF; border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; gap: 14px">
+<li>
+<a href="Detalhe-Reuniao.dc.html" style="background: #FFFFFF; border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; gap: 14px; text-decoration: none; color: #1B221F">
 <span style="width: 48px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; background: #F4F1EA; border-radius: 12px; padding: 6px 0"><span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 800; line-height: 1">{{r.dia}}</span><span style="font-size: 11px; font-weight: 700; color: #5B645F">{{r.mes}}</span></span>
 <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 6px">
 <span style="font-weight: 700; font-size: 15px">{{r.titulo}}</span>
 <span style="display: flex; gap: 10px; font-size: 12px; color: #5B645F"><span>{{r.pres}} presentes</span><span>{{r.atr}} atrasos</span><span>{{r.uni}} uniforme</span></span>
 </span>
 <span style="{{r.pctStyle}}">{{r.pct}}</span>
+</a>
 </li>
 </sc-for>
 </ul>

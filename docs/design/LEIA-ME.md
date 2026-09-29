@@ -1,6 +1,6 @@
 # Aplicativo do Desbravador — handoff de design
 
-Pacote para quem vai **implementar** as telas. Aqui estão as 25 telas desenhadas, os tokens visuais e as regras de negócio que cada tela assume.
+Pacote para quem vai **implementar** as telas. Aqui estão as 31 telas desenhadas, os tokens visuais e as regras de negócio que cada tela assume.
 
 > Todos os nomes, números e datas nas telas são **fictícios**, só para dar contexto. "[Nome do Clube]" é um marcador de texto.
 
@@ -23,7 +23,7 @@ Sistema web + **PWA** para o Clube de Desbravadores (Igreja Adventista, jovens d
 
 O ranking público e o perfil do DBV são comuns a todos. O ranking também pode ser visto sem login, pelo botão na tela de Login.
 
-## 3. Inventário de telas
+## 3. Inventário de telas (31)
 
 Os arquivos ficam em `telas/`. As telas de celular têm 390×844; as de desktop, 1280×832.
 
@@ -43,6 +43,8 @@ Os arquivos ficam em `telas/`. As telas de celular têm 390×844; as de desktop,
 | `Registro-Reuniao.dc.html` | **Chamada**: tocar no nome = presente; depois marcar Atrasou / Uniforme / Bíblia; os pontos somam ao vivo |
 | `Historico-Reunioes.dc.html` | Abas "Por reunião" (lista) e "Por DBV" (grade das últimas 8 reuniões: presente / atraso / falta) |
 | `Galeria.dc.html` | Álbuns por reunião/evento + botão "Enviar fotos" |
+| `Detalhe-Reuniao.dc.html` | **Detalhe da reunião** (aberto a partir do Histórico): resumo, filtro Todos/Presentes/Ausentes, marcações e pontos por DBV, observações, fotos da reunião, botão Editar |
+| `Enviar-Fotos.dc.html` | **Envio de fotos**: escolher o álbum (reunião do dia, evento do calendário ou novo álbum), selecionar da câmera ou da galeria, remover, legenda e progresso por foto durante o envio |
 
 ### Instrutor (celular)
 | Arquivo | Tela |
@@ -54,6 +56,14 @@ Os arquivos ficam em `telas/`. As telas de celular têm 390×844; as de desktop,
 | `Observacoes.dc.html` | Notas por aula ou por DBV, visíveis só a instrutores e ao Adm |
 | `Progresso-Classe.dc.html` | Média da turma + % por DBV (abaixo de 40% fica em laranja) |
 | `Especialidades.dc.html` | Escolher o DBV → marcar especialidades concluídas, agrupadas por área |
+| `Montar-Cronograma-Instrutor.dc.html` | **Montar cronograma no celular** (instrutor liberado): abas "Por data" e "Sem data", "+" numa data abre uma folha inferior (bottom sheet) com os requisitos sem data (os de CAMPO aparecem primeiro em acampamentos), Salvar rascunho e "Enviar para o Adm publicar" |
+
+### Estados (celular)
+| Arquivo | Tela |
+|---|---|
+| `Estado-Vazio.dc.html` | Modelo de estado vazio com 4 variações: Galeria, Unidade sem DBVs, Reuniões e Cronograma não publicado. Os chips tracejados no topo servem **só para alternar as variações** no protótipo; não fazem parte da interface |
+| `Estado-Offline.dc.html` | Chamada **sem conexão**: faixa escura no topo, a lista continua funcionando, "Salvar no aparelho" e depois um card "aguardando envio" que leva à fila |
+| `Estado-Pendente.dc.html` | **Fila de envio**: status (sem conexão → enviando → enviado), itens pendentes com estado de cada um, erro com "Tentar de novo / Descartar", e a legenda de como o app sinaliza pendências (selo no Início, marca "não enviado" em listas, faixa "Sem conexão") |
 
 ### Adm (desktop)
 | Arquivo | Tela |
@@ -70,10 +80,10 @@ Os arquivos ficam em `telas/`. As telas de celular têm 390×844; as de desktop,
 
 ## 4. Navegação
 
-- **Conselheiro**, barra inferior: Início · Unidade · Reuniões · Ranking
-- **Instrutor**, barra inferior: Início · Classes · Cronograma · Ranking
+- **Conselheiro**, barra inferior: Início · Unidade · Reuniões · Ranking. Fluxos extras: Histórico → Detalhe da reunião → Editar; Galeria → Enviar fotos; Início (selo de pendências) → Aguardando envio
+- **Instrutor**, barra inferior: Início · Classes · Cronograma · Ranking. Fluxo extra: Cronograma → Montar cronograma (se liberado)
 - **Adm**, menu lateral: Visão geral · Desbravadores · Usuários · Unidades · Classes e especialidades · Calendário do clube · Cronogramas · Ranking · Relatórios
-- Os `<a href="X.dc.html">` dentro das telas indicam o destino de cada botão ou link. Trate cada arquivo como uma rota. Sugestão de rotas: `/login`, `/inicio`, `/ranking`, `/dbv/:id`, `/unidade`, `/reunioes/nova`, `/reunioes`, `/galeria`, `/classes`, `/cronograma`, `/aulas/:id/registro`, `/materiais`, `/observacoes`, `/classes/:id/progresso`, `/especialidades`, `/adm/...`.
+- Os `<a href="X.dc.html">` dentro das telas indicam o destino de cada botão ou link. Trate cada arquivo como uma rota. Sugestão de rotas: `/login`, `/inicio`, `/ranking`, `/dbv/:id`, `/unidade`, `/reunioes/nova`, `/reunioes`, `/reunioes/:id`, `/galeria/enviar`, `/pendencias`, `/cronograma/montar`, `/galeria`, `/classes`, `/cronograma`, `/aulas/:id/registro`, `/materiais`, `/observacoes`, `/classes/:id/progresso`, `/especialidades`, `/adm/...`.
 
 ## 5. Regras de negócio que as telas assumem
 
@@ -119,6 +129,37 @@ Os arquivos ficam em `telas/`. As telas de celular têm 390×844; as de desktop,
 
 ### Observações
 - Visíveis só a instrutores e ao Adm, **nunca** ao DBV nem ao ranking público.
+
+### Cronograma no celular (instrutor)
+- É a mesma regra da tela de desktop, adaptada: datas bloqueadas pelo calendário não mostram o "+", e acampamentos com `bomParaCampo` destacam o "+" em verde.
+- Na folha de requisitos, quando a data é de campo, os requisitos com etiqueta CAMPO aparecem primeiro, marcados como "Sugerido para este dia".
+- O instrutor só salva como **rascunho** e **envia para o Adm publicar**. A publicação é sempre do Adm.
+
+### Reuniões
+- A partir do Histórico, cada reunião abre o Detalhe. "Editar" reabre a chamada.
+- Editar uma chamada já enviada **recalcula os pontos do ranking** e deixa registro (quem alterou e quando).
+
+### Fotos
+- Álbuns: reunião do dia (padrão), evento do calendário do clube ou álbum novo.
+- Reduzir as fotos no aparelho antes de enviar (máx. ~2 MB cada).
+- O envio continua em segundo plano se o usuário sair da tela.
+- Fotos de desbravadores (menores de idade) são visíveis **só para líderes logados**. Nunca aparecem no ranking público nem em links abertos.
+
+### Offline e sincronização (PWA)
+- A chamada, as correções de chamada e a seleção de fotos funcionam sem internet. Tudo fica guardado no aparelho (ex.: IndexedDB) numa **fila de envio**.
+- Antes de ficar offline, o app precisa ter a lista de DBVs da unidade em cache. A tela mostra "lista atualizada hoje às 8h12".
+- A fila é enviada sozinha quando a conexão volta, e também existe o botão "Tentar enviar agora".
+- Cada item tem um estado: `na fila`, `enviando (%)`, `enviado`, `erro`. Um item com erro oferece "Tentar de novo" e "Descartar".
+- Como o app sinaliza pendências:
+  - faixa "Sem conexão" no topo de qualquer tela;
+  - selo "N aguardando envio" no Início;
+  - marca "não enviado" nos itens de lista.
+- Avise o usuário para não sair da conta com pendências, porque elas se perderiam.
+- Conflito: se a mesma chamada foi editada em outro aparelho, vale a última gravação, mas o conflito fica registrado para o Adm ver. (Sugestão; confirme com o dono do produto.)
+
+### Estados vazios
+- Estrutura: ícone em círculo + título + uma frase de explicação + no máximo uma ação.
+- A ação leva ao próximo passo real: enviar fotos, fazer a primeira chamada, avisar o Adm.
 
 ## 6. Rascunho do modelo de dados
 
@@ -186,8 +227,8 @@ Eles foram exportados de uma ferramenta de design. **Não são código de produ�
 ## 9. Fora do escopo destas telas (a definir)
 
 - Recuperação de senha, primeiro acesso e convite por e-mail.
-- Estados vazios, carregamento e erro.
-- Modo offline do PWA (a chamada no domingo pode ser feita sem internet e sincronizada depois — recomendado).
-- Visualizador de foto em tela cheia e upload com câmera.
+- Estado de carregamento (skeletons) e erro genérico de servidor. Siga o mesmo padrão visual dos estados vazios.
+- Visualizador de foto em tela cheia.
+- Versões desktop do Detalhe da reunião e da Galeria para o Adm (podem reaproveitar o layout do celular dentro do menu lateral).
 - Tela para o próprio DBV ou para os pais (não pedida).
 - Dark mode.

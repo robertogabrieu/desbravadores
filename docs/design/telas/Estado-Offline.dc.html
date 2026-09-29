@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Chamada sem conexão</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;background:#E9E5DB}a{color:#1F4D3A}a:hover{color:#163828}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; background: #F4F1EA; color: #1B221F; font-family: Figtree, system-ui, sans-serif; overflow: hidden">
+<div role="status" style="flex-shrink: 0; background: #3A2A12; color: #FDEBD2; padding: 10px 16px; display: flex; align-items: center; gap: 10px">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="M2 8.5a15 15 0 0 1 4-2.4M10 5.1A15 15 0 0 1 22 8.5M5 12a10 10 0 0 1 3.5-2M15 10.2A10 10 0 0 1 19 12M8.5 15.5a5 5 0 0 1 7 0M12 19.5h.01M3 3l18 18"></path></svg>
+<span style="flex-grow: 1; font-size: 13px; line-height: 1.35"><strong>Sem conexão.</strong> Pode continuar: a chamada fica salva no aparelho e é enviada quando a internet voltar.</span>
+</div>
+<header style="flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 8px 12px 4px">
+<a href="Inicio-Conselheiro.dc.html" aria-label="Voltar" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: #1B221F"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></a>
+<div style="flex-grow: 1; display: flex; flex-direction: column"><span style="font-weight: 700; font-size: 17px">Registro de reunião</span><span style="font-size: 13px; color: #5B645F">Dom, 27 set · lista atualizada hoje às 8h12</span></div>
+</header>
+<main style="flex-grow: 1; overflow-y: auto; padding: 8px 20px 16px; display: flex; flex-direction: column; gap: 8px">
+<sc-for list="{{lista}}" as="d" hint-placeholder-count="8">
+<div style="{{d.card}}">
+<button type="button" aria-pressed="{{d.p}}" onClick="{{d.t}}" style="display: flex; align-items: center; gap: 12px; border: 0; background: transparent; padding: 0; font-family: inherit; color: #1B221F; text-align: left; min-height: 44px; width: 100%">
+<span style="{{d.check}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg></span>
+<span style="flex-grow: 1; font-weight: 700; font-size: 15px">{{d.nome}}</span>
+<span style="font-size: 12px; color: #5B645F">{{d.st}}</span>
+</button>
+</div>
+</sc-for>
+<p style="margin: 4px 0 0; font-size: 12px; color: #5B645F; text-align: center">Fotos também podem ser escolhidas agora: elas entram na fila e sobem depois.</p>
+</main>
+<div style="flex-shrink: 0; padding: 12px 20px 20px; border-top: 1px solid #E4DFD3; display: flex; flex-direction: column; gap: 10px">
+<sc-if value="{{salvo}}" hint-placeholder-val="{{false}}">
+<a href="Estado-Pendente.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; background: #FBEFE3; color: #7C2D12; text-decoration: none">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+<span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 700; font-size: 14px">Chamada salva no aparelho</span><span style="font-size: 12px">Aguardando conexão para enviar · ver fila</span></span>
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg>
+</a>
+</sc-if>
+<button type="button" onClick="{{salvar}}" style="{{botao}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11l3 3v13H5z"></path><path d="M8 4v5h7V4M8 20v-6h8v6"></path></svg>{{botaoTxt}}</button>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(p) {
+super(p);
+this.state = { salvo: false, l: [
+{ n: 'Ana Clara Souza', p: true }, { n: 'Pedro Henrique Lima', p: true }, { n: 'Júlia Ramos', p: true }, { n: 'Isabela Martins', p: true },
+{ n: 'Lívia Fernandes', p: false }, { n: 'Enzo Barros', p: true }, { n: 'Gabriel Nunes', p: false }, { n: 'Davi Carvalho', p: true }
+] };
+}
+renderVals() {
+var self = this, S = this.state;
+var lista = S.l.map(function (x, i) { return { nome: x.n, p: x.p, st: x.p ? 'presente' : 'ausente',
+card: 'border-radius: 14px; padding: 6px 12px; ' + (x.p ? 'background: #FFFFFF' : 'background: #EFEBE1'),
+check: 'width: 30px; height: 30px; border-radius: 9px; flex-shrink: 0; box-sizing: border-box; display: flex; align-items: center; justify-content: center; ' + (x.p ? 'background: #1F4D3A; color: #FFFFFF' : 'border: 2px solid #CFC8B8; color: transparent; background: #FFFFFF'),
+t: function () { self.setState({ salvo: false, l: S.l.map(function (y, j) { return j === i ? { n: y.n, p: !y.p } : y; }) }); } }; });
+var n = S.l.filter(function (x) { return x.p; }).length;
+return { lista: lista, salvo: S.salvo,
+botaoTxt: S.salvo ? 'Salvo no aparelho' : 'Salvar no aparelho · ' + n + ' presentes',
+botao: 'height: 54px; border-radius: 14px; font-family: inherit; font-weight: 700; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; ' + (S.salvo ? 'border: 1px solid #D9D3C5; background: #FFFFFF; color: #5B645F' : 'border: 0; background: #1F4D3A; color: #FFFFFF'),
+salvar: function () { self.setState({ salvo: true }); } };
+}
+}
+</script>
+</body>
+</html>
