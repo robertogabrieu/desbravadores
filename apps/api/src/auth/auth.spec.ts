@@ -18,7 +18,7 @@ import {
 import { testarIsolamento } from '../../test/isolamento'
 import { ServicoTokenUsoUnico } from '../sessao/token-uso-unico.service'
 import { hashDoToken } from '../sessao/tokens'
-import { cookieDoRefresh, criarAppDeAuth, linhaDoSetCookie } from './testes/app-auth'
+import { cookieDoRefresh, criarAppDeAuth, linhaDoSetCookie } from '../../test/app-auth'
 
 let app: INestApplication
 const servidor = (): Server => app.getHttpServer() as Server

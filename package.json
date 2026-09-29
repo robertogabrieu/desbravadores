@@ -10,7 +10,7 @@
     "lint": "eslint . --max-warnings 0",
     "tipos": "tsc --noEmit -p tsconfig.json && npm run tipos -w packages/shared -w api -w web",
     "teste": "npm run teste -w packages/shared -w api -w web",
-    "teste:e2e": "playwright test --pass-with-no-tests",
+    "teste:e2e": "playwright test",
     "build": "npm run build -w packages/shared -w api -w web"
   },
   "devDependencies": {

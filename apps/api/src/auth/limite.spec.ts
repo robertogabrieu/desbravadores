@@ -3,7 +3,7 @@ import type { Server } from 'node:http'
 import type { INestApplication } from '@nestjs/common'
 import request from 'supertest'
 import { desconectarPrismaDeTeste } from '../../test/fabricas'
-import { criarAppDeAuth } from './testes/app-auth'
+import { criarAppDeAuth } from '../../test/app-auth'
 
 let app: INestApplication
 let proxyAnterior: string | undefined

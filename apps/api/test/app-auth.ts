@@ -3,12 +3,12 @@ import type { INestApplication } from '@nestjs/common'
 import type { NestExpressApplication } from '@nestjs/platform-express'
 import { Test } from '@nestjs/testing'
 import type { Response } from 'supertest'
-import { AppModule } from '../../app.module'
-import { configurarApp } from '../../configurar-app'
-import { SERVICO_EMAIL } from '../../email/servico-email'
-import { ServicoEmailFalso } from '../../email/servico-email-falso'
-import { RotasDeTesteModule } from '../../../test/rotas-de-teste'
-import { GuardaLimite } from '../limite'
+import { AppModule } from '../src/app.module'
+import { configurarApp } from '../src/configurar-app'
+import { SERVICO_EMAIL } from '../src/email/servico-email'
+import { ServicoEmailFalso } from '../src/email/servico-email-falso'
+import { RotasDeTesteModule } from './rotas-de-teste'
+import { GuardaLimite } from '../src/auth/limite'
 
 /** App de teste com as rotas de apoio; o limite de taxa fica desligado, exceto quando `limitar` e verdadeiro. */
 export async function criarAppDeAuth(opcoes: { limitar?: boolean } = {}): Promise<INestApplication> {

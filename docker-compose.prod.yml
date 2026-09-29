@@ -1,0 +1,64 @@
+name: desbravadores-prod
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    mem_limit: 256m
+    # O superusuario e so do container; o app usa o papel criado por postgres-init-app.sh, sem superuser.
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SENHA:?defina POSTGRES_SENHA no .env}
+      APP_DB_SENHA: ${DB_SENHA:?defina DB_SENHA no .env}
+    command: postgres -c shared_buffers=64MB -c max_connections=30
+    volumes:
+      - postgres-dados:/var/lib/postgresql/data
+      - ./scripts/postgres-init-app.sh:/docker-entrypoint-initdb.d/01-app.sh:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    mem_limit: 256m
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://desbravador:${DB_SENHA}@postgres:5432/desbravador
+      PORTA_API: '3001'
+      APP_URL: ${APP_URL:?defina APP_URL no .env}
+      JWT_SEGREDO: ${JWT_SEGREDO:?defina JWT_SEGREDO no .env}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      TRUST_PROXY: ${TRUST_PROXY:-2}
+      SMTP_HOST: ${SMTP_HOST:-localhost}
+      SMTP_PORTA: ${SMTP_PORTA:-587}
+      SMTP_USUARIO: ${SMTP_USUARIO:-}
+      SMTP_SENHA: ${SMTP_SENHA:-}
+      SMTP_FROM: ${SMTP_FROM:-Desbravadores <nao-responda@localhost>}
+      VERSAO_APP: ${VERSAO_APP:-0.0.0}
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://localhost:3001/api/saude').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 40s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '${WEB_PORTA:-8090}:80'
+
+volumes:
+  postgres-dados:

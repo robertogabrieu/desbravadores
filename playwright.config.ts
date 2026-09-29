@@ -1,14 +1,13 @@
 import { defineConfig } from '@playwright/test'
-import dotenv from 'dotenv'
 
-dotenv.config({ path: '.env.teste', quiet: true })
-
+// O globalSetup sobe banco, API e `vite preview` em portas escolhidas na hora e publica a URL do
+// front em E2E_WEB_URL; por isso o baseURL vem do teste (test.use), não daqui.
 export default defineConfig({
   testDir: 'e2e',
-  use: { baseURL: 'http://localhost:5173', headless: true },
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: true,
-  },
+  testMatch: '**/*.spec.ts',
+  globalSetup: './e2e/global-setup.ts',
+  globalTeardown: './e2e/global-teardown.ts',
+  workers: 1,
+  timeout: 60_000,
+  use: { headless: true, actionTimeout: 10_000 },
 })
