@@ -86,6 +86,13 @@ conferida com `npm ls`). Pacote que o Finance não usa: a última estável no di
 
 Esta é a lista **completa** da fase. Qualquer outra dependência é pendência para o principal.
 
+**Fixadas no P1 (2026-09-29).** Última estável: argon2 0.45.1 · vitest 5.0.2 ·
+@testing-library/react 16.3.3 · @testing-library/user-event 14.6.7 · @testing-library/jest-dom
+7.0.1 · jsdom 30.1.1 · msw 2.15.0 (a 3.x existe; D10 fixa a 2) · @playwright/test 1.63.0 · tsx
+4.23.15 · workbox-core/-precaching/-routing 7.4.1 · @vite-pwa/assets-generator 2.0.0 · dotenv
+18.0.4. Acrescentadas por serem dependência obrigatória de outras da lista (versão do Finance):
+@testing-library/dom 10.4.2 · @types/express 5.0.6 · reflect-metadata 0.2.2 · rxjs 7.8.2.
+
 Diferenças **deliberadas** em relação ao Finance — não "corrigir" para ficar igual: refresh com
 rotação, tolerância e validade absoluta (lá não rotaciona); access token em memória (lá fica em
 `localStorage`, exposto a XSS); a guarda de **autenticação** é global com `@Publica()` (lá é por
