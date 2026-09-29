@@ -21,7 +21,8 @@ Os números entre colchetes são as histórias do [BACKLOG](BACKLOG.md).
 - Banco: clubes, usuários, vínculos, DBVs, unidades, membros, classes, seções, requisitos,
   especialidades, matrícula, configuração do clube.
 - Carga inicial: cadernos das classes (`dados/cadernos/*.json`, como extraídos), catálogo de
-  especialidades, critérios padrão do ranking.
+  especialidades (`dados/especialidades.json`: 514 em 9 áreas + 16 mestrados), critérios padrão
+  do ranking.
 - Login, convite por e-mail, recuperação de senha, troca de papel.
 - Adm mínimo: cadastrar DBV, unidade (com membros) e usuário com vínculo [A1, A2, A3]. Pode ser
   a versão final dessas telas, se couber; senão, formulário simples que a Fase 3 refina.

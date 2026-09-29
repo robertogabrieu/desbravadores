@@ -77,8 +77,10 @@ Classe(id, nome, idade?, cor,
 SecaoRequisito(id, classeId, codigo: "G"|"DE"|..., nome, ordem)
 Requisito(id, secaoId, codigo: "DE1", texto, campo: bool, ordem, ativo)
 
-AreaEspecialidade(id, nome, cor, ordem)
-Especialidade(id, areaId, nome, codigo?, origem: OFICIAL|CLUBE, ativa)
+AreaEspecialidade(id, codigo: "AD"|"HM"|..., nome, cor, ordem)
+Especialidade(id, areaId, nome, origem: OFICIAL|CLUBE, ativa)
+Mestrado(id, nome)                               # catálogo carregado; marcar conclusão fica para depois
+  # carga: dados/especialidades.json — 514 especialidades em 9 áreas + 16 mestrados, só nomes
 ```
 
 **Trilhas.** A trilha individual tem 6 regulares (Amigo a Guia), cada uma com sua avançada. A

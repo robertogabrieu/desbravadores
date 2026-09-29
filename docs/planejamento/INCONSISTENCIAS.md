@@ -109,4 +109,4 @@ O mantenedor revisa e corrige antes do lançamento público (decidido em 29/09).
 | 5 | Etiqueta **CAMPO** foi inferida pelo assunto; os duvidosos ficaram sem e estão nos avisos | Um instrutor experiente revisar (15 min por classe) |
 | 6 | O caderno chama a seção IX de "Estilo de vida" em algumas classes; usamos "Enriquecendo a vida" | **[decidir]** qual nome exibir |
 | 7 | As telas mostram 44–53 requisitos por classe; os cadernos têm **23–29** na regular | Nada — os números das telas eram fictícios |
-| 8 | **Catálogo de especialidades** (~500 itens, por área) não veio com o material | **[decidir]** fonte: lista oficial da DSA/CPB em planilha, ou o Adm cadastra só as que o clube usa |
+| 8 | **Catálogo de especialidades** (~500 itens, por área) não veio com o material | **Resolvido (29/09):** 514 especialidades em 9 áreas e 16 mestrados, do Manual de Especialidades da DSA transcrito no site da igreja → `dados/especialidades.json` |
