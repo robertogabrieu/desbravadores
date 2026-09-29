@@ -23,6 +23,7 @@ cat > "$ENV_ARQUIVO" <<ENV
 POSTGRES_SENHA=teste-postgres-$$
 DB_SENHA=teste-app-$$
 JWT_SEGREDO=$(openssl rand -hex 32)
+ARQUIVOS_SEGREDO=$(openssl rand -hex 32)
 WEB_PORTA=$porta_web
 APP_URL=http://localhost:$porta_web
 COOKIE_SECURE=false

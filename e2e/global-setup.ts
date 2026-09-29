@@ -1,5 +1,7 @@
 import { execFileSync, spawn } from 'node:child_process'
-import { resolve } from 'node:path'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 import { carregarAmbienteTeste, variavelObrigatoria } from '../apps/api/test/ambiente'
 import { apagarBanco, criarBancoTemporario } from '../apps/api/test/banco'
 import { esperarResposta, portaLivre } from './ambiente-e2e'
@@ -14,6 +16,9 @@ export default async function globalSetup(): Promise<void> {
   const urlAdmin = variavelObrigatoria('DATABASE_URL_ADMIN')
   const banco = await criarBancoTemporario(urlAdmin, variavelObrigatoria('DATABASE_URL'))
   process.env['E2E_BANCO_NOME'] = banco.nome
+  // Pasta própria dos arquivos enviados; o teardown a apaga.
+  const arquivosDir = mkdtempSync(join(tmpdir(), 'arquivos-e2e-'))
+  process.env['E2E_ARQUIVOS_DIR'] = arquivosDir
 
   try {
     // Mesma carga oficial do Jest: processo filho com o `tsx` do `npm run carga`.
@@ -33,6 +38,7 @@ export default async function globalSetup(): Promise<void> {
     const ambienteApi = {
       ...process.env,
       DATABASE_URL: banco.url,
+      ARQUIVOS_DIR: arquivosDir,
       PORTA_API: String(portaApi),
       APP_URL: urlWeb,
       COOKIE_SECURE: 'false',
@@ -56,6 +62,7 @@ export default async function globalSetup(): Promise<void> {
     process.env['E2E_DATABASE_URL'] = banco.url
   } catch (erro) {
     derrubarProcessos(process.env['E2E_PIDS'])
+    rmSync(arquivosDir, { recursive: true, force: true })
     await apagarBanco(urlAdmin, banco.nome)
     throw erro
   }

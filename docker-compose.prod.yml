@@ -25,7 +25,7 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     restart: unless-stopped
-    mem_limit: 256m
+    mem_limit: 384m
     depends_on:
       postgres:
         condition: service_healthy
@@ -34,6 +34,8 @@ services:
       PORTA_API: '3001'
       APP_URL: ${APP_URL:?defina APP_URL no .env}
       JWT_SEGREDO: ${JWT_SEGREDO:?defina JWT_SEGREDO no .env}
+      ARQUIVOS_DIR: /app/arquivos
+      ARQUIVOS_SEGREDO: ${ARQUIVOS_SEGREDO:?defina ARQUIVOS_SEGREDO no .env}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
       TRUST_PROXY: ${TRUST_PROXY:-2}
       SMTP_HOST: ${SMTP_HOST:-localhost}
@@ -42,6 +44,8 @@ services:
       SMTP_SENHA: ${SMTP_SENHA:-}
       SMTP_FROM: ${SMTP_FROM:-Desbravadores <nao-responda@localhost>}
       VERSAO_APP: ${VERSAO_APP:-0.0.0}
+    volumes:
+      - arquivos:/app/arquivos
     healthcheck:
       test: ['CMD', 'node', '-e', "fetch('http://localhost:3001/api/saude').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
       interval: 10s
@@ -62,3 +66,4 @@ services:
 
 volumes:
   postgres-dados:
+  arquivos:
