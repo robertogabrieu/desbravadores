@@ -1,4 +1,4 @@
-import { CatalogoPermissoesSaida, ClasseSaida, UnidadeSaida, UsuarioLista } from '@desbravadores/shared'
+import { CatalogoPermissoesSaida, ClasseSaida, MembroSaida, UnidadeSaida, UsuarioLista } from '@desbravadores/shared'
 import type { Papel } from '@desbravadores/shared'
 import { useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
@@ -6,6 +6,7 @@ import { montarConsulta, requisitar } from './cliente'
 
 export type Classe = z.infer<typeof ClasseSaida>
 export type Unidade = z.infer<typeof UnidadeSaida>
+export type Membro = z.infer<typeof MembroSaida>
 export type ListaUsuarios = z.infer<typeof UsuarioLista>
 export type CatalogoPermissao = z.infer<typeof CatalogoPermissoesSaida>[number]
 
@@ -24,6 +25,8 @@ export const chavesLeitura = {
   unidades: (todas: boolean) => ['unidades', { todas }] as const,
   usuariosResumo: (filtro: FiltroUsuariosResumo) => ['usuarios', 'resumo', filtro] as const,
   catalogoPermissoes: ['permissoes', 'catalogo'] as const,
+  membrosUnidade: (unidadeId: string) => ['unidades', unidadeId, 'membros'] as const,
+  semMembros: ['unidades', 'sem-membros'] as const,
 }
 
 export function useClasses(filtro: FiltroClasses = {}) {
@@ -56,5 +59,22 @@ export function useCatalogoPermissoes() {
     queryKey: chavesLeitura.catalogoPermissoes,
     queryFn: () => requisitar('/api/permissoes/catalogo', CatalogoPermissoesSaida),
     staleTime: Infinity,
+  })
+}
+
+/** Desbravadores (tipo DBV) de uma unidade, por nome. Sem `unidadeId` não consulta. */
+export function useMembrosUnidade(unidadeId: string | undefined) {
+  return useQuery({
+    queryKey: chavesLeitura.membrosUnidade(unidadeId ?? ''),
+    queryFn: () => requisitar(`/api/unidades/${unidadeId ?? ''}/membros`, z.array(MembroSaida)),
+    enabled: unidadeId !== undefined,
+  })
+}
+
+/** Desbravadores sem unidade (só quem gerencia unidades). */
+export function useSemMembros() {
+  return useQuery({
+    queryKey: chavesLeitura.semMembros,
+    queryFn: () => requisitar('/api/unidades/sem-membros', z.array(MembroSaida)),
   })
 }

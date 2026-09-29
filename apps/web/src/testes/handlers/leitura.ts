@@ -1,5 +1,5 @@
 import { HttpResponse, http } from 'msw'
-import type { CatalogoPermissao, Classe, ListaUsuarios, Unidade } from '../../api/leitura'
+import type { CatalogoPermissao, Classe, ListaUsuarios, Membro, Unidade } from '../../api/leitura'
 import { uuid } from './sessao'
 
 export function criarClasse(parcial: Partial<Classe> = {}): Classe {
@@ -66,3 +66,22 @@ export const handlersLeitura = () => [
   handlerUsuarios(),
   handlerCatalogoPermissoes(),
 ]
+
+export function criarMembro(parcial: Partial<Membro> = {}): Membro {
+  return {
+    dbvId: uuid(300),
+    nome: 'Ana Clara Souza',
+    nomePublico: 'Ana S.',
+    idade: 11,
+    sexo: 'F',
+    classeAtual: null,
+    desde: '2026-02-01',
+    ...parcial,
+  }
+}
+
+export const handlerMembrosUnidade = (membros: Membro[] = [criarMembro()]) =>
+  http.get('/api/unidades/:id/membros', () => HttpResponse.json(membros))
+
+export const handlerSemMembros = (membros: Membro[] = []) =>
+  http.get('/api/unidades/sem-membros', () => HttpResponse.json(membros))
