@@ -4,6 +4,10 @@
 **1a:** branch `feature/fase-1-conselheiro` (esta), worktree `/home/robertogabrieu/desbravadores/.claude/worktrees/fase-1`, PR em rascunho desta branch
 **1b:** branch `feature/fase-1b-domingo`, criada da `main` **depois do merge da 1a**, com PR própria
 
+Briefing de cada implementador: `~/.claude/skills/orquestrador/references/briefing-template.md`,
+com a linha do pacote na tabela §3 em PODE/NÃO TOCAR e as linhas de teste da SPEC §7 do pacote.
+PENDÊNCIAS: uma linha cada, no relatório de fechamento e como comentário na PR.
+
 Vocabulário e regras de execução: iguais ao [PLANO da Fase 0 §1](../fase-0/PLANO.md) — o
 principal não escreve código fora dos arquivos de dono compartilhado; implementador (sonnet) em
 TDD com a bateria do pacote escrita antes; revisão com opus; nenhum subagente roda git; decisão
@@ -28,17 +32,21 @@ Dentro da faixa ótima (6–10 por pacote, [spec-e-plano §3]). Não juntar nem 
 
 ### Onda 0 [principal, inline]
 
-1. Instala `dexie`, `fake-indexeddb` (web, dev), `sharp`, `multer`, `@types/multer` (api); anota as
+1. Instala `dexie`, `fake-indexeddb` (web, dev), `workbox-strategies`, `workbox-expiration`,
+   `workbox-cacheable-response` (web, 7.4.1), `sharp`, `multer`, `@types/multer` (api); anota as
    versões na SPEC §3.
 2. Copia `anexos/schema.prisma` → `apps/api/prisma/schema.prisma`; `prisma migrate dev --name
-   fase1_conselheiro`; confere que o SQL só acrescenta e contém os 2 índices parciais novos.
-3. Acrescenta os 8 modelos à `MODELOS_DE_CLUBE` (SPEC E3).
+   fase1_conselheiro`; confere que o SQL não tem DROP e contém os 3 índices parciais novos.
+3. Acrescenta os 9 modelos à `MODELOS_DE_CLUBE` (SPEC E3).
 4. Copia `anexos/contratos.ts` para `packages/shared/src/` (enums + `contratos/{reunioes,sync,fotos,
-   ranking,perfil,inicio,pedidos}.ts`; `MembroSaida.frequencia` opcional) e exporta no `index.ts`;
-   `formulas/situacao.ts` passa a derivar o tipo de `SITUACOES_CHAMADA`.
-5. Escreve `apps/web/src/offline/tipos.ts`: tipos de `ItemFila`, `EstadoItem`, `TipoFila`
-   (`{ tipo, rotulo(item), enviar(item, ctx) → Promise<ResultadoEnvio> }`), e as assinaturas
-   públicas `enfileirar`, `useFila`, `useConexao`, `useModoSessao`, `registrarTipo`.
+   ranking,perfil,inicio,pedidos}.ts`; `MembroSaida.frequencia` opcional; `TEMPORARIO` em
+   `CODIGOS_ERRO` e 503 em `apps/api/src/comum/erros.ts`) e exporta no `index.ts`;
+   `formulas/situacao.ts` passa a derivar o tipo de `SITUACOES_CHAMADA`. Acrescenta
+   `pontosPorCriterio` com teste e faz `pontosDaChamada` somá-la (SPEC §5.3) — os testes atuais
+   de `pontosDaChamada` precisam continuar verdes.
+5. Escreve `apps/web/src/offline/tipos.ts` com **exatamente** as assinaturas da SPEC §4.3
+   (`ItemFila`, `TipoFila`, `registrarTipo`, `enfileirar`, `useFila`, `itensDaChave`,
+   `useConexao`, `useModoSessao`, `limparDadosDoUsuario`) — A2 implementa, A3 e a 1b consomem.
 6. Registra em `app.module.ts` os módulos vazios `sync`, `pontos`, `arquivos`; `.env.exemplo`
    com `ARQUIVOS_DIR`, `ARQUIVOS_SEGREDO`; `CLAUDE.md` (SPEC §8).
 
@@ -49,23 +57,31 @@ Dentro da faixa ótima (6–10 por pacote, [spec-e-plano §3]). Não juntar nem 
 
 **A1 · API do núcleo** — `sync/` (`GET /sync/pacote`, SPEC §4.2), `pontos/` (`ServicoPontos`,
 §5.3), `arquivos/` (`Armazenamento` em disco, `ServicoArquivos` com URL assinada,
-`GET /arquivos/:id`, §4.5); fábricas novas em `test/fabricas.ts` (reunião com chamada, lançamento,
-arquivo). Testes da SPEC §7 marcados 1a-A1.
+`GET /arquivos/:id`, §4.5); `ARQUIVOS_DIR` temporário no `globalSetup`/`globalTeardown` do Jest;
+em `test/fabricas.ts` **todas** as fábricas que a 1b vai usar: `criarMembro({ dbvId, unidadeId,
+inicio, fim? })`, `configurarClube({ clubeId, ...ConfiguracaoClube })`, `criterioPorGatilho(clubeId,
+gatilho)`, `criarReuniao({ unidadeId, data, chamada: linhas[] })`, `criarLancamento(...)`,
+`criarArquivo(...)`, `criarAlbum(...)`, `criarFoto(...)`; `test/isolamento.ts` aceita corpo
+multipart (`anexos`). Testes da SPEC §7 marcados 1a-A1.
 **A2 · Motor offline do front** — `offline/` (banco Dexie E5, motor da fila §4.3, `useConexao`,
-guarda da identidade e do pacote, download do pacote §4.2), abertura sem internet (§4.1) em
-`sessao/` e `api/cliente.ts` (distinguir rede de 401). Testes 1a-A2.
+identidade e pacote guardados, download do pacote §4.2, `limparDadosDoUsuario`), abertura sem
+internet (§4.1) em `sessao/` e `api/cliente.ts` (rede × sessão recusada, E4), rota `/conectar`,
+handlers msw de `auth/refresh` e `sync/pacote`. Testes 1a-A2.
 **A3 · Interface do núcleo** — componentes novos de `ui/` (§4.4), faixa "Sem conexão" nos dois
 layouts, selo da fila, tela `/fila` em `modulos/fila/`, confirmação ao sair no `MenuCabecalho`.
 Programa contra `offline/tipos.ts` (com implementação falsa nos testes). Testes 1a-A3.
 
-**Fim da onda [principal]:** liga `/fila` e a tela "Conecte-se uma vez" em `rotas.tsx`. Commit.
+**Fim da onda [principal]:** liga `/fila` e `/conectar` em `rotas.tsx`. Commit.
 
 ### Onda 2 [1 subagente]
 
 **A4 · Ida ao ar e ponta a ponta** — `nginx.conf` (E19, os 4 blocos de CSP), `docker-compose.prod.yml`
-(volume `arquivos`, 384 MB na API), `Dockerfile` da API (`sharp` no alpine), `scripts/deploy.sh`
-(gera `ARQUIVOS_SEGREDO`), `scripts/backup.sh`/`restaurar.sh` incluem `ARQUIVOS_DIR`, cache de
-fontes no `sw.ts` (E20), e o **e2e 1a** (SPEC §7).
+(volume `arquivos`, `ARQUIVOS_DIR`/`ARQUIVOS_SEGREDO` no serviço `api`, 384 MB), `Dockerfile` da
+API (`mkdir`+`chown node` em `/app/arquivos`; `sharp` pelo binário musl do npm, `npm ci` dentro da
+imagem), `scripts/deploy.sh` (gera `ARQUIVOS_SEGREDO`), `scripts/backup.sh`/`restaurar.sh` incluem
+`ARQUIVOS_DIR`, cache de fontes no `sw.ts` (E20), o teste do `grep` de CSP (SPEC §10), `ARQUIVOS_DIR`
+temporário no `global-setup` do e2e, e o **e2e 1a** (SPEC §7). Pronto inclui `docker build` da API e
+`require('sharp')` dentro da imagem.
 
 ### Onda 3 — fechamento 1a [principal]
 
@@ -74,6 +90,8 @@ revisão da PR (opus, até limpa, máx. 3 rodadas), `documentador` (README: offl
 `gestor-pr` sobe e tira do rascunho.
 
 **Critério de pronto da 1a:**
+0. Se a `main` avançou com outra migration desde a base, a `fase1_conselheiro` foi **apagada e
+   gerada de novo** sobre a `main` antes do merge.
 1. `npm ci && npm run lint && npm run tipos && npm run teste && npm run build` verde.
 2. `npm run teste:e2e` — o cenário da Fase 0 e o da 1a (recarregar sem rede abre o app).
 3. Fila: os testes de §7 (1a-A2) cobrem substituição, backoff, erro, 401 e descarte.
@@ -85,27 +103,33 @@ revisão da PR (opus, até limpa, máx. 3 rodadas), `documentador` (README: offl
 | Pacote | PODE TOCAR | NÃO TOCAR (além dos de dono compartilhado) |
 |---|---|---|
 | A1 | `apps/api/src/{sync,pontos,arquivos}/**`, `apps/api/test/fabricas.ts` | demais módulos da API, `apps/web/**` |
-| A2 | `apps/web/src/offline/**` (menos `tipos.ts`), `apps/web/src/sessao/**`, `apps/web/src/api/cliente.ts`, `apps/web/src/main.tsx`, testes | `ui/`, `layouts/`, `modulos/**` |
+| A2 | `apps/web/src/offline/**` (menos `tipos.ts`), `apps/web/src/sessao/**`, `apps/web/src/api/cliente.ts`, `apps/web/src/main.tsx`, `apps/web/src/modulos/conectar/**`, testes | `ui/`, `layouts/`, demais `modulos/**` |
 | A3 | `apps/web/src/ui/**`, `apps/web/src/layouts/**`, `apps/web/src/modulos/fila/**`, testes | `offline/`, `sessao/`, `api/` |
 | A4 | `apps/web/nginx.conf`, `apps/web/src/sw.ts`, `docker-compose.prod.yml`, `apps/*/Dockerfile`, `scripts/**`, `e2e/**` | código de `apps/**/src` fora do `sw.ts` |
 | B1 | `apps/api/src/reunioes/**`, `apps/api/src/unidades/**` (só `membros` com frequência e a rota de grade) | `sync/pacote`, `pontos/` (usa, não altera) |
 | B2 | `apps/api/src/{ranking,inicio}/**`, `apps/api/src/desbravadores/perfil.*` | `reunioes/`, `fotos/` |
 | B3 | `apps/api/src/{fotos,pedidos}/**`, `apps/api/src/email/modelos.ts` (acrescenta `emailPedidoUnidadeSemDbv`) | `arquivos/` (usa, não altera) |
 | B4 | `apps/web/src/modulos/reunioes/{chamada,*.Chamada*}/**`, `apps/web/src/offline/tipos/reuniao.ts`, `api/reunioes.ts` (mutação), handlers | `offline/` (motor) |
-| B5 | `apps/web/src/modulos/reunioes/{historico,detalhe}/**`, `apps/web/src/modulos/unidade/**`, `api/reunioes.ts` (leituras), handlers | chamada (B4) |
+| B5 | `apps/web/src/modulos/reunioes/{historico,detalhe}/**`, `apps/web/src/modulos/unidade/**`, `api/reunioes.ts` (leituras), `api/pedidos.ts`, `api/unidades.ts` (só a leitura de membros com frequência), handlers | chamada (B4) |
 | B6 | `apps/web/src/modulos/{inicio,perfil,ranking}/**`, `api/{inicio,perfil,ranking}.ts`, `layouts/LayoutCelular.tsx` e o menu do Adm (só habilitar itens), handlers | `ui/` |
 | B7 | `apps/web/src/modulos/galeria/**`, `apps/web/src/offline/tipos/foto.ts`, `api/fotos.ts`, handlers | `offline/` (motor) |
 | B8 | `e2e/**` | `apps/**` |
 
-B4 e B5 dividem `api/reunioes.ts`: **o principal o cria na onda 0 da 1b** com as leituras e a
-mutação vazias, e cada um preenche só o seu bloco.
+B4 e B5 dividem `api/reunioes.ts`: **o principal o cria na onda 0 da 1b** com estas assinaturas
+e chaves, e cada um preenche só o seu bloco:
+`useReunioes(unidadeId, mes)` → `['reunioes', unidadeId, mes]` (B5) · `useReuniao(id)` →
+`['reuniao', id]` (B5, B4 lê para editar) · `useGradeFrequencia(unidadeId)` → `['grade', unidadeId]`
+(B5) · `useSalvarChamada()` → enfileira `REUNIAO` (B4). A invalidação depois do envio é do
+`aoEnviar` do tipo `REUNIAO` (B4), pelas raízes `reunioes`, `reuniao`, `grade`, `inicio`, `ranking`.
+B7 descobre a chamada de hoje por `itensDaChave('<unidadeId>:<hoje>')` e pela lista do servidor.
+B3 converte o erro do multer em 422 no próprio controller.
 
 ## 4. PR 1b — O domingo do conselheiro
 
 ### Onda 0 [principal]
 
 1. Branch `feature/fase-1b-domingo` da `main` atualizada (com a 1a). Worktree própria.
-2. **Atualiza o ONDE FICA** desta spec com o código da 1a: manda o `investigador` levantar
+2. **Atualiza o ONDE FICA** desta spec (commit na branch da 1b) com o código da 1a: manda o `investigador` levantar
    `arquivo:linha` de `offline/tipos.ts`, `registrarTipo`, `enfileirar`, `useConexao`,
    `ServicoPontos.sincronizar`, `ServicoArquivos.urlAssinada`, fábricas novas, componentes novos de
    `ui/`. Commita o bloco na SPEC.
@@ -167,7 +191,7 @@ LEIA PRIMEIRO, inteiros e uma vez: docs/fases/fase-1/PLANO.md e docs/fases/fase-
 da Fase 0 (docs/fases/fase-0/SPEC.md) continua valendo onde esta não a altera — consulte por seção.
 Anexos de docs/fases/fase-1/anexos/ são contrato literal: copie, não reescreva.
 
-DECISÕES TRAVADAS: E1–E21 da SPEC §2, mais D1–D24 da Fase 0.
+DECISÕES TRAVADAS: E1–E22 da SPEC §2, mais D1–D24 da Fase 0.
 FORA DE ESCOPO: tudo da parte 1b (SPEC §1 e §5–6) e o "Fora da Fase 1". Nada de passagem.
 
 EXECUÇÃO: PLANO §2, ondas 0 a 3; PODE/NÃO TOCAR do PLANO §3; no máximo 3 implementadores
@@ -188,7 +212,7 @@ rascunho dela no fim da onda 0.
 LEIA PRIMEIRO, inteiros e uma vez: docs/fases/fase-1/PLANO.md e docs/fases/fase-1/SPEC.md (na
 main). A spec da Fase 0 vale onde esta não a altera.
 
-DECISÕES TRAVADAS: E1–E21 da SPEC §2, mais D1–D24 da Fase 0.
+DECISÕES TRAVADAS: E1–E22 da SPEC §2, mais D1–D24 da Fase 0.
 FORA DE ESCOPO: "Fora da Fase 1" (SPEC §1). Não altere o schema (E2).
 
 EXECUÇÃO: PLANO §4, ondas 0 a 4 — a onda 0 começa atualizando o ONDE FICA com o código da 1a

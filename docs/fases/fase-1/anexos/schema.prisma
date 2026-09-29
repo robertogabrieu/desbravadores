@@ -114,7 +114,6 @@ enum OrigemAlteracao {
 // FASE 1
 enum OrigemPontos {
   CHAMADA
-  FALTA
   REQUISITO
   ESPECIALIDADE
   MANUAL
@@ -157,6 +156,7 @@ model Clube {
   albuns           Album[]
   fotos            Foto[]
   pedidosAdm       PedidoAoAdm[]
+  enviosProcessados EnvioProcessado[]
 }
 
 model ConfiguracaoClube {
@@ -509,13 +509,14 @@ model CriterioRanking {
 
   @@unique([clubeId, nome])
   @@unique([clubeId, id])
+  @@unique([clubeId, gatilho], where: { padrao: true }, map: "criterio_padrao_por_gatilho")
   @@index([clubeId, ordem])
 }
 
 // ═════════════════════════ FASE 1: reunião, chamada, pontos, mídia ═════════════════════════
 
 // O id pode vir do celular (UUID gerado no aparelho na primeira gravação); se a mesma
-// (unidade, data) chegar com outro id, a API usa a reunião existente (SPEC 1 §5.2).
+// (unidade, data) chegar com outro id, a API usa a reunião existente (SPEC da Fase 1 §5.1).
 model Reuniao {
   id              String   @id @default(uuid(7)) @db.Uuid
   clubeId         String   @db.Uuid
@@ -528,6 +529,7 @@ model Reuniao {
   registradaEm    DateTime @default(now()) @db.Timestamptz
   atualizadaPorId String   @db.Uuid
   atualizadaEm    DateTime @db.Timestamptz
+  cabecalhoVersao DateTime @db.Timestamptz(3)
 
   clube         Clube              @relation(fields: [clubeId], references: [id], onDelete: Restrict)
   unidade       Unidade            @relation(fields: [clubeId, unidadeId], references: [clubeId, id], onDelete: Restrict)
@@ -536,26 +538,26 @@ model Reuniao {
   chamadas      Chamada[]
   alteracoes    ChamadaAlteracao[]
   album         Album?
+  envios        EnvioProcessado[]
 
   @@unique([unidadeId, data])
   @@unique([clubeId, id])
   @@index([clubeId, data])
 }
 
-// Uma linha por DBV por reunião. `alteradaNoAparelhoEm` decide quem vence no conflito;
-// `clienteUuid` é o envio (id da reunião no aparelho) que gravou a linha.
+// Uma linha por DBV por reunião. `versao` (instante do servidor) é o que o aparelho manda de volta
+// como `versaoVista` para detectar conflito; `envioId` é o item da fila que gravou a linha.
 model Chamada {
-  clubeId              String          @db.Uuid
-  reuniaoId            String          @db.Uuid
-  dbvId                String          @db.Uuid
-  situacao             SituacaoChamada
-  uniforme             Boolean         @default(false)
-  biblia               Boolean         @default(false)
-  licao                Boolean         @default(false)
-  alteradaNoAparelhoEm DateTime        @db.Timestamptz
-  recebidaEm           DateTime        @default(now()) @db.Timestamptz
-  alteradaPorId        String          @db.Uuid
-  clienteUuid          String          @db.Uuid
+  clubeId       String          @db.Uuid
+  reuniaoId     String          @db.Uuid
+  dbvId         String          @db.Uuid
+  situacao      SituacaoChamada
+  uniforme      Boolean         @default(false)
+  biblia        Boolean         @default(false)
+  licao         Boolean         @default(false)
+  versao        DateTime        @db.Timestamptz(3)
+  alteradaPorId String          @db.Uuid
+  envioId       String          @db.Uuid
 
   clube        Clube       @relation(fields: [clubeId], references: [id], onDelete: Restrict)
   reuniao      Reuniao     @relation(fields: [clubeId, reuniaoId], references: [clubeId, id], onDelete: Restrict)
@@ -586,7 +588,7 @@ model ChamadaAlteracao {
 }
 
 // Única fonte da pontuação. `pontos` é COPIADO do critério no momento do lançamento.
-// FALTA não tem critério (vem de ConfiguracaoClube.pontosDescontoFalta).
+// Desconto por falta: origem CHAMADA com criterioId nulo (vem de ConfiguracaoClube.pontosDescontoFalta).
 model LancamentoPontos {
   id           String       @id @default(uuid(7)) @db.Uuid
   clubeId      String       @db.Uuid
@@ -637,17 +639,18 @@ model Album {
   unidadeId   String   @db.Uuid
   titulo      String
   data        DateTime @db.Date
-  reuniaoId   String?  @unique @db.Uuid
+  reuniaoId   String?  @db.Uuid
   criadoPorId String   @db.Uuid
   criadoEm    DateTime @default(now()) @db.Timestamptz
 
   clube     Clube    @relation(fields: [clubeId], references: [id], onDelete: Restrict)
   unidade   Unidade  @relation(fields: [clubeId, unidadeId], references: [clubeId, id], onDelete: Restrict)
-  reuniao   Reuniao? @relation(fields: [reuniaoId], references: [id], onDelete: Restrict)
+  reuniao   Reuniao? @relation(fields: [clubeId, reuniaoId], references: [clubeId, id], onDelete: Restrict)
   criadoPor Usuario  @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
   fotos     Foto[]
 
   @@unique([clubeId, id])
+  @@unique([clubeId, reuniaoId])
   @@index([clubeId, unidadeId, data])
 }
 
@@ -682,8 +685,21 @@ model PedidoAoAdm {
   criadoEm    DateTime      @default(now()) @db.Timestamptz
 
   clube     Clube    @relation(fields: [clubeId], references: [id], onDelete: Restrict)
-  unidade   Unidade? @relation(fields: [unidadeId], references: [id], onDelete: Restrict)
+  unidade   Unidade? @relation(fields: [clubeId, unidadeId], references: [clubeId, id], onDelete: Restrict)
   pedidoPor Usuario  @relation(fields: [pedidoPorId], references: [id], onDelete: Restrict)
 
   @@index([clubeId, tipo, unidadeId, criadoEm])
+}
+
+// FASE 1 — cada envio de chamada aplicado (dedupe: reenvio do mesmo envioId responde sem gravar).
+model EnvioProcessado {
+  envioId      String   @id @db.Uuid
+  clubeId      String   @db.Uuid
+  reuniaoId    String   @db.Uuid
+  processadoEm DateTime @default(now()) @db.Timestamptz
+
+  clube   Clube   @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  reuniao Reuniao @relation(fields: [clubeId, reuniaoId], references: [clubeId, id], onDelete: Restrict)
+
+  @@index([clubeId, reuniaoId])
 }
