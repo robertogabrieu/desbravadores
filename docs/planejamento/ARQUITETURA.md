@@ -113,8 +113,9 @@ valha na hora.
 
 ## 5. Estratégia offline
 
-**O que funciona sem internet:** abrir o app, ver a unidade e as classes, **fazer a chamada** e
-**registrar a aula** (presença + requisitos cumpridos). O resto mostra o último dado guardado
+**O que funciona sem internet:** abrir o app, ver a unidade e as classes, **fazer e corrigir a
+chamada**, **registrar a aula** (presença + requisitos cumpridos) e **escolher fotos** para
+enviar. O resto mostra o último dado guardado
 com um aviso "sem conexão".
 
 **Preparação (online).** Sempre que o app abre com internet, ele baixa e guarda no aparelho o
@@ -122,32 +123,48 @@ com um aviso "sem conexão".
 ativos, as aulas planejadas das próximas 2 semanas com os requisitos, e os requisitos que cada
 DBV já concluiu. O Service Worker guarda as telas.
 
-**Registro (offline ou online, mesmo caminho).** A chamada e a aula são gravadas **primeiro no
-aparelho** (Dexie), como um registro completo com um id gerado no celular (UUID). Uma fila envia
-para a API quando há conexão: ao abrir o app, ao voltar a internet e pelo botão "Enviar agora".
-Não dependemos de Background Sync, que o iPhone não suporta.
+**Registro (offline ou online, mesmo caminho).** Chamada, correção de chamada, aula e fotos são
+gravadas **primeiro no aparelho** (Dexie; fotos já reduzidas, como Blob), cada item com um id
+gerado no celular (UUID). Uma **fila de envio** manda para a API quando há conexão: ao abrir o
+app, ao voltar a internet e pelo botão "Tentar enviar agora" (na fila e no selo do Início). O
+envio continua enquanto o app estiver aberto, em qualquer tela. Não dependemos de Background Sync,
+que o iPhone não suporta: **com o app fechado, nada sobe** — a tela de envio diz isso.
+
+Uma correção de chamada ainda na fila **substitui** a versão anterior da mesma chamada (mesmo
+UUID): a fila nunca manda duas versões.
+
+**Estados de cada item:** `na fila` → `enviando (%)` → `enviado` | `erro`. Falha de rede não é
+erro: o item volta para a fila e tenta de novo sozinho. **Erro** é recusa do servidor (arquivo
+inválido, sem permissão, DBV inexistente): o item para, mostra o motivo em português e oferece
+"Tentar de novo" e "Descartar" — descartar pede confirmação e só vale para o item com erro.
+Itens enviados somem da fila após 24 h.
 
 **Envio idempotente.** A API recebe `PUT /sync/reunioes/{uuid}` com a chamada inteira. Reenviar o
 mesmo registro não duplica nada. A resposta devolve os pontos calculados pelo servidor.
 
 **Conflito.** Uma chamada é de uma unidade num domingo. Se dois aparelhos enviarem a mesma
-chamada (dois conselheiros da unidade), vale **por DBV o registro mais recente** e a tela do
-histórico mostra "editada por X". Na aula, o mesmo por DBV × requisito. Marcar requisito é
+chamada (dois conselheiros da unidade), vale **por DBV o registro mais recente**; o que foi
+sobrescrito vai para `ChamadaAlteracao` com origem `CONFLITO_SYNC`, e o Adm vê o aviso na
+atividade recente. O detalhe da reunião mostra "alterada por X às HH:MM". Na aula, o mesmo por DBV × requisito. Marcar requisito é
 aditivo: desmarcar só vale se o registro mais recente for o de desmarcar.
 
-**Visível para quem usa.** Cada chamada mostra um estado: "Salva no celular — será enviada" ou
-"Enviada". O Início mostra uma faixa quando há algo esperando envio. Sair do app (logout) com
-fila pendente exige confirmação explícita.
+**Visível para quem usa** (telas `Estado-Offline` e `Estado-Pendente`): faixa "Sem conexão" no
+topo de qualquer tela; selo "N aguardando envio" no Início; marca "não enviado" nos itens de
+lista; carimbo "lista atualizada hoje às 8h12" na chamada. Pontos mostrados antes do envio são
+**provisórios** (calculados no aparelho com os critérios do pacote) até o servidor confirmar.
+Sair da conta com fila pendente exige confirmação explícita na própria tela.
 
 ## 6. Fotos e arquivos
 
-- **Upload de foto** pela câmera ou galeria do celular. O app **reduz no aparelho** (lado maior
-  1600 px, JPEG ~80%) antes de enviar — economiza o 4G do conselheiro. O servidor, com sharp,
+- **Upload de foto** pela câmera ou galeria do celular, em lote, com uma legenda opcional. O app
+  **reduz no aparelho** (lado maior 1600 px, JPEG ~80%, teto de 2 MB) antes de guardar na fila —
+  economiza o 4G do conselheiro e o espaço do celular. O servidor, com sharp,
   gera a miniatura (400 px) e **apaga os metadados EXIF**, que podem conter a localização GPS
   de onde a foto foi tirada.
-- **Autorização de imagem.** Ao enviar, o conselheiro marca quem aparece na foto (opcional);
-  se marcar um DBV sem autorização, o app avisa e não publica. Sem marcação, a foto fica visível
-  só para a liderança, nunca no público.
+- **Autorização de imagem.** Fotos são visíveis só para líderes logados do clube, nunca em link
+  público nem no ranking. A tela de envio mostra, antes de escolher as fotos, **quem da unidade
+  não tem autorização de imagem** ("Não fotografe: Ana C., Pedro H."), para o conselheiro evitar
+  a foto na origem. (O desenho não tem o passo de marcar quem aparece; ele fica para depois.)
 - **Fotos não têm URL pública.** São servidas por um endpoint autenticado que confere o clube e
   a permissão; o link expira (URL assinada de 10 min).
 - **Materiais de apoio**: PDF, PPT, vídeo curto (limite 50 MB) ou link. Mesma interface de

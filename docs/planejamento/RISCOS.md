@@ -35,6 +35,7 @@ o mínimo de dados e consentimento de um responsável para o que não for estrit
 | # | Risco | P | I | Mitigação |
 |---|---|---|---|---|
 | T1 | **Sincronização offline perde ou duplica chamada** | média | alta | Id gerado no celular + gravação idempotente; teste ponta a ponta do ciclo offline; a chamada só sai da fila com resposta de sucesso; nunca apagar fila no logout sem confirmação |
+| T1b | **Fotos na fila enchem o celular** ou sobem só com o app aberto | média | média | Fotos reduzidas antes de entrar na fila (≤ 2 MB); aviso de espaço quando a fila passar de 100 MB; a tela de envio diz que o app precisa ficar aberto até terminar |
 | T2 | **iPhone apaga os dados do PWA** (Safari limpa armazenamento de sites não usados por ~7 dias; ao instalar na tela de início isso não se aplica) | média | média | Incentivar a instalação; o "pacote do domingo" se refaz a cada abertura com internet; a fila é enviada assim que possível — o risco real é só a chamada feita offline e não enviada por 7 dias |
 | T3 | **Os cadernos extraídos têm erros** (digitalização com ruído, página faltando, classe avançada sem seções) | alta | média | Revisão humana dos JSON antes da carga (lista em INCONSISTENCIAS §4); requisitos oficiais editáveis pelo Adm (texto e CAMPO); campo `pagina` para conferir |
 | T4 | **Caderno oficial muda** (a DSA revisa requisitos periodicamente) | média | média | Requisitos com `ativo` e versionamento por ano do clube; progresso guardado por requisito, não por posição; script de carga que acrescenta sem apagar o que tem histórico |

@@ -75,7 +75,7 @@ Como visitante, quero ver o ranking sem entrar.
   destaque.
 - Números: DBVs ativos na unidade, frequência do mês, posição da unidade no ranking de unidades.
 - Top 3 da unidade no período, cada um levando ao perfil.
-- Faixa amarela "1 chamada esperando envio" quando há fila offline.
+- Selo "N aguardando envio" quando há fila, levando à fila de envio (C9).
 - O atalho duplicado "Registro de reunião" sai; fica "Galeria" no lugar.
 
 ### C2 · Minha unidade — `Minha-Unidade.dc.html` · Fase 1
@@ -100,37 +100,72 @@ reunião e somar os pontos.
 - Só uma chamada por unidade por data; abrir de novo edita a mesma.
 - Só DBVs membros da unidade na data da reunião.
 
-### C4 · Chamada sem internet — `Registro-Reuniao.dc.html` · Fase 1
-- Sem conexão, a chamada funciona igual e grava no aparelho.
+### C4 · Chamada sem internet — `Estado-Offline.dc.html` · Fase 1
+- Sem conexão, a chamada funciona **igual à online** (atraso, uniforme, Bíblia, observações) e
+  grava no aparelho — a tela de referência simplifica a lista só para mostrar a faixa e o fluxo.
+- Faixa "Sem conexão" no topo; carimbo "lista atualizada hoje às 8h12". Sem lista guardada no
+  aparelho: "Abra o app com internet uma vez antes da reunião para baixar a unidade".
+- Botão "Salvar no aparelho"; depois, card "aguardando envio · ver fila".
+- Pontos aparecem como provisórios até o envio.
 - Selo "Salva no celular — será enviada" até o envio; depois "Enviada às 9h42".
 - Envia sozinha quando a internet volta com o app aberto, ou ao reabrir o app.
-- Botão "Enviar agora" no Início quando há fila.
 - Nada se perde ao fechar o app, reiniciar o celular ou o login expirar.
+- Mexer na chamada depois de salva exige salvar de novo (o card volta a "alterações não salvas").
 
 ### C5 · Histórico por reunião — `Historico-Reunioes.dc.html` · Fase 1
 - Lista das reuniões do período: data, presentes/total **da data**, atrasos, uniformes, %.
 - % abaixo do limiar em vermelho.
-- Tocar abre o detalhe da chamada.
+- Tocar abre o detalhe da reunião (C5b); reunião ainda na fila tem a marca "não enviado".
+
+### C5b · Detalhe da reunião — `Detalhe-Reuniao.dc.html` · Fase 1
+- Resumo (presentes, atrasos, uniformes, pontos), "registrada por X às HH:MM" e, se corrigida,
+  "alterada por Y às HH:MM".
+- Filtro Todos/Presentes/Ausentes com contagens reais; por DBV: situação (inclusive falta
+  justificada e Lição, quando ligada) e pontos **lançados pelo servidor**.
+- Observações; fotos da reunião ("Ver álbum" abre **o álbum dela**; "+" abre o envio com esse
+  álbum já escolhido).
+- "Editar" só aparece dentro do prazo de correção (C6b).
 
 ### C6 · Histórico por DBV — `Historico-Reunioes.dc.html` · Fase 1
 - Grade das últimas 8 reuniões: P (presente), A (atraso), F (falta), J (justificada).
 - % por DBV nas 8 reuniões exibidas, com o rótulo "últimas 8 reuniões" (difere da frequência do
   período mostrada na lista da unidade).
 
-### C6b · Corrigir chamada — (sem tela; é a própria chamada em modo edição) · Fase 1
+### C6b · Corrigir chamada — `Registro-Reuniao.dc.html` em modo edição · Fase 1
 - O conselheiro corrige qualquer chamada dos últimos 30 dias; o Adm, qualquer uma.
-- A correção regrava os lançamentos de pontos daquela chamada.
+- A correção regrava os lançamentos de pontos daquela chamada e guarda o antes/depois de cada DBV
+  alterado (quem e quando).
+- Funciona offline; uma correção na fila substitui a versão anterior da mesma chamada.
 
 ### C7 · Ver a galeria — `Galeria.dc.html` · Fase 1 (separável)
 - Álbuns por reunião/evento, com capa e contagem; o total do cabeçalho é a soma real.
 - Tocar numa foto abre em tela cheia, com deslizar para a próxima.
 
-### C8 · Enviar fotos — `Galeria.dc.html` · Fase 1 (separável)
-- "Enviar fotos" abre câmera ou galeria; várias de uma vez.
-- Escolhe o álbum (padrão: a reunião de hoje) e, opcionalmente, marca quem aparece.
-- Se marcar um DBV sem autorização de imagem: "Ana não tem autorização de imagem. Esta foto não
-  será publicada." e a foto não sobe.
-- Progresso de envio por foto; funciona em 4G fraco (fotos reduzidas no aparelho).
+### C8 · Enviar fotos — `Enviar-Fotos.dc.html` · Fase 1 (separável)
+- Álbum: reunião de hoje (padrão), reunião vinda do detalhe, evento do calendário ou **álbum novo
+  com campo de nome**.
+- Antes da seleção, aviso "Não fotografe: Ana C., Pedro H." com os DBVs da unidade sem
+  autorização de imagem (some se todos têm).
+- Câmera ou galeria, várias de uma vez; remover antes de enviar; uma legenda opcional para o lote.
+- Fotos reduzidas no aparelho (≤ 2 MB) e colocadas na fila; funciona sem internet.
+- Progresso por foto; ao terminar, "N fotos enviadas" e botão "Ver álbum"; foto recusada mostra o
+  motivo e fica na fila com erro.
+- "Pode sair desta tela — o envio continua enquanto o app estiver aberto."
+
+### C9 · Fila de envio — `Estado-Pendente.dc.html` · Fase 1
+- Status geral: sem conexão / enviando / tudo enviado, com "Tentar enviar agora".
+- Itens (chamadas, correções, aulas, fotos) com estado na fila / enviando % / enviado / erro.
+- Item com erro mostra o motivo; "Tentar de novo" volta para "enviando"; "Descartar" pede
+  confirmação.
+- Aviso de não sair da conta; o botão Sair, com fila, pede confirmação na própria tela.
+
+### C10 · Estados vazios — `Estado-Vazio.dc.html` · Fases 1 e 2
+- Ícone, título, uma frase e no máximo uma ação que leva ao próximo passo real.
+- Galeria vazia → "Enviar primeiras fotos"; reuniões vazias → "Fazer a primeira chamada".
+- Unidade sem DBVs → "Avisar o Adm" (envia um pedido ao Adm e confirma "Adm avisado").
+- Cronograma não publicado (instrutor) → se a classe está com o Adm, "Pedir para eu montar"
+  (pedido ao Adm para liberar); se está liberada, "Montar cronograma".
+- Carregamento e erro de servidor seguem o mesmo padrão (sem tela desenhada).
 
 ---
 
@@ -153,9 +188,21 @@ reunião e somar os pontos.
 - Linha do tempo: Dada (tem registro), Hoje, Planejada, **Conflito** (data bloqueada depois do
   agendamento, em vermelho).
 - Requisitos com código e texto; etiqueta CAMPO visível.
-- "Montar cronograma" só aparece se a classe está com "instrutor monta" **e** o aparelho é um
-  computador; no celular, o texto "Para montar, use o computador".
+- "Montar cronograma" só aparece se a classe está com "instrutor monta" (senão, o estado vazio
+  de C10 oferece pedir ao Adm).
 - Cronograma em rascunho não aparece para quem não monta.
+
+### I3b · Montar cronograma no celular — `Montar-Cronograma-Instrutor.dc.html` · Fase 3
+- Só para instrutor liberado. Selo Rascunho / Enviado ao Adm / Publicado.
+- Abas "Por data" e "Sem data (N)", e alternador **Regular / Avançada**; contador real "N de total
+  com data", barra neutra (sem vermelho).
+- Datas bloqueadas hachuradas, sem "+"; datas de campo com "+" verde; na folha de requisitos, os
+  CAMPO vêm primeiro como "Sugerido para este dia". Folha sem requisitos restantes: "Todos os
+  requisitos já têm data".
+- Aula em conflito (bloqueada depois de agendada) aparece em vermelho com "Mover".
+- Mover = tirar o chip e escolher outra data; horário, local e título da aula editáveis.
+- "Salvar rascunho" e "Enviar para o Adm publicar" (confirma e notifica o Adm). Editar depois de
+  enviar devolve a rascunho.
 
 ### I4 · Registrar a aula — `Registro-Aula.dc.html` · Fase 2
 Como instrutor, quero marcar quem foi e quem cumpriu cada requisito para acompanhar o progresso.
@@ -263,9 +310,9 @@ Como instrutor, quero marcar quem foi e quem cumpriu cada requisito para acompan
 - Requisito CAMPO selecionado: datas "bom para campo" em verde.
 - Evento de vários dias aparece no domingo que ele cobre.
 - "Colocar aqui" move o requisito (cada requisito numa data só); "remover" tira.
-- Estado **Rascunho/Publicado** visível; "Publicar" avisa os instrutores.
-- Com "instrutor monta", o instrutor usa a mesma tela no computador, sem o controle "Quem monta"
-  e sem o menu do Adm; a publicação continua do Adm.
+- Estado **Rascunho / Enviado / Publicado** visível; cronograma enviado por instrutor aparece em
+  destaque para o Adm; "Publicar" avisa os instrutores.
+- Com "instrutor monta", o instrutor monta pelo celular (I3b); a publicação continua do Adm.
 
 ### A8 · Aviso de conflito — (sino, sem tela) · Fase 3
 - Notificação ao instrutor (e ao Adm, se ele monta) com link para a aula em conflito.

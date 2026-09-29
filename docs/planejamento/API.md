@@ -102,7 +102,9 @@ Convenções: listas paginadas com `?pagina=&porPagina=`; datas em `YYYY-MM-DD`;
 | `POST /cronogramas/{id}/aulas` | Cria data livre com horário e local (Agrupadas) | quem monta |
 | `DELETE /cronogramas/{id}/requisitos/{requisitoId}` | Tira da data | quem monta |
 | `PATCH /aulas-planejadas/{id}` | Horário, local, título | quem monta |
-| `POST /cronogramas/{id}/publicar` | Rascunho → publicado; notifica instrutores | Adm |
+| `POST /cronogramas/{id}/enviar` | Rascunho → enviado; notifica o Adm | instrutor que monta |
+| `POST /cronogramas/{id}/publicar` | Rascunho/enviado → publicado; notifica instrutores | Adm |
+| `POST /pedidos-ao-adm` | `{ tipo: LIBERAR_CRONOGRAMA\|UNIDADE_SEM_DBV, classeId?/unidadeId? }` → notificação ao Adm | logado |
 
 "Quem monta" = Adm sempre; instrutor da classe só se `Classe.quemMontaCronograma=INSTRUTOR`.
 Instrutor que não monta vê só o cronograma **publicado**.
@@ -113,7 +115,7 @@ Instrutor que não monta vê só o cronograma **publicado**.
 |---|---|---|
 | `GET /unidades/{id}/reunioes?de=&ate=` | Aba "Por reunião": presentes, atrasos, uniformes, % | `reuniao.ver` + escopo |
 | `GET /unidades/{id}/frequencia?ultimas=8` | Aba "Por DBV": grade P/A/F/J | `reuniao.ver` + escopo |
-| `GET /reunioes/{id}` | Detalhe e chamada completa | `reuniao.ver` + escopo |
+| `GET /reunioes/{id}` | Detalhe, chamada completa, pontos lançados, alterações (quem/quando) | `reuniao.ver` + escopo |
 | `PUT /sync/reunioes/{clienteUuid}` | Grava a chamada inteira (idempotente; usado online e offline) → pontos calculados | `reuniao.registrar` + escopo |
 
 ## Aulas
@@ -149,8 +151,9 @@ Instrutor que não monta vê só o cronograma **publicado**.
 | Método e rota | O que faz | Permissão |
 |---|---|---|
 | `GET /unidades/{id}/albuns` | Álbuns com contagem e capa | `foto.ver` + escopo |
-| `POST /unidades/{id}/albuns` | Cria álbum (ou usa o da reunião) | `foto.enviar` + escopo |
-| `POST /albuns/{id}/fotos` | Upload multipart + `dbvIds` de quem aparece; recusa DBV sem autorização | `foto.enviar` + escopo |
+| `POST /unidades/{id}/albuns` | Cria álbum (nome, ou vinculado a reunião/evento) | `foto.enviar` + escopo |
+| `PUT /sync/fotos/{clienteUuid}` | Upload de uma foto da fila (multipart: arquivo, albumId, legenda); idempotente | `foto.enviar` + escopo |
+| `GET /unidades/{id}/sem-autorizacao-imagem` | Nomes públicos dos DBVs da unidade sem autorização (aviso do envio) | `foto.enviar` + escopo |
 | `GET /arquivos/{id}?miniatura=1` | Entrega por URL assinada de curta duração | conforme o dono |
 | `DELETE /fotos/{id}` | Remove (autor ou Adm) | `foto.enviar` |
 | `GET /classes/{id}/materiais` · `POST` · `DELETE /materiais/{id}` | Materiais por seção | `material.enviar` + escopo |

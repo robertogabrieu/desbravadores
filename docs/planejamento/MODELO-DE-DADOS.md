@@ -135,7 +135,10 @@ ACAMPAMENTO → cancela a reunião, bom para campo, **não** bloqueia; FERIADO �
 
 ```
 Cronograma(id, classeId, anoClube, inicio: date, fim: date,
-  status: RASCUNHO|PUBLICADO, publicadoEm?, publicadoPor?)
+  status: RASCUNHO|ENVIADO|PUBLICADO,            # ENVIADO = instrutor mandou para o Adm publicar
+  enviadoEm?, enviadoPor?, publicadoEm?, publicadoPor?)
+  # instrutor que edita um cronograma ENVIADO o devolve a RASCUNHO; editar um PUBLICADO cria
+  # nova versão em RASCUNHO e a publicada continua valendo até a próxima publicação
   UNIQUE(classeId, anoClube)
 
 AulaPlanejada(id, cronogramaId, data, horario?, local?, titulo?,  # "Saída de campo"
@@ -173,6 +176,11 @@ RegistroAula(id, aulaPlanejadaId?, classeId, data, instrutorId,
 PresencaAula(registroAulaId, dbvId, presente: bool)
 ```
 
+ChamadaAlteracao(id, reuniaoId, dbvId, antes: json, depois: json,
+  alteradoPor, alteradoEm, origem: EDICAO|CONFLITO_SYNC)
+  # "alterações ficam registradas": cada correção guarda o antes e o depois por DBV.
+  # CONFLITO_SYNC = dois aparelhos gravaram a mesma chamada; vale a última, e o Adm vê a outra.
+
 Frequência (função em `shared`): `presenças (PRESENTE+ATRASADO) ÷ reuniões realizadas da
 unidade no período em que o DBV era membro dela`. `FALTA_JUSTIFICADA` conta como falta na
 frequência, mas não sofre desconto de pontos. A chamada não guarda pontos.
@@ -209,8 +217,9 @@ não toca no passado (decisão 8).
 
 ```
 Album(id, unidadeId, titulo, data, reuniaoId?, eventoId?)
-Foto(id, albumId, arquivoId, enviadaPor, visibilidade: LIDERANCA|UNIDADE)
-FotoPessoa(fotoId, dbvId)                        # quem aparece — bloqueia se sem autorização
+Foto(id, albumId, arquivoId, legenda?, enviadaPor, clienteUuid UNIQUE)
+  # legenda é digitada uma vez por lote e copiada para cada foto
+  # fotos são visíveis só para líderes logados do clube; nunca em link público
 
 Material(id, classeId, secaoId?, titulo, tipo: PDF|APRESENTACAO|VIDEO|LINK,
   arquivoId?, url?, enviadoPor)
@@ -220,7 +229,8 @@ Observacao(id, autorId, classeId, alvo: AULA|DBV, registroAulaId?, dbvId?,
   titulo?, texto, editadaEm?, removidaEm?)
   # nunca exposta fora de instrutores e Adm; ver "outros instrutores" depende de permissão
 
-Notificacao(id, usuarioId, tipo: CONFLITO_CRONOGRAMA|CRONOGRAMA_PUBLICADO|CONVITE|...,
+Notificacao(id, usuarioId,
+  tipo: CONFLITO_CRONOGRAMA|CRONOGRAMA_ENVIADO|CRONOGRAMA_PUBLICADO|PEDIDO_AO_ADM|CONVITE|...,
   titulo, link, lidaEm?)
 
 Atividade(id, autorId, tipo, descricao, link, criadaEm)   # feed da visão geral do Adm
@@ -242,7 +252,8 @@ Atividade(id, autorId, tipo, descricao, link, criadaEm)   # feed da visão geral
 | `AulaPlanejada.requisitoIds[]` | `AulaRequisito` com unicidade | Garante "um requisito, uma data" no banco |
 | `EventoCalendario` | + `cancelaReuniao`, horário, local | "Sem reunião" ≠ "sem aula" (acampamento cancela reunião mas é bom para campo) |
 | `RequisitoConcluido` | + `registroAulaId?` + remoção lógica | Reposição fora da aula; estorno de pontos |
-| `Foto.album` texto | `Album` + `FotoPessoa` | Álbum por reunião/evento; autorização de imagem |
+| `Foto.album` texto | `Album` + `Foto.legenda` | Álbum por reunião, evento ou avulso; legenda do lote |
+| — | `ChamadaAlteracao` | Correção de chamada e conflito entre aparelhos ficam registrados |
 | `Observacao` | + `classeId`, `titulo`, remoção | Instrutor com duas classes; editar/apagar |
 | `CriterioRanking.lancadoPor` | + `gatilho`, `padrao` | O sistema precisa saber quando lançar cada critério |
 | `LancamentoPontos` | + `origemTipo`, `estornadoEm`, unicidade | Estorno e regravação da chamada sem duplicar |

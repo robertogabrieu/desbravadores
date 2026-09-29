@@ -41,10 +41,11 @@ Os números entre colchetes são as histórias do [BACKLOG](BACKLOG.md).
 
 - Início do conselheiro, Minha unidade, perfil do DBV (versão sem progresso de classe).
 - **Chamada** com pontos ao vivo, falta justificada e Lição (quando ligada) [C3].
-- **Offline**: pacote do domingo, gravação local, fila, indicador "salva / enviada" [C4].
-- Histórico por reunião e por DBV; corrigir uma chamada já enviada [C5, C6].
+- **Offline**: pacote do domingo, gravação local, **fila de envio** com estados e erro [C4, C9].
+- Histórico por reunião e por DBV, detalhe da reunião, corrigir chamada com registro [C5, C5b, C6, C6b].
+- Estados vazios [C10].
 - Lançamento de pontos da chamada e ranking **logado** (mês) com os critérios padrão [T1].
-- Galeria: álbum, upload pela câmera com redução, marcação de quem aparece, bloqueio por
+- Galeria: álbum, envio de fotos pela fila com redução e legenda, aviso de quem não tem
   autorização de imagem, visualizar em tela cheia [C7, C8]. *Separável: se atrasar, vai para a
   Fase 4 e a fase fecha sem ela.*
 
@@ -88,7 +89,7 @@ simples (lista de datas × requisitos), ou por carga de planilha feita por você
   "quem monta o cronograma" [A5].
 - **Calendário do clube** com eventos de vários dias e as duas marcações [A6].
 - **Montar cronograma** com datas bloqueadas, sugestão de campo, publicar; instrutor liberado
-  monta pelo computador; Agrupadas com datas livres [A7].
+  monta **pelo celular** e envia para o Adm publicar; Agrupadas com datas livres [A7, I3b].
 - Notificação de conflito quando um evento cai em cima de aula agendada (sino) [A8].
 - Configurações do clube (dia e hora da reunião, limiares).
 

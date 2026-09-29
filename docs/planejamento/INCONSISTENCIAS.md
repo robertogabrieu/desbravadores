@@ -21,7 +21,7 @@ contagem vem do banco, nenhuma é digitada**.
 | 8 | Progresso × Relatórios | "Prontos para investidura" com 90% na tela, sem critério no LEIA-ME | 100% da classe regular; a avançada tem progresso próprio e não conta (decisão 7) |
 | 9 | Perfil do DBV | Barra vermelha em qualquer seção abaixo de 100% (parece erro do DBV) | Cinza abaixo de 100%, verde em 100% |
 | 10 | Frequência | Três cálculos diferentes (período, últimas 8, denominador fixo 8) e "frequência" de reunião × de aula misturadas nos relatórios | Frequência de reunião = período; grade = últimas 8, rotulada; relatório separa "reunião" de "aula" |
-| 11 | Montar cronograma | Desenhada só para computador, mas acessada pelo botão do instrutor no celular | MVP: só computador; no celular, aviso (I3) |
+| 11 | Montar cronograma | Desenhada só para computador, mas acessada pelo botão do instrutor no celular | **Resolvido na 2ª rodada:** tela de celular para o instrutor (I3b) |
 | 12 | Usuários | Adm com 6 permissões editáveis, mas o LEIA-ME diz "Adm: tudo" | Adm tem tudo, não editável |
 | 13 | Ranking público | Mostra nome completo de menores e leva ao perfil | Nome abreviado, sem perfil (decisão 4) |
 | 14 | Perfil do DBV | 8 seções na tela, 9 no LEIA-ME | Cada classe mostra as seções que o caderno dela tem (Excursionista não tem "Enriquecendo a vida") |
@@ -43,8 +43,10 @@ contagem vem do banco, nenhuma é digitada**.
 | 11 | Estados vazios, carregamento, erro, "sem conexão", "esperando envio" | Nenhuma tela mostra; a chamada offline depende deles |
 | 12 | Aviso de privacidade | Exigência da LGPD para dados de menores |
 
-**Sugestão:** pedir ao design as telas 5, 6, 9 e 11 antes da Fase 1 e 2; as outras podem seguir o
-padrão visual existente sem desenho próprio.
+**2ª rodada (29/09):** chegaram as telas 5 (Detalhe da reunião), 6 (Enviar fotos), 9 (Montar
+cronograma no celular) e 11 (estados vazio, sem conexão e fila de envio). Seguem sem desenho:
+carregamento/erro de servidor, visualizador de foto em tela cheia e as versões de computador do
+detalhe da reunião e da galeria — todas podem seguir o padrão existente.
 
 ## 3. Lacunas de regra que o planejamento preencheu
 
@@ -70,6 +72,25 @@ Cada uma com a decisão tomada — discorde de qualquer uma e eu ajusto os docum
 | 16 | A avançada precisa de matrícula própria? | Sim; matricular na regular cria a da avançada junto, e o Adm pode remover |
 | 17 | Líder cursando Agrupadas: onde fica? | Cadastro de desbravador com tipo "líder": sem unidade, chamada, frequência nem ranking |
 | 18 | Avançada agrupada de 15+ exige as seis avançadas? | Sim, pela caixa de idade do caderno (todas brancas para 15+). Conferir com quem conhece o supletivo |
+
+## 3b. Segunda rodada de telas — onde divergiam do plano
+
+| # | Tela | Divergência | Adotado |
+|---|---|---|---|
+| 1 | Montar cronograma (celular) | "Enviar para o Adm publicar" cria um passo que o plano não tinha | Status novo **Enviado**; notifica o Adm; editar volta a rascunho |
+| 2 | Montar cronograma (celular) | Sem abas regular/avançada, sem conflito, sem editar horário; barra de progresso vermelha | Plano mantém os três; barra neutra |
+| 3 | Enviar fotos | Não tem "marcar quem aparece" nem bloqueio por autorização de imagem | Aviso "Não fotografe: …" antes da seleção; marcação fica para depois |
+| 4 | Enviar fotos | "Novo álbum" pede nome sem campo; não dá para escolher reunião passada | Campo de nome; vindo do detalhe, a reunião já vem escolhida |
+| 5 | Enviar fotos | Legenda única para o lote, que o modelo não tinha | `Foto.legenda`, copiada do lote |
+| 6 | Enviar fotos / Fila | Fotos offline e "envio continua em segundo plano" | Fotos entram na fila; sobem com o app aberto em qualquer tela, não com ele fechado (limite do iPhone) |
+| 7 | Detalhe da reunião | "Alterações ficam registradas" sem estrutura no modelo | `ChamadaAlteracao` com antes/depois por DBV |
+| 8 | Detalhe da reunião | "Editar" sempre visível; pontos calculados na tela com valores fixos | Editar só no prazo (30 dias, Adm sem limite); pontos vêm dos lançamentos |
+| 9 | Chamada offline | Lista reduzida a presente/ausente, já pré-marcada | Offline funciona igual à online, começando sem marcação |
+| 10 | Fila de envio | Estado "erro" com Tentar de novo / Descartar, sem regra | Erro = recusa do servidor; falha de rede volta à fila sozinha; descartar pede confirmação |
+| 11 | Fila de envio | Correção de chamada como item separado da chamada | Correção ainda na fila substitui a versão anterior (mesmo id) |
+| 12 | Conflito entre aparelhos | LEIA-ME sugere "vale a última, Adm vê o conflito" | Adotado, por DBV, com registro em `ChamadaAlteracao` |
+| 13 | Estados vazios | "Avisar o Adm" e "Pedir para eu montar" sem destino | Pedido ao Adm vira notificação (`PEDIDO_AO_ADM`) |
+| 14 | Início | Selo "N aguardando envio" × faixa amarela do plano | Selo, como no desenho |
 
 ## 4. Cadernos oficiais
 

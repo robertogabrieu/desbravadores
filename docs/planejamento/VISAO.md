@@ -34,7 +34,8 @@ pouco agora e evita reescrever tudo se outro clube do distrito quiser usar.
 3. **Uma conta com vários vínculos**; sem seletor de perfil na tela de login.
 4. **Ranking público** mostra só primeiro nome + inicial do sobrenome, sem link para o perfil. O
    DBV tem **autorização de imagem**; sem ela, foto dele não entra na galeria.
-5. **Montar cronograma** só no computador nesta versão. No celular o instrutor vê o cronograma.
+5. **Montar cronograma**: o Adm monta no computador; o instrutor liberado monta **no celular**
+   (tela desenhada na 2ª rodada), salva rascunho e envia para o Adm publicar.
 6. **Frequência**: atraso conta como presença; falta justificada existe e não sofre desconto de
    pontos; o cálculo segue o período escolhido; o limiar do vermelho é configurável (padrão 70%).
 7. **Requisito** é feito/não feito; pode ser marcado fora da aula prevista; **pronto para
@@ -43,7 +44,8 @@ pouco agora e evita reescrever tudo se outro clube do distrito quiser usar.
    classe fica guardado por ano do clube.
 8. Mudar o valor de um critério do ranking vale **daqui para a frente**; o que já foi lançado não
    muda.
-9. **Offline**: chamada da reunião e registro de aula. Nenhuma tela do Adm.
+9. **Offline**: chamada da reunião (e a correção dela), registro de aula e seleção de fotos,
+   numa fila de envio visível. Nenhuma tela do Adm.
 10. Os **cadernos oficiais** (requisitos de todas as classes) vêm carregados no app.
 11. **Agrupadas são um supletivo**: requisitos próprios, progresso que não aproveita nem alimenta o
     das classes individuais. Quem faz costuma ser líder (instrutor de outra classe), então as
@@ -57,8 +59,9 @@ O MVP é o que faz o domingo funcionar e o Adm conseguir preparar o ano:
 - **Fundação**: login por e-mail/senha, convite por e-mail, recuperação de senha, vínculos e
   permissões, cadastros de DBVs, unidades e usuários, cadernos carregados, instalação como PWA.
 - **Conselheiro**: Início, Minha unidade, **chamada offline**, histórico (por reunião e por DBV),
-  galeria da unidade com upload pela câmera.
-- **Instrutor**: Início, Minhas classes, cronograma (leitura), **registro de aula offline**,
+  detalhe e correção da reunião, galeria com envio de fotos, **fila de envio**.
+- **Instrutor**: Início, Minhas classes, cronograma (e montagem no celular, se liberado),
+  **registro de aula offline**,
   progresso da classe, especialidades, observações, materiais.
 - **Adm**: visão geral, desbravadores, usuários e permissões, unidades, classes e especialidades,
   calendário do clube, montar cronograma (com publicação), configuração do ranking.
@@ -70,13 +73,13 @@ O MVP é o que faz o domingo funcionar e o Adm conseguir preparar o ano:
 
 | Item | Por que espera |
 |---|---|
-| Montar cronograma no celular | A tela desenhada é de computador; o fluxo de arrastar requisitos no celular precisa de desenho próprio |
 | Notificação push no celular | O sino com lista dentro do app resolve o MVP; push exige permissão por aparelho e não funciona igual no iPhone |
 | Exportar relatório em PDF | Excel resolve a secretaria; PDF bonito é trabalho de layout |
 | Importar planilha de DBVs e calendário da Associação | Com ~60 DBVs, digitar é viável; importação precisa de formato combinado |
 | Integração com o Desbravadores Finance (cadastro único de DBVs) | Exige mexer nos dois apps; decidir depois de ver o uso real |
 | Tela para o próprio DBV ou para os pais | Não foi pedida; muda o desenho de privacidade |
 | Visualizador de fotos avançado (zoom, álbum compartilhável) | Uma visualização simples em tela cheia basta |
+| Detalhe da reunião e galeria em versão de computador para o Adm | O layout do celular dentro do menu lateral resolve o MVP |
 | Lançamento de pontos por evento em massa (ex.: todos que foram ao acampamento) | O MVP lança por DBV; em massa é conforto |
 | Dark mode | Não desenhado |
 | Destaque maior para as Agrupadas (painel próprio, alertas) | O foco do clube nelas é menor; no MVP usam as mesmas telas das outras classes |
