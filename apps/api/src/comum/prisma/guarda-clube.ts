@@ -11,6 +11,15 @@ export const MODELOS_DE_CLUBE = [
   'CriterioRanking',
   'ClasseClube',
   'RequisitoAjuste',
+  'Reuniao',
+  'Chamada',
+  'ChamadaAlteracao',
+  'LancamentoPontos',
+  'Arquivo',
+  'Album',
+  'Foto',
+  'PedidoAoAdm',
+  'EnvioProcessado',
 ] as const
 
 /** Modelos que podem ser oficiais (`clubeId` nulo) ou de um clube. */

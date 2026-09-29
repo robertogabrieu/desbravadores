@@ -75,6 +75,10 @@ Instaladas pelo orquestrador, última estável no dia, fixadas sem `^`, anotadas
 `workbox-cacheable-response` (web, **7.4.1**, mesma família do `workbox-*` já instalado);
 `sharp`, `multer`, `@types/multer` (api). Nenhuma outra — o que faltar é PENDÊNCIA.
 
+**Instaladas em 2026-09-29:** `dexie` 4.4.6, `fake-indexeddb` 6.2.5, `workbox-strategies`,
+`workbox-expiration`, `workbox-cacheable-response` 7.4.1, `sharp` 0.35.5, `multer` 2.4.0,
+`@types/multer` 2.3.0.
+
 `.env.exemplo`: `ARQUIVOS_DIR` (dev `./.arquivos`), `ARQUIVOS_SEGREDO` (`openssl rand -hex 32`).
 Testes: o `globalSetup` do Jest cria um diretório temporário por execução em `ARQUIVOS_DIR` e o
 apaga no `globalTeardown`; o do Playwright, idem. Corpo JSON: o limite padrão do Express (100 KB)

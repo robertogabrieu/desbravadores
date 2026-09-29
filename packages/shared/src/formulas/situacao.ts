@@ -1,1 +1,3 @@
-export type SituacaoChamada = 'PRESENTE' | 'ATRASADO' | 'FALTA' | 'FALTA_JUSTIFICADA'
+import type { SITUACOES_CHAMADA } from '../enums'
+
+export type SituacaoChamada = (typeof SITUACOES_CHAMADA)[number]

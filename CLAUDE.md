@@ -20,3 +20,10 @@ Planejamento em `docs/planejamento/`; decisões de cada fase em `docs/fases/<fas
   sempre headless.
 - **Do design não se copia CSS inline**: copia-se estrutura e texto; o estilo sai dos tokens.
 - **A carga oficial não roda no deploy automático**: é comando próprio (`scripts/carga.sh`).
+- **`LancamentoPontos` só por `ServicoPontos.sincronizar`.** Nenhum outro lugar escreve pontos.
+- **Modelo novo de clube entra em `MODELOS_DE_CLUBE` na mesma migration** que o cria.
+- **Imagem só por URL assinada**; caminho de arquivo sempre montado pelo servidor, nunca vindo do
+  cliente.
+- **Conflito de chamada é por `versao`**, nunca pelo relógio do aparelho.
+- **Tela de celular trata quatro estados**: carregando, vazio, erro e sem conexão.
+- **Modo de conexão só por `useConexao`**, nunca `navigator.onLine` sozinho.

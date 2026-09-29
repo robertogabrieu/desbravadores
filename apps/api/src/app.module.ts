@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common'
+import { ArquivosModule } from './arquivos/arquivos.module'
 import { AuthModule } from './auth/auth.module'
 import { ClassesModule } from './classes/classes.module'
 import { ComumModule } from './comum/comum.module'
@@ -7,8 +8,10 @@ import { DesbravadoresModule } from './desbravadores/desbravadores.module'
 import { EmailModule } from './email/email.module'
 import { EspecialidadesModule } from './especialidades/especialidades.module'
 import { PermissoesModule } from './permissoes/permissoes.module'
+import { PontosModule } from './pontos/pontos.module'
 import { SaudeModule } from './saude/saude.module'
 import { SessaoModule } from './sessao/sessao.module'
+import { SyncModule } from './sync/sync.module'
 import { UnidadesModule } from './unidades/unidades.module'
 import { UsuariosModule } from './usuarios/usuarios.module'
 
@@ -27,6 +30,9 @@ import { UsuariosModule } from './usuarios/usuarios.module'
     ClassesModule,
     EspecialidadesModule,
     PermissoesModule,
+    PontosModule,
+    ArquivosModule,
+    SyncModule,
   ],
 })
 export class AppModule {}

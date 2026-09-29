@@ -29,6 +29,8 @@ export const MembroSaida = z.object({
   sexo: Sexo,
   classeAtual: RefClasse.nullable(),
   desde: DataCivil,
+  /** Frequência do mês corrente; só em GET /unidades/:id/membros para quem tem `reuniao.ver`. */
+  frequencia: z.number().int().nullable().optional(),
 })
 // GET /unidades?todas= → UnidadeSaida[] (ordem: nome)
 // GET /unidades/:id/membros e GET /unidades/sem-membros → MembroSaida[] (ordem: nome; só tipo DBV)

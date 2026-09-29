@@ -23,3 +23,12 @@ export const StatusMatricula = z.enum(STATUS_MATRICULA)
 export const StatusUsuario = z.enum(STATUS_USUARIO)
 export type Papel = z.infer<typeof Papel>
 
+// Fase 1
+export const SITUACOES_CHAMADA = ['PRESENTE', 'ATRASADO', 'FALTA', 'FALTA_JUSTIFICADA'] as const
+export const SituacaoChamadaZ = z.enum(SITUACOES_CHAMADA) // formulas/situacao.ts passa a derivar o tipo daqui
+export const ORIGENS_ALTERACAO = ['EDICAO', 'CONFLITO_SYNC'] as const
+
+/** "AAAA-MM" */
+export const MesCivil = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Mês inválido')
+/** "HH:MM" 24 h */
+export const Horario = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Horário inválido')
