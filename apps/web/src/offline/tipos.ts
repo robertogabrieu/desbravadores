@@ -1,7 +1,7 @@
 // Contrato do módulo offline (SPEC Fase 1 §4.3). Escrito pelo orquestrador: o motor (1a-A2)
 // implementa, a interface (1a-A3) e os tipos da 1b (REUNIAO, FOTO) e da Fase 2 (AULA) consomem.
 // Mudar uma assinatura aqui é mudar o contrato — passa pelo orquestrador.
-import type { PacoteSaida } from '@desbravadores/shared'
+import type { PacoteSaida, ReuniaoEnvio } from '@desbravadores/shared'
 import type { QueryClient } from '@tanstack/react-query'
 import type { z } from 'zod'
 import type { ErroApi, OpcoesRequisicao } from '../api/cliente'
@@ -151,3 +151,14 @@ export type UsePacote = () => PacoteGuardado
 export type LerRascunho = (usuarioId: string, chave: string) => Promise<unknown>
 export type GravarRascunho = (usuarioId: string, chave: string, valor: unknown) => Promise<void>
 export type ApagarRascunho = (usuarioId: string, chave: string) => Promise<void>
+
+/** Payload do item REUNIAO (chave `<unidadeId>:<data>`). O tipo (B4) escreve; o histórico (B5) lê
+ *  para mostrar as chamadas ainda não enviadas, com os números tirados de `corpo.linhas`. */
+export interface PayloadReuniao {
+  /** O `:uuid` do PUT: id da reunião existente, ou UUID novo gerado no aparelho. */
+  reuniaoId: string
+  /** `true` quando a reunião já existia (rótulo "Correção na chamada · …"). */
+  correcao: boolean
+  unidadeNome: string
+  corpo: z.infer<typeof ReuniaoEnvio>
+}

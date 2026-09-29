@@ -39,3 +39,16 @@ export function emailRedefinicao(dados: { para: string; token: string; appUrl?: 
     texto: `Use este link em até 1 hora: ${urlDoApp(dados.appUrl)}/senha/redefinir/${dados.token}. Se não foi você, ignore este e-mail.`,
   }
 }
+
+export function emailPedidoUnidadeSemDbv(dados: {
+  para: string
+  conselheiro: string
+  unidade: string
+  appUrl?: string
+}): MensagemDeEmail {
+  return {
+    para: dados.para,
+    assunto: `A unidade ${dados.unidade} está sem desbravadores no app`,
+    texto: `${dados.conselheiro} pediu que você cadastre os desbravadores da unidade ${dados.unidade}. ${urlDoApp(dados.appUrl)}/adm/unidades`,
+  }
+}
