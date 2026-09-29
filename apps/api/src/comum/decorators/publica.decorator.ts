@@ -1,6 +1,5 @@
 import { SetMetadata } from '@nestjs/common'
+import { ACESSO_PUBLICA } from './acesso'
 
-export const ROTA_PUBLICA = 'rotaPublica'
-
-// Provisorio: a guarda global de autenticacao e a decisao de acesso reais chegam com o modulo de sessao.
-export const Publica = (): MethodDecorator & ClassDecorator => SetMetadata(ROTA_PUBLICA, true)
+/** Rota aberta: nenhuma guarda global olha o token. */
+export const Publica = (): MethodDecorator & ClassDecorator => SetMetadata(ACESSO_PUBLICA, true)

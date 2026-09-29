@@ -16,9 +16,9 @@ describe('GET /api/saude', () => {
     await app.close()
   })
 
-  it('responde 200 com status ok, sem autenticacao', async () => {
+  it('responde 200 com ok e a situacao do banco, sem autenticacao', async () => {
     const resposta = await request(servidor()).get('/api/saude').expect(200)
-    expect(resposta.body).toEqual({ status: 'ok' })
+    expect(resposta.body).toEqual({ ok: true, versao: expect.any(String) as string, banco: true })
   })
 
   it('nao expoe a rota sem o prefixo /api', async () => {

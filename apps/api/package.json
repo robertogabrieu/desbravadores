@@ -8,7 +8,9 @@
     "build": "tsc -p tsconfig.build.json",
     "tipos": "tsc --noEmit",
     "teste": "jest",
-    "teste:limpar": "tsx src/scripts/limpar-bancos-teste.ts"
+    "teste:limpar": "tsx src/scripts/limpar-bancos-teste.ts",
+    "carga": "node --env-file-if-exists=../../.env -r tsx/cjs src/scripts/carga.ts",
+    "clube:criar": "node --env-file-if-exists=../../.env -r tsx/cjs src/scripts/clube-criar.ts"
   },
   "dependencies": {
     "@desbravadores/shared": "0.0.0",

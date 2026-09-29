@@ -2,6 +2,8 @@ export const NOME_SISTEMA = 'Desbravadores'
 
 export * from './enums'
 export * from './permissoes'
+export * from './datas'
+export * from './formulas'
 export * from './contratos/comum'
 export * from './contratos/auth'
 export * from './contratos/eu'
