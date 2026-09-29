@@ -340,3 +340,39 @@ describe('guarda de clube: o data nao troca o clube', () => {
     ).toThrow(ErroEscopoClube)
   })
 })
+
+describe('guarda de clube: a relacao `clube` no data e proibida', () => {
+  const ligarAoOutro = { clube: { connect: { id: OUTRO_CLUBE } } }
+  const desligar = { clube: { disconnect: true } }
+
+  it.each(['Vinculo', 'Desbravador'])('%s: connect para outro clube em update, updateMany e upsert', (modelo) => {
+    const where = { clubeId: CLUBE }
+    expect(() => verificarEscopo(modelo, 'update', { where, data: ligarAoOutro })).toThrow(ErroEscopoClube)
+    expect(() => verificarEscopo(modelo, 'updateMany', { where, data: ligarAoOutro })).toThrow(ErroEscopoClube)
+    expect(() => verificarEscopo(modelo, 'upsert', { where, create: { clubeId: CLUBE }, update: ligarAoOutro })).toThrow(
+      ErroEscopoClube,
+    )
+    expect(() =>
+      verificarEscopo(modelo, 'upsert', { where, create: { clubeId: CLUBE, ...ligarAoOutro }, update: {} }),
+    ).toThrow(ErroEscopoClube)
+  })
+
+  it.each(['Classe', 'Especialidade'])('%s: disconnect (virar oficial) em update e upsert', (modelo) => {
+    const where = { clubeId: CLUBE }
+    expect(() => verificarEscopo(modelo, 'update', { where, data: desligar })).toThrow(ErroEscopoClube)
+    expect(() => verificarEscopo(modelo, 'upsert', { where, create: { clubeId: CLUBE }, update: desligar })).toThrow(
+      ErroEscopoClube,
+    )
+  })
+
+  it.each([...MODELOS_DE_CLUBE, ...MODELOS_MISTOS])('%s: connect no create e no createMany', (modelo) => {
+    expect(() => verificarEscopo(modelo, 'create', { data: { clubeId: CLUBE, ...ligarAoOutro } })).toThrow(ErroEscopoClube)
+    expect(() => verificarEscopo(modelo, 'createMany', { data: [{ clubeId: CLUBE, ...ligarAoOutro }] })).toThrow(
+      ErroEscopoClube,
+    )
+  })
+
+  it('modelos fora da guarda continuam livres para usar a relacao `clube`', () => {
+    expect(() => verificarEscopo('Usuario', 'update', { where: { id: 'x' }, data: ligarAoOutro })).not.toThrow()
+  })
+})

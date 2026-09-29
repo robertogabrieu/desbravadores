@@ -163,6 +163,15 @@ function verificarEscritaAninhada(modelo: string, operacao: string, data: unknow
   }
 }
 
+/** O clube so entra pelo campo `clubeId`; a relacao `clube` (connect/disconnect) contornaria a conferencia. */
+function proibirRelacaoClube(modelo: string, operacao: string, data: unknown): void {
+  for (const item of itensDeData(data)) {
+    if (ehObjeto(item) && item['clube'] !== undefined) {
+      throw new ErroEscopoClube(modelo, operacao, 'nao pode escrever a relacao `clube`; use data.clubeId')
+    }
+  }
+}
+
 function exigirClubeNosItens(modelo: string, operacao: string, data: unknown): void {
   for (const item of itensDeData(data)) {
     if (!ehObjeto(item) || !ehUuid(item['clubeId'])) {
@@ -199,6 +208,10 @@ export function verificarEscopo(
   const deClube = ehModeloDeClube(modelo)
   const misto = ehModeloMisto(modelo)
   if (!deClube && !misto) return
+
+  for (const campo of ['data', 'create', 'update']) {
+    proibirRelacaoClube(modelo, operacao, argumentos[campo])
+  }
 
   if (OPERACOES_DE_CRIACAO.includes(operacao)) {
     exigirClubeNosItens(modelo, operacao, argumentos['data'])
