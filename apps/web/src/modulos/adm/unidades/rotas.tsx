@@ -1,6 +1,4 @@
 import type { RouteObject } from 'react-router-dom'
-import { EmConstrucao } from '../../comum/EmConstrucao'
+import { ListaUnidades } from './ListaUnidades'
 
-export const rotasAdmUnidades: RouteObject[] = [
-  { path: '/adm/unidades', element: <EmConstrucao titulo="Unidades" /> },
-]
+export const rotasAdmUnidades: RouteObject[] = [{ path: '/adm/unidades', element: <ListaUnidades /> }]
