@@ -37,6 +37,17 @@ function argumentos(operacao: string, where: unknown): Record<string, unknown> {
   return args
 }
 
+const OPERACOES_DE_LEITURA: string[] = [
+  'findUnique',
+  'findUniqueOrThrow',
+  'findFirst',
+  'findFirstOrThrow',
+  'findMany',
+  'count',
+  'aggregate',
+  'groupBy',
+]
+
 const WHERES_RECUSADOS: [string, unknown][] = [
   ['sem where', undefined],
   ['where vazio', {}],
@@ -134,14 +145,25 @@ describe('guarda de clube: modelos mistos', () => {
 
   describe.each([...MODELOS_MISTOS])('%s', (modelo) => {
     describe.each([...OPERACOES_COM_WHERE])('%s', (operacao) => {
-      it('passa com o OR exato e com clubeId string', () => {
-        expect(() =>
-          verificarEscopo(modelo, operacao, argumentos(operacao, { OR: OR_EXATO, id: 'x' })),
-        ).not.toThrow()
+      it('passa com clubeId string', () => {
         expect(() =>
           verificarEscopo(modelo, operacao, argumentos(operacao, { clubeId: CLUBE })),
         ).not.toThrow()
       })
+
+      if (OPERACOES_DE_LEITURA.includes(operacao)) {
+        it('leitura passa com o OR exato', () => {
+          expect(() =>
+            verificarEscopo(modelo, operacao, argumentos(operacao, { OR: OR_EXATO, id: 'x' })),
+          ).not.toThrow()
+        })
+      } else {
+        it('escrita lanca com o OR exato (exige clubeId no where)', () => {
+          expect(() =>
+            verificarEscopo(modelo, operacao, argumentos(operacao, { OR: OR_EXATO, id: 'x' })),
+          ).toThrow(ErroEscopoClube)
+        })
+      }
 
       it.each([
         ['sem escopo', undefined],
@@ -204,5 +226,117 @@ describe('guarda de clube: fora do escopo da guarda e escrita aninhada', () => {
     expect(() =>
       verificarEscopo('Usuario', 'create', { data: { tokens: { create: { finalidade: 'CONVITE' } } } }, relacoes),
     ).not.toThrow()
+  })
+})
+
+describe('guarda de clube: escrita aninhada em qualquer profundidade', () => {
+  const relacoes = relacoesDoClient(new PrismaSistema())
+  const vinculoDoOutroClube = { create: { clubeId: OUTRO_CLUBE, papel: 'ADM' } }
+
+  it('recusa clube alcancado atraves de modelo global (Desbravador > Usuario > Vinculo)', () => {
+    expect(() =>
+      verificarEscopo(
+        'Desbravador',
+        'update',
+        { where: { clubeId: CLUBE, id: 'x' }, data: { usuario: { update: { vinculos: vinculoDoOutroClube } } } },
+        relacoes,
+      ),
+    ).toThrow(ErroEscopoClube)
+  })
+
+  it('recusa atraves de filhos sem clubeId (Classe > SecaoRequisito > Requisito > RequisitoAjuste)', () => {
+    expect(() =>
+      verificarEscopo(
+        'Classe',
+        'update',
+        {
+          where: { clubeId: CLUBE },
+          data: {
+            secoes: {
+              update: {
+                where: { id: 'x' },
+                data: { requisitos: { update: { where: { id: 'y' }, data: { ajustes: vinculoDoOutroClube } } } },
+              },
+            },
+          },
+        },
+        relacoes,
+      ),
+    ).toThrow(ErroEscopoClube)
+  })
+
+  it('recusa em create dentro de connectOrCreate e upsert aninhados', () => {
+    expect(() =>
+      verificarEscopo(
+        'Usuario',
+        'update',
+        { where: { id: 'x' }, data: { desbravadores: { upsert: { where: { id: 'y' }, create: {}, update: {} } } } },
+        relacoes,
+      ),
+    ).toThrow(ErroEscopoClube)
+    expect(() =>
+      verificarEscopo(
+        'Usuario',
+        'update',
+        { where: { id: 'x' }, data: { vinculos: { connectOrCreate: { where: { id: 'y' }, create: {} } } } },
+        relacoes,
+      ),
+    ).toThrow(ErroEscopoClube)
+  })
+
+  it.each(['set', 'connect', 'disconnect'])('recusa %s aninhado que alcanca modelo de clube', (operacao) => {
+    expect(() =>
+      verificarEscopo('Usuario', 'update', { where: { id: 'x' }, data: { vinculos: { [operacao]: [{ id: 'y' }] } } }, relacoes),
+    ).toThrow(ErroEscopoClube)
+  })
+
+  it('aceita aninhado que so alcanca modelos fora da guarda', () => {
+    expect(() =>
+      verificarEscopo(
+        'Usuario',
+        'update',
+        { where: { id: 'x' }, data: { tokens: { create: { finalidade: 'SENHA' } }, refreshTokens: { deleteMany: {} } } },
+        relacoes,
+      ),
+    ).not.toThrow()
+  })
+})
+
+describe('guarda de clube: o data nao troca o clube', () => {
+  it.each([...MODELOS_DE_CLUBE, ...MODELOS_MISTOS])('%s: update e updateMany', (modelo) => {
+    for (const operacao of ['update', 'updateMany']) {
+      const where = { clubeId: CLUBE }
+      expect(() => verificarEscopo(modelo, operacao, { where, data: { clubeId: OUTRO_CLUBE } })).toThrow(ErroEscopoClube)
+      expect(() => verificarEscopo(modelo, operacao, { where, data: { clubeId: { set: OUTRO_CLUBE } } })).toThrow(
+        ErroEscopoClube,
+      )
+      expect(() => verificarEscopo(modelo, operacao, { where, data: { clubeId: null } })).toThrow(ErroEscopoClube)
+      expect(() => verificarEscopo(modelo, operacao, { where, data: { clubeId: CLUBE } })).not.toThrow()
+      expect(() => verificarEscopo(modelo, operacao, { where, data: { clubeId: undefined } })).not.toThrow()
+      expect(() => verificarEscopo(modelo, operacao, { where, data: {} })).not.toThrow()
+    }
+  })
+
+  it.each([...MODELOS_DE_CLUBE, ...MODELOS_MISTOS])('%s: upsert confere create e update contra o where', (modelo) => {
+    const where = { clubeId: CLUBE }
+    expect(() => verificarEscopo(modelo, 'upsert', { where, create: { clubeId: OUTRO_CLUBE }, update: {} })).toThrow(
+      ErroEscopoClube,
+    )
+    expect(() => verificarEscopo(modelo, 'upsert', { where, create: { clubeId: CLUBE }, update: { clubeId: OUTRO_CLUBE } })).toThrow(
+      ErroEscopoClube,
+    )
+    expect(() => verificarEscopo(modelo, 'upsert', { where, create: { clubeId: CLUBE }, update: { clubeId: CLUBE } })).not.toThrow()
+  })
+
+  it('compara com o clube do where mesmo na chave composta ou dentro do AND', () => {
+    expect(() =>
+      verificarEscopo('Desbravador', 'update', {
+        where: { clubeId_id: { clubeId: CLUBE, id: 'x' } },
+        data: { clubeId: OUTRO_CLUBE },
+      }),
+    ).toThrow(ErroEscopoClube)
+    expect(() =>
+      verificarEscopo('Desbravador', 'updateMany', { where: { AND: [{ clubeId: CLUBE }] }, data: { clubeId: OUTRO_CLUBE } }),
+    ).toThrow(ErroEscopoClube)
   })
 })

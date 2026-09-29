@@ -20,6 +20,19 @@ const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 
 const OPERACOES_DE_CRIACAO = ['create', 'createMany', 'createManyAndReturn']
 
+const OPERACOES_DE_LEITURA = [
+  'findUnique',
+  'findUniqueOrThrow',
+  'findFirst',
+  'findFirstOrThrow',
+  'findMany',
+  'count',
+  'aggregate',
+  'groupBy',
+]
+
+const OPERACOES_DE_ATUALIZACAO = ['update', 'updateMany', 'updateManyAndReturn']
+
 const ESCRITAS_ANINHADAS = [
   'create',
   'createMany',
@@ -29,6 +42,9 @@ const ESCRITAS_ANINHADAS = [
   'updateMany',
   'delete',
   'deleteMany',
+  'set',
+  'connect',
+  'disconnect',
 ]
 
 export class ErroEscopoClube extends Error {
@@ -57,15 +73,19 @@ function ehModeloMisto(modelo: string): boolean {
 }
 
 /** `clubeId` string UUID no topo do where, numa chave composta `clubeId_*` ou dentro de um `AND`. */
-function temClubeNoWhere(where: unknown): boolean {
-  if (!ehObjeto(where)) return false
-  if (ehUuid(where['clubeId'])) return true
+function clubeDoWhere(where: unknown): string | undefined {
+  if (!ehObjeto(where)) return undefined
+  if (ehUuid(where['clubeId'])) return where['clubeId']
   for (const [chave, valor] of Object.entries(where)) {
-    if (chave.startsWith('clubeId_') && ehObjeto(valor) && ehUuid(valor['clubeId'])) return true
+    if (chave.startsWith('clubeId_') && ehObjeto(valor) && ehUuid(valor['clubeId'])) return valor['clubeId']
   }
   const and = where['AND']
   const filhos = Array.isArray(and) ? and : and === undefined ? [] : [and]
-  return filhos.some(temClubeNoWhere)
+  for (const filho of filhos) {
+    const clube = clubeDoWhere(filho)
+    if (clube) return clube
+  }
+  return undefined
 }
 
 /** Exatamente `OR: [{ clubeId: null }, { clubeId: <uuid> }]`. */
@@ -112,7 +132,10 @@ export function relacoesDoClient(client: object): Relacoes {
   return relacoes
 }
 
-/** Escrita aninhada que cria, altera ou apaga linha de modelo de clube: proibida (SPEC 6.3). */
+/**
+ * Escrita aninhada que alcanca modelo de clube, em qualquer profundidade e atravessando
+ * modelos globais e filhos: proibida (SPEC 6.3).
+ */
 function verificarEscritaAninhada(modelo: string, operacao: string, data: unknown, relacoes: Relacoes): void {
   const camposDoModelo = relacoes.get(modelo)
   for (const item of itensDeData(data)) {
@@ -120,13 +143,21 @@ function verificarEscritaAninhada(modelo: string, operacao: string, data: unknow
     for (const [campo, valor] of Object.entries(item)) {
       const filho = camposDoModelo.get(campo)
       if (!filho || !ehObjeto(valor)) continue
-      const escreve = Object.keys(valor).some((chave) => ESCRITAS_ANINHADAS.includes(chave))
-      if (escreve && (ehModeloDeClube(filho) || ehModeloMisto(filho))) {
-        throw new ErroEscopoClube(
-          modelo,
-          operacao,
-          `escreve ${filho} por ${campo}; crie em separado, dentro da transacao`,
-        )
+      for (const [escrita, carga] of Object.entries(valor)) {
+        if (!ESCRITAS_ANINHADAS.includes(escrita)) continue
+        if (ehModeloDeClube(filho) || ehModeloMisto(filho)) {
+          throw new ErroEscopoClube(
+            modelo,
+            operacao,
+            `escreve ${filho} por ${campo}; crie em separado, dentro da transacao`,
+          )
+        }
+        for (const parte of itensDeData(carga)) {
+          if (!ehObjeto(parte)) continue
+          for (const dados of [parte, parte['data'], parte['create'], parte['update']]) {
+            verificarEscritaAninhada(filho, operacao, dados, relacoes)
+          }
+        }
       }
     }
   }
@@ -137,6 +168,16 @@ function exigirClubeNosItens(modelo: string, operacao: string, data: unknown): v
     if (!ehObjeto(item) || !ehUuid(item['clubeId'])) {
       throw new ErroEscopoClube(modelo, operacao, 'precisa de data.clubeId como string UUID')
     }
+  }
+}
+
+/** `data.clubeId`, quando informado, nao pode levar a linha para outro clube. */
+function exigirMesmoClube(modelo: string, operacao: string, data: unknown, clube: string): void {
+  if (!ehObjeto(data) || data['clubeId'] === undefined) return
+  const informado = data['clubeId']
+  const valor = ehObjeto(informado) && 'set' in informado ? informado['set'] : informado
+  if (valor !== clube) {
+    throw new ErroEscopoClube(modelo, operacao, 'data.clubeId diferente do clubeId do where')
   }
 }
 
@@ -165,12 +206,20 @@ export function verificarEscopo(
   }
 
   const where = argumentos['where']
-  const escopado = temClubeNoWhere(where) || (misto && ehOrOficialOuDoClube(where))
-  if (!escopado) {
-    const aceito = misto ? 'clubeId string UUID ou OR [{clubeId: null}, {clubeId}]' : 'clubeId string UUID'
+  // O OR de oficial-ou-do-clube so serve para ler; escrever exige o clube como nos modelos de clube.
+  const leitura = OPERACOES_DE_LEITURA.includes(operacao)
+  const clube = clubeDoWhere(where)
+  if (!clube && !(misto && leitura && ehOrOficialOuDoClube(where))) {
+    const aceito = misto && leitura ? 'clubeId string UUID ou OR [{clubeId: null}, {clubeId}]' : 'clubeId string UUID'
     throw new ErroEscopoClube(modelo, operacao, `precisa de ${aceito} no where`)
   }
-  if (operacao === 'upsert') exigirClubeNosItens(modelo, operacao, argumentos['create'])
+  if (!clube) return
+  if (OPERACOES_DE_ATUALIZACAO.includes(operacao)) exigirMesmoClube(modelo, operacao, argumentos['data'], clube)
+  if (operacao === 'upsert') {
+    exigirClubeNosItens(modelo, operacao, argumentos['create'])
+    exigirMesmoClube(modelo, operacao, argumentos['create'], clube)
+    exigirMesmoClube(modelo, operacao, argumentos['update'], clube)
+  }
 }
 
 export const guardaClube = Prisma.defineExtension((client) => {

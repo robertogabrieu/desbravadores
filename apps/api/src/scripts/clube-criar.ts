@@ -1,7 +1,7 @@
 import { parseArgs } from 'node:util'
 import { PrismaSistema } from '../comum/prisma/prisma-sistema'
 import { emailAdicionado, emailConvite } from '../email/modelos'
-import type { ServicoEmail } from '../email/servico-email'
+import type { MensagemDeEmail, ServicoEmail } from '../email/servico-email'
 import { ServicoEmailSmtp } from '../email/servico-email-smtp'
 import type { Clube, Prisma } from '../generated/prisma/client.js'
 import { ServicoTokenUsoUnico } from '../sessao/token-uso-unico.service'
@@ -18,6 +18,8 @@ export interface ResultadoDoClube {
   usuarioId: string
   /** Link do convite; `null` quando o Adm ja e um usuario ativo (recebe so o aviso de que foi adicionado). */
   linkConvite: string | null
+  /** `false` quando o envio falhou: o clube existe e o link foi impresso, mas ninguem recebeu o e-mail. */
+  emailEnviado: boolean
 }
 
 // Criterios padrao do ranking (SPEC 5.4).
@@ -59,7 +61,7 @@ export async function executarClubeCriar(
   prisma: PrismaSistema,
   email: ServicoEmail,
   argumentos: ArgumentosDoClube,
-  opcoes: { appUrl: string },
+  opcoes: { appUrl: string; aviso?: (linha: string) => void },
 ): Promise<ResultadoDoClube> {
   const admEmail = argumentos.admEmail.trim().toLowerCase()
   const { clube, adm } = await prisma.$transaction(async (tx) => {
@@ -71,15 +73,33 @@ export async function executarClubeCriar(
     return { clube, adm }
   })
 
+  const aviso = opcoes.aviso ?? console.log
   if (adm.status === 'ATIVO') {
-    await email.enviar(emailAdicionado({ para: adm.email, nome: adm.nome, clube: clube.nome, appUrl: opcoes.appUrl }))
-    return { clubeId: clube.id, usuarioId: adm.id, linkConvite: null }
+    const emailEnviado = await enviarSemFalhar(
+      email,
+      emailAdicionado({ para: adm.email, nome: adm.nome, clube: clube.nome, appUrl: opcoes.appUrl }),
+      aviso,
+    )
+    return { clubeId: clube.id, usuarioId: adm.id, linkConvite: null, emailEnviado }
   }
   const token = await new ServicoTokenUsoUnico(prisma).gerar(adm.id, 'CONVITE')
-  await email.enviar(
-    emailConvite({ para: adm.email, nome: adm.nome, clube: clube.nome, token, appUrl: opcoes.appUrl }),
-  )
-  return { clubeId: clube.id, usuarioId: adm.id, linkConvite: `${opcoes.appUrl.replace(/\/+$/, '')}/convite/${token}` }
+  const linkConvite = `${opcoes.appUrl.replace(/\/+$/, '')}/convite/${token}`
+  // O link sai antes do envio: se o SMTP falhar, e o unico registro dele.
+  aviso(`Link do convite do Adm: ${linkConvite}`)
+  const mensagem = emailConvite({ para: adm.email, nome: adm.nome, clube: clube.nome, token, appUrl: opcoes.appUrl })
+  const emailEnviado = await enviarSemFalhar(email, mensagem, aviso)
+  return { clubeId: clube.id, usuarioId: adm.id, linkConvite, emailEnviado }
+}
+
+async function enviarSemFalhar(email: ServicoEmail, mensagem: MensagemDeEmail, aviso: (linha: string) => void): Promise<boolean> {
+  try {
+    await email.enviar(mensagem)
+    return true
+  } catch (erro) {
+    const motivo = erro instanceof Error ? erro.message : String(erro)
+    aviso(`ATENCAO: o clube foi criado, mas o e-mail para ${mensagem.para} nao foi enviado (${motivo}). Entregue o link acima ao Adm.`)
+    return false
+  }
 }
 
 export function analisarArgumentos(argv: string[]): ArgumentosDoClube {
@@ -111,8 +131,7 @@ async function principal(): Promise<void> {
   try {
     const resultado = await executarClubeCriar(prisma, new ServicoEmailSmtp(), argumentos, { appUrl })
     console.log(`Clube "${argumentos.nome}" criado (${resultado.clubeId}).`)
-    if (resultado.linkConvite) console.log(`Link do convite do Adm: ${resultado.linkConvite}`)
-    else console.log('O Adm ja tinha conta ativa: recebeu o aviso de que foi adicionado ao clube.')
+    if (!resultado.linkConvite) console.log('O Adm ja tinha conta ativa: recebeu o aviso de que foi adicionado ao clube.')
   } finally {
     await prisma.$disconnect()
   }

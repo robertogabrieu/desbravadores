@@ -96,6 +96,23 @@ describe('clube:criar (SPEC 5.2 e 5.4)', () => {
     expect(email.enviadas).toHaveLength(0)
   })
 
+  it('falha no envio: o link e impresso antes, o clube fica criado e o erro nao propaga', async () => {
+    const s = sufixo()
+    const quebrado = { enviar: () => Promise.reject(new Error('SMTP fora do ar')) }
+    const linhas: string[] = []
+    const resultado = await executarClubeCriar(
+      prisma,
+      quebrado,
+      { nome: 'Clube SMTP', slug: `smtp-${s}`, admNome: 'Sam', admEmail: `sam.${s}@exemplo.org` },
+      { appUrl: 'https://app.exemplo.org', aviso: (linha) => linhas.push(linha) },
+    )
+    expect(resultado.linkConvite).toMatch(/\/convite\/[A-Za-z0-9_-]{43}$/)
+    expect(resultado.emailEnviado).toBe(false)
+    expect(await prisma.clube.count({ where: { id: resultado.clubeId } })).toBe(1)
+    expect(linhas[0]).toContain(resultado.linkConvite ?? 'x')
+    expect(linhas.join('\n')).toContain('SMTP fora do ar')
+  })
+
   describe('argumentos da linha de comando', () => {
     it('le --nome --slug --adm-nome --adm-email', () => {
       expect(
