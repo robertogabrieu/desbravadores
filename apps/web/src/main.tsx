@@ -20,6 +20,8 @@ const clienteConsultas = new QueryClient({
       retry: (tentativas, erro) =>
         !(erro instanceof ErroDaApi && erro.status >= 400 && erro.status < 500) && tentativas < MAXIMO_DE_TENTATIVAS,
     },
+    // Gravar é enfileirar no aparelho: a mutação não pode esperar o navegador se dizer online.
+    mutations: { networkMode: 'always' },
   },
 })
 

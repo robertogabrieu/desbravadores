@@ -72,6 +72,8 @@ export function useSalvarChamada() {
   const { eu } = useSessao()
   const { modo } = useConexao()
   return useMutation({
+    // Sem isto o react-query pausa a mutação com o navegador offline e a chamada nunca chega à fila.
+    networkMode: 'always',
     mutationFn: async (entrada: EntradaSalvarChamada) => {
       const payload: PayloadReuniaoFila = {
         reuniaoId: entrada.reuniaoId,
