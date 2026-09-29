@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common'
 import {
   idade,
   nomePublico as calcularNomePublico,
+  type Aviso as AvisoContrato,
   type DesbravadorCriarEntrada,
   type DesbravadorEditarEntrada,
   type DesbravadorFiltro,
@@ -22,7 +23,7 @@ import { ServicoEscopo, type RelogioDoClube } from './escopo.service'
 
 type Saida = z.infer<typeof DesbravadorSaida>
 type Matricula = z.infer<typeof MatriculaSaida>
-type Aviso = { codigo: string; mensagem: string }
+type Aviso = z.infer<typeof AvisoContrato>
 type Cliente = Prisma.TransactionClient
 
 const CAMPOS_DO_CONSELHEIRO = [

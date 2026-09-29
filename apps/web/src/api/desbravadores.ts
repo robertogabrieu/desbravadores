@@ -1,6 +1,8 @@
 import {
+  Aviso as AvisoContrato,
   DesbravadorCriarEntrada,
   DesbravadorEditarEntrada,
+  DesbravadorFiltro,
   DesbravadorLista,
   DesbravadorSaida,
   InativarEntrada,
@@ -15,10 +17,10 @@ import { invalidarUnidades } from './unidades'
 
 export type Desbravador = z.infer<typeof DesbravadorSaida>
 export type ListaDesbravadores = z.infer<typeof DesbravadorLista>
-export type Aviso = { codigo: string; mensagem: string }
+export type Aviso = z.infer<typeof AvisoContrato>
 export type NovoDesbravador = z.input<typeof DesbravadorCriarEntrada>
 export type EdicaoDesbravador = z.input<typeof DesbravadorEditarEntrada>
-export type SituacaoDesbravador = 'true' | 'false' | 'todos'
+export type SituacaoDesbravador = z.input<typeof DesbravadorFiltro>['ativo']
 
 export interface FiltroDesbravadores {
   busca?: string

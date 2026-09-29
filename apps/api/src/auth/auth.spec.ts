@@ -467,6 +467,29 @@ describe('GET /eu', () => {
       { id: amigo.id, nome: 'Amigo', tipo: 'REGULAR', trilha: 'INDIVIDUAL', corToken: '--classe-amigo' },
     ])
   })
+
+  it('corToken do /eu e o de GET /classes coincidem para avancada sem classe-base e nome composto', async () => {
+    const clube = await criarClube()
+    const usuario = await criarUsuario()
+    const criar = (nome: string, tipo: 'REGULAR' | 'AVANCADA', ordem: number): Promise<{ id: string }> =>
+      prismaDeTeste().classe.create({
+        data: { clubeId: clube.id, origem: 'OFICIAL', nome, tipo, trilha: 'INDIVIDUAL', ordem },
+        select: { id: true },
+      })
+    const semBase = await criar('Amigo da natureza', 'AVANCADA', 990)
+    const composta = await criar('Líder Máster', 'REGULAR', 991)
+    const vinculo = await criarVinculo({ usuarioId: usuario.id, clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [semBase.id, composta.id] })
+    const token = criarSessao({ usuarioId: usuario.id, vinculoId: vinculo.id })
+    const cabecalho = `Bearer ${token}`
+    const eu = EuSaida.parse((await request(servidor()).get('/api/eu').set('Authorization', cabecalho).expect(200)).body)
+    const lista = (await request(servidor()).get('/api/classes').set('Authorization', cabecalho).expect(200)).body as { id: string; corToken: string }[]
+    const corDoEu = (id: string): string | undefined => eu.vinculos[0]?.classes.find((c) => c.id === id)?.corToken
+    const corDaLista = (id: string): string | undefined => lista.find((c) => c.id === id)?.corToken
+    expect(corDoEu(semBase.id)).toBe('--color-primary')
+    expect(corDoEu(composta.id)).toBe('--classe-lider-master')
+    expect(corDoEu(semBase.id)).toBe(corDaLista(semBase.id))
+    expect(corDoEu(composta.id)).toBe(corDaLista(composta.id))
+  })
 })
 
 testarIsolamento({
