@@ -5,6 +5,7 @@
       "nome": "Excursionista",
       "idade": 14,
       "tipo": "REGULAR",
+      "trilha": "INDIVIDUAL",
       "secoes": [
         {
           "codigo": "G",
@@ -224,6 +225,8 @@
       "nome": "Excursionista na Mata",
       "idade": 14,
       "tipo": "AVANCADA",
+      "trilha": "INDIVIDUAL",
+      "classeBase": "Excursionista",
       "secoes": [
         {
           "codigo": "AV",
@@ -280,8 +283,7 @@
             }
           ]
         }
-      ],
-      "classeBase": "Excursionista"
+      ]
     }
   ],
   "avisos": [

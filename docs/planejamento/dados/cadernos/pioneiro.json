@@ -5,6 +5,7 @@
       "nome": "Pioneiro",
       "idade": 13,
       "tipo": "REGULAR",
+      "trilha": "INDIVIDUAL",
       "secoes": [
         {
           "codigo": "G",
@@ -219,6 +220,8 @@
       "nome": "Pioneiro de Novas Fronteiras",
       "idade": 13,
       "tipo": "AVANCADA",
+      "trilha": "INDIVIDUAL",
+      "classeBase": "Pioneiro",
       "secoes": [
         {
           "codigo": "AV",
@@ -305,8 +308,7 @@
             }
           ]
         }
-      ],
-      "classeBase": "Pioneiro"
+      ]
     }
   ],
   "avisos": [

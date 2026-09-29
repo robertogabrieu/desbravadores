@@ -9,7 +9,8 @@ ilustrações e o conteúdo detalhado das especialidades ficaram de fora.
 ## Formato
 
 Um JSON por caderno: `fonte`, `classes[]` (nome, idade, tipo, `secoes[]` com `requisitos[]`) e
-`avisos[]` — tudo que o extrator teve dúvida. Cada requisito tem `codigo`, `texto`, `campo` e
+`avisos[]` — tudo que o extrator teve dúvida. Cada classe tem `tipo` (REGULAR ou AVANCADA) e
+`trilha` (INDIVIDUAL ou AGRUPADAS); a avançada aponta para a sua regular em `classeBase`. Cada requisito tem `codigo`, `texto`, `campo` e
 `pagina` (página do PDF, para conferir).
 
 Seções: G Gerais · DE Descoberta espiritual · SO Servindo aos outros · DA Desenvolvendo amizade ·
@@ -33,24 +34,30 @@ na ordem do caderno, com `classeBase` apontando para a regular.
 | excursionista | Excursionista na Mata | avançada | 8 ⚠ | 3 |
 | guia | Guia (15) | regular | 29 | 4 |
 | guia | Guia de Exploração | avançada | 8 | 2 |
-| agrupadas | Agrupadas 11 anos (Amigo e Companheiro) | agrupada | 46 | 10 |
-| agrupadas | Agrupadas 12 anos (Amigo a Pesquisador) | agrupada | 63 | 13 |
-| agrupadas | Agrupadas 13 anos (Amigo a Pioneiro) | agrupada | 80 | 14 |
-| agrupadas | Agrupadas 14 anos (Amigo a Excursionista) | agrupada | 98 | 15 |
-| agrupadas | Agrupadas 15 anos ou mais (Amigo a Guia) | agrupada | 123 | 18 |
+| agrupadas | Agrupadas 11 anos (Amigo e Companheiro) | regular · agrupadas | 46 | 10 |
+| agrupadas | Agrupadas 11 anos — avançada | avançada · agrupadas | 21 | |
+| agrupadas | Agrupadas 12 anos (Amigo a Pesquisador) | regular · agrupadas | 63 | 13 |
+| agrupadas | Agrupadas 12 anos — avançada | avançada · agrupadas | 32 | |
+| agrupadas | Agrupadas 13 anos (Amigo a Pioneiro) | regular · agrupadas | 80 | 14 |
+| agrupadas | Agrupadas 13 anos — avançada | avançada · agrupadas | 42 | |
+| agrupadas | Agrupadas 14 anos (Amigo a Excursionista) | regular · agrupadas | 98 | 15 |
+| agrupadas | Agrupadas 14 anos — avançada | avançada · agrupadas | 53 | |
+| agrupadas | Agrupadas 15 anos ou mais (Amigo a Guia) | regular · agrupadas | 123 | 18 |
+| agrupadas | Agrupadas 15 anos ou mais — avançada | avançada · agrupadas | 63 | |
 
-**Classes agrupadas** são o caminho de quem entra no clube já mais velho: para cada idade, o
-caderno junta os requisitos das classes anteriores (marcados por caixas de idade). O mesmo
-requisito aparece em várias agrupadas, cada uma com código próprio.
+**Agrupadas** são um supletivo, em geral cursado por líderes: para cada idade de entrada, o
+caderno junta uma versão reduzida dos requisitos das classes anteriores (marcados por caixas de
+idade). Os requisitos são próprios da trilha — o progresso não se mistura com o das classes
+individuais — e o mesmo requisito aparece em várias agrupadas, cada uma com código próprio.
 
-O caderno de Agrupadas também traz as 6 avançadas, numa **versão diferente** da dos cadernos
-regulares (itens a menos ou a mais). Elas estão em `agrupadas.json` com `variante: "AGRUPADAS"` e
-`carregarPorPadrao: false`: a carga usa as avançadas dos cadernos regulares.
+O caderno traz também as 6 avançadas numa versão própria do supletivo. Pela mesma caixa de
+idade, elas foram reunidas em uma **avançada agrupada por idade**, que acumula as das idades
+anteriores; cada avançada individual vira uma seção (AN, CE, PC, PN, EM, GE).
 
 ## Revisão antes da carga
 
 1. **Excursionista na Mata** — o PDF não tem as páginas impressas 44–45: falta o requisito 1 e o
-   nome (deduzido). A variante das Agrupadas começa com "Fazer uma apresentação escrita ou falada
+   nome (deduzido). A versão das Agrupadas começa com "Fazer uma apresentação escrita ou falada
    sobre o respeito que devemos ter com a Lei de Deus…" — provável requisito que falta. Conferir
    no caderno de papel.
 2. **Amigo da Natureza AV8** — enunciado ausente no PDF, texto **reconstruído**. Conferir.
@@ -59,5 +66,6 @@ regulares (itens a menos ou a mais). Elas estão em `agrupadas.json` com `varian
 4. **CAMPO** — inferido pelo assunto; os duvidosos estão em `avisos`. Um instrutor revisa cada
    classe.
 5. **Agrupadas** — as caixas de idade foram lidas pela cor na imagem; conferir uma amostra
-   (principalmente DE e SO).
+   (principalmente DE e SO). Confirmar também que a avançada agrupada acumula as anteriores
+   (15+ faz as seis).
 6. Leia os `avisos` de cada arquivo: são 8 a 21 por caderno.

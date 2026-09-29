@@ -5,6 +5,7 @@
       "nome": "Pesquisador",
       "idade": 12,
       "tipo": "REGULAR",
+      "trilha": "INDIVIDUAL",
       "secoes": [
         {
           "codigo": "G",
@@ -213,6 +214,8 @@
       "nome": "Pesquisador de Campo e Bosque",
       "idade": 12,
       "tipo": "AVANCADA",
+      "trilha": "INDIVIDUAL",
+      "classeBase": "Pesquisador",
       "secoes": [
         {
           "codigo": "AV",
@@ -287,8 +290,7 @@
             }
           ]
         }
-      ],
-      "classeBase": "Pesquisador"
+      ]
     }
   ],
   "avisos": [

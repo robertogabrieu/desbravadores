@@ -38,7 +38,8 @@ Convenções: listas paginadas com `?pagina=&porPagina=`; datas em `YYYY-MM-DD`;
 | `POST /desbravadores/{id}/inativar` | Saída do clube | `dbv.cadastrar` |
 | `PUT /desbravadores/{id}/unidade` | Move de unidade (fecha o `MembroUnidade` aberto, abre outro) | `unidade.gerenciar` |
 | `POST /desbravadores/{id}/matriculas` | Matricula numa classe do ano | `classe.gerenciar` |
-| `POST /matriculas/{id}/investir` | Marca investidura (exige 100%, ou justificativa do Adm) | `classe.gerenciar` |
+| `POST /desbravadores/{id}/matriculas` · efeito | Matricular na regular cria também a matrícula da avançada ligada | — |
+| `POST /matriculas/{id}/investir` | Marca investidura da regular ou da avançada (cada uma exige 100% da própria classe, ou justificativa do Adm) | `classe.gerenciar` |
 
 ## Usuários e vínculos
 
@@ -64,12 +65,12 @@ Convenções: listas paginadas com `?pagina=&porPagina=`; datas em `YYYY-MM-DD`;
 
 | Método e rota | O que faz | Permissão |
 |---|---|---|
-| `GET /classes?tipo=` | Classes com cor, idade, total de requisitos, instrutores | logado |
+| `GET /classes?tipo=&trilha=` | Classes com cor, idade, trilha, total de requisitos, instrutores, avançada ligada | logado |
 | `GET /classes/{id}` | Seções e requisitos | logado |
 | `PATCH /classes/{id}` | `quemMontaCronograma`, ativa | `classe.gerenciar` |
 | `POST /classes` | Classe do clube (origem CLUBE) | `classe.gerenciar` |
 | `POST /classes/{id}/requisitos` · `PATCH /requisitos/{id}` | Acrescenta/edita requisito (oficial: só desativar ou marcar CAMPO) | `classe.gerenciar` |
-| `GET /classes/{id}/progresso` | Média da turma, prontos, abaixo do limiar, % por DBV | `classe.ver_relatorio` + escopo |
+| `GET /classes/{id}/progresso` | Média da turma, prontos, abaixo do limiar, % por DBV — de uma classe só (a regular e a avançada são chamadas separadas) | `classe.ver_relatorio` + escopo |
 | `GET /especialidades?areaId=&busca=` | Catálogo por área | logado |
 | `POST /especialidades` | Especialidade do clube | `classe.gerenciar` |
 
@@ -97,7 +98,8 @@ Convenções: listas paginadas com `?pagina=&porPagina=`; datas em `YYYY-MM-DD`;
 |---|---|---|
 | `GET /classes/{id}/cronograma?ano=` | Aulas com data, requisitos, estado (dada/hoje/planejada/conflito) | escopo da classe ou Adm |
 | `GET /classes/{id}/cronograma/datas` | Datas do período com `bloqueada`, `bomParaCampo`, evento e requisitos já alocados (tela de montagem) | quem monta |
-| `PUT /cronogramas/{id}/requisitos/{requisitoId}` | `{ data }` → coloca ou move o requisito (recusa data bloqueada) | quem monta |
+| `PUT /cronogramas/{id}/requisitos/{requisitoId}` | `{ data }` → coloca ou move o requisito (recusa data bloqueada; nas Agrupadas aceita qualquer data e só devolve aviso) | quem monta |
+| `POST /cronogramas/{id}/aulas` | Cria data livre com horário e local (Agrupadas) | quem monta |
 | `DELETE /cronogramas/{id}/requisitos/{requisitoId}` | Tira da data | quem monta |
 | `PATCH /aulas-planejadas/{id}` | Horário, local, título | quem monta |
 | `POST /cronogramas/{id}/publicar` | Rascunho → publicado; notifica instrutores | Adm |

@@ -44,6 +44,8 @@ seletor de papel quando há mais de um.
 
 ```
 Desbravador(id, nome, nomePublico,               # "Ana C." — calculado, editável
+  tipo: DBV|LIDER = DBV,                         # LIDER = líder cursando classe (em geral Agrupadas)
+  usuarioId?,                                    # liga o LIDER à conta dele, quando houver
   nascimento: date, sexo: F|M,
   responsavelNome, responsavelTelefone, responsavelEmail?,
   autorizacaoImagem: bool, autorizacaoImagemEm?, # quem autorizou fica em observação do cadastro
@@ -57,11 +59,17 @@ MembroUnidade(id, dbvId, unidadeId, inicio: date, fim?: date)
   UNIQUE parcial: um registro aberto (fim nulo) por dbvId
 ```
 
+Quem cursa uma classe é sempre um `Desbravador`. O **líder** que faz as Agrupadas (em geral
+instrutor de uma classe individual) entra como `tipo=LIDER`: tem matrícula e progresso, mas não
+tem unidade, não entra na chamada, na frequência nem no ranking.
+
 ## 3. Classes, requisitos e especialidades
 
 ```
-Classe(id, nome, idade?, cor, tipo: REGULAR|AVANCADA|AGRUPADA,
-  classeBaseId?,                                 # avançada aponta para a regular
+Classe(id, nome, idade?, cor,
+  tipo: REGULAR|AVANCADA,
+  trilha: INDIVIDUAL|AGRUPADAS,                  # AGRUPADAS = supletivo, requisitos próprios
+  classeBaseId?,                                 # avançada aponta para a regular da mesma trilha
   ordem, origem: OFICIAL|CLUBE, ativa,
   quemMontaCronograma: ADM|INSTRUTOR = ADM)      # a trava única do cronograma
   # instrutores vêm de VinculoClasse
@@ -72,6 +80,12 @@ Requisito(id, secaoId, codigo: "DE1", texto, campo: bool, ordem, ativo)
 AreaEspecialidade(id, nome, cor, ordem)
 Especialidade(id, areaId, nome, codigo?, origem: OFICIAL|CLUBE, ativa)
 ```
+
+**Trilhas.** A trilha individual tem 6 regulares (Amigo a Guia), cada uma com sua avançada. A
+trilha **Agrupadas** é um supletivo: 5 regulares por idade de entrada (11 a 15+), cada uma com uma
+avançada que acumula as avançadas das idades anteriores (seções AN, CE, PC, PN, EM, GE). Os
+requisitos das duas trilhas são **registros diferentes**, mesmo quando o texto coincide: o
+progresso de uma nunca conta na outra.
 
 Os dados `OFICIAL` vêm da carga inicial (`docs/planejamento/dados/cadernos/*.json`) e são
 **compartilhados por todos os clubes** (sem `clubeId`). Um clube pode desativar ou acrescentar os
@@ -84,7 +98,8 @@ MatriculaClasse(id, dbvId, classeId, anoClube: int,
   status: CURSANDO|CONCLUIDA|INVESTIDA|DESISTIU,
   investidaEm?: date)
   UNIQUE(dbvId, classeId, anoClube)
-  # um DBV pode cursar a regular e uma avançada no mesmo ano
+  # regular e avançada são matrículas separadas; matricular na regular cria também a da
+  # avançada correspondente (o Adm pode remover — ela é recomendada, não obrigatória)
 
 RequisitoConcluido(id, dbvId, requisitoId, concluidoEm: date,
   instrutorId, registroAulaId?,                  # nulo = marcado fora da aula (reposição, casa)
@@ -98,7 +113,9 @@ EspecialidadeConcluida(id, dbvId, especialidadeId, concluidaEm, instrutorId,
 **Regras derivadas (funções em `shared`, não colunas):**
 - `% da classe = requisitos concluídos (não removidos) da classe ÷ requisitos ativos da classe`.
   A média da turma é a média dos % exatos, arredondada só no fim.
-- `pronto para investidura = % da classe = 100%`.
+- `pronto para investidura = % da REGULAR = 100%`. A avançada **não** é condição: ela tem o seu
+  próprio % e a sua própria investidura (`MatriculaClasse` dela com status `INVESTIDA`).
+- O % é sempre mostrado **separado** para regular e avançada (perfil, progresso, relatórios).
 - "Classe atual" do DBV = matrícula `CURSANDO` do ano corrente na classe regular.
 
 ## 5. Calendário e cronograma
@@ -126,6 +143,11 @@ AulaPlanejada(id, cronogramaId, data, horario?, local?, titulo?,  # "Saída de c
 AulaRequisito(aulaPlanejadaId, requisitoId)
   UNIQUE(cronogramaId, requisitoId)              # cada requisito em uma data só (via aula)
 ```
+
+**Agrupadas não dependem da reunião.** Quem cursa costuma dar aula numa classe individual no
+domingo, então as aulas das Agrupadas acontecem em outro dia e horário. Para classes da trilha
+`AGRUPADAS`, o cronograma aceita **qualquer data** (não só o dia de reunião); o calendário do clube
+só **avisa** quando a data cai num evento, sem bloquear. O cronograma é opcional para elas.
 
 Um evento criado ou alterado que bloqueia a data de uma `AulaPlanejada` gera `Notificacao` para
 os instrutores da classe (e para o Adm, se `quemMontaCronograma=ADM`) e marca a aula com
@@ -175,6 +197,7 @@ LancamentoPontos(id, dbvId, criterioId, pontos: int,   # valor COPIADO do crité
 lançamentos daquela chamada; desmarcar requisito estorna o lançamento. Mudar o valor do critério
 não toca no passado (decisão 8).
 
+- Só `Desbravador.tipo=DBV` pontua e aparece no ranking; o LIDER não.
 - Pontuação no período = soma dos lançamentos não estornados com `data` no período corrente
   (mês, trimestre ou ano do clube, conforme a configuração).
 - Posição: ordem decrescente de pontos; empate → maior frequência → nome.
@@ -210,6 +233,8 @@ Atividade(id, autorId, tipo, descricao, link, criadaEm)   # feed da visão geral
 | `Usuario.perfil` único + `permissoes[]` | `Vinculo` por papel + `PermissaoAjuste` | Uma pessoa com dois papéis; vários clubes |
 | `Unidade.conselheiroId` | `VinculoUnidade` | Mais de um conselheiro por unidade |
 | `Classe.instrutorIds[]` | `VinculoClasse` | Mesmo motivo, e o escopo do instrutor sai daqui |
+| `Classe.tipo: REGULAR\|AVANCADA\|AGRUPADA` | `tipo: REGULAR\|AVANCADA` + `trilha: INDIVIDUAL\|AGRUPADAS` | Agrupadas também têm avançada; trilha separa o supletivo |
+| — | `Desbravador.tipo: DBV\|LIDER` | Quem faz Agrupadas costuma ser líder, fora de unidade e ranking |
 | `Desbravador.unidadeId` / `classeAtualId` | `MembroUnidade` e `MatriculaClasse` com datas/ano | Frequência com denominador certo; troca de classe sem perder histórico |
 | `Desbravador.responsavel, telefone` | Campos separados + `autorizacaoImagem` + `nomePublico` | Tela junta os dois; LGPD e ranking público |
 | `Chamada.presente, atrasou, pontos` | `situacao` + `licao`; sem pontos | Falta justificada; pontos só em `LancamentoPontos` (uma fonte) |

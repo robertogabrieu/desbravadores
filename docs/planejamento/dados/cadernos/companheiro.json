@@ -5,6 +5,7 @@
       "nome": "Companheiro",
       "idade": 11,
       "tipo": "REGULAR",
+      "trilha": "INDIVIDUAL",
       "secoes": [
         {
           "codigo": "G",
@@ -231,6 +232,8 @@
       "nome": "Companheiro de Excursionismo",
       "idade": 11,
       "tipo": "AVANCADA",
+      "trilha": "INDIVIDUAL",
+      "classeBase": "Companheiro",
       "secoes": [
         {
           "codigo": "AV",
@@ -311,8 +314,7 @@
             }
           ]
         }
-      ],
-      "classeBase": "Companheiro"
+      ]
     }
   ],
   "avisos": [

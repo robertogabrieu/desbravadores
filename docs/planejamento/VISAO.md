@@ -38,11 +38,17 @@ pouco agora e evita reescrever tudo se outro clube do distrito quiser usar.
 6. **Frequência**: atraso conta como presença; falta justificada existe e não sofre desconto de
    pontos; o cálculo segue o período escolhido; o limiar do vermelho é configurável (padrão 70%).
 7. **Requisito** é feito/não feito; pode ser marcado fora da aula prevista; **pronto para
-   investidura = 100%**; o histórico de classe fica guardado por ano do clube.
+   investidura = 100% da classe regular** — a avançada é um extra fortemente recomendado, com
+   progresso e investidura próprios, sempre mostrados separados da regular; o histórico de
+   classe fica guardado por ano do clube.
 8. Mudar o valor de um critério do ranking vale **daqui para a frente**; o que já foi lançado não
    muda.
 9. **Offline**: chamada da reunião e registro de aula. Nenhuma tela do Adm.
 10. Os **cadernos oficiais** (requisitos de todas as classes) vêm carregados no app.
+11. **Agrupadas são um supletivo**: requisitos próprios, progresso que não aproveita nem alimenta o
+    das classes individuais. Quem faz costuma ser líder (instrutor de outra classe), então as
+    aulas acontecem fora da reunião de domingo. Têm cronograma e registro de aula como as outras,
+    mas com menos destaque no app.
 
 ## Escopo do MVP
 
@@ -73,7 +79,7 @@ O MVP é o que faz o domingo funcionar e o Adm conseguir preparar o ano:
 | Visualizador de fotos avançado (zoom, álbum compartilhável) | Uma visualização simples em tela cheia basta |
 | Lançamento de pontos por evento em massa (ex.: todos que foram ao acampamento) | O MVP lança por DBV; em massa é conforto |
 | Dark mode | Não desenhado |
-| Classes avançadas completas | Entram se os cadernos as trouxerem; senão, o Adm cadastra |
+| Destaque maior para as Agrupadas (painel próprio, alertas) | O foco do clube nelas é menor; no MVP usam as mesmas telas das outras classes |
 
 ## Como saber que deu certo (3 meses após o lançamento)
 

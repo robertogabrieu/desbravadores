@@ -66,6 +66,9 @@ Os números entre colchetes são as histórias do [BACKLOG](BACKLOG.md).
 - Especialidades por DBV [I8].
 - Observações (privadas) e materiais de apoio [I9, I10].
 - Alerta "DBVs com 2 faltas seguidas nas aulas".
+- Progresso de regular e avançada separados em todas as telas.
+- Agrupadas usando as mesmas telas: registro de aula e progresso (sem ranking, com líderes
+  cursando).
 
 **Pronto quando:**
 - Os instrutores de duas classes registram **4 aulas seguidas** pelo app.
@@ -85,7 +88,7 @@ simples (lista de datas × requisitos), ou por carga de planilha feita por você
   "quem monta o cronograma" [A5].
 - **Calendário do clube** com eventos de vários dias e as duas marcações [A6].
 - **Montar cronograma** com datas bloqueadas, sugestão de campo, publicar; instrutor liberado
-  monta pelo computador [A7].
+  monta pelo computador; Agrupadas com datas livres [A7].
 - Notificação de conflito quando um evento cai em cima de aula agendada (sino) [A8].
 - Configurações do clube (dia e hora da reunião, limiares).
 

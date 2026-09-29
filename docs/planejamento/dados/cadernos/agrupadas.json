@@ -4,7 +4,8 @@
     {
       "nome": "Agrupadas 11 anos (Amigo e Companheiro)",
       "idade": 11,
-      "tipo": "AGRUPADA",
+      "tipo": "REGULAR",
+      "trilha": "AGRUPADAS",
       "secoes": [
         {
           "codigo": "G",
@@ -350,7 +351,8 @@
     {
       "nome": "Agrupadas 12 anos (Amigo a Pesquisador)",
       "idade": 12,
-      "tipo": "AGRUPADA",
+      "tipo": "REGULAR",
+      "trilha": "AGRUPADAS",
       "secoes": [
         {
           "codigo": "G",
@@ -798,7 +800,8 @@
     {
       "nome": "Agrupadas 13 anos (Amigo a Pioneiro)",
       "idade": 13,
-      "tipo": "AGRUPADA",
+      "tipo": "REGULAR",
+      "trilha": "AGRUPADAS",
       "secoes": [
         {
           "codigo": "G",
@@ -1348,7 +1351,8 @@
     {
       "nome": "Agrupadas 14 anos (Amigo a Excursionista)",
       "idade": 14,
-      "tipo": "AGRUPADA",
+      "tipo": "REGULAR",
+      "trilha": "AGRUPADAS",
       "secoes": [
         {
           "codigo": "G",
@@ -2006,7 +2010,8 @@
     {
       "nome": "Agrupadas 15 anos ou mais (Amigo a Guia)",
       "idade": 15,
-      "tipo": "AGRUPADA",
+      "tipo": "REGULAR",
+      "trilha": "AGRUPADAS",
       "secoes": [
         {
           "codigo": "G",
@@ -2812,821 +2817,1455 @@
       ]
     },
     {
-      "nome": "Amigo da Natureza",
+      "nome": "Agrupadas 11 anos — avançada",
       "idade": 11,
       "tipo": "AVANCADA",
+      "trilha": "AGRUPADAS",
+      "classeBase": "Agrupadas 11 anos (Amigo e Companheiro)",
       "secoes": [
         {
-          "codigo": "AV",
-          "nome": "Classe avançada",
+          "codigo": "AN",
+          "nome": "Amigo da Natureza",
           "ordem": 1,
           "requisitos": [
             {
-              "codigo": "AV1",
+              "codigo": "AN1",
               "texto": "Memorizar, cantar ou tocar o Hino dos Desbravadores e conhecer a história do hino.",
               "campo": false,
-              "pagina": 219,
-              "idades": [
-                11,
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 219
             },
             {
-              "codigo": "AV2",
+              "codigo": "AN2",
               "texto": "Em consulta com seu líder, escolher um dos seguintes personagens do Antigo Testamento e conversar com seu grupo sobre o amor e cuidado de Deus e o livramento demonstrado na vida do personagem escolhido: a) José; b) Jonas; c) Ester; d) Rute.",
               "campo": false,
-              "pagina": 220,
-              "idades": [
-                11,
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 220
             },
             {
-              "codigo": "AV3",
+              "codigo": "AN3",
               "texto": "Levar pelo menos dois amigos não adventistas à Escola Sabatina ou ao Clube de Desbravadores.",
               "campo": false,
-              "pagina": 221,
-              "idades": [
-                11,
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 221
             },
             {
-              "codigo": "AV4",
+              "codigo": "AN4",
               "texto": "Conhecer os princípios de higiene, de boas maneiras à mesa e como se comportar diante de pessoas que tenham diferentes idades. Demonstrar e explicar como estas boas maneiras podem ser úteis nas reuniões e acampamentos do Clube.",
               "campo": false,
-              "pagina": 221,
-              "idades": [
-                11,
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 221
             },
             {
-              "codigo": "AV5",
+              "codigo": "AN5",
               "texto": "Completar a especialidade de Arte de acampar.",
               "campo": true,
-              "pagina": 222,
-              "idades": [
-                11,
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 222
             },
             {
-              "codigo": "AV6",
+              "codigo": "AN6",
               "texto": "Conhecer e identificar dez flores silvestres e dez insetos de sua região.",
               "campo": true,
-              "pagina": 223,
-              "idades": [
-                11,
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 223
             },
             {
-              "codigo": "AV7",
+              "codigo": "AN7",
               "texto": "Começar uma fogueira usando materiais naturais, e mantê-la acesa.",
               "campo": true,
-              "pagina": 227,
-              "idades": [
-                11,
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 227
             },
             {
-              "codigo": "AV8",
+              "codigo": "AN8",
               "texto": "Usar corretamente uma faca, facão ou uma machadinha e conhecer dez regras para usá-los com segurança.",
               "campo": true,
-              "pagina": 228,
-              "idades": [
-                11,
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 228
             },
             {
-              "codigo": "AV9",
+              "codigo": "AN9",
               "texto": "Escolher e completar uma especialidade em uma das áreas abaixo: a) Atividades missionárias; b) Atividades agrícolas.",
               "campo": false,
-              "pagina": 229,
-              "idades": [
-                11,
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 229
             }
           ]
-        }
-      ],
-      "variante": "AGRUPADAS",
-      "carregarPorPadrao": false,
-      "classeBase": "Amigo"
-    },
-    {
-      "nome": "Companheiro de Excursionismo",
-      "idade": 11,
-      "tipo": "AVANCADA",
-      "secoes": [
+        },
         {
-          "codigo": "AV",
-          "nome": "Classe avançada",
-          "ordem": 1,
+          "codigo": "CE",
+          "nome": "Companheiro de Excursionismo",
+          "ordem": 2,
           "requisitos": [
             {
-              "codigo": "AV1",
+              "codigo": "CE1",
               "texto": "Aprender e demonstrar a composição, significado e uso correto da Bandeira Nacional.",
               "campo": false,
-              "pagina": 230,
-              "idades": [
-                11,
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 230
             },
             {
-              "codigo": "AV2",
+              "codigo": "CE2",
               "texto": "Ler a primeira visão de Ellen White e discutir como Deus usa os profetas para apresentar Sua mensagem à igreja (ver Primeiros Escritos, págs. 13 a 20).",
               "campo": false,
-              "pagina": 231,
-              "idades": [
-                11,
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 231
             },
             {
-              "codigo": "AV3",
+              "codigo": "CE3",
               "texto": "Participar de uma atividade missionária ou comunitária, envolvendo também um amigo.",
               "campo": false,
-              "pagina": 236,
-              "idades": [
-                11,
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 236
             },
             {
-              "codigo": "AV4",
+              "codigo": "CE4",
               "texto": "Conversar com seu Conselheiro ou Unidade sobre como demonstrar respeito pelos seus pais ou responsáveis e fazer uma lista mostrando como cuidam de você.",
               "campo": false,
-              "pagina": 236,
-              "idades": [
-                11,
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 236
             },
             {
-              "codigo": "AV5",
+              "codigo": "CE5",
               "texto": "Participar de uma caminhada de 6 km, preparando, ao final, um relatório de uma página.",
               "campo": true,
-              "pagina": 237,
-              "idades": [
-                11,
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 237
             },
             {
-              "codigo": "AV6",
+              "codigo": "CE6",
               "texto": "Escolher um dos seguintes itens: a) Assistir a um \"Curso como deixar de fumar\"; b) Assistir a dois filmes sobre saúde; c) Elaborar um cartaz sobre o prejuízo das drogas; d) Ajudar a preparar material para uma exposição ou passeata sobre saúde; e) Pesquisar na internet informações sobre saúde e escrever uma página sobre os resultados encontrados.",
               "campo": false,
-              "pagina": 238,
-              "idades": [
-                11,
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 238
             },
             {
-              "codigo": "AV7",
+              "codigo": "CE7",
               "texto": "Identificar e descrever doze aves nativas e doze árvores nativas.",
               "campo": false,
-              "pagina": 240,
-              "idades": [
-                11,
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 240
             },
             {
-              "codigo": "AV8",
+              "codigo": "CE8",
               "texto": "Participar de uma das seguintes cerimônias e sugerir ideias criativas de como realizá-las: a) Investidura; b) Admissão em lenço; c) Dia Mundial do Desbravador.",
               "campo": false,
-              "pagina": 242,
-              "idades": [
-                11,
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 242
             },
             {
-              "codigo": "AV9",
+              "codigo": "CE9",
               "texto": "Preparar uma refeição em uma fogueira durante um acampamento do Clube ou Unidade.",
               "campo": true,
-              "pagina": 243,
-              "idades": [
-                11,
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 243
             },
             {
-              "codigo": "AV10",
+              "codigo": "CE10",
               "texto": "Preparar um quadro com quinze nós diferentes.",
               "campo": false,
-              "pagina": 243,
-              "idades": [
-                11,
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 243
             },
             {
-              "codigo": "AV11",
+              "codigo": "CE11",
               "texto": "Completar a especialidade de Excursionismo pedestre com mochila.",
               "campo": true,
-              "pagina": 244,
-              "idades": [
-                11,
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 244
             },
             {
-              "codigo": "AV12",
+              "codigo": "CE12",
               "texto": "Completar uma especialidade não realizada anteriormente: a) Habilidades domésticas; b) Ciência e saúde; c) Atividades missionárias; d) Atividades agrícolas.",
               "campo": false,
-              "pagina": 245,
-              "idades": [
-                11,
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 245
             }
           ]
         }
-      ],
-      "variante": "AGRUPADAS",
-      "carregarPorPadrao": false,
-      "classeBase": "Companheiro"
+      ]
     },
     {
-      "nome": "Pesquisador de Campo e Bosque",
+      "nome": "Agrupadas 12 anos — avançada",
       "idade": 12,
       "tipo": "AVANCADA",
+      "trilha": "AGRUPADAS",
+      "classeBase": "Agrupadas 12 anos (Amigo a Pesquisador)",
       "secoes": [
         {
-          "codigo": "AV",
-          "nome": "Classe avançada",
+          "codigo": "AN",
+          "nome": "Amigo da Natureza",
           "ordem": 1,
           "requisitos": [
             {
-              "codigo": "AV1",
+              "codigo": "AN1",
+              "texto": "Memorizar, cantar ou tocar o Hino dos Desbravadores e conhecer a história do hino.",
+              "campo": false,
+              "pagina": 219
+            },
+            {
+              "codigo": "AN2",
+              "texto": "Em consulta com seu líder, escolher um dos seguintes personagens do Antigo Testamento e conversar com seu grupo sobre o amor e cuidado de Deus e o livramento demonstrado na vida do personagem escolhido: a) José; b) Jonas; c) Ester; d) Rute.",
+              "campo": false,
+              "pagina": 220
+            },
+            {
+              "codigo": "AN3",
+              "texto": "Levar pelo menos dois amigos não adventistas à Escola Sabatina ou ao Clube de Desbravadores.",
+              "campo": false,
+              "pagina": 221
+            },
+            {
+              "codigo": "AN4",
+              "texto": "Conhecer os princípios de higiene, de boas maneiras à mesa e como se comportar diante de pessoas que tenham diferentes idades. Demonstrar e explicar como estas boas maneiras podem ser úteis nas reuniões e acampamentos do Clube.",
+              "campo": false,
+              "pagina": 221
+            },
+            {
+              "codigo": "AN5",
+              "texto": "Completar a especialidade de Arte de acampar.",
+              "campo": true,
+              "pagina": 222
+            },
+            {
+              "codigo": "AN6",
+              "texto": "Conhecer e identificar dez flores silvestres e dez insetos de sua região.",
+              "campo": true,
+              "pagina": 223
+            },
+            {
+              "codigo": "AN7",
+              "texto": "Começar uma fogueira usando materiais naturais, e mantê-la acesa.",
+              "campo": true,
+              "pagina": 227
+            },
+            {
+              "codigo": "AN8",
+              "texto": "Usar corretamente uma faca, facão ou uma machadinha e conhecer dez regras para usá-los com segurança.",
+              "campo": true,
+              "pagina": 228
+            },
+            {
+              "codigo": "AN9",
+              "texto": "Escolher e completar uma especialidade em uma das áreas abaixo: a) Atividades missionárias; b) Atividades agrícolas.",
+              "campo": false,
+              "pagina": 229
+            }
+          ]
+        },
+        {
+          "codigo": "CE",
+          "nome": "Companheiro de Excursionismo",
+          "ordem": 2,
+          "requisitos": [
+            {
+              "codigo": "CE1",
+              "texto": "Aprender e demonstrar a composição, significado e uso correto da Bandeira Nacional.",
+              "campo": false,
+              "pagina": 230
+            },
+            {
+              "codigo": "CE2",
+              "texto": "Ler a primeira visão de Ellen White e discutir como Deus usa os profetas para apresentar Sua mensagem à igreja (ver Primeiros Escritos, págs. 13 a 20).",
+              "campo": false,
+              "pagina": 231
+            },
+            {
+              "codigo": "CE3",
+              "texto": "Participar de uma atividade missionária ou comunitária, envolvendo também um amigo.",
+              "campo": false,
+              "pagina": 236
+            },
+            {
+              "codigo": "CE4",
+              "texto": "Conversar com seu Conselheiro ou Unidade sobre como demonstrar respeito pelos seus pais ou responsáveis e fazer uma lista mostrando como cuidam de você.",
+              "campo": false,
+              "pagina": 236
+            },
+            {
+              "codigo": "CE5",
+              "texto": "Participar de uma caminhada de 6 km, preparando, ao final, um relatório de uma página.",
+              "campo": true,
+              "pagina": 237
+            },
+            {
+              "codigo": "CE6",
+              "texto": "Escolher um dos seguintes itens: a) Assistir a um \"Curso como deixar de fumar\"; b) Assistir a dois filmes sobre saúde; c) Elaborar um cartaz sobre o prejuízo das drogas; d) Ajudar a preparar material para uma exposição ou passeata sobre saúde; e) Pesquisar na internet informações sobre saúde e escrever uma página sobre os resultados encontrados.",
+              "campo": false,
+              "pagina": 238
+            },
+            {
+              "codigo": "CE7",
+              "texto": "Identificar e descrever doze aves nativas e doze árvores nativas.",
+              "campo": false,
+              "pagina": 240
+            },
+            {
+              "codigo": "CE8",
+              "texto": "Participar de uma das seguintes cerimônias e sugerir ideias criativas de como realizá-las: a) Investidura; b) Admissão em lenço; c) Dia Mundial do Desbravador.",
+              "campo": false,
+              "pagina": 242
+            },
+            {
+              "codigo": "CE9",
+              "texto": "Preparar uma refeição em uma fogueira durante um acampamento do Clube ou Unidade.",
+              "campo": true,
+              "pagina": 243
+            },
+            {
+              "codigo": "CE10",
+              "texto": "Preparar um quadro com quinze nós diferentes.",
+              "campo": false,
+              "pagina": 243
+            },
+            {
+              "codigo": "CE11",
+              "texto": "Completar a especialidade de Excursionismo pedestre com mochila.",
+              "campo": true,
+              "pagina": 244
+            },
+            {
+              "codigo": "CE12",
+              "texto": "Completar uma especialidade não realizada anteriormente: a) Habilidades domésticas; b) Ciência e saúde; c) Atividades missionárias; d) Atividades agrícolas.",
+              "campo": false,
+              "pagina": 245
+            }
+          ]
+        },
+        {
+          "codigo": "PC",
+          "nome": "Pesquisador de Campo e Bosque",
+          "ordem": 3,
+          "requisitos": [
+            {
+              "codigo": "PC1",
               "texto": "Conhecer e saber usar de forma adequada a Bandeira dos Desbravadores, e o Bandeirim de Unidade.",
               "campo": false,
-              "pagina": 246,
-              "idades": [
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 246
             },
             {
-              "codigo": "AV2",
+              "codigo": "PC2",
               "texto": "Ler a história de J. N. Andrews ou um pioneiro de seu país e discutir a importância do trabalho de missionários, e por que Cristo ordenou a Grande Comissão (Mateus 28:18-20).",
               "campo": false,
-              "pagina": 248,
-              "idades": [
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 248
             },
             {
-              "codigo": "AV3",
+              "codigo": "PC3",
               "texto": "Convidar uma pessoa para assistir um dos seguintes programas: a) Clube de Desbravadores; b) Classe bíblica; c) Pequeno grupo.",
               "campo": false,
-              "pagina": 249,
-              "idades": [
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 249
             },
             {
-              "codigo": "AV4",
+              "codigo": "PC4",
               "texto": "Fazer uma das seguintes especialidades: a) Asseio e cortesia cristã; b) Vida familiar.",
               "campo": false,
-              "pagina": 249,
-              "idades": [
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 249
             },
             {
-              "codigo": "AV5",
+              "codigo": "PC5",
               "texto": "Participar de uma caminhada de 10 km e fazer uma lista dos equipamentos necessários, incluindo a roupa e o calçado que devem ser usados.",
               "campo": true,
-              "pagina": 252,
-              "idades": [
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 252
             },
             {
-              "codigo": "AV6",
+              "codigo": "PC6",
               "texto": "Participar na organização de um dos eventos especiais do Clube: a) Investidura; b) Admissão em Lenço; c) Dia Mundial do Desbravador.",
               "campo": false,
-              "pagina": 254,
-              "idades": [
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 254
             },
             {
-              "codigo": "AV7",
+              "codigo": "PC7",
               "texto": "Identificar seis pegadas de animais ou aves. Fazer um modelo em gesso, massa de modelar ou biscuit de três dessas pegadas.",
               "campo": true,
-              "pagina": 255,
-              "idades": [
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 255
             },
             {
-              "codigo": "AV8",
+              "codigo": "PC8",
               "texto": "Aprender a fazer as quatro amarras básicas e construir um móvel de acampamento.",
               "campo": true,
-              "pagina": 256,
-              "idades": [
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 256
             },
             {
-              "codigo": "AV9",
+              "codigo": "PC9",
               "texto": "Planejar um cardápio vegetariano para sua Unidade, para um acampamento de três dias e apresentar ao seu instrutor.",
               "campo": false,
-              "pagina": 257,
-              "idades": [
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 257
             },
             {
-              "codigo": "AV10",
+              "codigo": "PC10",
               "texto": "Enviar e receber uma mensagem através de uma das formas de comunicação abaixo: a) Alfabeto com semáforos; b) Código Morse, com lanterna; c) Alfabeto LIBRAS (língua de sinais); d) Alfabeto Braile.",
               "campo": false,
-              "pagina": 259,
-              "idades": [
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 259
             },
             {
-              "codigo": "AV11",
+              "codigo": "PC11",
               "texto": "Completar uma especialidade, não realizada anteriormente, em uma das áreas abaixo: a) Habilidades domésticas; b) Ciência e saúde; c) Atividades missionárias; d) Atividades agrícolas.",
               "campo": false,
-              "pagina": 262,
-              "idades": [
-                12,
-                13,
-                14,
-                15
-              ]
+              "pagina": 262
             }
           ]
         }
-      ],
-      "variante": "AGRUPADAS",
-      "carregarPorPadrao": false,
-      "classeBase": "Pesquisador"
+      ]
     },
     {
-      "nome": "Pioneiro de Novas Fronteiras",
+      "nome": "Agrupadas 13 anos — avançada",
       "idade": 13,
       "tipo": "AVANCADA",
+      "trilha": "AGRUPADAS",
+      "classeBase": "Agrupadas 13 anos (Amigo a Pioneiro)",
       "secoes": [
         {
-          "codigo": "AV",
-          "nome": "Classe avançada",
+          "codigo": "AN",
+          "nome": "Amigo da Natureza",
           "ordem": 1,
           "requisitos": [
             {
-              "codigo": "AV1",
+              "codigo": "AN1",
+              "texto": "Memorizar, cantar ou tocar o Hino dos Desbravadores e conhecer a história do hino.",
+              "campo": false,
+              "pagina": 219
+            },
+            {
+              "codigo": "AN2",
+              "texto": "Em consulta com seu líder, escolher um dos seguintes personagens do Antigo Testamento e conversar com seu grupo sobre o amor e cuidado de Deus e o livramento demonstrado na vida do personagem escolhido: a) José; b) Jonas; c) Ester; d) Rute.",
+              "campo": false,
+              "pagina": 220
+            },
+            {
+              "codigo": "AN3",
+              "texto": "Levar pelo menos dois amigos não adventistas à Escola Sabatina ou ao Clube de Desbravadores.",
+              "campo": false,
+              "pagina": 221
+            },
+            {
+              "codigo": "AN4",
+              "texto": "Conhecer os princípios de higiene, de boas maneiras à mesa e como se comportar diante de pessoas que tenham diferentes idades. Demonstrar e explicar como estas boas maneiras podem ser úteis nas reuniões e acampamentos do Clube.",
+              "campo": false,
+              "pagina": 221
+            },
+            {
+              "codigo": "AN5",
+              "texto": "Completar a especialidade de Arte de acampar.",
+              "campo": true,
+              "pagina": 222
+            },
+            {
+              "codigo": "AN6",
+              "texto": "Conhecer e identificar dez flores silvestres e dez insetos de sua região.",
+              "campo": true,
+              "pagina": 223
+            },
+            {
+              "codigo": "AN7",
+              "texto": "Começar uma fogueira usando materiais naturais, e mantê-la acesa.",
+              "campo": true,
+              "pagina": 227
+            },
+            {
+              "codigo": "AN8",
+              "texto": "Usar corretamente uma faca, facão ou uma machadinha e conhecer dez regras para usá-los com segurança.",
+              "campo": true,
+              "pagina": 228
+            },
+            {
+              "codigo": "AN9",
+              "texto": "Escolher e completar uma especialidade em uma das áreas abaixo: a) Atividades missionárias; b) Atividades agrícolas.",
+              "campo": false,
+              "pagina": 229
+            }
+          ]
+        },
+        {
+          "codigo": "CE",
+          "nome": "Companheiro de Excursionismo",
+          "ordem": 2,
+          "requisitos": [
+            {
+              "codigo": "CE1",
+              "texto": "Aprender e demonstrar a composição, significado e uso correto da Bandeira Nacional.",
+              "campo": false,
+              "pagina": 230
+            },
+            {
+              "codigo": "CE2",
+              "texto": "Ler a primeira visão de Ellen White e discutir como Deus usa os profetas para apresentar Sua mensagem à igreja (ver Primeiros Escritos, págs. 13 a 20).",
+              "campo": false,
+              "pagina": 231
+            },
+            {
+              "codigo": "CE3",
+              "texto": "Participar de uma atividade missionária ou comunitária, envolvendo também um amigo.",
+              "campo": false,
+              "pagina": 236
+            },
+            {
+              "codigo": "CE4",
+              "texto": "Conversar com seu Conselheiro ou Unidade sobre como demonstrar respeito pelos seus pais ou responsáveis e fazer uma lista mostrando como cuidam de você.",
+              "campo": false,
+              "pagina": 236
+            },
+            {
+              "codigo": "CE5",
+              "texto": "Participar de uma caminhada de 6 km, preparando, ao final, um relatório de uma página.",
+              "campo": true,
+              "pagina": 237
+            },
+            {
+              "codigo": "CE6",
+              "texto": "Escolher um dos seguintes itens: a) Assistir a um \"Curso como deixar de fumar\"; b) Assistir a dois filmes sobre saúde; c) Elaborar um cartaz sobre o prejuízo das drogas; d) Ajudar a preparar material para uma exposição ou passeata sobre saúde; e) Pesquisar na internet informações sobre saúde e escrever uma página sobre os resultados encontrados.",
+              "campo": false,
+              "pagina": 238
+            },
+            {
+              "codigo": "CE7",
+              "texto": "Identificar e descrever doze aves nativas e doze árvores nativas.",
+              "campo": false,
+              "pagina": 240
+            },
+            {
+              "codigo": "CE8",
+              "texto": "Participar de uma das seguintes cerimônias e sugerir ideias criativas de como realizá-las: a) Investidura; b) Admissão em lenço; c) Dia Mundial do Desbravador.",
+              "campo": false,
+              "pagina": 242
+            },
+            {
+              "codigo": "CE9",
+              "texto": "Preparar uma refeição em uma fogueira durante um acampamento do Clube ou Unidade.",
+              "campo": true,
+              "pagina": 243
+            },
+            {
+              "codigo": "CE10",
+              "texto": "Preparar um quadro com quinze nós diferentes.",
+              "campo": false,
+              "pagina": 243
+            },
+            {
+              "codigo": "CE11",
+              "texto": "Completar a especialidade de Excursionismo pedestre com mochila.",
+              "campo": true,
+              "pagina": 244
+            },
+            {
+              "codigo": "CE12",
+              "texto": "Completar uma especialidade não realizada anteriormente: a) Habilidades domésticas; b) Ciência e saúde; c) Atividades missionárias; d) Atividades agrícolas.",
+              "campo": false,
+              "pagina": 245
+            }
+          ]
+        },
+        {
+          "codigo": "PC",
+          "nome": "Pesquisador de Campo e Bosque",
+          "ordem": 3,
+          "requisitos": [
+            {
+              "codigo": "PC1",
+              "texto": "Conhecer e saber usar de forma adequada a Bandeira dos Desbravadores, e o Bandeirim de Unidade.",
+              "campo": false,
+              "pagina": 246
+            },
+            {
+              "codigo": "PC2",
+              "texto": "Ler a história de J. N. Andrews ou um pioneiro de seu país e discutir a importância do trabalho de missionários, e por que Cristo ordenou a Grande Comissão (Mateus 28:18-20).",
+              "campo": false,
+              "pagina": 248
+            },
+            {
+              "codigo": "PC3",
+              "texto": "Convidar uma pessoa para assistir um dos seguintes programas: a) Clube de Desbravadores; b) Classe bíblica; c) Pequeno grupo.",
+              "campo": false,
+              "pagina": 249
+            },
+            {
+              "codigo": "PC4",
+              "texto": "Fazer uma das seguintes especialidades: a) Asseio e cortesia cristã; b) Vida familiar.",
+              "campo": false,
+              "pagina": 249
+            },
+            {
+              "codigo": "PC5",
+              "texto": "Participar de uma caminhada de 10 km e fazer uma lista dos equipamentos necessários, incluindo a roupa e o calçado que devem ser usados.",
+              "campo": true,
+              "pagina": 252
+            },
+            {
+              "codigo": "PC6",
+              "texto": "Participar na organização de um dos eventos especiais do Clube: a) Investidura; b) Admissão em Lenço; c) Dia Mundial do Desbravador.",
+              "campo": false,
+              "pagina": 254
+            },
+            {
+              "codigo": "PC7",
+              "texto": "Identificar seis pegadas de animais ou aves. Fazer um modelo em gesso, massa de modelar ou biscuit de três dessas pegadas.",
+              "campo": true,
+              "pagina": 255
+            },
+            {
+              "codigo": "PC8",
+              "texto": "Aprender a fazer as quatro amarras básicas e construir um móvel de acampamento.",
+              "campo": true,
+              "pagina": 256
+            },
+            {
+              "codigo": "PC9",
+              "texto": "Planejar um cardápio vegetariano para sua Unidade, para um acampamento de três dias e apresentar ao seu instrutor.",
+              "campo": false,
+              "pagina": 257
+            },
+            {
+              "codigo": "PC10",
+              "texto": "Enviar e receber uma mensagem através de uma das formas de comunicação abaixo: a) Alfabeto com semáforos; b) Código Morse, com lanterna; c) Alfabeto LIBRAS (língua de sinais); d) Alfabeto Braile.",
+              "campo": false,
+              "pagina": 259
+            },
+            {
+              "codigo": "PC11",
+              "texto": "Completar uma especialidade, não realizada anteriormente, em uma das áreas abaixo: a) Habilidades domésticas; b) Ciência e saúde; c) Atividades missionárias; d) Atividades agrícolas.",
+              "campo": false,
+              "pagina": 262
+            }
+          ]
+        },
+        {
+          "codigo": "PN",
+          "nome": "Pioneiro de Novas Fronteiras",
+          "ordem": 4,
+          "requisitos": [
+            {
+              "codigo": "PN1",
               "texto": "Completar a especialidade de Cidadania cristã, caso não tenha sido realizada anteriormente.",
               "campo": false,
-              "pagina": 263,
-              "idades": [
-                13,
-                14,
-                15
-              ]
+              "pagina": 263
             },
             {
-              "codigo": "AV2",
+              "codigo": "PN2",
               "texto": "Encenar a história do bom samaritano, demonstrando como ajudar as pessoas e auxiliar de forma prática três pessoas ou mais.",
               "campo": false,
-              "pagina": 264,
-              "idades": [
-                13,
-                14,
-                15
-              ]
+              "pagina": 264
             },
             {
-              "codigo": "AV3",
+              "codigo": "PN3",
               "texto": "Participar de uma das seguintes atividades, apresentando ao final um relatório escrito contendo, no mínimo, duas páginas: a) Caminhar 10 km; b) Cavalgar 2 km; c) Viajar de canoa durante 2 h; d) Praticar 15 km de ciclismo; e) Nadar 200 m; f) Correr 1500 m; g) Rodar 2 km de patins ou roller.",
               "campo": true,
-              "pagina": 266,
-              "idades": [
-                13,
-                14,
-                15
-              ]
+              "pagina": 266
             },
             {
-              "codigo": "AV4",
+              "codigo": "PN4",
               "texto": "Completar a especialidade de Mapa e bússola.",
               "campo": true,
-              "pagina": 269,
-              "idades": [
-                13,
-                14,
-                15
-              ]
+              "pagina": 269
             },
             {
-              "codigo": "AV5",
+              "codigo": "PN5",
               "texto": "Demonstrar habilidade no uso correto de uma machadinha.",
               "campo": true,
-              "pagina": 271,
-              "idades": [
-                13,
-                14,
-                15
-              ]
+              "pagina": 271
             },
             {
-              "codigo": "AV6",
+              "codigo": "PN6",
               "texto": "Ser capaz de acender uma fogueira em dia de chuva, saber como conseguir lenha seca e manter o fogo aceso.",
               "campo": true,
-              "pagina": 272,
-              "idades": [
-                13,
-                14,
-                15
-              ]
+              "pagina": 272
             },
             {
-              "codigo": "AV7",
+              "codigo": "PN7",
               "texto": "Completar um dos seguintes itens: a) Pesquisar e identificar 10 variedades de plantas silvestres comestíveis; b) Ser capaz de enviar e receber 35 letras por minuto pelo código semafórico; c) Ser capaz de enviar e receber 35 letras por minuto através do código náutico, usando o código internacional; d) Ser capaz de apresentar e entender Mateus 24 em LIBRAS (língua de sinais); e) Preparar o Salmo 23 em braile.",
               "campo": false,
-              "pagina": 273,
-              "idades": [
-                13,
-                14,
-                15
-              ]
+              "pagina": 273
             },
             {
-              "codigo": "AV8",
+              "codigo": "PN8",
               "texto": "Completar uma especialidade, não realizada anteriormente, em Atividades recreativas.",
               "campo": false,
-              "pagina": 280,
-              "idades": [
-                13,
-                14,
-                15
-              ]
+              "pagina": 280
             },
             {
-              "codigo": "AV9",
+              "codigo": "PN9",
               "texto": "Pesquisar e identificar, através de fotografia, exposição ou ao vivo, um dos seguintes itens: a) 25 folhas de árvores; b) 25 rochas e minerais; c) 25 flores silvestres; d) 25 borboletas e mariposas; e) 25 conchas.",
               "campo": false,
-              "pagina": 280,
-              "idades": [
-                13,
-                14,
-                15
-              ]
+              "pagina": 280
             },
             {
-              "codigo": "AV10",
+              "codigo": "PN10",
               "texto": "Completar a especialidade de Fogueiras e cozinha ao ar livre.",
               "campo": true,
-              "pagina": 284,
-              "idades": [
-                13,
-                14,
-                15
-              ]
+              "pagina": 284
             }
           ]
         }
-      ],
-      "variante": "AGRUPADAS",
-      "carregarPorPadrao": false,
-      "classeBase": "Pioneiro"
+      ]
     },
     {
-      "nome": "Excursionista na Mata",
+      "nome": "Agrupadas 14 anos — avançada",
       "idade": 14,
       "tipo": "AVANCADA",
+      "trilha": "AGRUPADAS",
+      "classeBase": "Agrupadas 14 anos (Amigo a Excursionista)",
       "secoes": [
         {
-          "codigo": "AV",
-          "nome": "Classe avançada",
+          "codigo": "AN",
+          "nome": "Amigo da Natureza",
           "ordem": 1,
           "requisitos": [
             {
-              "codigo": "AV1",
+              "codigo": "AN1",
+              "texto": "Memorizar, cantar ou tocar o Hino dos Desbravadores e conhecer a história do hino.",
+              "campo": false,
+              "pagina": 219
+            },
+            {
+              "codigo": "AN2",
+              "texto": "Em consulta com seu líder, escolher um dos seguintes personagens do Antigo Testamento e conversar com seu grupo sobre o amor e cuidado de Deus e o livramento demonstrado na vida do personagem escolhido: a) José; b) Jonas; c) Ester; d) Rute.",
+              "campo": false,
+              "pagina": 220
+            },
+            {
+              "codigo": "AN3",
+              "texto": "Levar pelo menos dois amigos não adventistas à Escola Sabatina ou ao Clube de Desbravadores.",
+              "campo": false,
+              "pagina": 221
+            },
+            {
+              "codigo": "AN4",
+              "texto": "Conhecer os princípios de higiene, de boas maneiras à mesa e como se comportar diante de pessoas que tenham diferentes idades. Demonstrar e explicar como estas boas maneiras podem ser úteis nas reuniões e acampamentos do Clube.",
+              "campo": false,
+              "pagina": 221
+            },
+            {
+              "codigo": "AN5",
+              "texto": "Completar a especialidade de Arte de acampar.",
+              "campo": true,
+              "pagina": 222
+            },
+            {
+              "codigo": "AN6",
+              "texto": "Conhecer e identificar dez flores silvestres e dez insetos de sua região.",
+              "campo": true,
+              "pagina": 223
+            },
+            {
+              "codigo": "AN7",
+              "texto": "Começar uma fogueira usando materiais naturais, e mantê-la acesa.",
+              "campo": true,
+              "pagina": 227
+            },
+            {
+              "codigo": "AN8",
+              "texto": "Usar corretamente uma faca, facão ou uma machadinha e conhecer dez regras para usá-los com segurança.",
+              "campo": true,
+              "pagina": 228
+            },
+            {
+              "codigo": "AN9",
+              "texto": "Escolher e completar uma especialidade em uma das áreas abaixo: a) Atividades missionárias; b) Atividades agrícolas.",
+              "campo": false,
+              "pagina": 229
+            }
+          ]
+        },
+        {
+          "codigo": "CE",
+          "nome": "Companheiro de Excursionismo",
+          "ordem": 2,
+          "requisitos": [
+            {
+              "codigo": "CE1",
+              "texto": "Aprender e demonstrar a composição, significado e uso correto da Bandeira Nacional.",
+              "campo": false,
+              "pagina": 230
+            },
+            {
+              "codigo": "CE2",
+              "texto": "Ler a primeira visão de Ellen White e discutir como Deus usa os profetas para apresentar Sua mensagem à igreja (ver Primeiros Escritos, págs. 13 a 20).",
+              "campo": false,
+              "pagina": 231
+            },
+            {
+              "codigo": "CE3",
+              "texto": "Participar de uma atividade missionária ou comunitária, envolvendo também um amigo.",
+              "campo": false,
+              "pagina": 236
+            },
+            {
+              "codigo": "CE4",
+              "texto": "Conversar com seu Conselheiro ou Unidade sobre como demonstrar respeito pelos seus pais ou responsáveis e fazer uma lista mostrando como cuidam de você.",
+              "campo": false,
+              "pagina": 236
+            },
+            {
+              "codigo": "CE5",
+              "texto": "Participar de uma caminhada de 6 km, preparando, ao final, um relatório de uma página.",
+              "campo": true,
+              "pagina": 237
+            },
+            {
+              "codigo": "CE6",
+              "texto": "Escolher um dos seguintes itens: a) Assistir a um \"Curso como deixar de fumar\"; b) Assistir a dois filmes sobre saúde; c) Elaborar um cartaz sobre o prejuízo das drogas; d) Ajudar a preparar material para uma exposição ou passeata sobre saúde; e) Pesquisar na internet informações sobre saúde e escrever uma página sobre os resultados encontrados.",
+              "campo": false,
+              "pagina": 238
+            },
+            {
+              "codigo": "CE7",
+              "texto": "Identificar e descrever doze aves nativas e doze árvores nativas.",
+              "campo": false,
+              "pagina": 240
+            },
+            {
+              "codigo": "CE8",
+              "texto": "Participar de uma das seguintes cerimônias e sugerir ideias criativas de como realizá-las: a) Investidura; b) Admissão em lenço; c) Dia Mundial do Desbravador.",
+              "campo": false,
+              "pagina": 242
+            },
+            {
+              "codigo": "CE9",
+              "texto": "Preparar uma refeição em uma fogueira durante um acampamento do Clube ou Unidade.",
+              "campo": true,
+              "pagina": 243
+            },
+            {
+              "codigo": "CE10",
+              "texto": "Preparar um quadro com quinze nós diferentes.",
+              "campo": false,
+              "pagina": 243
+            },
+            {
+              "codigo": "CE11",
+              "texto": "Completar a especialidade de Excursionismo pedestre com mochila.",
+              "campo": true,
+              "pagina": 244
+            },
+            {
+              "codigo": "CE12",
+              "texto": "Completar uma especialidade não realizada anteriormente: a) Habilidades domésticas; b) Ciência e saúde; c) Atividades missionárias; d) Atividades agrícolas.",
+              "campo": false,
+              "pagina": 245
+            }
+          ]
+        },
+        {
+          "codigo": "PC",
+          "nome": "Pesquisador de Campo e Bosque",
+          "ordem": 3,
+          "requisitos": [
+            {
+              "codigo": "PC1",
+              "texto": "Conhecer e saber usar de forma adequada a Bandeira dos Desbravadores, e o Bandeirim de Unidade.",
+              "campo": false,
+              "pagina": 246
+            },
+            {
+              "codigo": "PC2",
+              "texto": "Ler a história de J. N. Andrews ou um pioneiro de seu país e discutir a importância do trabalho de missionários, e por que Cristo ordenou a Grande Comissão (Mateus 28:18-20).",
+              "campo": false,
+              "pagina": 248
+            },
+            {
+              "codigo": "PC3",
+              "texto": "Convidar uma pessoa para assistir um dos seguintes programas: a) Clube de Desbravadores; b) Classe bíblica; c) Pequeno grupo.",
+              "campo": false,
+              "pagina": 249
+            },
+            {
+              "codigo": "PC4",
+              "texto": "Fazer uma das seguintes especialidades: a) Asseio e cortesia cristã; b) Vida familiar.",
+              "campo": false,
+              "pagina": 249
+            },
+            {
+              "codigo": "PC5",
+              "texto": "Participar de uma caminhada de 10 km e fazer uma lista dos equipamentos necessários, incluindo a roupa e o calçado que devem ser usados.",
+              "campo": true,
+              "pagina": 252
+            },
+            {
+              "codigo": "PC6",
+              "texto": "Participar na organização de um dos eventos especiais do Clube: a) Investidura; b) Admissão em Lenço; c) Dia Mundial do Desbravador.",
+              "campo": false,
+              "pagina": 254
+            },
+            {
+              "codigo": "PC7",
+              "texto": "Identificar seis pegadas de animais ou aves. Fazer um modelo em gesso, massa de modelar ou biscuit de três dessas pegadas.",
+              "campo": true,
+              "pagina": 255
+            },
+            {
+              "codigo": "PC8",
+              "texto": "Aprender a fazer as quatro amarras básicas e construir um móvel de acampamento.",
+              "campo": true,
+              "pagina": 256
+            },
+            {
+              "codigo": "PC9",
+              "texto": "Planejar um cardápio vegetariano para sua Unidade, para um acampamento de três dias e apresentar ao seu instrutor.",
+              "campo": false,
+              "pagina": 257
+            },
+            {
+              "codigo": "PC10",
+              "texto": "Enviar e receber uma mensagem através de uma das formas de comunicação abaixo: a) Alfabeto com semáforos; b) Código Morse, com lanterna; c) Alfabeto LIBRAS (língua de sinais); d) Alfabeto Braile.",
+              "campo": false,
+              "pagina": 259
+            },
+            {
+              "codigo": "PC11",
+              "texto": "Completar uma especialidade, não realizada anteriormente, em uma das áreas abaixo: a) Habilidades domésticas; b) Ciência e saúde; c) Atividades missionárias; d) Atividades agrícolas.",
+              "campo": false,
+              "pagina": 262
+            }
+          ]
+        },
+        {
+          "codigo": "PN",
+          "nome": "Pioneiro de Novas Fronteiras",
+          "ordem": 4,
+          "requisitos": [
+            {
+              "codigo": "PN1",
+              "texto": "Completar a especialidade de Cidadania cristã, caso não tenha sido realizada anteriormente.",
+              "campo": false,
+              "pagina": 263
+            },
+            {
+              "codigo": "PN2",
+              "texto": "Encenar a história do bom samaritano, demonstrando como ajudar as pessoas e auxiliar de forma prática três pessoas ou mais.",
+              "campo": false,
+              "pagina": 264
+            },
+            {
+              "codigo": "PN3",
+              "texto": "Participar de uma das seguintes atividades, apresentando ao final um relatório escrito contendo, no mínimo, duas páginas: a) Caminhar 10 km; b) Cavalgar 2 km; c) Viajar de canoa durante 2 h; d) Praticar 15 km de ciclismo; e) Nadar 200 m; f) Correr 1500 m; g) Rodar 2 km de patins ou roller.",
+              "campo": true,
+              "pagina": 266
+            },
+            {
+              "codigo": "PN4",
+              "texto": "Completar a especialidade de Mapa e bússola.",
+              "campo": true,
+              "pagina": 269
+            },
+            {
+              "codigo": "PN5",
+              "texto": "Demonstrar habilidade no uso correto de uma machadinha.",
+              "campo": true,
+              "pagina": 271
+            },
+            {
+              "codigo": "PN6",
+              "texto": "Ser capaz de acender uma fogueira em dia de chuva, saber como conseguir lenha seca e manter o fogo aceso.",
+              "campo": true,
+              "pagina": 272
+            },
+            {
+              "codigo": "PN7",
+              "texto": "Completar um dos seguintes itens: a) Pesquisar e identificar 10 variedades de plantas silvestres comestíveis; b) Ser capaz de enviar e receber 35 letras por minuto pelo código semafórico; c) Ser capaz de enviar e receber 35 letras por minuto através do código náutico, usando o código internacional; d) Ser capaz de apresentar e entender Mateus 24 em LIBRAS (língua de sinais); e) Preparar o Salmo 23 em braile.",
+              "campo": false,
+              "pagina": 273
+            },
+            {
+              "codigo": "PN8",
+              "texto": "Completar uma especialidade, não realizada anteriormente, em Atividades recreativas.",
+              "campo": false,
+              "pagina": 280
+            },
+            {
+              "codigo": "PN9",
+              "texto": "Pesquisar e identificar, através de fotografia, exposição ou ao vivo, um dos seguintes itens: a) 25 folhas de árvores; b) 25 rochas e minerais; c) 25 flores silvestres; d) 25 borboletas e mariposas; e) 25 conchas.",
+              "campo": false,
+              "pagina": 280
+            },
+            {
+              "codigo": "PN10",
+              "texto": "Completar a especialidade de Fogueiras e cozinha ao ar livre.",
+              "campo": true,
+              "pagina": 284
+            }
+          ]
+        },
+        {
+          "codigo": "EM",
+          "nome": "Excursionista na Mata",
+          "ordem": 5,
+          "requisitos": [
+            {
+              "codigo": "EM1",
               "texto": "Fazer uma apresentação escrita ou falada sobre o respeito que devemos ter com a Lei de Deus e as autoridades civis, enumerando dez princípios de comportamento moral.",
               "campo": false,
-              "pagina": 285,
-              "idades": [
-                14,
-                15
-              ]
+              "pagina": 285
             },
             {
-              "codigo": "AV2",
+              "codigo": "EM2",
               "texto": "Acompanhar seu pastor ou ancião numa visita missionária ou estudo bíblico.",
               "campo": false,
-              "pagina": 287,
-              "idades": [
-                14,
-                15
-              ]
+              "pagina": 287
             },
             {
-              "codigo": "AV3",
+              "codigo": "EM3",
               "texto": "Completar a especialidade de Testemunho juvenil.",
               "campo": false,
-              "pagina": 288,
-              "idades": [
-                14,
-                15
-              ]
+              "pagina": 288
             },
             {
-              "codigo": "AV4",
+              "codigo": "EM4",
               "texto": "Apresentar cinco atividades na natureza, para serem realizadas no Sábado à tarde.",
               "campo": false,
-              "pagina": 289,
-              "idades": [
-                14,
-                15
-              ]
+              "pagina": 289
             },
             {
-              "codigo": "AV5",
+              "codigo": "EM5",
               "texto": "Com sua Unidade, construir um móvel de acampamento e um portal para o clube.",
               "campo": true,
-              "pagina": 290,
-              "idades": [
-                14,
-                15
-              ]
+              "pagina": 290
             },
             {
-              "codigo": "AV6",
+              "codigo": "EM6",
               "texto": "Através da supervisão de seu líder ou conselheiro, conversar em sua Unidade ou Clube sobre um dos seguintes temas: a) Modéstia cristã; b) Recreação; c) Saúde; d) Observância do sábado.",
               "campo": false,
-              "pagina": 292,
-              "idades": [
-                14,
-                15
-              ]
+              "pagina": 292
             },
             {
-              "codigo": "AV7",
+              "codigo": "EM7",
               "texto": "Demonstrar conhecimento para encontrar alimentos, através de plantas silvestres de sua região e saber diferenciá-las de plantas tóxicas/venenosas.",
               "campo": false,
-              "pagina": 294,
-              "idades": [
-                14,
-                15
-              ]
+              "pagina": 294
             },
             {
-              "codigo": "AV8",
+              "codigo": "EM8",
               "texto": "Demonstrar conhecimento quanto aos procedimentos necessários em caso de ferimentos por diferentes animais peçonhentos e não peçonhentos.",
               "campo": false,
-              "pagina": 295,
-              "idades": [
-                14,
-                15
-              ]
+              "pagina": 295
             },
             {
-              "codigo": "AV9",
+              "codigo": "EM9",
               "texto": "Demonstrar técnicas para percorrer trilhas em diferentes tipos de terrenos, como: desertos, florestas, pântanos e rios.",
               "campo": true,
-              "pagina": 296,
-              "idades": [
-                14,
-                15
-              ]
+              "pagina": 296
             },
             {
-              "codigo": "AV10",
+              "codigo": "EM10",
               "texto": "Completar a especialidade de Ordem unida.",
               "campo": false,
-              "pagina": 298,
-              "idades": [
-                14,
-                15
-              ]
+              "pagina": 298
             },
             {
-              "codigo": "AV11",
+              "codigo": "EM11",
               "texto": "Completar a especialidade de Vida silvestre.",
               "campo": true,
-              "pagina": 299,
-              "idades": [
-                14,
-                15
-              ]
+              "pagina": 299
             }
           ]
         }
-      ],
-      "variante": "AGRUPADAS",
-      "carregarPorPadrao": false,
-      "classeBase": "Excursionista"
+      ]
     },
     {
-      "nome": "Guia de Exploração",
+      "nome": "Agrupadas 15 anos ou mais — avançada",
       "idade": 15,
       "tipo": "AVANCADA",
+      "trilha": "AGRUPADAS",
+      "classeBase": "Agrupadas 15 anos ou mais (Amigo a Guia)",
       "secoes": [
         {
-          "codigo": "AV",
-          "nome": "Classe avançada",
+          "codigo": "AN",
+          "nome": "Amigo da Natureza",
           "ordem": 1,
           "requisitos": [
             {
-              "codigo": "AV1",
+              "codigo": "AN1",
+              "texto": "Memorizar, cantar ou tocar o Hino dos Desbravadores e conhecer a história do hino.",
+              "campo": false,
+              "pagina": 219
+            },
+            {
+              "codigo": "AN2",
+              "texto": "Em consulta com seu líder, escolher um dos seguintes personagens do Antigo Testamento e conversar com seu grupo sobre o amor e cuidado de Deus e o livramento demonstrado na vida do personagem escolhido: a) José; b) Jonas; c) Ester; d) Rute.",
+              "campo": false,
+              "pagina": 220
+            },
+            {
+              "codigo": "AN3",
+              "texto": "Levar pelo menos dois amigos não adventistas à Escola Sabatina ou ao Clube de Desbravadores.",
+              "campo": false,
+              "pagina": 221
+            },
+            {
+              "codigo": "AN4",
+              "texto": "Conhecer os princípios de higiene, de boas maneiras à mesa e como se comportar diante de pessoas que tenham diferentes idades. Demonstrar e explicar como estas boas maneiras podem ser úteis nas reuniões e acampamentos do Clube.",
+              "campo": false,
+              "pagina": 221
+            },
+            {
+              "codigo": "AN5",
+              "texto": "Completar a especialidade de Arte de acampar.",
+              "campo": true,
+              "pagina": 222
+            },
+            {
+              "codigo": "AN6",
+              "texto": "Conhecer e identificar dez flores silvestres e dez insetos de sua região.",
+              "campo": true,
+              "pagina": 223
+            },
+            {
+              "codigo": "AN7",
+              "texto": "Começar uma fogueira usando materiais naturais, e mantê-la acesa.",
+              "campo": true,
+              "pagina": 227
+            },
+            {
+              "codigo": "AN8",
+              "texto": "Usar corretamente uma faca, facão ou uma machadinha e conhecer dez regras para usá-los com segurança.",
+              "campo": true,
+              "pagina": 228
+            },
+            {
+              "codigo": "AN9",
+              "texto": "Escolher e completar uma especialidade em uma das áreas abaixo: a) Atividades missionárias; b) Atividades agrícolas.",
+              "campo": false,
+              "pagina": 229
+            }
+          ]
+        },
+        {
+          "codigo": "CE",
+          "nome": "Companheiro de Excursionismo",
+          "ordem": 2,
+          "requisitos": [
+            {
+              "codigo": "CE1",
+              "texto": "Aprender e demonstrar a composição, significado e uso correto da Bandeira Nacional.",
+              "campo": false,
+              "pagina": 230
+            },
+            {
+              "codigo": "CE2",
+              "texto": "Ler a primeira visão de Ellen White e discutir como Deus usa os profetas para apresentar Sua mensagem à igreja (ver Primeiros Escritos, págs. 13 a 20).",
+              "campo": false,
+              "pagina": 231
+            },
+            {
+              "codigo": "CE3",
+              "texto": "Participar de uma atividade missionária ou comunitária, envolvendo também um amigo.",
+              "campo": false,
+              "pagina": 236
+            },
+            {
+              "codigo": "CE4",
+              "texto": "Conversar com seu Conselheiro ou Unidade sobre como demonstrar respeito pelos seus pais ou responsáveis e fazer uma lista mostrando como cuidam de você.",
+              "campo": false,
+              "pagina": 236
+            },
+            {
+              "codigo": "CE5",
+              "texto": "Participar de uma caminhada de 6 km, preparando, ao final, um relatório de uma página.",
+              "campo": true,
+              "pagina": 237
+            },
+            {
+              "codigo": "CE6",
+              "texto": "Escolher um dos seguintes itens: a) Assistir a um \"Curso como deixar de fumar\"; b) Assistir a dois filmes sobre saúde; c) Elaborar um cartaz sobre o prejuízo das drogas; d) Ajudar a preparar material para uma exposição ou passeata sobre saúde; e) Pesquisar na internet informações sobre saúde e escrever uma página sobre os resultados encontrados.",
+              "campo": false,
+              "pagina": 238
+            },
+            {
+              "codigo": "CE7",
+              "texto": "Identificar e descrever doze aves nativas e doze árvores nativas.",
+              "campo": false,
+              "pagina": 240
+            },
+            {
+              "codigo": "CE8",
+              "texto": "Participar de uma das seguintes cerimônias e sugerir ideias criativas de como realizá-las: a) Investidura; b) Admissão em lenço; c) Dia Mundial do Desbravador.",
+              "campo": false,
+              "pagina": 242
+            },
+            {
+              "codigo": "CE9",
+              "texto": "Preparar uma refeição em uma fogueira durante um acampamento do Clube ou Unidade.",
+              "campo": true,
+              "pagina": 243
+            },
+            {
+              "codigo": "CE10",
+              "texto": "Preparar um quadro com quinze nós diferentes.",
+              "campo": false,
+              "pagina": 243
+            },
+            {
+              "codigo": "CE11",
+              "texto": "Completar a especialidade de Excursionismo pedestre com mochila.",
+              "campo": true,
+              "pagina": 244
+            },
+            {
+              "codigo": "CE12",
+              "texto": "Completar uma especialidade não realizada anteriormente: a) Habilidades domésticas; b) Ciência e saúde; c) Atividades missionárias; d) Atividades agrícolas.",
+              "campo": false,
+              "pagina": 245
+            }
+          ]
+        },
+        {
+          "codigo": "PC",
+          "nome": "Pesquisador de Campo e Bosque",
+          "ordem": 3,
+          "requisitos": [
+            {
+              "codigo": "PC1",
+              "texto": "Conhecer e saber usar de forma adequada a Bandeira dos Desbravadores, e o Bandeirim de Unidade.",
+              "campo": false,
+              "pagina": 246
+            },
+            {
+              "codigo": "PC2",
+              "texto": "Ler a história de J. N. Andrews ou um pioneiro de seu país e discutir a importância do trabalho de missionários, e por que Cristo ordenou a Grande Comissão (Mateus 28:18-20).",
+              "campo": false,
+              "pagina": 248
+            },
+            {
+              "codigo": "PC3",
+              "texto": "Convidar uma pessoa para assistir um dos seguintes programas: a) Clube de Desbravadores; b) Classe bíblica; c) Pequeno grupo.",
+              "campo": false,
+              "pagina": 249
+            },
+            {
+              "codigo": "PC4",
+              "texto": "Fazer uma das seguintes especialidades: a) Asseio e cortesia cristã; b) Vida familiar.",
+              "campo": false,
+              "pagina": 249
+            },
+            {
+              "codigo": "PC5",
+              "texto": "Participar de uma caminhada de 10 km e fazer uma lista dos equipamentos necessários, incluindo a roupa e o calçado que devem ser usados.",
+              "campo": true,
+              "pagina": 252
+            },
+            {
+              "codigo": "PC6",
+              "texto": "Participar na organização de um dos eventos especiais do Clube: a) Investidura; b) Admissão em Lenço; c) Dia Mundial do Desbravador.",
+              "campo": false,
+              "pagina": 254
+            },
+            {
+              "codigo": "PC7",
+              "texto": "Identificar seis pegadas de animais ou aves. Fazer um modelo em gesso, massa de modelar ou biscuit de três dessas pegadas.",
+              "campo": true,
+              "pagina": 255
+            },
+            {
+              "codigo": "PC8",
+              "texto": "Aprender a fazer as quatro amarras básicas e construir um móvel de acampamento.",
+              "campo": true,
+              "pagina": 256
+            },
+            {
+              "codigo": "PC9",
+              "texto": "Planejar um cardápio vegetariano para sua Unidade, para um acampamento de três dias e apresentar ao seu instrutor.",
+              "campo": false,
+              "pagina": 257
+            },
+            {
+              "codigo": "PC10",
+              "texto": "Enviar e receber uma mensagem através de uma das formas de comunicação abaixo: a) Alfabeto com semáforos; b) Código Morse, com lanterna; c) Alfabeto LIBRAS (língua de sinais); d) Alfabeto Braile.",
+              "campo": false,
+              "pagina": 259
+            },
+            {
+              "codigo": "PC11",
+              "texto": "Completar uma especialidade, não realizada anteriormente, em uma das áreas abaixo: a) Habilidades domésticas; b) Ciência e saúde; c) Atividades missionárias; d) Atividades agrícolas.",
+              "campo": false,
+              "pagina": 262
+            }
+          ]
+        },
+        {
+          "codigo": "PN",
+          "nome": "Pioneiro de Novas Fronteiras",
+          "ordem": 4,
+          "requisitos": [
+            {
+              "codigo": "PN1",
+              "texto": "Completar a especialidade de Cidadania cristã, caso não tenha sido realizada anteriormente.",
+              "campo": false,
+              "pagina": 263
+            },
+            {
+              "codigo": "PN2",
+              "texto": "Encenar a história do bom samaritano, demonstrando como ajudar as pessoas e auxiliar de forma prática três pessoas ou mais.",
+              "campo": false,
+              "pagina": 264
+            },
+            {
+              "codigo": "PN3",
+              "texto": "Participar de uma das seguintes atividades, apresentando ao final um relatório escrito contendo, no mínimo, duas páginas: a) Caminhar 10 km; b) Cavalgar 2 km; c) Viajar de canoa durante 2 h; d) Praticar 15 km de ciclismo; e) Nadar 200 m; f) Correr 1500 m; g) Rodar 2 km de patins ou roller.",
+              "campo": true,
+              "pagina": 266
+            },
+            {
+              "codigo": "PN4",
+              "texto": "Completar a especialidade de Mapa e bússola.",
+              "campo": true,
+              "pagina": 269
+            },
+            {
+              "codigo": "PN5",
+              "texto": "Demonstrar habilidade no uso correto de uma machadinha.",
+              "campo": true,
+              "pagina": 271
+            },
+            {
+              "codigo": "PN6",
+              "texto": "Ser capaz de acender uma fogueira em dia de chuva, saber como conseguir lenha seca e manter o fogo aceso.",
+              "campo": true,
+              "pagina": 272
+            },
+            {
+              "codigo": "PN7",
+              "texto": "Completar um dos seguintes itens: a) Pesquisar e identificar 10 variedades de plantas silvestres comestíveis; b) Ser capaz de enviar e receber 35 letras por minuto pelo código semafórico; c) Ser capaz de enviar e receber 35 letras por minuto através do código náutico, usando o código internacional; d) Ser capaz de apresentar e entender Mateus 24 em LIBRAS (língua de sinais); e) Preparar o Salmo 23 em braile.",
+              "campo": false,
+              "pagina": 273
+            },
+            {
+              "codigo": "PN8",
+              "texto": "Completar uma especialidade, não realizada anteriormente, em Atividades recreativas.",
+              "campo": false,
+              "pagina": 280
+            },
+            {
+              "codigo": "PN9",
+              "texto": "Pesquisar e identificar, através de fotografia, exposição ou ao vivo, um dos seguintes itens: a) 25 folhas de árvores; b) 25 rochas e minerais; c) 25 flores silvestres; d) 25 borboletas e mariposas; e) 25 conchas.",
+              "campo": false,
+              "pagina": 280
+            },
+            {
+              "codigo": "PN10",
+              "texto": "Completar a especialidade de Fogueiras e cozinha ao ar livre.",
+              "campo": true,
+              "pagina": 284
+            }
+          ]
+        },
+        {
+          "codigo": "EM",
+          "nome": "Excursionista na Mata",
+          "ordem": 5,
+          "requisitos": [
+            {
+              "codigo": "EM1",
+              "texto": "Fazer uma apresentação escrita ou falada sobre o respeito que devemos ter com a Lei de Deus e as autoridades civis, enumerando dez princípios de comportamento moral.",
+              "campo": false,
+              "pagina": 285
+            },
+            {
+              "codigo": "EM2",
+              "texto": "Acompanhar seu pastor ou ancião numa visita missionária ou estudo bíblico.",
+              "campo": false,
+              "pagina": 287
+            },
+            {
+              "codigo": "EM3",
+              "texto": "Completar a especialidade de Testemunho juvenil.",
+              "campo": false,
+              "pagina": 288
+            },
+            {
+              "codigo": "EM4",
+              "texto": "Apresentar cinco atividades na natureza, para serem realizadas no Sábado à tarde.",
+              "campo": false,
+              "pagina": 289
+            },
+            {
+              "codigo": "EM5",
+              "texto": "Com sua Unidade, construir um móvel de acampamento e um portal para o clube.",
+              "campo": true,
+              "pagina": 290
+            },
+            {
+              "codigo": "EM6",
+              "texto": "Através da supervisão de seu líder ou conselheiro, conversar em sua Unidade ou Clube sobre um dos seguintes temas: a) Modéstia cristã; b) Recreação; c) Saúde; d) Observância do sábado.",
+              "campo": false,
+              "pagina": 292
+            },
+            {
+              "codigo": "EM7",
+              "texto": "Demonstrar conhecimento para encontrar alimentos, através de plantas silvestres de sua região e saber diferenciá-las de plantas tóxicas/venenosas.",
+              "campo": false,
+              "pagina": 294
+            },
+            {
+              "codigo": "EM8",
+              "texto": "Demonstrar conhecimento quanto aos procedimentos necessários em caso de ferimentos por diferentes animais peçonhentos e não peçonhentos.",
+              "campo": false,
+              "pagina": 295
+            },
+            {
+              "codigo": "EM9",
+              "texto": "Demonstrar técnicas para percorrer trilhas em diferentes tipos de terrenos, como: desertos, florestas, pântanos e rios.",
+              "campo": true,
+              "pagina": 296
+            },
+            {
+              "codigo": "EM10",
+              "texto": "Completar a especialidade de Ordem unida.",
+              "campo": false,
+              "pagina": 298
+            },
+            {
+              "codigo": "EM11",
+              "texto": "Completar a especialidade de Vida silvestre.",
+              "campo": true,
+              "pagina": 299
+            }
+          ]
+        },
+        {
+          "codigo": "GE",
+          "nome": "Guia de Exploração",
+          "ordem": 6,
+          "requisitos": [
+            {
+              "codigo": "GE1",
               "texto": "Completar a especialidade de Mordomia.",
               "campo": false,
-              "pagina": 300,
-              "idades": [
-                15
-              ]
+              "pagina": 300
             },
             {
-              "codigo": "AV2",
+              "codigo": "GE2",
               "texto": "Ler o livro O Maior Discurso de Cristo e escrever uma página sobre o efeito da leitura em sua vida.",
               "campo": false,
-              "pagina": 302,
-              "idades": [
-                15
-              ]
+              "pagina": 302
             },
             {
-              "codigo": "AV3",
+              "codigo": "GE3",
               "texto": "Cumprir um dos seguintes itens: a) Trazer dois amigos para assistir a duas diferentes reuniões da igreja; b) Ajudar a planejar e participar de, no mínimo, quatro domingos em uma série de evangelismo jovem.",
               "campo": false,
-              "pagina": 304,
-              "idades": [
-                15
-              ]
+              "pagina": 304
             },
             {
-              "codigo": "AV4",
+              "codigo": "GE4",
               "texto": "Escrever uma página ou apresentar uma palestra sobre como influenciar amigos para Cristo.",
               "campo": false,
-              "pagina": 304,
-              "idades": [
-                15
-              ]
+              "pagina": 304
             },
             {
-              "codigo": "AV5",
+              "codigo": "GE5",
               "texto": "Observar durante o período de dois meses o trabalho dos diáconos, apresentando um relatório detalhado de suas atividades, contendo: a) Cuidado da propriedade da igreja; b) Cerimônia de lava-pés; c) Cerimônia de batismo; d) Recolhimento dos dízimos e ofertas.",
               "campo": false,
-              "pagina": 305,
-              "idades": [
-                15
-              ]
+              "pagina": 305
             },
             {
-              "codigo": "AV6",
+              "codigo": "GE6",
               "texto": "Completar uma especialidade, não realizada anteriormente, para o mestrado em Vida campestre.",
               "campo": false,
-              "pagina": 307,
-              "idades": [
-                15
-              ]
+              "pagina": 307
             },
             {
-              "codigo": "AV7",
+              "codigo": "GE7",
               "texto": "Projetar três tipos diferentes de abrigo, explicar seu uso e utilizar um deles em um acampamento.",
               "campo": true,
-              "pagina": 307,
-              "idades": [
-                15
-              ]
+              "pagina": 307
             },
             {
-              "codigo": "AV8",
+              "codigo": "GE8",
               "texto": "Assistir a um seminário ou apresentar uma palestra sobre dois dos seguintes temas: a) Aborto; b) Bullying; c) Violência; d) Drogas; e) Doenças sexualmente transmissíveis.",
               "campo": false,
-              "pagina": 309,
-              "idades": [
-                15
-              ]
+              "pagina": 309
             },
             {
-              "codigo": "AV9",
+              "codigo": "GE9",
               "texto": "Completar a especialidade de Liderança campestre.",
               "campo": true,
-              "pagina": 310,
-              "idades": [
-                15
-              ]
+              "pagina": 310
             },
             {
-              "codigo": "AV10",
+              "codigo": "GE10",
               "texto": "Completar a especialidade de Orçamento familiar.",
               "campo": false,
-              "pagina": 311,
-              "idades": [
-                15
-              ]
+              "pagina": 311
             }
           ]
         }
-      ],
-      "variante": "AGRUPADAS",
-      "carregarPorPadrao": false,
-      "classeBase": "Guia"
+      ]
     }
   ],
   "avisos": [
@@ -3650,6 +4289,7 @@
     "Padronização: avançada 'Pesquisador de Campo e Bosque' passou do código PC para AV. É a VARIANTE do caderno de Agrupadas (difere da versão do caderno regular); não entra na carga por padrão.",
     "Padronização: avançada 'Pioneiro de Novas Fronteiras' passou do código PN para AV. É a VARIANTE do caderno de Agrupadas (difere da versão do caderno regular); não entra na carga por padrão.",
     "Padronização: avançada 'Excursionista na Mata' passou do código EM para AV. É a VARIANTE do caderno de Agrupadas (difere da versão do caderno regular); não entra na carga por padrão.",
-    "Padronização: avançada 'Guia de Exploração' passou do código GE para AV. É a VARIANTE do caderno de Agrupadas (difere da versão do caderno regular); não entra na carga por padrão."
+    "Padronização: avançada 'Guia de Exploração' passou do código GE para AV. É a VARIANTE do caderno de Agrupadas (difere da versão do caderno regular); não entra na carga por padrão.",
+    "Reestruturação: as 6 avançadas do caderno de Agrupadas foram reunidas em 5 'avançadas agrupadas' (uma por idade), acumulando os requisitos cuja caixa de idade é branca para aquela idade — o mesmo critério usado nas agrupadas regulares. Cada avançada individual vira uma seção (AN, CE, PC, PN, EM, GE). Todas entram na carga (trilha AGRUPADAS)."
   ]
 }

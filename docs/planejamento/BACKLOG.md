@@ -54,8 +54,10 @@ Como visitante, quero ver o ranking sem entrar.
 
 ### T3 · Ver o perfil do DBV — `Perfil-DBV.dc.html` · Fases 1 e 2
 - Mostra idade, unidade, classe atual, posição, pontos do período, frequência do período.
-- Anel com o % da classe atual (concluídos ÷ total) e o instrutor da classe (se houver mais de
-  um, os nomes separados por vírgula).
+- Anel com o % da classe **regular** atual e, ao lado, um anel menor com o % da **avançada**
+  correspondente (com o selo "recomendada" enquanto não concluída); o instrutor da classe (se
+  houver mais de um, os nomes separados por vírgula).
+- "Pronto para investidura" aparece com 100% da regular, independente da avançada.
 - Progresso por seção: todas as seções da classe, na ordem do caderno; barra verde em 100%, cinza
   abaixo (não vermelho: vermelho parece erro do DBV).
 - Classes investidas com o ano; especialidades concluídas.
@@ -135,7 +137,8 @@ reunião e somar os pontos.
 ## Instrutor
 
 ### I1 · Início do instrutor — `Inicio-Instrutor.dc.html` · Fase 2
-- Próxima aula de **cada** classe dele: data, hora, seção, nº de requisitos e de DBVs.
+- Próxima aula de **cada** classe dele: data, hora, seção, nº de requisitos e de DBVs. Classes
+  das Agrupadas aparecem depois das individuais, num bloco mais discreto.
 - Aula hoje → "Registrar aula" em destaque para aquela classe.
 - Progresso médio por classe.
 - Alerta "N DBVs faltaram às 2 últimas aulas" com os nomes e a classe.
@@ -175,8 +178,10 @@ Como instrutor, quero marcar quem foi e quem cumpriu cada requisito para acompan
 - Desmarcar pede confirmação e estorna os pontos.
 
 ### I7 · Progresso da classe — `Progresso-Classe.dc.html` · Fase 2
-- Chips de classe; média da turma (média dos % exatos, arredondada só no fim).
-- "N prontos para investidura" (100%) e "N abaixo de 40%" (limiar configurável).
+- Chips de classe; alternador **Regular / Avançada** — os dois progressos nunca se somam.
+- Média da turma (média dos % exatos, arredondada só no fim).
+- Regular: "N prontos para investidura" (100%) e "N abaixo de 40%" (limiar configurável).
+  Avançada: "N concluíram a avançada".
 - Lista por DBV em ordem decrescente de %, com "faltam N req."; abaixo do limiar em laranja.
 - Tocar abre o perfil do DBV.
 
@@ -214,6 +219,9 @@ Como instrutor, quero marcar quem foi e quem cumpriu cada requisito para acompan
 - Painel: nome, nascimento (seletor de data), sexo, unidade, classe do ano, responsável,
   telefone, e-mail do responsável, **autorização de imagem**, nome público.
 - Inativar (saída do clube), com data; o histórico permanece.
+- Cadastro de **líder em formação** (para as Agrupadas): sem unidade, sem ranking, opcionalmente
+  ligado à conta de usuário dele.
+- Matricular na regular já matricula na avançada correspondente; o Adm pode desmarcar.
 - Aviso (não bloqueio) se a unidade é masculina/feminina e o sexo não bate, ou se a idade não
   corresponde à classe.
 
@@ -247,8 +255,10 @@ Como instrutor, quero marcar quem foi e quem cumpriu cada requisito para acompan
 ### A7 · Montar cronograma — `Montar-Cronograma.dc.html` · Fase 3
 - Escolhe classe e ano; período início–fim.
 - Lista de **todos** os requisitos da classe com status "agendado · data" ou "sem data" e o
-  contador real "N/total agendados".
+  contador real "N/total agendados". Regular e avançada em abas separadas.
 - Coluna de datas: todos os dias de reunião do período.
+- **Agrupadas**: em vez dos dias de reunião, o responsável cria as datas livremente (qualquer dia
+  e hora); evento do calendário na mesma data só gera aviso, não bloqueia.
 - Data bloqueada (qualquer evento com "Não há aula"): hachurada, sem "Colocar aqui".
 - Requisito CAMPO selecionado: datas "bom para campo" em verde.
 - Evento de vários dias aparece no domingo que ele cobre.
@@ -277,5 +287,8 @@ Como instrutor, quero marcar quem foi e quem cumpriu cada requisito para acompan
 - Frequência **de reunião** por mês com a meta do clube; tabela por classe com frequência **nas
   aulas** — os dois rótulos deixam claro qual é qual.
 - Especialidades mais concluídas no período.
-- Por classe: instrutores, DBVs, frequência nas aulas, progresso médio, prontos (100%).
+- Por classe: instrutores, DBVs, frequência nas aulas, progresso médio da **regular** e da
+  **avançada** em colunas separadas, prontos para investidura (100% da regular), avançadas
+  concluídas.
+- Agrupadas numa tabela à parte, abaixo das individuais.
 - Exportar Excel (PDF fica para depois).

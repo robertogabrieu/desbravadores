@@ -18,7 +18,7 @@ contagem vem do banco, nenhuma é digitada**.
 | 5 | Início Adm × LEIA-ME | Unidade em vermelho abaixo de 75% no painel e abaixo de 70% no resto | Um limiar do clube, padrão 70% |
 | 6 | Reunião | 9h no calendário, 9h15 no cronograma, 8h30 no Início do conselheiro | Dia e hora da reunião na configuração do clube; aula pode ter horário próprio |
 | 7 | Registro de aula × LEIA-ME | Requisito "(reposição)" aparece numa aula diferente da agendada, mas "cada requisito fica em uma data só" | O cronograma continua com uma data por requisito; o **registro** aceita qualquer requisito (reposição) |
-| 8 | Progresso × Relatórios | "Prontos para investidura" com 90% na tela, sem critério no LEIA-ME | 100% (decisão 7) |
+| 8 | Progresso × Relatórios | "Prontos para investidura" com 90% na tela, sem critério no LEIA-ME | 100% da classe regular; a avançada tem progresso próprio e não conta (decisão 7) |
 | 9 | Perfil do DBV | Barra vermelha em qualquer seção abaixo de 100% (parece erro do DBV) | Cinza abaixo de 100%, verde em 100% |
 | 10 | Frequência | Três cálculos diferentes (período, últimas 8, denominador fixo 8) e "frequência" de reunião × de aula misturadas nos relatórios | Frequência de reunião = período; grade = últimas 8, rotulada; relatório separa "reunião" de "aula" |
 | 11 | Montar cronograma | Desenhada só para computador, mas acessada pelo botão do instrutor no celular | MVP: só computador; no celular, aviso (I3) |
@@ -67,6 +67,9 @@ Cada uma com a decisão tomada — discorde de qualquer uma e eu ajusto os docum
 | 13 | Classe × idade | Aviso se não bater; a classe é escolha do Adm |
 | 14 | Quanto tempo o conselheiro pode corrigir uma chamada | 30 dias; Adm sem limite |
 | 15 | Chamada e pontos: qual é a fonte? | `LancamentoPontos`; a chamada não guarda pontos |
+| 16 | A avançada precisa de matrícula própria? | Sim; matricular na regular cria a da avançada junto, e o Adm pode remover |
+| 17 | Líder cursando Agrupadas: onde fica? | Cadastro de desbravador com tipo "líder": sem unidade, chamada, frequência nem ranking |
+| 18 | Avançada agrupada de 15+ exige as seis avançadas? | Sim, pela caixa de idade do caderno (todas brancas para 15+). Conferir com quem conhece o supletivo |
 
 ## 4. Cadernos oficiais
 
@@ -77,7 +80,7 @@ antes da carga.** Contagens em [dados/cadernos/LEIA-ME.md](dados/cadernos/LEIA-M
 |---|---|---|
 | 1 | As **classes avançadas não têm seções** no caderno — vêm numeradas de 1 a N | Padronizadas numa seção única "Classe avançada" (código `AV`), na ordem do caderno. **[decidir]** se prefere distribuí-las nas seções da regular |
 | 2 | **Excursionista**: faltam as páginas impressas 44 e 45 no PDF — some o requisito 1 da avançada e o nome dela ("Excursionista na Mata" foi deduzido). A versão do caderno de Agrupadas sugere o texto que falta | Conferir no caderno de papel e completar |
-| 2b | O caderno de **Agrupadas** traz as 6 avançadas numa versão diferente da dos cadernos regulares (itens a menos ou a mais) | Carga usa a versão dos regulares; a outra fica marcada como variante. **[decidir]** se o DBV da trilha agrupada faz a avançada da versão agrupada |
+| 2b | O caderno de **Agrupadas** traz as 6 avançadas numa versão diferente da dos cadernos regulares | **Resolvido:** Agrupadas é supletivo com requisitos próprios. As avançadas dele viraram 5 "avançadas agrupadas" (uma por idade, acumulando as anteriores pela caixa de idade), todas na carga |
 | 3 | **Amigo da Natureza, AV8**: enunciado ausente no PDF; o texto no arquivo foi **reconstruído** e marcado nos avisos | Conferir no caderno de papel |
 | 4 | Requisitos "Completar a especialidade X": só o enunciado entrou, não o conteúdo da especialidade | Nada — é o esperado |
 | 5 | Etiqueta **CAMPO** foi inferida pelo assunto; os duvidosos ficaram sem e estão nos avisos | Um instrutor experiente revisar (15 min por classe) |

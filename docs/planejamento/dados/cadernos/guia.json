@@ -5,6 +5,7 @@
       "nome": "Guia",
       "idade": 15,
       "tipo": "REGULAR",
+      "trilha": "INDIVIDUAL",
       "secoes": [
         {
           "codigo": "G",
@@ -249,6 +250,8 @@
       "nome": "Guia de Exploração",
       "idade": 15,
       "tipo": "AVANCADA",
+      "trilha": "INDIVIDUAL",
+      "classeBase": "Guia",
       "secoes": [
         {
           "codigo": "AV",
@@ -305,8 +308,7 @@
             }
           ]
         }
-      ],
-      "classeBase": "Guia"
+      ]
     }
   ],
   "avisos": [

@@ -5,6 +5,7 @@
       "nome": "Amigo",
       "idade": 10,
       "tipo": "REGULAR",
+      "trilha": "INDIVIDUAL",
       "secoes": [
         {
           "codigo": "G",
@@ -219,6 +220,8 @@
       "nome": "Amigo da Natureza",
       "idade": 10,
       "tipo": "AVANCADA",
+      "trilha": "INDIVIDUAL",
+      "classeBase": "Amigo",
       "secoes": [
         {
           "codigo": "AV",
@@ -281,8 +284,7 @@
             }
           ]
         }
-      ],
-      "classeBase": "Amigo"
+      ]
     }
   ],
   "avisos": [
