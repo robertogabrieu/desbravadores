@@ -19,6 +19,8 @@ import { requisitar } from '../api/cliente'
 import { z } from 'zod'
 import { banco } from './banco'
 import { useConexao, useModoSessao } from './index'
+import { limparDadosDoUsuario } from './limpeza'
+import { baixarPacote } from './pacote'
 import { tempos } from './tempos'
 import type { RouteObject } from 'react-router-dom'
 
@@ -181,6 +183,22 @@ describe('abertura sem internet', () => {
     expect(screen.getByText('nome:Ana Souza')).toBeInTheDocument()
   })
 
+  it('ao voltar a conexão baixa o pacote mesmo com o guardado de menos de 15 min', async () => {
+    await guardarIdentidade(Date.now())
+    servidor.use(handlerRefreshSemRede())
+    renderizarRotas(rotas, '/privada')
+    await screen.findByText('modo:SEM_CONEXAO')
+    const chamadas = { total: 0 }
+    servidor.use(handlerPacote(criarPacote(), chamadas), ...handlersSessao(vinculos))
+
+    act(() => {
+      window.dispatchEvent(new Event('online'))
+    })
+
+    await screen.findByText('modo:ONLINE')
+    await waitFor(() => expect(chamadas.total).toBe(1))
+  })
+
   it('a cada intervalo com a aba visível também tenta renovar', async () => {
     tempos.recuperacaoMs = 20
     await guardarIdentidade(Date.now())
@@ -218,6 +236,26 @@ describe('abertura online', () => {
     await screen.findByText('modo:ONLINE')
     await new Promise((resolver) => setTimeout(resolver, 30))
     expect(chamadas.total).toBe(0)
+  })
+
+  it('sair durante o download do pacote: o download que chega depois não regrava a lista (E18)', async () => {
+    let liberar: () => void = () => undefined
+    const portao = new Promise<void>((resolver) => {
+      liberar = resolver
+    })
+    servidor.use(
+      http.get('/api/sync/pacote', async () => {
+        await portao
+        return HttpResponse.json(criarPacote())
+      }),
+    )
+    const download = baixarPacote(USUARIO, VINCULO)
+
+    await limparDadosDoUsuario(USUARIO, { manterFila: true })
+    liberar()
+    await download
+
+    expect(await banco.pacotes.count()).toBe(0)
   })
 
   it('401 durante o uso, sem refresh possível: modo EXPIRADA e a sessão não some da tela', async () => {

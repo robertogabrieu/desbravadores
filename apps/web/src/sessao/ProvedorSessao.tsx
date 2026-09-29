@@ -18,7 +18,7 @@ import { gravarIdentidade, lerUltimaIdentidade, tocarContato } from '../offline/
 import type { RegistroSessao } from '../offline/banco'
 import { limparFilaDeAbertura } from '../offline/limpeza'
 import { iniciarMotor, pararMotor } from '../offline/motor'
-import { baixarPacoteSeVelho } from '../offline/pacote'
+import { baixarPacoteAoVoltarConexao, baixarPacoteSeVelho } from '../offline/pacote'
 import { VALIDADE_DO_MODO_SEM_CONEXAO_MS, tempos } from '../offline/tempos'
 import { ContextoDaSessao } from './useSessao'
 import type { ContextoSessao, Eu } from './useSessao'
@@ -64,13 +64,15 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
   const usuarioId = estado.eu?.usuario.id
   const vinculoId = estado.eu?.vinculoAtivo?.id
 
-  /** Guarda a identidade, baixa o pacote se venceu e passa a sessão ao motor da fila. */
-  const aplicarEuOnline = useCallback((eu: Eu) => {
+  /** Guarda a identidade e baixa o pacote: na abertura só se venceu (15 min), ao voltar a conexão sempre. */
+  const aplicarEuOnline = useCallback((eu: Eu, aoVoltarConexao = false) => {
     definirConexao('ONLINE')
     definirExpirada(false)
     definirEstado({ situacao: 'autenticada', eu })
     void gravarIdentidade(eu).catch(() => undefined)
-    if (eu.vinculoAtivo) void baixarPacoteSeVelho(eu.usuario.id, eu.vinculoAtivo.id)
+    if (!eu.vinculoAtivo) return
+    if (aoVoltarConexao) void baixarPacoteAoVoltarConexao(eu.usuario.id, eu.vinculoAtivo.id)
+    else void baixarPacoteSeVelho(eu.usuario.id, eu.vinculoAtivo.id)
   }, [])
 
   const lerEu = useCallback(async () => {
@@ -169,7 +171,7 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
       try {
         const resultado = await tentarAbrir()
         if (resultado.tipo === 'ok') {
-          aplicarEuOnline(resultado.eu)
+          aplicarEuOnline(resultado.eu, true)
           const vinculo = resultado.eu.vinculoAtivo
           if (vinculo) iniciarMotor({ usuarioId: resultado.eu.usuario.id, vinculoId: vinculo.id, queryClient: clienteConsultas })
         } else if (resultado.tipo === 'recusa') {

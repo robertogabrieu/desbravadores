@@ -148,6 +148,19 @@ export function renovarSessao(): Promise<Sessao> {
   return atual
 }
 
+/** Recusa do refresh (401/403 com `ErroApi`, E7) acaba a sessão; vínculo inativo é outra coisa: leva a /papel. */
+export function avisarSeRefreshRecusado(erroRefresh: unknown): void {
+  if (!(erroRefresh instanceof ErroDaApi) || erroRefresh.classe !== 'RECUSA') return
+  if (erroRefresh.status !== 401 && erroRefresh.status !== 403) return
+  if (erroRefresh.erro.codigo === 'VINCULO_INATIVO') return
+  ouvintes.aoSessaoPerdida?.()
+}
+
+/** A repetição autenticada também levou 401: o refresh valeu, mas a sessão não. */
+export function avisarSessaoPerdida(): void {
+  ouvintes.aoSessaoPerdida?.()
+}
+
 async function executar(caminho: string, opcoes: OpcoesRequisicao): Promise<Response> {
   let resposta = await enviar(caminho, opcoes)
 
@@ -157,12 +170,12 @@ async function executar(caminho: string, opcoes: OpcoesRequisicao): Promise<Resp
       await renovarSessao()
     } catch (erroRefresh) {
       if (erroRefresh instanceof ErroDaApi && erroRefresh.classe !== 'RECUSA') throw erroRefresh
-      if (erroRefresh instanceof ErroDaApi && erroRefresh.status === 401) ouvintes.aoSessaoPerdida?.()
+      avisarSeRefreshRecusado(erroRefresh)
       throw erroOriginal
     }
     resposta = await enviar(caminho, opcoes)
     if (resposta.status === 401) {
-      ouvintes.aoSessaoPerdida?.()
+      avisarSessaoPerdida()
       throw await lerErro(resposta)
     }
   }

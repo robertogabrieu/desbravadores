@@ -1,5 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query'
-import { ErroDaApi, erroDeResposta, lerTokenAcesso, renovarSessao, requisitarCru } from '../api/cliente'
+import { ErroDaApi, avisarSeRefreshRecusado, avisarSessaoPerdida, erroDeResposta, lerTokenAcesso, renovarSessao, requisitarCru } from '../api/cliente'
 import { dependencias } from './dependencias'
 import type { ArquivoEnvio, ClasseFalha, ContextoEnvio, FalhaEnvio } from './tipos'
 import type { ErroApi } from '../api/cliente'
@@ -65,9 +65,11 @@ async function enviarArquivoAutenticado(caminho: string, arquivo: ArquivoEnvio, 
       await renovarSessao()
     } catch (erroRefresh) {
       if (erroRefresh instanceof ErroDaApi && erroRefresh.classe !== 'RECUSA') throw paraFalhaEnvio(erroRefresh)
+      avisarSeRefreshRecusado(erroRefresh)
       throw paraFalhaEnvio(erroDeResposta(401, resposta.corpo))
     }
     resposta = await enviarUmaVez(caminho, arquivo, onProgresso)
+    if (resposta.status === 401) avisarSessaoPerdida()
   }
   if (resposta.status >= 200 && resposta.status < 300) {
     if (resposta.corpo === undefined) throw new ErroDeEnvio('REDE', resposta.status)

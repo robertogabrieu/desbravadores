@@ -1,4 +1,6 @@
 import { useSyncExternalStore } from 'react'
+import { avisarOutrasAbas } from './abas'
+import type { AvisoDeAba } from './abas'
 import { banco } from './banco'
 import { acordarMotor, estadoOffline } from './estado'
 import { obterTipo } from './registro'
@@ -87,7 +89,7 @@ export const enfileirar: Enfileirar = async (entrada) => {
   })
 
   acordarMotor()
-  void recarregarFila()
+  void recarregarFila({ acordar: true })
   return id
 }
 
@@ -118,7 +120,7 @@ async function tentarAgora(): Promise<void> {
   estadoOffline.pausadaPorSessao = false
   estadoOffline.forcarPassada = true
   acordarMotor()
-  await recarregarFila()
+  await recarregarFila({ acordar: true, forcar: true })
 }
 
 async function tentarDeNovo(id: string): Promise<void> {
@@ -131,7 +133,7 @@ async function tentarDeNovo(id: string): Promise<void> {
     atualizadoEm: Date.now(),
   })
   acordarMotor()
-  await recarregarFila()
+  await recarregarFila({ acordar: true })
 }
 
 async function descartar(id: string): Promise<void> {
@@ -198,7 +200,22 @@ let sequencia = 0
 const ouvintes = new Set<() => void>()
 
 /** Relê a fila da sessão atual e avisa quem está escutando (`useFila`). Chamado depois de cada mudança. */
-export async function recarregarFila(): Promise<void> {
+export async function recarregarFila(aviso: Partial<AvisoDeAba> = {}): Promise<void> {
+  avisarOutrasAbas(aviso)
+  await lerVisaoDoBanco()
+}
+
+/** Outra aba mexeu na fila: relê a visão e, se pedido, acorda o motor (só a aba com a trava faz algo com isso). */
+export function aoAvisoDeOutraAba(aviso: AvisoDeAba): void {
+  if (aviso.forcar) {
+    estadoOffline.pausadaPorSessao = false
+    estadoOffline.forcarPassada = true
+  }
+  if (aviso.acordar) acordarMotor()
+  void lerVisaoDoBanco()
+}
+
+async function lerVisaoDoBanco(): Promise<void> {
   const minha = ++sequencia
   const sessao = estadoOffline.sessao
   try {

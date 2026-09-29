@@ -3,6 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { HttpResponse, http } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
+import { configurarCliente } from '../api/cliente'
 import { servidor } from '../testes/servidor'
 import { criarEu, criarVinculo } from '../testes/handlers/sessao'
 import { banco } from './banco'
@@ -131,16 +132,36 @@ describe('fila: envio', () => {
     expect((await ler(primeiro))?.erro).toBeUndefined()
   })
 
-  it('chave em ENVIANDO: cria outro item, que só roda depois', async () => {
-    iniciar('SEM_CONEXAO')
-    await aguardarMotorPronto()
-    const primeiro = await semear({ chave: 'mesma', estado: 'ENVIANDO' })
+  it('chave em ENVIANDO: cria outro item, que só é enviado depois do primeiro', async () => {
+    const recebidos: string[] = []
+    let liberar: () => void = () => undefined
+    const portao = new Promise<void>((resolver) => {
+      liberar = resolver
+    })
+    servidor.use(
+      http.put('/api/falso', async ({ request }) => {
+        const corpo = (await request.json()) as Carga
+        recebidos.push(corpo.valor)
+        if (corpo.valor === 'primeiro') await portao
+        return respostaOk()
+      }),
+    )
+    iniciar()
 
-    const segundo = await pedirCarga('mesma', 'novo')
+    const primeiro = await pedirCarga('mesma', 'primeiro')
+    await waitFor(async () => expect((await ler(primeiro))?.estado).toBe('ENVIANDO'))
+    const segundo = await pedirCarga('mesma', 'segundo')
 
-    expect(segundo).not.toBe(primeiro.id)
+    expect(segundo).not.toBe(primeiro)
     expect(await banco.fila.count()).toBe(2)
     expect((await itensDaChave('mesma')).map((i) => i.estado)).toEqual(['ENVIANDO', 'NA_FILA'])
+    await new Promise((resolver) => setTimeout(resolver, 50))
+    expect(recebidos).toEqual(['primeiro'])
+
+    liberar()
+
+    await waitFor(async () => expect((await ler(segundo))?.estado).toBe('ENVIADO'))
+    expect(recebidos).toEqual(['primeiro', 'segundo'])
   })
 
   it('ENVIANDO preso volta a NA_FILA ao pegar a trava e é enviado', async () => {
@@ -241,14 +262,20 @@ describe('fila: falhas', () => {
   })
 
   it('429 também tem o limite de 10', async () => {
-    tempos.backoffMs = [40]
-    servidor.use(http.put('/api/falso', () => recusa(429)))
+    let chamadas = 0
+    servidor.use(
+      http.put('/api/falso', () => {
+        chamadas += 1
+        return recusa(429)
+      }),
+    )
     iniciar()
 
     const id = await pedirCarga('k')
 
-    await waitFor(async () => expect((await ler(id))?.tentativas).toBeGreaterThanOrEqual(2))
-    expect((await ler(id))?.estado).not.toBe('ERRO')
+    await waitFor(async () => expect((await ler(id))?.estado).toBe('ERRO'), { timeout: 4000 })
+    expect(chamadas).toBe(10)
+    expect((await ler(id))?.tentativas).toBe(10)
   })
 
   it('outro 4xx vira ERRO com a mensagem da API, sem repetir', async () => {
@@ -478,5 +505,144 @@ describe('limpeza da abertura', () => {
     expect(restantes).toEqual([enviadoRecente.id, outroRecente.id, meuAntigo.id].sort())
     expect(restantes).not.toContain(enviadoAntigo.id)
     expect(restantes).not.toContain(outroAntigo.id)
+  })
+})
+
+describe('fila: várias abas (BroadcastChannel)', () => {
+  it('enfileirar, tentar de novo e descartar avisam as outras abas; enfileirar e tentar de novo pedem para acordar o motor', async () => {
+    const outraAba = new BroadcastChannel('fila')
+    const avisos: unknown[] = []
+    outraAba.onmessage = (evento: MessageEvent<unknown>) => avisos.push(evento.data)
+    iniciar('SEM_CONEXAO')
+    await aguardarMotorPronto()
+    const { result } = renderHook(() => useFila())
+
+    const id = await pedirCarga('k')
+    await waitFor(() => expect(avisos).toContainEqual({ acordar: true, forcar: false }))
+    result.current.tentarAgora()
+    await waitFor(() => expect(avisos).toContainEqual({ acordar: true, forcar: true }))
+    avisos.length = 0
+    await result.current.descartar(id)
+
+    await waitFor(() => expect(avisos).toContainEqual({ acordar: false, forcar: false }))
+    outraAba.close()
+  })
+
+  it('aviso de outra aba com a trava acorda o motor: item enfileirado lá é enviado aqui', async () => {
+    servidor.use(http.put('/api/falso', respostaOk))
+    iniciar()
+    await aguardarMotorPronto()
+    const semeado = await semear({ chave: 'de-outra-aba' })
+    await new Promise((resolver) => setTimeout(resolver, 60))
+    expect((await ler(semeado.id))?.estado).toBe('NA_FILA')
+
+    const outraAba = new BroadcastChannel('fila')
+    outraAba.postMessage({ acordar: true, forcar: false })
+
+    await waitFor(async () => expect((await ler(semeado.id))?.estado).toBe('ENVIADO'))
+    outraAba.close()
+  })
+
+  it('aviso de outra aba faz a visão local (useFila) recarregar o que mudou no banco', async () => {
+    iniciar('SEM_CONEXAO')
+    await aguardarMotorPronto()
+    const { result } = renderHook(() => useFila())
+    await semear({ chave: 'de-outra-aba' })
+    expect(result.current.itens).toHaveLength(0)
+
+    const outraAba = new BroadcastChannel('fila')
+    outraAba.postMessage({ acordar: false, forcar: false })
+
+    await waitFor(() => expect(result.current.itens).toHaveLength(1))
+    outraAba.close()
+  })
+
+  it('sem BroadcastChannel no navegador a fila segue funcionando', async () => {
+    vi.stubGlobal('BroadcastChannel', undefined)
+    servidor.use(http.put('/api/falso', respostaOk))
+    iniciar()
+
+    const id = await pedirCarga('k')
+
+    await waitFor(async () => expect((await ler(id))?.estado).toBe('ENVIADO'))
+    vi.unstubAllGlobals()
+  })
+})
+
+describe('fila: aba volta a ficar visível', () => {
+  const mudarVisibilidade = (estado: 'visible' | 'hidden') => {
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue(estado)
+    document.dispatchEvent(new Event('visibilitychange'))
+  }
+
+  it('visível acorda o motor e envia o que já venceu; escondida não faz nada', async () => {
+    servidor.use(http.put('/api/falso', respostaOk))
+    iniciar()
+    await aguardarMotorPronto()
+    const vencido = await semear({ chave: 'v', proximaTentativaEm: Date.now() - 1000 })
+    await new Promise((resolver) => setTimeout(resolver, 60))
+
+    mudarVisibilidade('hidden')
+    await new Promise((resolver) => setTimeout(resolver, 60))
+    expect((await ler(vencido.id))?.estado).toBe('NA_FILA')
+
+    mudarVisibilidade('visible')
+
+    await waitFor(async () => expect((await ler(vencido.id))?.estado).toBe('ENVIADO'))
+  })
+
+  it('visível não zera a espera do backoff: o item que ainda não venceu continua esperando', async () => {
+    let chamadas = 0
+    servidor.use(
+      http.put('/api/falso', () => {
+        chamadas += 1
+        return respostaOk()
+      }),
+    )
+    iniciar()
+    await aguardarMotorPronto()
+    const esperando = await semear({ chave: 'e', tentativas: 1, proximaTentativaEm: Date.now() + 60_000 })
+    await new Promise((resolver) => setTimeout(resolver, 60))
+
+    mudarVisibilidade('visible')
+    await new Promise((resolver) => setTimeout(resolver, 80))
+
+    expect(chamadas).toBe(0)
+    expect((await ler(esperando.id))?.proximaTentativaEm).toBeGreaterThan(Date.now())
+  })
+})
+
+describe('fila: arquivo por XHR e sessão', () => {
+  class XhrComStatus {
+    upload = { onprogress: null }
+    onload: (() => void) | null = null
+    onerror: (() => void) | null = null
+    ontimeout: (() => void) | null = null
+    status = 401
+    responseText = JSON.stringify({ codigo: 'NAO_AUTENTICADO', mensagem: 'expirou' })
+    open() {}
+    setRequestHeader() {}
+    send() {
+      this.onload?.()
+    }
+  }
+
+  it.each([401, 403])('refresh recusado com %i no envio de arquivo avisa que a sessão acabou e pausa o motor', async (statusRefresh) => {
+    const sessaoPerdida = vi.fn()
+    configurarCliente({ aoSessaoPerdida: sessaoPerdida })
+    vi.spyOn(dependencias, 'criarXhr').mockImplementation(() => new XhrComStatus() as unknown as XMLHttpRequest)
+    servidor.use(http.post('/api/auth/refresh', () => recusa(statusRefresh, 'NAO_AUTENTICADO')))
+    registrarTipo<Carga, typeof saidaOk>({
+      ...tipoFalso,
+      tipo: 'ARQUIVO_FALSO',
+      enviar: (_item, ctx) =>
+        ctx.enviarArquivo('/api/arquivo', { metodo: 'POST', campos: {}, campoArquivo: 'arquivo', arquivo: new Blob(['x']), nomeArquivo: 'x.jpg' }, () => undefined),
+    })
+    iniciar()
+
+    const id = await enfileirar<Carga>({ tipo: 'ARQUIVO_FALSO', chave: 'foto:1', payload: { valor: 'f' } })
+
+    await waitFor(() => expect(sessaoPerdida).toHaveBeenCalledTimes(1))
+    expect((await ler(id))?.estado).toBe('NA_FILA')
   })
 })

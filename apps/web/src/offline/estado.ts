@@ -15,6 +15,9 @@ export const estadoOffline: {
   forcarPassada: boolean
 } = { sessao: null, pausadaPorSessao: false, descartadosDeOutraPessoa: 0, forcarPassada: false }
 
+/** Sobe a cada limpeza de dados do usuário: quem começou um download antes dela não pode gravar depois (E18). */
+export const limpezaDeDados = { epoca: 0 }
+
 let pendente = false
 let despertar: (() => void) | null = null
 

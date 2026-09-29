@@ -1,4 +1,5 @@
 import { banco } from './banco'
+import { limpezaDeDados } from './estado'
 import { lerUltimaIdentidade } from './identidade'
 import { VALIDADE_DO_ENVIADO_MS, VALIDADE_DO_ITEM_DE_OUTRA_PESSOA_MS } from './tempos'
 import type { LimparDadosDoUsuario } from './tipos'
@@ -21,9 +22,14 @@ export async function limparFilaDeAbertura(agora = Date.now()): Promise<{ descar
 
 /** Apaga do aparelho pacote, identidade e rascunhos do usuário. A fila fica: ela sobe quando a pessoa voltar. */
 export const limparDadosDoUsuario: LimparDadosDoUsuario = async (usuarioId) => {
-  await banco.transaction('rw', banco.sessoes, banco.pacotes, banco.rascunhos, async () => {
-    await banco.sessoes.delete(usuarioId)
-    await banco.pacotes.where('[usuarioId+vinculoId]').between([usuarioId, ''], [usuarioId, '￿']).delete()
-    await banco.rascunhos.where('[usuarioId+chave]').between([usuarioId, ''], [usuarioId, '￿']).delete()
-  })
+  limpezaDeDados.epoca += 1
+  try {
+    await banco.transaction('rw', banco.sessoes, banco.pacotes, banco.rascunhos, async () => {
+      await banco.sessoes.delete(usuarioId)
+      await banco.pacotes.where('[usuarioId+vinculoId]').between([usuarioId, ''], [usuarioId, '￿']).delete()
+      await banco.rascunhos.where('[usuarioId+chave]').between([usuarioId, ''], [usuarioId, '￿']).delete()
+    })
+  } finally {
+    limpezaDeDados.epoca += 1
+  }
 }

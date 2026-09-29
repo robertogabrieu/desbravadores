@@ -1,10 +1,11 @@
 import { ErroDaApi } from '../api/cliente'
+import { desligarAbas, ligarAbas } from './abas'
 import { banco } from './banco'
 import { criarContextoEnvio, ehFalhaEnvio, ErroDeEnvio, paraFalhaEnvio } from './contexto'
 import { assinarConexao, lerConexao } from './conexao'
 import { acordarMotor, consumirSinal, dormir, estadoOffline } from './estado'
 import type { SessaoMotor } from './estado'
-import { naoEnviadosDoUsuario, recarregarFila } from './fila'
+import { aoAvisoDeOutraAba, naoEnviadosDoUsuario, recarregarFila } from './fila'
 import { baixarPacote } from './pacote'
 import { obterTipo } from './registro'
 import { MAXIMO_DE_TENTATIVAS_SERVIDOR, tempos } from './tempos'
@@ -38,6 +39,12 @@ export function iniciarMotor(sessao: SessaoMotor): void {
   }
 
   const parada = { valor: false }
+  ligarAbas(aoAvisoDeOutraAba)
+  const aoFicarVisivel = () => {
+    if (document.visibilityState === 'visible') acordarMotor()
+  }
+  document.addEventListener('visibilitychange', aoFicarVisivel)
+  const desassinarConexao = assinarConexao(acordarMotor)
   let liberarPronto: () => void = () => undefined
   const pronto = new Promise<void>((resolver) => {
     liberarPronto = resolver
@@ -47,7 +54,11 @@ export function iniciarMotor(sessao: SessaoMotor): void {
     comTrava: false,
     terminou: Promise.resolve(),
     pronto,
-    desassinar: assinarConexao(acordarMotor),
+    desassinar: () => {
+      desassinarConexao()
+      document.removeEventListener('visibilitychange', aoFicarVisivel)
+      desligarAbas()
+    },
   }
   const pedido: Promise<unknown> = navigator.locks.request('fila', async () => {
     if (parada.valor) return
@@ -148,7 +159,7 @@ async function enviarItem(candidato: ItemFila, sessao: SessaoMotor): Promise<voi
     const contexto = criarContextoEnvio(sessao.queryClient, (percentual) => {
       if (percentual === ultimoPercentual) return
       ultimoPercentual = percentual
-      void banco.fila.update(item.id, { progresso: percentual }).then(recarregarFila)
+      void banco.fila.update(item.id, { progresso: percentual }).then(() => recarregarFila())
     })
     const bruto = await tipo.enviar(item, contexto)
     const lido = tipo.saida.safeParse(bruto)
