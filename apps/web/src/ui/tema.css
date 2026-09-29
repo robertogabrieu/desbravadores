@@ -24,6 +24,8 @@
   --color-perigo: var(--color-danger);
   --color-alerta: var(--color-warning);
   --color-alerta-fundo: var(--color-warning-bg);
+  --color-sem-conexao: var(--color-offline-bg);
+  --color-sobre-sem-conexao: var(--color-offline-fg);
   --color-acampamento: var(--color-field);
   --color-acampamento-fundo: var(--color-field-bg);
 

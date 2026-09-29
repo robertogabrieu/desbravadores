@@ -1,4 +1,4 @@
-import { act, screen } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { criarVinculo, handlersSessao } from '../../testes/handlers/sessao'
@@ -55,6 +55,8 @@ describe('convite de instalação', () => {
     renderizarRotas(rotasInicio, '/inicio')
     await screen.findByRole('heading', { name: 'Olá, Ana' })
     expect(screen.queryByRole('button', { name: 'Instalar app' })).not.toBeInTheDocument()
+    // Deixa os efeitos da tela rodarem: é neles que o ouvinte de `beforeinstallprompt` é registrado.
+    await act(async () => {})
     const { prompt, evento } = dispararConviteDeInstalacao()
     expect(evento.defaultPrevented).toBe(true)
     await userEvent.click(await screen.findByRole('button', { name: 'Instalar app' }))
@@ -67,7 +69,7 @@ describe('convite de instalação', () => {
     const primeira = renderizarRotas(rotasInicio, '/inicio')
     expect(await screen.findByText(/Compartilhar → Adicionar à Tela de Início/)).toBeInTheDocument()
     expect(screen.getByText(/Depois de instalar, entre de novo pelo ícone/)).toBeInTheDocument()
-    expect(localStorage.getItem(CHAVE_IOS)).toBe('1')
+    await waitFor(() => expect(localStorage.getItem(CHAVE_IOS)).toBe('1'))
     primeira.unmount()
 
     renderizarRotas(rotasInicio, '/inicio')

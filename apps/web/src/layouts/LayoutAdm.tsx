@@ -1,6 +1,8 @@
 import { CalendarDays, ClipboardList, FileText, Flag, GraduationCap, LayoutDashboard, Trophy, UserRound, Users } from 'lucide-react'
 import { Outlet } from 'react-router-dom'
 import { FaixaAviso } from '../ui/FaixaAviso'
+import { FaixaSemConexao } from './FaixaSemConexao'
+import { FaixaSessaoExpirada } from './FaixaSessaoExpirada'
 import { ItemNavegacao } from './ItemNavegacao'
 import type { ItemDeNavegacao } from './ItemNavegacao'
 import { MenuUsuario } from './MenuUsuario'
@@ -35,6 +37,8 @@ export function LayoutAdm() {
         </nav>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
+        <FaixaSessaoExpirada />
+        <FaixaSemConexao />
         <header className="flex justify-end border-b border-borda bg-superficie px-4">
           <MenuUsuario />
         </header>

@@ -8,6 +8,7 @@ export function RedirecionamentoRaiz() {
 
   if (situacao === 'carregando') return <TelaCarregando />
   if (situacao === 'anonima') return <Navigate to="/login" replace />
+  if (situacao === 'sem-conexao') return <Navigate to="/conectar" replace />
   if (papel === null) return <Navigate to="/papel" replace />
   return <Navigate to={papel === 'ADM' ? '/adm/desbravadores' : '/inicio'} replace />
 }
