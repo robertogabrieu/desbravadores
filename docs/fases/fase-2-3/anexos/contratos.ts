@@ -17,6 +17,14 @@ export const StatusCronograma = z.enum(STATUS_CRONOGRAMA)
 export const ALVOS_OBSERVACAO = ['AULA', 'DBV'] as const
 export const AlvoObservacao = z.enum(ALVOS_OBSERVACAO)
 export const TIPOS_MATERIAL = ['PDF', 'APRESENTACAO', 'DOCUMENTO', 'LINK'] as const
+/** Extensão → mime → tipo. O mime gravado vem SEMPRE desta tabela (nunca do cliente/multer). */
+export const FORMATOS_MATERIAL = {
+  pdf: { mime: 'application/pdf', tipo: 'PDF' },
+  pptx: { mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', tipo: 'APRESENTACAO' },
+  odp: { mime: 'application/vnd.oasis.opendocument.presentation', tipo: 'APRESENTACAO' },
+  docx: { mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', tipo: 'DOCUMENTO' },
+  odt: { mime: 'application/vnd.oasis.opendocument.text', tipo: 'DOCUMENTO' },
+} as const
 export const TipoMaterial = z.enum(TIPOS_MATERIAL)
 export const TIPOS_NOTIFICACAO = ['CONFLITO_CRONOGRAMA', 'CRONOGRAMA_ENVIADO', 'CRONOGRAMA_PUBLICADO', 'PEDIDO_LIBERAR_CRONOGRAMA'] as const
 export const TipoNotificacao = z.enum(TIPOS_NOTIFICACAO)
@@ -59,18 +67,20 @@ export const EventoGravadoSaida = z.object({ evento: EventoSaida, aulasAfetadas:
 // DELETE /calendario/eventos/:id → 204
 
 // ═══════════════ ARQUIVO: contratos/cronograma.ts ═══════════════
-export const SITUACOES_AULA = ['DADA', 'HOJE', 'PLANEJADA', 'CONFLITO'] as const
+export const SITUACOES_AULA = ['DADA', 'HOJE', 'PLANEJADA', 'NAO_REGISTRADA', 'CONFLITO'] as const
 export const RequisitoResumo = z.object({
   id: Uuid, codigo: z.string(), texto: z.string(), campo: z.boolean(), secaoCodigo: z.string(),
 })
 export const AulaCronograma = z.object({
-  id: Uuid,
+  /** EXTRA = RegistroAula sem aula planejada (reposição/aula extra): `id` null, situação DADA. */
+  origem: z.enum(['PLANEJADA', 'EXTRA']),
+  id: Uuid.nullable(),
   data: DataCivil,
   horario: Horario.nullable(),
   local: z.string().nullable(),
   titulo: z.string().nullable(),
   requisitos: z.array(RequisitoResumo),
-  /** DADA = tem RegistroAula; CONFLITO = data com evento que bloqueia aula (e sem registro). */
+  /** Fórmula `situacaoDaAula` (base §3): DADA, CONFLITO, HOJE, NAO_REGISTRADA (passou sem registro), PLANEJADA. */
   situacao: z.enum(SITUACOES_AULA),
   registroAulaId: Uuid.nullable(),
 })
@@ -79,6 +89,7 @@ export const CronogramaLeitura = z.object({
   cronogramaId: Uuid.nullable(),        // null = ainda não existe
   classe: RefClasse,
   anoClube: z.number().int(),
+  /** Para quem vê o PUBLICADO, sempre 'PUBLICADO' (o estado do vivo não é exposto). */
   status: StatusCronograma.nullable(),
   fonte: z.enum(['VIVO', 'PUBLICADO']).nullable(),
   publicadoEm: InstanteIso.nullable(),
@@ -106,16 +117,21 @@ export const DataMontagem = z.object({
   titulo: z.string().nullable(),
   requisitoIds: z.array(Uuid),
   situacao: SituacaoData,
-  /** Tem aula com requisito numa data que bloqueia aula. */
+  /** Função única `emConflito` (base §3). */
   conflito: z.boolean(),
+  /** A aula da data já tem registro: não pode ser editada, movida nem removida. */
+  aulaDada: z.boolean(),
 })
 export const RequisitoMontagem = RequisitoResumo.extend({ aulaId: Uuid.nullable(), data: DataCivil.nullable() })
-/** GET /classes/:id/cronograma/montagem?anoClube → o cronograma vivo para montar (404 se não existe). */
+/** GET /classes/:id/cronograma/montagem?anoClube → o cronograma vivo. Sem cronograma: `cronograma`
+ *  null e listas vazias (a tela oferece "Criar"); classe fora do escopo: 404. */
 export const MontagemSaida = z.object({
   cronograma: z.object({
     id: Uuid, status: StatusCronograma, inicio: DataCivil, fim: DataCivil,
     enviadoEm: InstanteIso.nullable(), enviadoPor: z.string().nullable(), publicadoEm: InstanteIso.nullable(),
-  }),
+    /** Enviado de volta em enviar/publicar para detectar que o cronograma mudou (409). */
+    atualizadoEm: InstanteIso,
+  }).nullable(),
   classe: RefClasse,
   /** Individuais: os dias de reunião do período + as datas que já têm aula. Agrupadas: só as datas com aula. */
   datas: z.array(DataMontagem),
@@ -123,12 +139,13 @@ export const MontagemSaida = z.object({
   datasLivres: z.boolean(),               // true para Agrupadas
 })
 export const ColocarRequisitoEntrada = z.object({ data: DataCivil })
+export const EnviarPublicarEntrada = z.object({ atualizadoEmVisto: InstanteIso })
 export const AulaCriarEntrada = z.object({ data: DataCivil, horario: Horario.nullable(), local: z.string().trim().max(120).nullable(), titulo: z.string().trim().max(80).nullable() })
 export const AulaEditarEntrada = z.object({ horario: Horario.nullable(), local: z.string().trim().max(120).nullable(), titulo: z.string().trim().max(80).nullable() }).partial()
 // PUT /cronogramas/:id/requisitos/:requisitoId {data} → MontagemSaida · DELETE → MontagemSaida
 // POST /cronogramas/:id/aulas → MontagemSaida · PATCH /aulas-planejadas/:id → MontagemSaida
 // POST /cronogramas {CronogramaCriarEntrada} → MontagemSaida · PATCH /cronogramas/:id {CronogramaPeriodoEntrada} → MontagemSaida
-// POST /cronogramas/:id/enviar → MontagemSaida · POST /cronogramas/:id/publicar → MontagemSaida
+// POST /cronogramas/:id/enviar {EnviarPublicarEntrada} → MontagemSaida · POST /cronogramas/:id/publicar {idem} → MontagemSaida
 
 // ═══════════════ ARQUIVO: contratos/aulas.ts ═══════════════
 export const PresencaEnvio = z.object({ dbvId: Uuid, presente: z.boolean(), versaoVista: InstanteIso.nullable() })
@@ -150,8 +167,15 @@ export const AulaEnvioSaida = z.object({
   presencas: z.array(z.object({ dbvId: Uuid, versao: InstanteIso })),
   conflitos: z.array(z.object({ dbvId: Uuid, nome: z.string() })),
   ignorados: z.array(z.object({ dbvId: Uuid, nome: z.string() })),
-  /** Marcações que não valeram porque o requisito já estava concluído (vale a data mais antiga). */
-  jaConcluidos: z.array(z.object({ dbvId: Uuid, requisitoId: Uuid, concluidoEm: DataCivil })),
+  /** Marcações sem efeito: já concluído (a data mais antiga vale — pode mover a conclusão para esta
+   *  aula), requisito que deixou de ser da classe ou ficou inativo, ou DBV ausente no próprio envio. */
+  requisitosSemEfeito: z.array(z.object({
+    dbvId: Uuid, requisitoId: Uuid,
+    motivo: z.enum(['JA_CONCLUIDO', 'REQUISITO_INVALIDO', 'AUSENTE']),
+    concluidoEm: DataCivil.nullable(),
+  })),
+  /** Avisos que não recusam o envio (ex.: a aula planejada saiu do cronograma publicado). */
+  avisos: z.array(z.string()),
   totalPontos: z.number().int(),
 })
 export const AulaResumo = z.object({
@@ -168,6 +192,7 @@ export const AulaDetalhe = z.object({
   concluidosNaAula: z.array(MarcaRequisito),
   podeEditar: z.boolean(),
 })
+export const AulasFiltro = z.object({ anoClube: z.coerce.number().int().optional() })
 // GET /classes/:id/aulas?anoClube → AulaResumo[] (data decrescente) · GET /aulas/:id → AulaDetalhe
 
 // ═══════════════ ARQUIVO: contratos/sync.ts (ALTERA PacoteSaida: acrescenta `instrutor`) ═══════════════
@@ -260,7 +285,8 @@ export const ObservacaoSaida = z.object({
   dbv: z.object({ id: Uuid, nome: z.string() }).nullable(),
   titulo: z.string().nullable(), texto: z.string(),
   autor: z.string(), criadaEm: InstanteIso, editadaEm: InstanteIso.nullable(),
-  podeEditar: z.boolean(),
+  podeEditar: z.boolean(),   // só o autor
+  podeApagar: z.boolean(),   // autor ou Adm
 })
 // GET /observacoes?classeId&alvo&dbvId → ObservacaoSaida[] (criadaEm ↓) · POST → ObservacaoSaida 201
 // PATCH /observacoes/:id → ObservacaoSaida · DELETE → 204
@@ -347,6 +373,8 @@ export const ConfiguracaoClubeSaida = z.object({
 
 // ═══════════════ ARQUIVO: contratos/classes.ts (ACRESCENTA — ajustes do clube, Fase 3) ═══════════════
 export const ClasseClubeEditarEntrada = z.object({ ativa: z.boolean(), quemMontaCronograma: z.enum(['ADM', 'INSTRUTOR']) }).partial()
+/** RequisitoSaida (classes.ts) ALTERA: ganha `oficial: z.object({ ativo: z.boolean(), campo: z.boolean() }).optional()`
+ *  e `ajustado: z.boolean().optional()` — preenchidos em GET /classes/:id para quem tem classe.gerenciar. */
 /** null = volta a seguir o oficial. */
 export const RequisitoAjusteEntrada = z.object({ ativo: z.boolean().nullable(), campo: z.boolean().nullable() }).partial()
 // PATCH /classes/:id {ClasseClubeEditarEntrada} → ClasseDetalheSaida

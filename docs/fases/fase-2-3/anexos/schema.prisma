@@ -909,9 +909,8 @@ model RegistroAula {
   observacoes   Observacao[]
   envios        EnvioAulaProcessado[]
 
-  @@unique([classeId, data])
+  @@unique([clubeId, classeId, data])
   @@unique([clubeId, id])
-  @@index([clubeId, classeId, data])
 }
 
 // FASE 2-3 — presença por DBV na aula; `versao` para conflito, como a Chamada.
