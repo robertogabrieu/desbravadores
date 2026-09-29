@@ -23,6 +23,7 @@ cat > "$ENV_ARQUIVO" <<ENV
 POSTGRES_SENHA=teste-postgres-$$
 DB_SENHA=teste-app-$$
 JWT_SEGREDO=$(openssl rand -hex 32)
+ARQUIVOS_SEGREDO=$(openssl rand -hex 32)
 WEB_PORTA=$porta_web
 APP_URL=http://localhost:$porta_web
 COOKIE_SECURE=false
@@ -82,6 +83,7 @@ JS
 "$RAIZ/scripts/backup.sh"
 arquivo="$(ls "$tmp/remoto"/desbravadores-*.dump.age | head -1)"
 [ -s "$arquivo" ] || { echo "Nenhum backup chegou ao remoto" >&2; exit 1; }
+[ -s "${arquivo%.dump.age}.arquivos.tar.age" ] || { echo "O backup dos arquivos nao chegou ao remoto" >&2; exit 1; }
 
 "$RAIZ/scripts/restaurar.sh" --arquivo "$arquivo" --chave "$tmp/chave.txt" --banco restaurado
 

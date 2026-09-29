@@ -2,6 +2,7 @@ import type { EuSaida, Papel } from '@desbravadores/shared'
 import { HttpResponse, http } from 'msw'
 import type { z } from 'zod'
 import type { Sessao } from '../../api/cliente'
+import { handlerPacote } from './offline'
 
 export type Eu = z.infer<typeof EuSaida>
 export type Vinculo = Sessao['vinculos'][number]
@@ -44,6 +45,7 @@ export function handlersSessao(vinculos: Vinculo[] = [criarVinculo('ADM')], vinc
     http.get('/api/eu', () => HttpResponse.json(criarEu(vinculos, vinculoAtivoId, permissoes))),
     http.post('/api/auth/logout', () => new HttpResponse(null, { status: 204 })),
     http.post('/api/auth/sair-de-todos', () => new HttpResponse(null, { status: 204 })),
+    handlerPacote(),
   ]
 }
 

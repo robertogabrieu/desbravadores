@@ -1,14 +1,23 @@
 import { ErroApi as EsquemaErroApi, SessaoSaida } from '@desbravadores/shared'
 import type { z } from 'zod'
+import type { ClasseFalha } from '../offline/tipos'
 
 export type Sessao = z.infer<typeof SessaoSaida>
 export type ErroApi = z.infer<typeof EsquemaErroApi>
+
+/** SPEC Fase 1 E4: status 0 → rede; 5xx → servidor; 4xx sem `ErroApi` válido (portal de Wi-Fi) → rede; 4xx com `ErroApi` → recusa. */
+export function classificarStatus(status: number, corpoValido: boolean): ClasseFalha {
+  if (status === 0) return 'REDE'
+  if (status >= 500) return 'SERVIDOR'
+  return corpoValido ? 'RECUSA' : 'REDE'
+}
 
 /** Erro devolvido pela API (ou fabricado quando a resposta não segue o contrato). */
 export class ErroDaApi extends Error {
   constructor(
     readonly status: number,
     readonly erro: ErroApi,
+    readonly classe: ClasseFalha = classificarStatus(status, true),
   ) {
     super(erro.mensagem)
     this.name = 'ErroDaApi'
@@ -27,6 +36,10 @@ interface Ouvintes {
   aoSessaoPerdida?: () => void
   /** 403 VINCULO_INATIVO numa requisição comum: a sessão precisa ser relida. */
   aoVinculoInativo?: () => void
+  /** Uma requisição não chegou à API (status 0): a conexão caiu. */
+  aoFalhaDeRede?: () => void
+  /** A API respondeu 2xx: houve contato real (atualiza o `ultimoContatoEm`). */
+  aoContato?: () => void
 }
 
 const ROTA_DE_REFRESH = '/api/auth/refresh'
@@ -68,26 +81,40 @@ async function enviar(caminho: string, opcoes: OpcoesRequisicao): Promise<Respon
   if (tokenAcesso) cabecalhos['Authorization'] = `Bearer ${tokenAcesso}`
   if (opcoes.corpo !== undefined) cabecalhos['Content-Type'] = 'application/json'
 
+  let resposta: Response
   try {
-    return await fetch(caminho, {
+    resposta = await fetch(caminho, {
       method: opcoes.metodo ?? 'GET',
       headers: cabecalhos,
       credentials: 'same-origin',
       body: opcoes.corpo === undefined ? undefined : JSON.stringify(opcoes.corpo),
     })
   } catch {
+    ouvintes.aoFalhaDeRede?.()
     throw new ErroDaApi(0, { codigo: 'ERRO_INTERNO', mensagem: 'Sem conexão. Confira a internet e tente de novo.' })
   }
+  if (resposta.ok) ouvintes.aoContato?.()
+  return resposta
+}
+
+/** Monta o erro de uma resposta que não é 2xx, ou de um corpo já lido (XHR), aplicando a classificação E4. */
+export function erroDeResposta(status: number, corpo: unknown): ErroDaApi {
+  const lido = EsquemaErroApi.safeParse(corpo)
+  return new ErroDaApi(
+    status,
+    lido.success ? lido.data : { codigo: 'ERRO_INTERNO', mensagem: MENSAGEM_GENERICA },
+    classificarStatus(status, lido.success),
+  )
 }
 
 async function lerErro(resposta: Response): Promise<ErroDaApi> {
   const corpo: unknown = await resposta.json().catch(() => null)
-  const lido = EsquemaErroApi.safeParse(corpo)
-  return new ErroDaApi(
-    resposta.status,
-    lido.success ? lido.data : { codigo: 'ERRO_INTERNO', mensagem: MENSAGEM_GENERICA },
-  )
+  return erroDeResposta(resposta.status, corpo)
 }
+
+/** 2xx que não é o JSON esperado (portal de Wi-Fi, proxy): conta como rede (E4). */
+const erroForaDoContrato = (status: number): ErroDaApi =>
+  new ErroDaApi(status, { codigo: 'ERRO_INTERNO', mensagem: MENSAGEM_GENERICA }, 'REDE')
 
 function tratarVinculoInativo(erro: ErroDaApi, avisarSessao: boolean): void {
   if (erro.status !== 403 || erro.erro.codigo !== 'VINCULO_INATIVO') return
@@ -102,9 +129,10 @@ async function chamarRefresh(): Promise<Sessao> {
     tratarVinculoInativo(erro, false)
     throw erro
   }
-  const sessao = SessaoSaida.parse(await resposta.json())
-  tokenAcesso = sessao.accessToken
-  return sessao
+  const lida = SessaoSaida.safeParse(await resposta.json().catch(() => undefined))
+  if (!lida.success) throw erroForaDoContrato(resposta.status)
+  tokenAcesso = lida.data.accessToken
+  return lida.data
 }
 
 /**
@@ -120,6 +148,19 @@ export function renovarSessao(): Promise<Sessao> {
   return atual
 }
 
+/** Recusa do refresh (401/403 com `ErroApi`, E7) acaba a sessão; vínculo inativo é outra coisa: leva a /papel. */
+export function avisarSeRefreshRecusado(erroRefresh: unknown): void {
+  if (!(erroRefresh instanceof ErroDaApi) || erroRefresh.classe !== 'RECUSA') return
+  if (erroRefresh.status !== 401 && erroRefresh.status !== 403) return
+  if (erroRefresh.erro.codigo === 'VINCULO_INATIVO') return
+  ouvintes.aoSessaoPerdida?.()
+}
+
+/** A repetição autenticada também levou 401: o refresh valeu, mas a sessão não. */
+export function avisarSessaoPerdida(): void {
+  ouvintes.aoSessaoPerdida?.()
+}
+
 async function executar(caminho: string, opcoes: OpcoesRequisicao): Promise<Response> {
   let resposta = await enviar(caminho, opcoes)
 
@@ -128,12 +169,13 @@ async function executar(caminho: string, opcoes: OpcoesRequisicao): Promise<Resp
     try {
       await renovarSessao()
     } catch (erroRefresh) {
-      if (erroRefresh instanceof ErroDaApi && erroRefresh.status === 401) ouvintes.aoSessaoPerdida?.()
+      if (erroRefresh instanceof ErroDaApi && erroRefresh.classe !== 'RECUSA') throw erroRefresh
+      avisarSeRefreshRecusado(erroRefresh)
       throw erroOriginal
     }
     resposta = await enviar(caminho, opcoes)
     if (resposta.status === 401) {
-      ouvintes.aoSessaoPerdida?.()
+      avisarSessaoPerdida()
       throw await lerErro(resposta)
     }
   }
@@ -153,7 +195,17 @@ export async function requisitar<S extends z.ZodType>(
   opcoes: OpcoesRequisicao = {},
 ): Promise<z.output<S>> {
   const resposta = await executar(caminho, opcoes)
-  return esquema.parse(await resposta.json())
+  const lido = esquema.safeParse(await resposta.json().catch(() => undefined))
+  if (!lido.success) throw erroForaDoContrato(resposta.status)
+  return lido.data
+}
+
+/** Como `requisitar`, mas devolve o corpo cru: quem chama valida (o motor da fila valida com a `saida` do tipo). */
+export async function requisitarCru(caminho: string, opcoes: OpcoesRequisicao = {}): Promise<unknown> {
+  const resposta = await executar(caminho, opcoes)
+  const corpo: unknown = await resposta.json().catch(() => undefined)
+  if (corpo === undefined) throw erroForaDoContrato(resposta.status)
+  return corpo
 }
 
 /** Requisição cuja resposta é 204 (logout, convite reenviado…). */

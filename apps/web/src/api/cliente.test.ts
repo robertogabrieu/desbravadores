@@ -93,6 +93,19 @@ describe('cliente da API', () => {
     expect(sessaoPerdida).toHaveBeenCalledTimes(1)
   })
 
+  it('refresh recusado com 403 (ErroApi) também derruba a sessão, como o 401', async () => {
+    const sessaoPerdida = vi.fn()
+    configurarCliente({ aoSessaoPerdida: sessaoPerdida })
+    servidor.use(
+      http.post('/api/auth/refresh', () => HttpResponse.json({ codigo: 'SEM_PERMISSAO', mensagem: 'negado' }, { status: 403 })),
+      http.get('/api/coisa', () => HttpResponse.json({ codigo: 'NAO_AUTENTICADO', mensagem: 'expirou' }, { status: 401 })),
+    )
+
+    await expect(requisitar('/api/coisa', Coisa)).rejects.toBeInstanceOf(ErroDaApi)
+
+    expect(sessaoPerdida).toHaveBeenCalledTimes(1)
+  })
+
   it('401 de rota de autenticação (login errado) não dispara refresh', async () => {
     let refresh = 0
     servidor.use(

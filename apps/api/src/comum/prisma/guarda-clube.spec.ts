@@ -72,12 +72,21 @@ describe('guarda de clube: modelos de clube', () => {
   it('a lista de modelos de clube e a do SPEC 5.1', () => {
     expect([...MODELOS_DE_CLUBE].sort()).toEqual(
       [
+        'Album',
+        'Arquivo',
+        'Chamada',
+        'ChamadaAlteracao',
         'ClasseClube',
         'CriterioRanking',
         'Desbravador',
+        'EnvioProcessado',
+        'Foto',
+        'LancamentoPontos',
         'MatriculaClasse',
         'MembroUnidade',
+        'PedidoAoAdm',
         'RequisitoAjuste',
+        'Reuniao',
         'Unidade',
         'Vinculo',
         'VinculoUnidade',

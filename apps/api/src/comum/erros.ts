@@ -17,6 +17,7 @@ export const STATUS_POR_CODIGO: Record<CodigoErro, number> = {
   REGRA: 422,
   LIMITE_EXCEDIDO: 429,
   ERRO_INTERNO: 500,
+  TEMPORARIO: 503,
 }
 
 /** Erro esperado, que vira o `ErroApi` da resposta com o status do codigo. A mensagem vai pronta para a tela. */

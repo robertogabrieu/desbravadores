@@ -1,7 +1,8 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
+import { tempos } from '../offline/tempos'
 import { servidor } from '../testes/servidor'
 import { criarVinculo, handlerSemSessao, handlersSessao } from '../testes/handlers/sessao'
 import { renderizarRotas } from '../testes/renderizar'
@@ -19,6 +20,7 @@ const rotas: RouteObject[] = [
   { path: '/', element: <RedirecionamentoRaiz /> },
   { path: '/login', element: <p>tela de login</p> },
   { path: '/papel', element: <p>tela de papel</p> },
+  { path: '/conectar', element: <p>tela de conectar</p> },
   { path: '/inicio', element: <p>tela de inicio</p> },
   { path: '/adm/desbravadores', element: <p>tela adm</p> },
   {
@@ -112,15 +114,13 @@ describe('guarda de rota', () => {
     expect(logout).toBe(1)
   })
 
-  it('erro inesperado no boot (refresh malformado) termina em /login e fica no console', async () => {
-    const consoleErro = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+  it('refresh com 200 fora do contrato conta como rede: sem identidade guardada vai a /conectar', async () => {
+    tempos.novaTentativaAberturaMs = 1
     servidor.use(http.post('/api/auth/refresh', () => HttpResponse.json({ lixo: true })))
 
     const { roteador } = renderizarRotas(rotas, '/privada')
 
-    await screen.findByText('tela de login')
-    expect(roteador.state.location.pathname).toBe('/login')
-    expect(consoleErro).toHaveBeenCalled()
-    consoleErro.mockRestore()
+    await screen.findByText('tela de conectar')
+    expect(roteador.state.location.pathname).toBe('/conectar')
   })
 })

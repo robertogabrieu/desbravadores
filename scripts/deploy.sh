@@ -10,6 +10,11 @@ docker compose version >/dev/null 2>&1 || { echo "Docker Compose nao encontrado.
 
 if [ -f "$ENV_ARQUIVO" ]; then
   echo "$ENV_ARQUIVO ja existe: mantendo os segredos atuais."
+  # .env de antes das fotos: so o segredo dos links de arquivo e novo.
+  if ! grep -q '^ARQUIVOS_SEGREDO=' "$ENV_ARQUIVO"; then
+    echo "ARQUIVOS_SEGREDO=$(openssl rand -hex 32)" >> "$ENV_ARQUIVO"
+    echo "Acrescentado ARQUIVOS_SEGREDO ao $ENV_ARQUIVO."
+  fi
 else
   WEB_PORTA_ESCOLHIDA="${WEB_PORTA:-8090}"
   APP_URL_ESCOLHIDA="${1:-${APP_URL:-http://localhost:$WEB_PORTA_ESCOLHIDA}}"
@@ -18,6 +23,7 @@ else
 POSTGRES_SENHA=$(openssl rand -hex 24)
 DB_SENHA=$(openssl rand -hex 24)
 JWT_SEGREDO=$(openssl rand -hex 32)
+ARQUIVOS_SEGREDO=$(openssl rand -hex 32)
 WEB_PORTA=$WEB_PORTA_ESCOLHIDA
 APP_URL=$APP_URL_ESCOLHIDA
 COOKIE_SECURE=true

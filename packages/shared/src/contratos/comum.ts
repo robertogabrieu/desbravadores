@@ -35,6 +35,7 @@ export const CODIGOS_ERRO = [
   'REGRA',              // 422 — outra regra de negócio (mensagem explica)
   'LIMITE_EXCEDIDO',    // 429
   'ERRO_INTERNO',       // 500 — mensagem genérica; detalhe só no log
+  'TEMPORARIO',         // 503 — corrida ou indisponibilidade que a fila deve repetir
 ] as const
 export const CodigoErro = z.enum(CODIGOS_ERRO)
 export const ErroApi = z.object({

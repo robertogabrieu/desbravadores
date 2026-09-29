@@ -1,5 +1,7 @@
 import { execFileSync } from 'node:child_process'
-import { resolve } from 'node:path'
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 import { carregarAmbienteTeste, variavelObrigatoria } from './ambiente'
 import { apagarBanco, criarBancoTemporario } from './banco'
 
@@ -24,4 +26,6 @@ export default async function globalSetup(): Promise<void> {
 
   process.env['DATABASE_URL'] = banco.url
   process.env['TESTE_BANCO_NOME'] = banco.nome
+  process.env['ARQUIVOS_DIR'] = mkdtempSync(join(tmpdir(), 'arquivos-teste-'))
+  process.env['TESTE_ARQUIVOS_DIR'] = process.env['ARQUIVOS_DIR']
 }

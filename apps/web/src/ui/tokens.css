@@ -30,6 +30,8 @@
   --color-danger: #B42318;
   --color-warning: #9A3412;
   --color-warning-bg: #FBEFE3;
+  --color-offline-bg: #3A2A12;     /* faixa "Sem conexão" */
+  --color-offline-fg: #FDEBD2;
   --color-field: #3F6212;          /* acampamento / requisito de campo */
   --color-field-bg: #E6F0D4;
 

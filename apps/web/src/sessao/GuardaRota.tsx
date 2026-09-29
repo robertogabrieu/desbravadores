@@ -16,6 +16,7 @@ export function GuardaRota({ semVinculo = false, papeis }: Propriedades) {
 
   if (situacao === 'carregando') return <TelaCarregando />
   if (situacao === 'anonima') return <Navigate to="/login" replace />
+  if (situacao === 'sem-conexao') return <Navigate to="/conectar" replace />
   if (!semVinculo && papel === null) return <Navigate to="/papel" replace />
   if (papeis && papel !== null && !papeis.includes(papel)) return <Navigate to="/" replace />
   return <Outlet />

@@ -12,6 +12,8 @@ export interface PedidoContraOutroClube {
   metodo: Metodo
   caminho: string
   corpo?: object
+  /** Corpo multipart: campos de texto e arquivos anexados. Vale no lugar de `corpo`. */
+  anexos?: { campos?: Record<string, string>; arquivos: { campo: string; conteudo: Buffer; nome: string; tipo: string }[] }
   /** Ids do clube B que nao podem aparecer na resposta (para rotas de lista). */
   idsDoOutroClube?: string[]
   /** Roda depois da tentativa do clube A: confere que o dado do clube B nao mudou. */
@@ -43,6 +45,13 @@ export function testarIsolamento(rota: RotaParaIsolar): void {
     const servidor = (): Server => rota.app().getHttpServer() as Server
     const enviar = async (autorizacao: string): Promise<request.Response> => {
       const req = request(servidor())[pedido.metodo](pedido.caminho).set('Authorization', autorizacao)
+      if (pedido.anexos) {
+        for (const [nome, valor] of Object.entries(pedido.anexos.campos ?? {})) req.field(nome, valor)
+        for (const { campo, conteudo, nome, tipo } of pedido.anexos.arquivos) {
+          req.attach(campo, conteudo, { filename: nome, contentType: tipo })
+        }
+        return req
+      }
       return pedido.corpo ? req.send(pedido.corpo) : req
     }
 

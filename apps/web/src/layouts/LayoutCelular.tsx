@@ -1,9 +1,12 @@
 import { CalendarDays, GraduationCap, House, Trophy, Users } from 'lucide-react'
 import { Outlet } from 'react-router-dom'
 import { useSessao } from '../sessao/useSessao'
+import { FaixaSemConexao } from './FaixaSemConexao'
+import { FaixaSessaoExpirada } from './FaixaSessaoExpirada'
 import { ItemNavegacao } from './ItemNavegacao'
 import type { ItemDeNavegacao } from './ItemNavegacao'
 import { MenuUsuario } from './MenuUsuario'
+import { SeloAguardandoEnvio } from './SeloAguardandoEnvio'
 
 const INICIO: ItemDeNavegacao = { rotulo: 'Início', icone: House, para: '/inicio' }
 const RANKING: ItemDeNavegacao = { rotulo: 'Ranking', icone: Trophy }
@@ -21,9 +24,14 @@ export function LayoutCelular() {
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-[480px] flex-col bg-fundo">
-      <header className="flex items-center justify-between bg-marca px-4 text-white">
+      <FaixaSessaoExpirada />
+      <FaixaSemConexao />
+      <header className="flex items-center justify-between gap-2 bg-marca px-4 text-white">
         <span className="font-titulo text-lg font-bold">Desbravadores</span>
-        <MenuUsuario />
+        <div className="flex items-center gap-1">
+          <SeloAguardandoEnvio />
+          <MenuUsuario />
+        </div>
       </header>
       <main className="flex-1 pb-[var(--bottom-nav-h)]">
         <Outlet />

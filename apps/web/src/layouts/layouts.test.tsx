@@ -1,7 +1,8 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { EstadoFila, ModoConexao, ModoSessao } from '../offline'
 import { simularLargura } from '../testes/midia'
 import { servidor } from '../testes/servidor'
 import { criarVinculo, handlersSessao } from '../testes/handlers/sessao'
@@ -9,6 +10,25 @@ import { renderizarRotas } from '../testes/renderizar'
 import { LayoutAdm } from './LayoutAdm'
 import { LayoutCelular } from './LayoutCelular'
 import type { RouteObject } from 'react-router-dom'
+
+const offline = vi.hoisted(() => ({
+  modo: 'ONLINE' as ModoConexao,
+  modoSessao: null as ModoSessao | null,
+  contagem: { pendentes: 0, erros: 0 },
+}))
+
+vi.mock('../offline', () => ({
+  useConexao: () => ({ modo: offline.modo }),
+  useModoSessao: () => offline.modoSessao ?? offline.modo,
+  useFila: () => ({ contagem: offline.contagem }) as EstadoFila,
+  limparDadosDoUsuario: () => Promise.resolve(),
+}))
+
+beforeEach(() => {
+  offline.modo = 'ONLINE'
+  offline.modoSessao = null
+  offline.contagem = { pendentes: 0, erros: 0 }
+})
 
 const rotasCelular: RouteObject[] = [
   {
@@ -19,10 +39,16 @@ const rotasCelular: RouteObject[] = [
     ],
   },
   { path: '/papel', element: <p>tela de papel</p> },
+  { path: '/fila', element: <p>tela da fila</p> },
 ]
 const rotasAdm: RouteObject[] = [
   { element: <LayoutAdm />, children: [{ path: '/adm/desbravadores', element: <p>lista</p> }] },
 ]
+
+/** O layout monta antes de a sessão carregar (sem papel, mostra o menu do Adm): espera o nome no cabeçalho. */
+async function esperarSessao(): Promise<void> {
+  await screen.findByRole('button', { name: /Ana Souza/ })
+}
 
 function itemDoMenu(nome: string): HTMLElement {
   const navegacao = screen.getByRole('navigation')
@@ -34,6 +60,7 @@ describe('LayoutCelular', () => {
     servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO')]))
     renderizarRotas(rotasCelular, '/inicio')
     await screen.findByText('conteúdo')
+    await esperarSessao()
 
     expect(itemDoMenu('Início')).toHaveAttribute('href', '/inicio')
     expect(itemDoMenu('Unidade')).toHaveAttribute('href', '/unidade')
@@ -47,6 +74,7 @@ describe('LayoutCelular', () => {
     servidor.use(...handlersSessao([criarVinculo('INSTRUTOR')]))
     renderizarRotas(rotasCelular, '/inicio')
     await screen.findByText('conteúdo')
+    await esperarSessao()
 
     expect(itemDoMenu('Início')).toHaveAttribute('href', '/inicio')
     for (const nome of ['Classes', 'Cronograma', 'Ranking']) {
@@ -59,6 +87,7 @@ describe('LayoutCelular', () => {
     servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO')]))
     const { roteador } = renderizarRotas(rotasCelular, '/inicio')
     await screen.findByText('conteúdo')
+    await esperarSessao()
 
     await userEvent.click(itemDoMenu('Reuniões'))
 
@@ -134,5 +163,182 @@ describe('LayoutAdm', () => {
 
     expect(await screen.findByText('O painel do Adm é melhor no computador')).toBeInTheDocument()
     expect(screen.getByText('lista')).toBeInTheDocument()
+  })
+})
+
+describe('Faixa "Sem conexão"', () => {
+  it('celular: online não mostra a faixa', async () => {
+    servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO')]))
+    renderizarRotas(rotasCelular, '/inicio')
+    await screen.findByText('conteúdo')
+    expect(screen.queryByText('Sem conexão')).not.toBeInTheDocument()
+  })
+
+  it('celular: em SEM_CONEXAO mostra a faixa', async () => {
+    offline.modo = 'SEM_CONEXAO'
+    servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO')]))
+    renderizarRotas(rotasCelular, '/inicio')
+
+    expect(await screen.findByText('Sem conexão')).toBeInTheDocument()
+    expect(screen.getByText('conteúdo')).toBeInTheDocument()
+  })
+
+  it('Adm: em SEM_CONEXAO mostra a faixa; online não', async () => {
+    offline.modo = 'SEM_CONEXAO'
+    servidor.use(...handlersSessao([criarVinculo('ADM')]))
+    const { unmount } = renderizarRotas(rotasAdm, '/adm/desbravadores')
+    expect(await screen.findByText('Sem conexão')).toBeInTheDocument()
+    unmount()
+
+    offline.modo = 'ONLINE'
+    renderizarRotas(rotasAdm, '/adm/desbravadores')
+    await screen.findByText('lista')
+    expect(screen.queryByText('Sem conexão')).not.toBeInTheDocument()
+  })
+})
+
+describe('Faixa "Sessão expirada"', () => {
+  it('celular: expirada mostra a faixa e "Entrar de novo" faz o logout', async () => {
+    let logouts = 0
+    offline.modoSessao = 'EXPIRADA'
+    servidor.use(
+      http.post('/api/auth/logout', () => {
+        logouts += 1
+        return new HttpResponse(null, { status: 204 })
+      }),
+      ...handlersSessao([criarVinculo('CONSELHEIRO')]),
+    )
+    renderizarRotas(rotasCelular, '/inicio')
+
+    expect(await screen.findByText('Sua sessão expirou — salve e entre de novo')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Entrar de novo' }))
+
+    await waitFor(() => expect(logouts).toBe(1))
+  })
+
+  it('Adm: expirada mostra a faixa; online não', async () => {
+    offline.modoSessao = 'EXPIRADA'
+    servidor.use(...handlersSessao([criarVinculo('ADM')]))
+    const { unmount } = renderizarRotas(rotasAdm, '/adm/desbravadores')
+    expect(await screen.findByText('Sua sessão expirou — salve e entre de novo')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Entrar de novo' })).toBeInTheDocument()
+    unmount()
+
+    offline.modoSessao = null
+    renderizarRotas(rotasAdm, '/adm/desbravadores')
+    await screen.findByText('lista')
+    expect(screen.queryByText('Sua sessão expirou — salve e entre de novo')).not.toBeInTheDocument()
+  })
+
+  it('expirada vence: sem conexão e expirada mostra só a faixa de sessão', async () => {
+    offline.modo = 'SEM_CONEXAO'
+    offline.modoSessao = 'EXPIRADA'
+    servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO')]))
+    renderizarRotas(rotasCelular, '/inicio')
+
+    await screen.findByText('Sua sessão expirou — salve e entre de novo')
+    expect(screen.queryByText('Sem conexão')).not.toBeInTheDocument()
+  })
+})
+
+describe('Selo "aguardando envio" no cabeçalho do celular', () => {
+  it('sem itens: não aparece', async () => {
+    servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO')]))
+    renderizarRotas(rotasCelular, '/inicio')
+    await screen.findByText('conteúdo')
+    expect(screen.queryByRole('link', { name: /aguardando envio/ })).not.toBeInTheDocument()
+  })
+
+  it('soma pendentes e erros e leva a /fila', async () => {
+    offline.contagem = { pendentes: 2, erros: 1 }
+    servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO')]))
+    const { roteador } = renderizarRotas(rotasCelular, '/inicio')
+
+    await userEvent.click(await screen.findByRole('link', { name: '3 aguardando envio' }))
+
+    expect(roteador.state.location.pathname).toBe('/fila')
+  })
+
+  it('com erro usa a cor de alerta; sem erro, não', async () => {
+    offline.contagem = { pendentes: 1, erros: 1 }
+    servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO')]))
+    const { unmount } = renderizarRotas(rotasCelular, '/inicio')
+    expect(await screen.findByText('2 aguardando envio')).toHaveAttribute('data-tom', 'alerta')
+    unmount()
+
+    offline.contagem = { pendentes: 2, erros: 0 }
+    renderizarRotas(rotasCelular, '/inicio')
+    expect(await screen.findByText('2 aguardando envio')).toHaveAttribute('data-tom', 'neutro')
+  })
+})
+
+describe('Sair com fila (1a-A3)', () => {
+  let logouts = 0
+  let sairDeTodos = 0
+  beforeEach(() => {
+    logouts = 0
+    sairDeTodos = 0
+    servidor.use(
+      http.post('/api/auth/logout', () => {
+        logouts += 1
+        return new HttpResponse(null, { status: 204 })
+      }),
+      http.post('/api/auth/sair-de-todos', () => {
+        sairDeTodos += 1
+        return new HttpResponse(null, { status: 204 })
+      }),
+      ...handlersSessao([criarVinculo('CONSELHEIRO')]),
+    )
+  })
+
+  async function abrirMenu(item: string) {
+    await userEvent.click(await screen.findByRole('button', { name: /Ana Souza/ }))
+    await userEvent.click(screen.getByRole('menuitem', { name: item }))
+  }
+
+  it('sem fila sai direto, sem confirmação', async () => {
+    renderizarRotas(rotasCelular, '/inicio')
+    await abrirMenu('Sair')
+
+    await waitFor(() => expect(logouts).toBe(1))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('com fila pede confirmação e só sai depois de confirmar', async () => {
+    offline.contagem = { pendentes: 2, erros: 1 }
+    renderizarRotas(rotasCelular, '/inicio')
+    await abrirMenu('Sair')
+
+    const painel = await screen.findByRole('dialog')
+    expect(painel).toHaveTextContent('Há 3 itens esperando envio. Eles ficam guardados neste celular e só serão enviados quando você entrar de novo.')
+    expect(logouts).toBe(0)
+
+    await userEvent.click(within(painel).getByRole('button', { name: 'Sair' }))
+
+    await waitFor(() => expect(logouts).toBe(1))
+  })
+
+  it('cancelar a confirmação mantém a sessão', async () => {
+    offline.contagem = { pendentes: 1, erros: 0 }
+    renderizarRotas(rotasCelular, '/inicio')
+    await abrirMenu('Sair')
+
+    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Cancelar' }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(logouts).toBe(0)
+    expect(screen.getByText('conteúdo')).toBeInTheDocument()
+  })
+
+  it('"Sair de todos os aparelhos" com fila também confirma antes', async () => {
+    offline.contagem = { pendentes: 0, erros: 2 }
+    renderizarRotas(rotasCelular, '/inicio')
+    await abrirMenu('Sair de todos os aparelhos')
+
+    const painel = await screen.findByRole('dialog')
+    expect(sairDeTodos).toBe(0)
+    await userEvent.click(within(painel).getByRole('button', { name: 'Sair de todos os aparelhos' }))
+
+    await waitFor(() => expect(sairDeTodos).toBe(1))
   })
 })
