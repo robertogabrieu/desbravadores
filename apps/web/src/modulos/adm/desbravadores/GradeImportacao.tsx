@@ -166,7 +166,7 @@ export function GradeImportacao({ linhas, unidades, classes, aoEditar, aoMarcar 
                           </li>
                         ))}
                         {linha.avisos.map((aviso) => (
-                          <li key={`${aviso.codigo}-${aviso.mensagem}`} className="text-alerta">
+                          <li key={`${aviso.codigo}-${aviso.mensagem}`} className="text-texto-2">
                             <span className="font-bold">Aviso:</span> <span>{aviso.mensagem}</span>
                           </li>
                         ))}
