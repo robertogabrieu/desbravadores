@@ -136,7 +136,7 @@ describe('LayoutCelular', () => {
 })
 
 describe('LayoutAdm', () => {
-  it('habilita Desbravadores, Usuários, Unidades e Ranking; o resto fica "em breve"', async () => {
+  it('habilita todos os itens do menu, menos Relatórios, que fica "em breve"', async () => {
     servidor.use(...handlersSessao([criarVinculo('ADM')]))
     renderizarRotas(rotasAdm, '/adm/desbravadores')
     await screen.findByText('lista')
@@ -145,9 +145,12 @@ describe('LayoutAdm', () => {
     expect(itemDoMenu('Usuários')).toHaveAttribute('href', '/adm/usuarios')
     expect(itemDoMenu('Unidades')).toHaveAttribute('href', '/adm/unidades')
     expect(itemDoMenu('Ranking')).toHaveAttribute('href', '/ranking')
-    for (const nome of ['Visão geral', 'Classes e especialidades', 'Calendário do clube', 'Cronogramas', 'Relatórios']) {
-      expect(itemDoMenu(nome)).toHaveAttribute('aria-disabled', 'true')
-    }
+    expect(itemDoMenu('Visão geral')).toHaveAttribute('href', '/adm')
+    expect(itemDoMenu('Classes e especialidades')).toHaveAttribute('href', '/adm/classes')
+    expect(itemDoMenu('Calendário do clube')).toHaveAttribute('href', '/adm/calendario')
+    expect(itemDoMenu('Cronogramas')).toHaveAttribute('href', '/adm/cronogramas')
+    expect(itemDoMenu('Configurações do clube')).toHaveAttribute('href', '/adm/configuracoes')
+    expect(itemDoMenu('Relatórios')).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('largura de 1280 px: sem faixa', async () => {

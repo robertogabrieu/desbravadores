@@ -1,7 +1,4 @@
 import type { RouteObject } from 'react-router-dom'
-import { EstadoVazio } from '../../../ui/EstadoVazio'
+import { AdmCalendario } from './AdmCalendario'
 
-// Provisório da onda 0: o pacote da tela troca pelo componente real.
-export const rotasAdmCalendario: RouteObject[] = [
-  { path: '/adm/calendario', element: <EstadoVazio titulo="Em breve" descricao="Esta tela ainda está sendo preparada." /> },
-]
+export const rotasAdmCalendario: RouteObject[] = [{ path: '/adm/calendario', element: <AdmCalendario /> }]

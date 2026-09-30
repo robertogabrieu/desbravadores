@@ -1,7 +1,4 @@
 import type { RouteObject } from 'react-router-dom'
-import { EstadoVazio } from '../../../ui/EstadoVazio'
+import { AdmConfiguracoes } from './AdmConfiguracoes'
 
-// Provisório da onda 0: o pacote da tela troca pelo componente real.
-export const rotasAdmConfiguracoes: RouteObject[] = [
-  { path: '/adm/configuracoes', element: <EstadoVazio titulo="Em breve" descricao="Esta tela ainda está sendo preparada." /> },
-]
+export const rotasAdmConfiguracoes: RouteObject[] = [{ path: '/adm/configuracoes', element: <AdmConfiguracoes /> }]
