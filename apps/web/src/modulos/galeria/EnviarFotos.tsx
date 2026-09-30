@@ -101,7 +101,8 @@ function FormularioDeEnvio({ unidades, unidadeId, aoTrocarUnidade, reuniaoDoLink
       vigente = false
     }
   }, [unidadeId, hoje])
-  const chamadaDeHoje = chamadaNaFila || (reunioesDoMes.data?.some((reuniao) => reuniao.data === hoje) ?? false)
+  const chamadaNoPacote = pacote?.reunioesRecentes.some((reuniao) => reuniao.unidadeId === unidadeId && reuniao.data === hoje) ?? false
+  const chamadaDeHoje = chamadaNaFila || chamadaNoPacote || (reunioesDoMes.data?.some((reuniao) => reuniao.data === hoje) ?? false)
 
   const albumDoLinkNoServidor = useAlbum(albumDoLink, online)
   const semAutorizacao = useSemAutorizacao(unidadeId, online)

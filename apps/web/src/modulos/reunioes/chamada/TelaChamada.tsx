@@ -2,7 +2,7 @@ import { hojeNoFuso } from '@desbravadores/shared'
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { ErroDaApi } from '../../../api/cliente'
-import { useReuniao } from '../../../api/reunioes'
+import { useReuniao, useReunioes } from '../../../api/reunioes'
 import { useConexao, usePacote } from '../../../offline'
 import type { PacoteGuardado } from '../../../offline'
 import { Campo } from '../../../ui/Campo'
@@ -60,7 +60,6 @@ function ChamadaNova({ pacote, baixadoEm }: PropriedadesModo) {
   if (unidade.membros.length === 0) return <ChamadaVazia titulo="Nenhum desbravador nesta unidade" descricao="Avise o Adm para cadastrar os membros." />
 
   const dataValida = data >= minimo && data <= hoje
-  const existente = pacote.reunioesRecentes.find((r) => r.unidadeId === unidade.id && r.data === data)
   return (
     <>
       {unidades.length > 1 && (
@@ -82,17 +81,45 @@ function ChamadaNova({ pacote, baixadoEm }: PropriedadesModo) {
         erro={dataValida ? undefined : `Escolha uma data entre ${dataCurta(minimo)} e hoje.`}
       />
       {dataValida && (
-        <FormularioChamada
-          key={`${unidade.id}:${data}`}
-          pacote={pacote}
-          baixadoEm={baixadoEm}
-          unidade={unidade}
-          data={data}
-          base={existente ? baseDoPacote(existente) : null}
-        />
+        <ChamadaDaData key={`${unidade.id}:${data}`} pacote={pacote} baixadoEm={baixadoEm} unidade={unidade} data={data} />
       )}
     </>
   )
+}
+
+type Unidade = Pacote['unidades'][number]
+
+interface PropriedadesDaData extends PropriedadesModo {
+  unidade: Unidade
+  data: string
+}
+
+/** A base é o servidor (com internet) ou o pacote (sem conexão); o que está na fila entra por cima, dentro do formulário. */
+function ChamadaDaData(props: PropriedadesDaData) {
+  const { modo } = useConexao()
+  return modo === 'SEM_CONEXAO' ? <ChamadaComBaseDoPacote {...props} /> : <ChamadaComBaseDoServidor {...props} />
+}
+
+function ChamadaComBaseDoPacote({ pacote, baixadoEm, unidade, data }: PropriedadesDaData) {
+  const existente = pacote.reunioesRecentes.find((r) => r.unidadeId === unidade.id && r.data === data)
+  return <FormularioChamada pacote={pacote} baixadoEm={baixadoEm} unidade={unidade} data={data} base={existente ? baseDoPacote(existente) : null} />
+}
+
+function ChamadaComBaseDoServidor(props: PropriedadesDaData) {
+  const { unidade, data } = props
+  const lista = useReunioes(unidade.id, data.slice(0, 7))
+  if (lista.isPending) return <EsqueletoChamada />
+  // Sem resposta do servidor a lista não diz nada: cai para o que o aparelho guardou.
+  if (lista.isError) return <ChamadaComBaseDoPacote {...props} />
+  const existente = lista.data.find((r) => r.data === data)
+  return existente ? <ChamadaComReuniaoDoServidor {...props} reuniaoId={existente.id} /> : <ChamadaComBaseDoPacote {...props} />
+}
+
+function ChamadaComReuniaoDoServidor({ reuniaoId, ...props }: PropriedadesDaData & { reuniaoId: string }) {
+  const detalhe = useReuniao(reuniaoId)
+  if (detalhe.isPending) return <EsqueletoChamada />
+  if (detalhe.isError) return <ChamadaComBaseDoPacote {...props} />
+  return <FormularioChamada pacote={props.pacote} baixadoEm={props.baixadoEm} unidade={props.unidade} data={props.data} base={baseDoDetalhe(detalhe.data)} />
 }
 
 interface PropriedadesEdicao extends PropriedadesModo {

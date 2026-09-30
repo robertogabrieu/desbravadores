@@ -2,12 +2,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
+import { HttpResponse, http } from 'msw'
 import { RouterProvider, createMemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ItemFila, ModoConexao, PacoteGuardado } from '../../../offline'
 import { ContextoDaSessao } from '../../../sessao/useSessao'
 import type { ContextoSessao } from '../../../sessao/useSessao'
 import { criarDetalheReuniao, handlerReuniao, handlerReuniaoRecusada } from '../../../testes/handlers/chamada'
+import { criarResumo } from '../../../testes/handlers/reunioes'
 import { criarPacote } from '../../../testes/handlers/offline'
 import { criarEu, criarVinculo, uuid } from '../../../testes/handlers/sessao'
 import { servidor } from '../../../testes/servidor'
@@ -101,6 +103,7 @@ beforeEach(() => {
   estado.enfileirar.mockClear()
   estado.aviso.success.mockClear()
   guardar()
+  servidor.use(http.get('/api/reunioes', () => HttpResponse.json([])))
 })
 afterEach(() => vi.useRealTimers())
 
@@ -306,6 +309,39 @@ describe('Edição', () => {
     expect(payload.corpo.linhas).toEqual([
       { dbvId: BRUNO, situacao: 'PRESENTE', uniforme: true, biblia: false, licao: false, versaoVista: '2030-03-10T12:01:00.000Z' },
     ])
+  })
+
+  it('chamada nova online: reunião de hoje só no servidor abre como correção, com as versões do servidor', async () => {
+    const doServidor = criarDetalheReuniao({
+      id: uuid(720),
+      data: HOJE,
+      cabecalhoVersao: '2030-03-15T12:00:00.000Z',
+      chamada: [ANA, BRUNO, CARLA].map((dbvId, i) => ({
+        dbvId, nome: ['Ana Clara', 'Bruno Lima', 'Carla Dias'][i] ?? '', nomePublico: 'x',
+        situacao: 'PRESENTE' as const, uniforme: false, biblia: false, licao: false,
+        versao: `2030-03-15T12:0${i}:00.000Z`, pontos: 15,
+      })),
+    })
+    servidor.use(http.get('/api/reunioes', () => HttpResponse.json([criarResumo({ id: doServidor.id, data: HOJE })])), handlerReuniao(doServidor))
+    montar('/reunioes/nova')
+    await screen.findByText('Ana Clara')
+    expect(linha('Bruno Lima').getByRole('button', { name: /Bruno Lima/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(botaoSalvar()).toBeDisabled()
+    await userEvent.click(linha('Bruno Lima').getByRole('button', { name: 'Uniforme' }))
+    await userEvent.click(botaoSalvar())
+    await waitFor(() => expect(estado.enfileirar).toHaveBeenCalledOnce())
+    const { payload } = estado.enfileirar.mock.calls[0]?.[0] as { payload: { reuniaoId: string; correcao: boolean; corpo: { linhas: unknown[] } } }
+    expect(payload).toMatchObject({ reuniaoId: doServidor.id, correcao: true })
+    expect(payload.corpo.linhas).toEqual([
+      { dbvId: BRUNO, situacao: 'PRESENTE', uniforme: true, biblia: false, licao: false, versaoVista: '2030-03-15T12:01:00.000Z' },
+    ])
+  })
+
+  it('chamada nova online sem reunião no servidor nem no pacote segue como chamada nova', async () => {
+    servidor.use(http.get('/api/reunioes', () => HttpResponse.json([])))
+    montar('/reunioes/nova')
+    await screen.findByText('Ana Clara')
+    expect(screen.getByText('Marque os 3 que faltam')).toBeInTheDocument()
   })
 
   it('tocar no cabeçalho envia o cabeçalho com a versão vista', async () => {

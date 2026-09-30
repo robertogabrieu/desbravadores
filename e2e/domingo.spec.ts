@@ -100,7 +100,10 @@ test('domingo: a chamada feita sem rede chega sozinha, entra no histórico e no 
 
   await outra.goto('/ranking')
   await expect(outra.getByText(dbvs[0] ?? '').first()).toBeVisible()
-  await expect(outra.getByText(/\d+ pts/).first()).toBeVisible()
+  // Presente sem chips nos critérios padrão: Presença (10) + Pontualidade (5) = 15 pontos cada.
+  for (const nome of dbvs) {
+    await expect(outra.getByRole('listitem').filter({ hasText: nome }).getByText('15 pts')).toBeVisible()
+  }
   await expect(outra.getByText('Ainda não há pontos neste mês.')).toHaveCount(0)
 
   // Fotos: duas imagens geradas na própria página vão para o álbum da reunião de hoje.

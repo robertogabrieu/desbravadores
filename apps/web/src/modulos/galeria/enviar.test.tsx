@@ -144,6 +144,20 @@ describe('Enviar fotos: álbum', () => {
     expect(entradasEnfileiradas()[0].dependeDe).toBe(`${UNIDADE_AGUIAS.id}:${HOJE}`)
   })
 
+  it('sem conexão, sem item na fila e com a reunião de hoje no pacote: oferece "Reunião de hoje" sem dependência', async () => {
+    estado.modo = 'SEM_CONEXAO'
+    estado.itensDaChave = [{ id: 'x', tipo: 'REUNIAO', estado: 'ENVIADO' } as ItemFila]
+    guardar({ reunioesRecentes: [{ id: uuid(610), unidadeId: UNIDADE_AGUIAS.id, data: HOJE, horario: '09:00', local: null, observacoes: null, cabecalhoVersao: '2030-01-01T00:00:00.000Z', chamada: [] }] })
+    servidor.use(http.get('/api/reunioes', () => HttpResponse.error()))
+    abrir()
+    expect(await screen.findByRole('radio', { name: /Reunião de hoje/ })).toBeInTheDocument()
+    await escolher(foto())
+    await userEvent.click(screen.getByRole('button', { name: 'Enviar 1 foto' }))
+    await waitFor(() => expect(estado.enfileirar).toHaveBeenCalled())
+    const [entrada] = entradasEnfileiradas()
+    expect(entrada.payload.dados.album).toEqual({ tipo: 'REUNIAO', unidadeId: UNIDADE_AGUIAS.id, data: HOJE })
+  })
+
   it('vindo de ?reuniao=, usa a data daquela reunião (REUNIAO)', async () => {
     servidor.use(handlerReuniao(criarReuniao({ id: uuid(600), data: '2030-03-10', unidade: UNIDADE_AGUIAS })))
     abrir(`/galeria/enviar?reuniao=${uuid(600)}`)
