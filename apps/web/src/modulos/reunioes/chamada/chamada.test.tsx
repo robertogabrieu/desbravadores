@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
@@ -208,6 +208,25 @@ describe('Chamada nova', () => {
     await waitFor(() => expect(roteador.state.location.pathname).toBe('/reunioes'))
     expect(estado.aviso.success).toHaveBeenCalledWith('Chamada salva', expect.anything())
     expect(estado.rascunhos.size).toBe(0)
+  })
+
+  it('horário apagado: avisa no campo, desabilita Salvar e não enfileira', async () => {
+    montar('/reunioes/nova')
+    await screen.findByText('Ana Clara')
+    for (const nome of ['Ana Clara', 'Bruno Lima', 'Carla Dias']) {
+      await userEvent.click(linha(nome).getByRole('button', { name: new RegExp(nome) }))
+    }
+    expect(botaoSalvar()).toBeEnabled()
+
+    await userEvent.clear(screen.getByLabelText('Horário'))
+    expect(screen.getByText('Informe o horário')).toBeInTheDocument()
+    expect(botaoSalvar()).toBeDisabled()
+    await userEvent.click(botaoSalvar())
+    expect(estado.enfileirar).not.toHaveBeenCalled()
+
+    fireEvent.change(screen.getByLabelText('Horário'), { target: { value: '10:15' } })
+    expect(screen.queryByText('Informe o horário')).not.toBeInTheDocument()
+    expect(botaoSalvar()).toBeEnabled()
   })
 
   it('a data aceita de hoje menos 30 dias até hoje; fora disso não deixa salvar', async () => {

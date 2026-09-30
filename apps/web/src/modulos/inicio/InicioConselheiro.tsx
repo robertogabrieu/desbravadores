@@ -7,7 +7,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { InicioConselheiro as InicioDaApi } from '../../api/inicio'
 import { useInicioConselheiro } from '../../api/inicio'
-import { useConexao, usePacote } from '../../offline'
+import { useConexao, useFila, usePacote } from '../../offline'
 import type { PacoteGuardado } from '../../offline'
 import { useSessao } from '../../sessao/useSessao'
 import { Avatar } from '../../ui/Avatar'
@@ -17,7 +17,7 @@ import { Esqueleto } from '../../ui/Esqueleto'
 import { Selecao } from '../../ui/Selecao'
 import { rotuloDoPapel } from '../acesso/papeis'
 import { ConviteInstalacao } from './ConviteInstalacao'
-import { Carregando, ErroDeCarga } from './estados'
+import { Carregando, ErroDeCarga } from '../../ui/EstadosDeCarga'
 
 type ProximaReuniao = NonNullable<InicioDaApi['proximaReuniao']>
 type Pacote = NonNullable<PacoteGuardado['pacote']>
@@ -45,8 +45,8 @@ function formatarHorario(horario: string): string {
   return minuto === '00' ? `${Number(hora)}h` : `${Number(hora)}h${minuto}`
 }
 
-/** Próxima reunião calculada do pacote guardado: o próximo dia da semana do clube, hoje inclusive. */
-function proximaReuniaoDoPacote(pacote: Pacote, unidadeId: string): ProximaReuniao {
+/** Próxima reunião calculada do pacote guardado: o próximo dia da semana do clube, hoje inclusive. A chamada também conta como feita se está na fila (descartada, sai da fila). */
+function proximaReuniaoDoPacote(pacote: Pacote, unidadeId: string, chavesNaFila: Set<string>): ProximaReuniao {
   const { fuso, diaReuniao, horaReuniao, localReuniaoPadrao } = pacote.clube
   const hoje = hojeNoFuso(fuso, new Date())
   const inicioDeHoje = new Date(`${hoje}T00:00:00Z`)
@@ -57,7 +57,7 @@ function proximaReuniaoDoPacote(pacote: Pacote, unidadeId: string): ProximaReuni
     horario: horaReuniao,
     local: localReuniaoPadrao,
     ehHoje: data === hoje,
-    chamadaFeita: pacote.reunioesRecentes.some((reuniao) => reuniao.unidadeId === unidadeId && reuniao.data === data),
+    chamadaFeita: chavesNaFila.has(`${unidadeId}:${data}`) || pacote.reunioesRecentes.some((reuniao) => reuniao.unidadeId === unidadeId && reuniao.data === data),
   }
 }
 
@@ -172,6 +172,7 @@ function PainelDaUnidade({ unidades, papel, primeiroNome }: PropriedadesPainel) 
   const consulta = useInicioConselheiro(unidadeId)
   const { modo } = useConexao()
   const { pacote } = usePacote()
+  const { itens: itensDaFila } = useFila()
 
   let conteudo: ReactNode
   if (consulta.data) {
@@ -186,7 +187,7 @@ function PainelDaUnidade({ unidades, papel, primeiroNome }: PropriedadesPainel) 
   } else if (modo === 'SEM_CONEXAO') {
     conteudo = pacote ? (
       <>
-        <CartaoProximaReuniao reuniao={proximaReuniaoDoPacote(pacote, unidadeId)} />
+        <CartaoProximaReuniao reuniao={proximaReuniaoDoPacote(pacote, unidadeId, new Set(itensDaFila.map((item) => item.chave)))} />
         <Numeros dados={null} />
         <Atalhos />
       </>

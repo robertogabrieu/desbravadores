@@ -8,7 +8,7 @@ import { usePacote } from '../../../offline'
 import { Chip } from '../../../ui/Chip'
 import { Esqueleto } from '../../../ui/Esqueleto'
 import { cn } from '../../../ui/cn'
-import { BlocoErro } from '../historico/BlocoErro'
+import { ErroDeCarga } from '../../../ui/EstadosDeCarga'
 import { diaEMes } from '../historico/datas'
 
 type Linha = z.infer<typeof LinhaChamadaSaida>
@@ -88,7 +88,7 @@ export function DetalheReuniao() {
       </div>
     )
   }
-  if (reuniao.isError) return <BlocoErro erro={reuniao.error} aoTentarDeNovo={() => void reuniao.refetch()} />
+  if (reuniao.isError) return <ErroDeCarga erro={reuniao.error} aoTentarDeNovo={() => void reuniao.refetch()} />
 
   const dados = reuniao.data
   const fuso = pacote?.clube.fuso ?? FUSO_PADRAO

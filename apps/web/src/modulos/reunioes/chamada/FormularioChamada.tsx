@@ -1,5 +1,5 @@
 import type { PacoteSaida } from '@desbravadores/shared'
-import { hojeNoFuso } from '@desbravadores/shared'
+import { Horario, hojeNoFuso } from '@desbravadores/shared'
 import { useEffect, useRef, useState } from 'react'
 import type { z } from 'zod'
 import { useSalvarChamada } from '../../../api/reunioes'
@@ -143,7 +143,8 @@ function CorpoChamada({ pacote, baixadoEm, unidade, data, base, chave, reuniaoId
   const exigeTodos = base === null
   const nadaTocado = estado.tocadas.length === 0 && !estado.cabecalhoTocado
   const faltam = exigeTodos ? resumo.semMarca : 0
-  const podeSalvar = !salvar.isPending && (exigeTodos ? faltam === 0 : !nadaTocado)
+  const horarioValido = Horario.safeParse(estado.cabecalho.horario).success
+  const podeSalvar = !salvar.isPending && horarioValido && (exigeTodos ? faltam === 0 : !nadaTocado)
 
   function mudar(proximo: EstadoChamada) {
     setEstado(proximo)
@@ -187,7 +188,7 @@ function CorpoChamada({ pacote, baixadoEm, unidade, data, base, chave, reuniaoId
         ))}
       </ul>
       <section className="flex flex-col gap-3">
-        <Campo rotulo="Horário" type="time" value={cabecalho.horario} onChange={(e) => mudar(editarCabecalho(estado, { horario: e.target.value }))} />
+        <Campo rotulo="Horário" type="time" value={cabecalho.horario} erro={horarioValido ? undefined : 'Informe o horário'} onChange={(e) => mudar(editarCabecalho(estado, { horario: e.target.value }))} />
         <Campo rotulo="Local" value={cabecalho.local} maxLength={120} onChange={(e) => mudar(editarCabecalho(estado, { local: e.target.value }))} />
         <Campo rotulo="Observações" value={cabecalho.observacoes} maxLength={2000} onChange={(e) => mudar(editarCabecalho(estado, { observacoes: e.target.value }))} />
       </section>

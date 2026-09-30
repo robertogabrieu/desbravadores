@@ -12,7 +12,7 @@ import { Esqueleto } from '../../ui/Esqueleto'
 import { EstadoVazio } from '../../ui/EstadoVazio'
 import { Selecao } from '../../ui/Selecao'
 import { cn } from '../../ui/cn'
-import { BlocoErro } from '../reunioes/historico/BlocoErro'
+import { ErroDeCarga } from '../../ui/EstadosDeCarga'
 
 const semAcento = (texto: string): string =>
   texto.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
@@ -75,7 +75,7 @@ export function MinhaUnidade() {
           <Esqueleto className="h-16" />
         </div>
       ) : membros.isError ? (
-        <BlocoErro erro={membros.error} aoTentarDeNovo={() => void membros.refetch()} />
+        <ErroDeCarga erro={membros.error} aoTentarDeNovo={() => void membros.refetch()} />
       ) : membros.data.length === 0 ? (
         <EstadoVazio titulo="Nenhum desbravador nesta unidade." acao={<AvisarAdm key={unidade.id} unidadeId={unidade.id} />} />
       ) : (

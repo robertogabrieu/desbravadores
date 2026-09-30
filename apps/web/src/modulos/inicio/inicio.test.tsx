@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { hojeNoFuso } from '@desbravadores/shared'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ModoConexao, PacoteGuardado } from '../../offline'
+import type { ItemFilaNaTela, ModoConexao, PacoteGuardado } from '../../offline'
 import {
   UNIDADE_AGUIAS,
   UNIDADE_LEOES,
@@ -22,17 +22,20 @@ const CHAVE_IOS = 'convite-instalacao-ios-visto'
 const offline = vi.hoisted(() => ({
   modo: 'ONLINE' as ModoConexao,
   pacote: null as PacoteGuardado['pacote'],
+  fila: [] as ItemFilaNaTela[],
 }))
 
 vi.mock('../../offline', async (importarOriginal) => ({
   ...(await importarOriginal<typeof import('../../offline')>()),
   useConexao: () => ({ modo: offline.modo }),
+  useFila: () => ({ itens: offline.fila }),
   usePacote: () => ({ pacote: offline.pacote, carregando: false, baixadoEm: null }),
 }))
 
 beforeEach(() => {
   offline.modo = 'ONLINE'
   offline.pacote = null
+  offline.fila = []
 })
 
 afterEach(() => {
@@ -108,6 +111,11 @@ type ReunioesDoPacote = NonNullable<PacoteGuardado['pacote']>['reunioesRecentes'
 
 const CONSELHEIRO = criarVinculo('CONSELHEIRO', 1, { unidades: [UNIDADE_AGUIAS] })
 const CONSELHEIRO_DE_DUAS = criarVinculo('CONSELHEIRO', 1, { unidades: [UNIDADE_AGUIAS, UNIDADE_LEOES] })
+
+const itemDaFila = (chave: string): ItemFilaNaTela => ({
+  id: `item-${chave}`, versaoPayload: 1, usuarioId: 'u', vinculoId: 'v', tipo: 'REUNIAO', chave, rotulo: 'Chamada', detalhe: '', payload: {},
+  estado: 'NA_FILA', progresso: 0, tentativas: 0, proximaTentativaEm: null, criadoEm: 0, atualizadoEm: 0, esperandoDependencia: false,
+})
 
 describe('início do conselheiro', () => {
   it('mostra saudação, unidade, próxima reunião, números, atalhos e destaques, sem sino', async () => {
@@ -216,10 +224,10 @@ describe('início do conselheiro', () => {
     expect(await screen.findByText('DBVs na unidade')).toBeInTheDocument()
   })
 
-  it('resposta que foge do contrato cai no estado de erro', async () => {
+  it('resposta que foge do contrato cai no estado de rede ("Disponível quando houver internet")', async () => {
     servidor.use(...handlersSessao([CONSELHEIRO]), http.get('/api/inicio/conselheiro', () => HttpResponse.json({ oi: 1 })))
     renderizarRotas(rotasInicio, '/inicio')
-    expect(await screen.findByRole('button', { name: 'Tentar de novo' })).toBeInTheDocument()
+    expect(await screen.findByText('Disponível quando houver internet')).toBeInTheDocument()
   })
 
   describe('sem conexão', () => {
@@ -252,6 +260,25 @@ describe('início do conselheiro', () => {
       renderizarRotas(rotasInicio, '/inicio')
       expect(await screen.findByText('Chamada feita')).toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'Fazer chamada' })).not.toBeInTheDocument()
+    })
+
+    it('chamada de hoje só na fila: sem "Fazer chamada" e avisa que está feita', async () => {
+      offline.modo = 'SEM_CONEXAO'
+      offline.pacote = pacoteDeHoje()
+      offline.fila = [itemDaFila(`${UNIDADE_AGUIAS.id}:${hoje}`)]
+      servidor.use(...handlersSessao([CONSELHEIRO]))
+      renderizarRotas(rotasInicio, '/inicio')
+      expect(await screen.findByText('Chamada feita')).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Fazer chamada' })).not.toBeInTheDocument()
+    })
+
+    it('item da fila de outra unidade ou de outro dia não conta como chamada feita', async () => {
+      offline.modo = 'SEM_CONEXAO'
+      offline.pacote = pacoteDeHoje()
+      offline.fila = [itemDaFila(`${UNIDADE_LEOES.id}:${hoje}`), itemDaFila(`${UNIDADE_AGUIAS.id}:2020-01-01`)]
+      servidor.use(...handlersSessao([CONSELHEIRO]))
+      renderizarRotas(rotasInicio, '/inicio')
+      expect(await screen.findByRole('link', { name: 'Fazer chamada' })).toBeInTheDocument()
     })
 
     it('sem pacote guardado: "Disponível quando houver internet"', async () => {

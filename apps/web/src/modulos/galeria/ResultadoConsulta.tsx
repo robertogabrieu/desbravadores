@@ -1,8 +1,7 @@
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
-import { ErroDaApi } from '../../api/cliente'
 import { useConexao } from '../../offline'
-import { Carregando, DisponivelComInternet, ErroDeCarga } from '../inicio/estados'
+import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../ui/EstadosDeCarga'
 
 interface PropriedadesEstado {
   consulta: UseQueryResult<unknown, Error>
@@ -13,10 +12,7 @@ interface PropriedadesEstado {
 export function EstadoDaConsulta({ consulta, rotuloCarga }: PropriedadesEstado) {
   const { modo } = useConexao()
   if (modo === 'SEM_CONEXAO') return <DisponivelComInternet />
-  if (consulta.isError) {
-    if (consulta.error instanceof ErroDaApi && consulta.error.classe === 'REDE') return <DisponivelComInternet />
-    return <ErroDeCarga erro={consulta.error} aoTentarDeNovo={() => void consulta.refetch()} />
-  }
+  if (consulta.isError) return <ErroDeCarga erro={consulta.error} aoTentarDeNovo={() => void consulta.refetch()} />
   return <Carregando rotulo={rotuloCarga} />
 }
 

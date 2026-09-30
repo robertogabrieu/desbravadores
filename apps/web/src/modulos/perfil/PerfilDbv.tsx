@@ -7,7 +7,7 @@ import { useConexao } from '../../offline'
 import { Avatar } from '../../ui/Avatar'
 import { Cartao } from '../../ui/Cartao'
 import { Esqueleto } from '../../ui/Esqueleto'
-import { Carregando, DisponivelComInternet, ErroDeCarga } from '../inicio/estados'
+import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../ui/EstadosDeCarga'
 import { classeDoAvatar } from '../ranking/classeDoAvatar'
 
 const TRACO = '—'

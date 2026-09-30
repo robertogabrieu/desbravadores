@@ -60,15 +60,15 @@ describe('ranking do mês', () => {
     const consultas: Array<string | null> = []
     servidor.use(handlerRanking(criarRanking(), (consulta) => consultas.push(consulta.get('mes'))), handlerRankingUnidades())
     abrir()
-    expect(await screen.findByText('setembro de 2030')).toBeInTheDocument()
+    expect(await screen.findByText('Setembro de 2030')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Mês seguinte' })).toBeDisabled()
 
     await userEvent.click(screen.getByRole('button', { name: 'Mês anterior' }))
-    expect(await screen.findByText('agosto de 2030')).toBeInTheDocument()
+    expect(await screen.findByText('Agosto de 2030')).toBeInTheDocument()
     expect(consultas).toContain('2030-08')
 
     await userEvent.click(screen.getByRole('button', { name: 'Mês seguinte' }))
-    expect(await screen.findByText('setembro de 2030')).toBeInTheDocument()
+    expect(await screen.findByText('Setembro de 2030')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Mês seguinte' })).toBeDisabled()
   })
 

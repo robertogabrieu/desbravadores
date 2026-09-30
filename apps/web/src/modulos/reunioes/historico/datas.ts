@@ -8,10 +8,11 @@ export function somarMeses(mes: string, delta: number): string {
   return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}`
 }
 
-/** "2026-09" → "setembro de 2026". */
+/** "2026-09" → "Setembro de 2026". */
 export function nomeDoMes(mes: string): string {
   const [ano, numero] = mes.split('-').map(Number)
-  return `${NOMES_DOS_MESES[numero - 1]} de ${ano}`
+  const nome = NOMES_DOS_MESES[numero - 1]
+  return `${nome.charAt(0).toUpperCase()}${nome.slice(1)} de ${ano}`
 }
 
 /** "2026-09-20" → dia "20" e mês "SET" (a data é civil: sem fuso). */

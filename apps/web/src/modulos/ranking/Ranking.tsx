@@ -11,7 +11,8 @@ import { Chip } from '../../ui/Chip'
 import { EstadoVazio } from '../../ui/EstadoVazio'
 import { Esqueleto } from '../../ui/Esqueleto'
 import { cn } from '../../ui/cn'
-import { Carregando, DisponivelComInternet, ErroDeCarga } from '../inicio/estados'
+import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../ui/EstadosDeCarga'
+import { nomeDoMes } from '../reunioes/historico/datas'
 import { classeDoAvatar } from './classeDoAvatar'
 
 const ABAS = [{ id: 'mes', rotulo: 'Mês' }]
@@ -21,11 +22,6 @@ function deslocarMes(mes: string, passo: number): string {
   const [ano, numero] = mes.split('-').map(Number)
   const total = ano * 12 + (numero - 1) + passo
   return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}`
-}
-
-function nomeDoMes(mes: string): string {
-  const [ano, numero] = mes.split('-').map(Number)
-  return new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(ano, numero - 1, 1)))
 }
 
 const descricaoDoItem = (item: ItemRanking): string =>
@@ -150,7 +146,7 @@ export function Ranking() {
         >
           <ChevronLeft aria-hidden className="size-6" />
         </button>
-        <span className="font-semibold capitalize text-texto">{mesExibido ? nomeDoMes(mesExibido) : ''}</span>
+        <span className="font-semibold text-texto">{mesExibido ? nomeDoMes(mesExibido) : ''}</span>
         <button
           type="button"
           aria-label="Mês seguinte"

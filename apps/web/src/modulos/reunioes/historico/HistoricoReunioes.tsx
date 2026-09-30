@@ -12,7 +12,7 @@ import { Esqueleto } from '../../../ui/Esqueleto'
 import { FaixaAviso } from '../../../ui/FaixaAviso'
 import { Selecao } from '../../../ui/Selecao'
 import { cn } from '../../../ui/cn'
-import { BlocoErro } from './BlocoErro'
+import { ErroDeCarga } from '../../../ui/EstadosDeCarga'
 import { diaEMes, nomeDoMes, somarMeses } from './datas'
 import { chaveDaReuniao, reunioesDaFila } from './reunioesDaFila'
 import type { LinhaHistorico } from './reunioesDaFila'
@@ -104,7 +104,7 @@ function PorReuniao({ unidadeId, mes }: { unidadeId: string; mes: string }) {
   const linhas = [...doServidor, ...daFila.filter((linha) => !chavesNoServidor.has(linha.chave))].sort((a, b) => b.data.localeCompare(a.data))
 
   if (servidor.isPending) return <Carregando rotulo="Carregando reuniões" />
-  if (servidor.isError && linhas.length === 0) return <BlocoErro erro={servidor.error} aoTentarDeNovo={() => void servidor.refetch()} />
+  if (servidor.isError && linhas.length === 0) return <ErroDeCarga erro={servidor.error} aoTentarDeNovo={() => void servidor.refetch()} />
   if (linhas.length === 0) return <PrimeiraChamada />
 
   return (
@@ -129,7 +129,7 @@ function PorReuniao({ unidadeId, mes }: { unidadeId: string; mes: string }) {
 function PorDbv({ unidadeId }: { unidadeId: string }) {
   const grade = useGradeFrequencia(unidadeId)
   if (grade.isPending) return <Carregando rotulo="Carregando frequência" />
-  if (grade.isError) return <BlocoErro erro={grade.error} aoTentarDeNovo={() => void grade.refetch()} />
+  if (grade.isError) return <ErroDeCarga erro={grade.error} aoTentarDeNovo={() => void grade.refetch()} />
   if (grade.data.reunioes.length === 0) return <PrimeiraChamada />
 
   return (
@@ -198,7 +198,7 @@ export function HistoricoReunioes() {
             <Botao variante="secundario" aria-label="Mês anterior" onClick={() => setMes(somarMeses(mes, -1))}>
               <ChevronLeft aria-hidden className="size-5" />
             </Botao>
-            <span className="font-semibold capitalize">{nomeDoMes(mes)}</span>
+            <span className="font-semibold">{nomeDoMes(mes)}</span>
             <Botao variante="secundario" aria-label="Próximo mês" disabled={mes >= mesCorrente} onClick={() => setMes(somarMeses(mes, 1))}>
               <ChevronRight aria-hidden className="size-5" />
             </Botao>
