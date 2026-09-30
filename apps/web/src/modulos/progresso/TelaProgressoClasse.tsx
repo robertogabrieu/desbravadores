@@ -62,7 +62,9 @@ export function TelaProgressoClasse() {
   const alternador = regular && avancada && idsDoVinculo.has(regular.id) && idsDoVinculo.has(avancada.id)
   const chipAtivo = atual?.tipo === 'AVANCADA' && idsDoVinculo.has(atual.classeBaseId ?? '') ? atual.classeBaseId ?? id : id
 
-  const irParaClasse = (classeId: string) => navegar(`/classes/${classeId}/progresso`, { replace: true })
+  const irParaClasse = (classeId: string): void => {
+    void navegar(`/classes/${classeId}/progresso`, { replace: true })
+  }
 
   let corpo
   if (!online) corpo = <DisponivelComInternet />

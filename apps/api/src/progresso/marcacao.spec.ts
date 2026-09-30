@@ -72,7 +72,7 @@ describe('marcar e desmarcar fora da aula', () => {
 
       const resposta = await api.put(caminhoRequisito(dbv.id, requisito.id), colega.autorizacao, { concluidoEm: '2026-09-20' }).expect(200)
 
-      const marcado = corpo<Progresso>(resposta).matriculas[0]!.secoes.flatMap((secao) => secao.requisitos).find((item) => item.id === requisito.id)
+      const marcado = corpo<Progresso>(resposta).matriculas[0].secoes.flatMap((secao) => secao.requisitos).find((item) => item.id === requisito.id)
       expect(marcado).toMatchObject({ concluidoEm: '2026-09-20', marcadoPor: colega.usuario.nome })
       const pontos = await lancamentos(dbv.id, 'REQUISITO')
       expect(pontos).toHaveLength(1)
@@ -82,12 +82,12 @@ describe('marcar e desmarcar fora da aula', () => {
         pontos: criterio.pontos,
         estornadoEm: null,
       })
-      expect(pontos[0]!.data.toISOString().slice(0, 10)).toBe('2026-09-20')
+      expect(pontos[0].data.toISOString().slice(0, 10)).toBe('2026-09-20')
 
       const desmarcado = await apagar(caminhoRequisito(dbv.id, requisito.id), instrutor.autorizacao).expect(200)
-      const item = corpo<Progresso>(desmarcado).matriculas[0]!.secoes.flatMap((secao) => secao.requisitos).find((i) => i.id === requisito.id)
+      const item = corpo<Progresso>(desmarcado).matriculas[0].secoes.flatMap((secao) => secao.requisitos).find((i) => i.id === requisito.id)
       expect(item?.concluidoEm).toBeNull()
-      expect((await lancamentos(dbv.id, 'REQUISITO'))[0]!.estornadoEm).not.toBeNull()
+      expect((await lancamentos(dbv.id, 'REQUISITO'))[0].estornadoEm).not.toBeNull()
     })
 
     it('ja concluido: 409 CONFLITO com a data; dia de hoje e inicio do ano sao aceitos', async () => {
@@ -109,7 +109,7 @@ describe('marcar e desmarcar fora da aula', () => {
       const futura = await api.put(caminhoRequisito(dbv.id, requisito.id), instrutor.autorizacao, { concluidoEm: '2026-10-01' }).expect(422)
       await api.put(caminhoRequisito(dbv.id, requisito.id), instrutor.autorizacao, { concluidoEm: '2026-01-31' }).expect(422)
 
-      expect(futura.body.codigo).toBe('REGRA')
+      expect(futura.body).toMatchObject({ codigo: 'REGRA' })
       expect(await lancamentos(dbv.id, 'REQUISITO')).toHaveLength(0)
     })
 
@@ -128,9 +128,9 @@ describe('marcar e desmarcar fora da aula', () => {
 
       const linhas = await prismaDeTeste().requisitoConcluido.findMany({ where: { dbvId: dbv.id, requisitoId: requisito.id } })
       expect(linhas).toHaveLength(1)
-      expect(linhas[0]!.removidoEm).not.toBeNull()
-      expect(linhas[0]!.removidoPorId).toBe(adm.usuario.id)
-      expect((await lancamentos(dbv.id, 'REQUISITO'))[0]!.estornadoEm).not.toBeNull()
+      expect(linhas[0].removidoEm).not.toBeNull()
+      expect(linhas[0].removidoPorId).toBe(adm.usuario.id)
+      expect((await lancamentos(dbv.id, 'REQUISITO'))[0].estornadoEm).not.toBeNull()
     })
 
     it('criterio inativo nao lanca; lider marca e nao pontua', async () => {
@@ -200,13 +200,13 @@ describe('marcar e desmarcar fora da aula', () => {
       const pontos = await lancamentos(dbv.id, 'ESPECIALIDADE')
       expect(pontos).toHaveLength(1)
       expect(pontos[0]).toMatchObject({ origemId: `${dbv.id}:${esp.id}`, criterioId: criterio.id, pontos: criterio.pontos })
-      expect(pontos[0]!.data.toISOString().slice(0, 10)).toBe('2026-08-15')
+      expect(pontos[0].data.toISOString().slice(0, 10)).toBe('2026-08-15')
 
       const lista = corpo<Especialidades>(await api.get(`/api/desbravadores/${dbv.id}/especialidades`, instrutor.autorizacao).expect(200))
       expect(lista.concluidas).toHaveLength(1)
       const depois = corpo<Especialidades>(await apagar(caminhoEspecialidade(dbv.id, esp.id), instrutor.autorizacao).expect(200))
       expect(depois.concluidas).toEqual([])
-      expect((await lancamentos(dbv.id, 'ESPECIALIDADE'))[0]!.estornadoEm).not.toBeNull()
+      expect((await lancamentos(dbv.id, 'ESPECIALIDADE'))[0].estornadoEm).not.toBeNull()
     })
 
     it('ja concluida 409; data fora do ano 422; inexistente ou de outro clube 404', async () => {

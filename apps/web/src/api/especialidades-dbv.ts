@@ -44,7 +44,11 @@ export function useMarcarEspecialidade(dbvId: string) {
         metodo: 'PUT',
         corpo: { concluidoEm },
       }),
-    onSuccess: (saida) => clienteConsultas.setQueryData(chavesEspecialidades.doDbv(dbvId), saida),
+    onSuccess: (saida) => {
+      clienteConsultas.setQueryData(chavesEspecialidades.doDbv(dbvId), saida)
+      void clienteConsultas.invalidateQueries({ queryKey: ['ranking'] })
+      void clienteConsultas.invalidateQueries({ queryKey: ['progresso'] })
+    },
   })
 }
 
@@ -54,6 +58,10 @@ export function useDesmarcarEspecialidade(dbvId: string) {
     networkMode: 'always',
     mutationFn: (especialidadeId: string) =>
       requisitar(`/api/desbravadores/${dbvId}/especialidades/${especialidadeId}`, EspecialidadesDoDbvSaida, { metodo: 'DELETE' }),
-    onSuccess: (saida) => clienteConsultas.setQueryData(chavesEspecialidades.doDbv(dbvId), saida),
+    onSuccess: (saida) => {
+      clienteConsultas.setQueryData(chavesEspecialidades.doDbv(dbvId), saida)
+      void clienteConsultas.invalidateQueries({ queryKey: ['ranking'] })
+      void clienteConsultas.invalidateQueries({ queryKey: ['progresso'] })
+    },
   })
 }

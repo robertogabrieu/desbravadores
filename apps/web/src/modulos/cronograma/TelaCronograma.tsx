@@ -13,6 +13,7 @@ import { EstadoVazio } from '../../ui/EstadoVazio'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../ui/EstadosDeCarga'
 import { Esqueleto } from '../../ui/Esqueleto'
 import { cn } from '../../ui/cn'
+import { RegistrarAulaDeHoje } from '../aulas/RegistroSemConexao'
 import { corDaClasse } from '../classes/cores'
 import { formatarHorario } from './formatos'
 
@@ -179,7 +180,14 @@ function CorpoDoCronograma({ classeId }: { classeId: string }) {
     )
   }
   if (consulta.error instanceof ErroDaApi && consulta.error.status === 404) return <ClasseNaoEncontrada />
-  if (modo === 'SEM_CONEXAO') return <DisponivelComInternet />
+  if (modo === 'SEM_CONEXAO') {
+    return (
+      <>
+        <DisponivelComInternet />
+        <RegistrarAulaDeHoje classeId={classeId} />
+      </>
+    )
+  }
   if (consulta.isError) return <ErroDeCarga erro={consulta.error} aoTentarDeNovo={() => void consulta.refetch()} />
   return (
     <Carregando rotulo="Carregando o cronograma">

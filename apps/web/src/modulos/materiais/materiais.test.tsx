@@ -58,7 +58,8 @@ function simularEnvio(status: number, corpo: unknown) {
     setRequestHeader() {}
     send(formulario: FormData) {
       const arquivo = formulario.get('arquivo')
-      enviados.push({ metodo: this.metodo, url: this.url, dados: String(formulario.get('dados')), nomeDoArquivo: arquivo instanceof File ? arquivo.name : '' })
+      const dados = formulario.get('dados')
+      enviados.push({ metodo: this.metodo, url: this.url, dados: typeof dados === 'string' ? dados : '', nomeDoArquivo: arquivo instanceof File ? arquivo.name : '' })
       this.status = status
       this.responseText = JSON.stringify(corpo)
       this.onload?.()

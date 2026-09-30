@@ -60,8 +60,9 @@ export class AulasService {
       },
     })
     if (!registro) throw new ErroApp('NAO_ENCONTRADO', NAO_ENCONTRADA)
-    await exigirClasseNoEscopo(this.prisma, this.escopo, sessao, registro.classeId).catch(() => {
-      throw new ErroApp('NAO_ENCONTRADO', NAO_ENCONTRADA)
+    await exigirClasseNoEscopo(this.prisma, this.escopo, sessao, registro.classeId).catch((erro: unknown) => {
+      if (erro instanceof ErroApp && erro.codigo === 'NAO_ENCONTRADO') throw new ErroApp('NAO_ENCONTRADO', NAO_ENCONTRADA)
+      throw erro
     })
 
     const [configuracao, planejados] = await Promise.all([

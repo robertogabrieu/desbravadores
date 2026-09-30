@@ -20,7 +20,7 @@ export interface PayloadAulaFila {
 type Saida = z.infer<typeof AulaEnvioSaida>
 type Par = { dbvId: string; requisitoId: string }
 
-const RAIZES_INVALIDADAS = ['aulas', 'aula', 'progresso', 'inicio-instrutor', 'ranking']
+const RAIZES_INVALIDADAS = ['aulas', 'aula', 'progresso', 'inicio', 'cronograma', 'ranking']
 
 function diaMes(data: string): string {
   const [, mes, dia] = data.split('-')

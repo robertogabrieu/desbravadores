@@ -6,8 +6,9 @@ import { useConexao } from '../../offline'
 import { useSessao } from '../../sessao/useSessao'
 import { BarraProgresso } from '../../ui/BarraProgresso'
 import { EstadoVazio } from '../../ui/EstadoVazio'
-import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../ui/EstadosDeCarga'
+import { Carregando, ErroDeCarga } from '../../ui/EstadosDeCarga'
 import { Esqueleto } from '../../ui/Esqueleto'
+import { ClassesSemConexao } from '../aulas/RegistroSemConexao'
 import { TRACO, formatarDiaMes } from '../cronograma/formatos'
 import { corDaClasse } from './cores'
 
@@ -74,7 +75,7 @@ export function TelaClasses() {
   } else if (consulta.data) {
     corpo = consulta.data.classes.map((item) => <CartaoDaClasse key={item.classe.id} item={item} idade={idades.get(item.classe.id)} />)
   } else if (modo === 'SEM_CONEXAO') {
-    corpo = <DisponivelComInternet />
+    corpo = <ClassesSemConexao />
   } else if (consulta.isError) {
     corpo = <ErroDeCarga erro={consulta.error} aoTentarDeNovo={() => void consulta.refetch()} />
   } else {

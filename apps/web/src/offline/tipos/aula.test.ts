@@ -4,6 +4,10 @@ import { describe, expect, it, vi } from 'vitest'
 import type { z } from 'zod'
 import type { ContextoAposEnvio, ContextoEnvio, ItemFila } from '../index'
 import { obterTipo } from '../registro'
+import { chavesCronograma } from '../../api/cronograma'
+import { chavesInstrutor } from '../../api/instrutor'
+import { chavesProgresso } from '../../api/progresso'
+import { chavesRanking } from '../../api/ranking'
 import { aoEnviar, fundir } from './aula'
 import type { PayloadAulaFila } from './aula'
 
@@ -126,11 +130,17 @@ describe('tipo AULA da fila', () => {
       return { ctx, invalidar, atualizarPayload, baixarPacote }
     }
 
-    it('invalida as cinco raízes e baixa o pacote', async () => {
-      const { ctx, invalidar, baixarPacote } = contexto()
+    it('invalida as consultas reais do Início, do cronograma, do ranking e do progresso, e baixa o pacote', async () => {
+      const { ctx, baixarPacote } = contexto()
+      const chaves = [
+        chavesInstrutor.inicio,
+        chavesCronograma.leitura('classe-1'),
+        chavesRanking.mes('2030-03', undefined),
+        chavesProgresso.classe('classe-1'),
+      ]
+      for (const chave of chaves) ctx.queryClient.setQueryData(chave, {})
       await aoEnviar(saida(), ctx)
-      const raizes = invalidar.mock.calls.map(([filtro]) => filtro?.queryKey?.[0]).sort()
-      expect(raizes).toEqual(['aula', 'aulas', 'inicio-instrutor', 'progresso', 'ranking'])
+      for (const chave of chaves) expect(ctx.queryClient.getQueryState(chave)?.isInvalidated, chave.join('/')).toBe(true)
       expect(baixarPacote).toHaveBeenCalledOnce()
     })
 

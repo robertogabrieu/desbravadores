@@ -8,9 +8,10 @@ import { useConexao } from '../../offline'
 import { useSessao } from '../../sessao/useSessao'
 import { BarraProgresso } from '../../ui/BarraProgresso'
 import { EstadoVazio } from '../../ui/EstadoVazio'
-import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../ui/EstadosDeCarga'
+import { Carregando, ErroDeCarga } from '../../ui/EstadosDeCarga'
 import { Esqueleto } from '../../ui/Esqueleto'
 import { FaixaAviso } from '../../ui/FaixaAviso'
+import { ClassesSemConexao } from '../aulas/RegistroSemConexao'
 import { corDaClasse } from '../classes/cores'
 import { TRACO, formatarDataCurta, formatarHorario } from '../cronograma/formatos'
 
@@ -183,7 +184,7 @@ export function TelaInicioInstrutor() {
 
   let corpo
   if (consulta.data) corpo = <Conteudo dados={consulta.data} />
-  else if (modo === 'SEM_CONEXAO') corpo = <DisponivelComInternet />
+  else if (modo === 'SEM_CONEXAO') corpo = <ClassesSemConexao />
   else if (consulta.isError) corpo = <ErroDeCarga erro={consulta.error} aoTentarDeNovo={() => void consulta.refetch()} />
   else {
     corpo = (

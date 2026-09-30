@@ -2,6 +2,8 @@ import type { PacoteSaida } from '@desbravadores/shared'
 import { useEffect, useRef, useState } from 'react'
 import type { z } from 'zod'
 import { useSalvarAula } from '../../api/aulas'
+import { useCronograma } from '../../api/cronograma'
+import type { Cronograma } from '../../api/cronograma'
 import { gravarRascunho, itensDaChave, lerRascunho, useConexao, useFila } from '../../offline'
 import { useSessao } from '../../sessao/useSessao'
 import { Botao } from '../../ui/Botao'
@@ -69,6 +71,27 @@ export function FormularioAula(props: Propriedades) {
   return <CorpoAula {...props} chave={chave} registroAulaId={registroAulaId.current} inicial={inicial.estado} fila={inicial.fila} />
 }
 
+interface AulaPlanejada {
+  aulaPlanejadaId: string
+  requisitoIds: string[]
+}
+
+interface FontesDaAulaPlanejada {
+  cronograma: Cronograma | undefined
+  aulasProximas: ClasseDoPacote['aulasProximas']
+  base: BaseAula | null
+  data: string
+}
+
+/** Com conexão o cronograma cobre também as datas passadas; sem ele (ou sem a data nele), vale o pacote. */
+function aulaPlanejadaDaData({ cronograma, aulasProximas, base, data }: FontesDaAulaPlanejada): AulaPlanejada | undefined {
+  const daCronograma = cronograma?.aulas.find(
+    (aula) => aula.origem === 'PLANEJADA' && aula.id !== null && (base?.aulaPlanejadaId ? aula.id === base.aulaPlanejadaId : aula.data === data),
+  )
+  if (daCronograma?.id) return { aulaPlanejadaId: daCronograma.id, requisitoIds: daCronograma.requisitos.map((requisito) => requisito.id) }
+  return aulasProximas.find((aula) => (base?.aulaPlanejadaId ? aula.aulaPlanejadaId === base.aulaPlanejadaId : aula.data === data))
+}
+
 interface PropriedadesCorpo extends Propriedades {
   chave: string
   registroAulaId: string
@@ -84,7 +107,8 @@ function CorpoAula({ pacote, baixadoEm, classe, data, base, chave, registroAulaI
   const [estado, setEstado] = useState(inicial)
 
   const membros: Membro[] = classe.membros
-  const planejada = classe.aulasProximas.find((aula) => (base?.aulaPlanejadaId ? aula.aulaPlanejadaId === base.aulaPlanejadaId : aula.data === data))
+  const cronograma = useCronograma(modo === 'SEM_CONEXAO' ? undefined : classe.classe.id)
+  const planejada = aulaPlanejadaDaData({ cronograma: cronograma.data, aulasProximas: classe.aulasProximas, base, data })
   const requisitos = requisitosVisiveis({ daClasse: classe.requisitos, base, planejados: planejada?.requisitoIds ?? [], estado })
   const disponiveis = classe.requisitos.filter((r) => !requisitos.some((v) => v.id === r.id))
 

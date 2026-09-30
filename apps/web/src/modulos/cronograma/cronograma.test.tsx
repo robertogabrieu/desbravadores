@@ -2,25 +2,38 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ModoConexao } from '../../offline'
+import type { ModoConexao, PacoteGuardado } from '../../offline'
 import { criarAulaDoCronograma, criarCronograma, handlerCronograma, handlerErroCronograma } from '../../testes/handlers/cronograma'
 import { CLASSE_AMIGO, CLASSE_COMPANHEIRO, handlerPedirLiberacao } from '../../testes/handlers/instrutor'
 import { criarClasse, handlerClasses } from '../../testes/handlers/leitura'
+import { criarClasseInstrutor } from '../../testes/handlers/aulas'
+import { criarPacote } from '../../testes/handlers/offline'
 import { criarVinculo, handlersSessao, uuid } from '../../testes/handlers/sessao'
 import { renderizarRotas } from '../../testes/renderizar'
 import { servidor } from '../../testes/servidor'
 import { TelaCronograma } from './TelaCronograma'
 
-const offline = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao }))
+const offline = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao, pacote: null as PacoteGuardado['pacote'] }))
 
 vi.mock('../../offline', async (importarOriginal) => ({
   ...(await importarOriginal<typeof import('../../offline')>()),
   useConexao: () => ({ modo: offline.modo }),
+  usePacote: () => ({ pacote: offline.pacote, carregando: false, baixadoEm: null }),
 }))
 
 beforeEach(() => {
   offline.modo = 'ONLINE'
+  offline.pacote = null
 })
+
+const guardarPacote = () => {
+  offline.pacote = criarPacote({
+    instrutor: {
+      classes: [criarClasseInstrutor({ classe: CLASSE_AMIGO, aulasProximas: [{ aulaPlanejadaId: uuid(50), data: '2030-09-27', horario: '09:15', titulo: 'Descoberta espiritual', requisitoIds: [] }] })],
+      pontosRequisito: { pontos: 5, ativo: true },
+    },
+  })
+}
 
 function abrir(rota = '/cronograma?classe=' + CLASSE_AMIGO.id, classes = [CLASSE_AMIGO, CLASSE_COMPANHEIRO]) {
   servidor.use(...handlersSessao([criarVinculo('INSTRUTOR', 1, { classes })]))
@@ -177,10 +190,20 @@ describe('cronograma em leitura', () => {
     expect(screen.getByRole('button', { name: 'Tentar de novo' })).toBeInTheDocument()
   })
 
-  it('sem conexão diz que precisa de internet', async () => {
+  it('sem conexão e sem pacote baixado diz que precisa de internet, sem botão de registro', async () => {
     offline.modo = 'SEM_CONEXAO'
     servidor.use(handlerErroCronograma(500, { codigo: 'ERRO_INTERNO', mensagem: 'x' }))
     abrir()
     expect(await screen.findByText('Disponível quando houver internet')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Registrar aula de hoje' })).not.toBeInTheDocument()
+  })
+
+  it('sem conexão, com pacote: mantém a mensagem e oferece "Registrar aula de hoje" da classe escolhida', async () => {
+    offline.modo = 'SEM_CONEXAO'
+    guardarPacote()
+    servidor.use(handlerErroCronograma(500, { codigo: 'ERRO_INTERNO', mensagem: 'x' }))
+    abrir()
+    expect(await screen.findByText('Disponível quando houver internet')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Registrar aula de hoje' })).toHaveAttribute('href', `/aulas/nova?classe=${CLASSE_AMIGO.id}`)
   })
 })

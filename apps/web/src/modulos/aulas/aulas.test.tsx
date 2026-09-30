@@ -9,6 +9,7 @@ import type { ItemFila, ModoConexao, PacoteGuardado } from '../../offline'
 import { ContextoDaSessao } from '../../sessao/useSessao'
 import type { ContextoSessao } from '../../sessao/useSessao'
 import { CLASSE_COMPANHEIRO, criarClasseInstrutor, criarDetalheAula, criarResumoAula, handlerAula, handlerAulas, handlerErroAula } from '../../testes/handlers/aulas'
+import { criarAulaDoCronograma, criarCronograma, handlerCronograma } from '../../testes/handlers/cronograma'
 import { criarPacote } from '../../testes/handlers/offline'
 import { criarEu, criarVinculo, uuid } from '../../testes/handlers/sessao'
 import { servidor } from '../../testes/servidor'
@@ -110,7 +111,7 @@ beforeEach(() => {
   estado.enfileirar.mockClear()
   estado.aviso.success.mockClear()
   guardar()
-  servidor.use(handlerAulas([]))
+  servidor.use(handlerAulas([]), handlerCronograma(criarCronograma({ aulas: [] })))
 })
 afterEach(() => vi.useRealTimers())
 
@@ -145,6 +146,22 @@ describe('Registro de aula nova', () => {
     expect(payload.corpo.requisitosMarcados).toEqual([{ dbvId: ANA, requisitoId: R1 }])
     expect(estado.aviso.success).toHaveBeenCalledWith('Aula salva', expect.anything())
     await waitFor(() => expect(roteador.state.location.pathname).toBe('/inicio'))
+  })
+
+  it('data passada com aula planejada abre com os requisitos dela e liga a aula planejada (leitura do cronograma)', async () => {
+    const PASSADA = uuid(51)
+    servidor.use(
+      handlerCronograma(
+        criarCronograma({ aulas: [criarAulaDoCronograma({ id: PASSADA, data: DATA, situacao: 'NAO_REGISTRADA', requisitos: [requisito(R1, 'R1'), requisito(R3, 'R3')] })] }),
+      ),
+    )
+    montar(NOVA)
+    expect(await screen.findByText('Texto de R3')).toBeInTheDocument()
+    expect(screen.getByText('Texto de R1')).toBeInTheDocument()
+    expect(screen.queryByText('Texto de R2')).not.toBeInTheDocument()
+    await userEvent.click(botaoSalvar())
+    await waitFor(() => expect(estado.enfileirar).toHaveBeenCalledOnce())
+    expect(enviado().payload.corpo.aulaPlanejadaId).toBe(PASSADA)
   })
 
   it('requisito só para presente: faltou desabilita a coluna e desfaz a marcação', async () => {
@@ -298,7 +315,7 @@ describe('Edição de aula', () => {
   it('sem conexão abre a aula a partir dos registros recentes do pacote', async () => {
     estado.modo = 'SEM_CONEXAO'
     servidor.use(http.all('/api/*', () => HttpResponse.error()))
-    guardar([classe({ registrosRecentes: [{ id: uuid(700), data: DATA, aulaPlanejadaId: null, presencas: presencas.map(({ nome: _nome, ...p }) => p) }] })])
+    guardar([classe({ registrosRecentes: [{ id: uuid(700), data: DATA, aulaPlanejadaId: null, presencas: presencas.map((p) => ({ dbvId: p.dbvId, presente: p.presente, versao: p.versao })) }] })])
     montar(`/aulas/${uuid(700)}/editar`)
     expect(await screen.findByText('Ana Clara')).toBeInTheDocument()
     expect(linha('Bruno Lima').getByText('Faltou')).toBeInTheDocument()

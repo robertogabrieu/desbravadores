@@ -1,7 +1,7 @@
 import { screen, within } from '@testing-library/react'
 import { delay, http } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ModoConexao } from '../../offline'
+import type { ModoConexao, PacoteGuardado } from '../../offline'
 import { criarClasse, handlerClasses } from '../../testes/handlers/leitura'
 import {
   CLASSE_AMIGO,
@@ -11,21 +11,34 @@ import {
   handlerErroInicioInstrutor,
   handlerInicioInstrutor,
 } from '../../testes/handlers/instrutor'
-import { criarVinculo, handlersSessao } from '../../testes/handlers/sessao'
+import { criarClasseInstrutor } from '../../testes/handlers/aulas'
+import { criarPacote } from '../../testes/handlers/offline'
+import { criarVinculo, handlersSessao, uuid } from '../../testes/handlers/sessao'
 import { renderizarRotas } from '../../testes/renderizar'
 import { servidor } from '../../testes/servidor'
 import { TelaClasses } from './TelaClasses'
 
-const offline = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao }))
+const offline = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao, pacote: null as PacoteGuardado['pacote'] }))
 
 vi.mock('../../offline', async (importarOriginal) => ({
   ...(await importarOriginal<typeof import('../../offline')>()),
   useConexao: () => ({ modo: offline.modo }),
+  usePacote: () => ({ pacote: offline.pacote, carregando: false, baixadoEm: null }),
 }))
 
 beforeEach(() => {
   offline.modo = 'ONLINE'
+  offline.pacote = null
 })
+
+const guardarPacote = () => {
+  offline.pacote = criarPacote({
+    instrutor: {
+      classes: [criarClasseInstrutor({ classe: CLASSE_AMIGO, aulasProximas: [{ aulaPlanejadaId: uuid(50), data: '2030-09-27', horario: '09:15', titulo: 'Descoberta espiritual', requisitoIds: [] }] })],
+      pontosRequisito: { pontos: 5, ativo: true },
+    },
+  })
+}
 
 function abrir() {
   servidor.use(...handlersSessao([criarVinculo('INSTRUTOR', 1, { classes: [CLASSE_AMIGO, CLASSE_COMPANHEIRO] })]), handlerClasses([criarClasse({ id: CLASSE_AMIGO.id, idade: 10 })]))
@@ -83,10 +96,21 @@ describe('minhas classes', () => {
     expect(await screen.findByText('Falha no servidor')).toBeInTheDocument()
   })
 
-  it('sem conexão diz que precisa de internet', async () => {
+  it('sem conexão e sem pacote baixado diz que precisa de internet', async () => {
     offline.modo = 'SEM_CONEXAO'
     servidor.use(handlerErroInicioInstrutor(500, { codigo: 'ERRO_INTERNO', mensagem: 'x' }))
     abrir()
     expect(await screen.findByText('Disponível quando houver internet')).toBeInTheDocument()
+  })
+
+  it('sem conexão, com pacote: lista a classe com "Registrar aula" e sem progresso', async () => {
+    offline.modo = 'SEM_CONEXAO'
+    guardarPacote()
+    servidor.use(handlerErroInicioInstrutor(500, { codigo: 'ERRO_INTERNO', mensagem: 'x' }))
+    abrir()
+    expect(await screen.findByText('Sem conexão: dá para registrar a aula; o resto volta com a internet.')).toBeInTheDocument()
+    const cartao = screen.getByRole('region', { name: 'Classe Amigo' })
+    expect(within(cartao).getByRole('link', { name: 'Registrar aula' })).toHaveAttribute('href', `/aulas/nova?classe=${CLASSE_AMIGO.id}`)
+    expect(screen.queryByText('Progresso médio')).not.toBeInTheDocument()
   })
 })

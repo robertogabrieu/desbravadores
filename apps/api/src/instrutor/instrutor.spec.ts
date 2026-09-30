@@ -49,14 +49,14 @@ describe('instrutor: inicio e pedido de liberacao', () => {
       const requisitos = await prismaDeTeste().requisito.findMany({ where: { ativo: true, secao: { classeId: amigo.id } }, select: { id: true } })
       const dbv = await criarDbv({ clubeId: clube.id })
       await criarMatricula({ clubeId: clube.id, dbvId: dbv.id, classeId: amigo.id })
-      await criarRequisitoConcluido({ clubeId: clube.id, dbvId: dbv.id, requisitoId: requisitos[0]!.id })
+      await criarRequisitoConcluido({ clubeId: clube.id, dbvId: dbv.id, requisitoId: requisitos[0].id })
       const cronograma = await criarCronograma({
         clubeId: clube.id,
         classeId: amigo.id,
         aulas: [
-          { data: '2026-09-23', requisitoIds: [requisitos[0]!.id] },
-          { data: '2026-09-30', requisitoIds: [requisitos[1]!.id, requisitos[2]!.id] },
-          { data: '2026-10-07', requisitoIds: [requisitos[3]!.id] },
+          { data: '2026-09-23', requisitoIds: [requisitos[0].id] },
+          { data: '2026-09-30', requisitoIds: [requisitos[1].id, requisitos[2].id] },
+          { data: '2026-10-07', requisitoIds: [requisitos[3].id] },
         ],
       })
       await publicarCronograma({ cronogramaId: cronograma.id, publicadoPorId: adm.usuario.id })
@@ -75,7 +75,7 @@ describe('instrutor: inicio e pedido de liberacao', () => {
         aulaHojeRegistrada: false,
         aulasDadas: 1,
       })
-      expect(doAmigo!.proximaAula).toMatchObject({ data: '2026-09-30', totalRequisitos: 2 })
+      expect(doAmigo.proximaAula).toMatchObject({ data: '2026-09-30', totalRequisitos: 2 })
       expect(daAgrupada).toMatchObject({ totalDbvs: 0, progressoMedio: null, proximaAula: null, aulaHoje: false, aulasDadas: 0 })
     })
 
@@ -114,8 +114,8 @@ describe('instrutor: inicio e pedido de liberacao', () => {
         const saida = corpo<Inicio>(await api.get('/api/inicio/instrutor', instrutor.autorizacao).expect(200))
 
         expect(saida.alertaFaltas).toHaveLength(1)
-        expect(saida.alertaFaltas[0]!.classe.id).toBe(amigo.id)
-        expect(saida.alertaFaltas[0]!.dbvs).toEqual([{ dbvId: faltoso.id, nome: 'Faltoso' }])
+        expect(saida.alertaFaltas[0].classe.id).toBe(amigo.id)
+        expect(saida.alertaFaltas[0].dbvs).toEqual([{ dbvId: faltoso.id, nome: 'Faltoso' }])
       })
 
       it('menos de 2 aulas registradas: sem alerta', async () => {
@@ -160,7 +160,7 @@ describe('instrutor: inicio e pedido de liberacao', () => {
       const enviados = await pedidos(clube.id)
       expect(enviados).toHaveLength(1)
       expect(enviados[0]).toMatchObject({ usuarioId: adm.usuario.id, link: `/adm/classes?classe=${amigo.id}` })
-      expect(enviados[0]!.texto).toContain(instrutor.usuario.nome)
+      expect(enviados[0].texto).toContain(instrutor.usuario.nome)
       expect(inativo.ativo).toBe(false)
       expect(await pedidos(outroClube.id)).toEqual([])
       expect(admDeFora.usuario.id).not.toBe(adm.usuario.id)

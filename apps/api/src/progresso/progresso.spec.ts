@@ -61,7 +61,7 @@ describe('progresso', () => {
       const requisitos = await requisitosDaClasse(amigo.id)
       const total = requisitos.length - 1
       const [desligado, ...ativos] = requisitos
-      await prismaDeTeste().requisitoAjuste.create({ data: { clubeId: clube.id, requisitoId: desligado!, ativo: false } })
+      await prismaDeTeste().requisitoAjuste.create({ data: { clubeId: clube.id, requisitoId: desligado, ativo: false } })
       const instrutor = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [amigo.id] })
 
       const ana = await criarDbv({ clubeId: clube.id, nome: 'Ana' })
@@ -69,7 +69,7 @@ describe('progresso', () => {
       const caio = await criarDbv({ clubeId: clube.id, nome: 'Caio' })
       for (const dbv of [ana, bia, caio]) await criarMatricula({ clubeId: clube.id, dbvId: dbv.id, classeId: amigo.id })
       await criarMatricula({ clubeId: clube.id, dbvId: (await criarDbv({ clubeId: clube.id })).id, classeId: amigo.id, status: 'DESISTIU' })
-      await concluir(clube.id, ana.id, [desligado!, ...ativos.slice(0, 2)])
+      await concluir(clube.id, ana.id, [desligado, ...ativos.slice(0, 2)])
       await concluir(clube.id, bia.id, ativos.slice(0, 1))
 
       const saida = corpo<Classe>(await api.get(`/api/classes/${amigo.id}/progresso`, instrutor.autorizacao).expect(200))
@@ -163,7 +163,7 @@ describe('progresso', () => {
       const doInstrutor = corpo<Dbv>(await api.get(`/api/desbravadores/${dbv.id}/progresso`, instrutor.autorizacao).expect(200))
       const doConselheiro = corpo<Dbv>(await api.get(`/api/desbravadores/${dbv.id}/progresso`, conselheiro.autorizacao).expect(200))
 
-      const matricula = doInstrutor.matriculas[0]!
+      const matricula = doInstrutor.matriculas[0]
       expect(doInstrutor.matriculas).toHaveLength(1)
       expect(matricula).toMatchObject({ anoClube: 2026, status: 'CURSANDO', concluidos: 3, total: requisitos.length })
       expect(matricula.percentual).toBe(Math.round((3 / requisitos.length) * 100))
@@ -172,7 +172,7 @@ describe('progresso', () => {
       expect(todos.filter((requisito) => requisito.concluidoEm === '2026-03-01')).toHaveLength(3)
       expect(todos.every((requisito) => requisito.podeMarcar)).toBe(true)
       expect(matricula.secoes.reduce((soma, secao) => soma + secao.concluidos, 0)).toBe(3)
-      expect(doConselheiro.matriculas[0]!.secoes.flatMap((secao) => secao.requisitos).some((requisito) => requisito.podeMarcar)).toBe(false)
+      expect(doConselheiro.matriculas[0].secoes.flatMap((secao) => secao.requisitos).some((requisito) => requisito.podeMarcar)).toBe(false)
     })
 
     it('B11: matricula DESISTIU e instrutor de outra classe nao alcancam (404); regular vem antes da avancada', async () => {

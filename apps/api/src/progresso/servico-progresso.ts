@@ -138,7 +138,15 @@ export class ServicoProgresso {
       prontos: regular ? cursando.filter((item) => prontoParaInvestidura(item.percentualExato)).length : 0,
       concluiramAvancada: regular ? 0 : calculado.itens.filter((item) => item.percentualExato === 100).length,
       abaixoDoLimiar: cursando.filter((item) => item.percentualExato < calculado.limiarAlerta).length,
-      itens: calculado.itens.map(({ percentualExato: _exato, ...item }) => item),
+      itens: calculado.itens.map((item) => ({
+        dbvId: item.dbvId,
+        nome: item.nome,
+        tipo: item.tipo,
+        status: item.status,
+        concluidos: item.concluidos,
+        percentual: item.percentual,
+        faltam: item.faltam,
+      })),
     }
   }
 
