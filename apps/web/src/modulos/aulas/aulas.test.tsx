@@ -122,7 +122,7 @@ describe('Registro de aula nova', () => {
     expect(screen.getByLabelText('Data')).toHaveValue(HOJE)
     expect(screen.getByText('Texto de R1')).toBeInTheDocument()
     expect(screen.queryByText('Texto de R3')).not.toBeInTheDocument()
-    expect(botaoSalvar()).toBeEnabled()
+    await waitFor(() => expect(botaoSalvar()).toBeEnabled())
     expect(botaoSalvar()).toHaveTextContent('Salvar aula · 3 presentes')
     expect(screen.getByText('Lista atualizada hoje às 09:05')).toBeInTheDocument()
   })
@@ -162,6 +162,32 @@ describe('Registro de aula nova', () => {
     await userEvent.click(botaoSalvar())
     await waitFor(() => expect(estado.enfileirar).toHaveBeenCalledOnce())
     expect(enviado().payload.corpo.aulaPlanejadaId).toBe(PASSADA)
+  })
+
+  it('a conexão cai no meio do registro retroativo: as colunas do planejado continuam e o envio leva a aula planejada', async () => {
+    const PASSADA = uuid(51)
+    servidor.use(
+      handlerCronograma(
+        criarCronograma({ aulas: [criarAulaDoCronograma({ id: PASSADA, data: DATA, situacao: 'NAO_REGISTRADA', requisitos: [requisito(R1, 'R1'), requisito(R3, 'R3')] })] }),
+      ),
+    )
+    montar(NOVA)
+    expect(await screen.findByText('Texto de R3')).toBeInTheDocument()
+    estado.modo = 'SEM_CONEXAO'
+    await userEvent.click(presenca('Ana Clara'))
+    await userEvent.click(presenca('Ana Clara'))
+    expect(screen.getByText('Texto de R3')).toBeInTheDocument()
+    expect(within(screen.getByRole('listitem', { name: 'Ana Clara' })).getByRole('button', { name: /^R3 · / })).toBeInTheDocument()
+    await userEvent.click(botaoSalvar())
+    await waitFor(() => expect(estado.enfileirar).toHaveBeenCalledOnce())
+    expect(enviado().payload.corpo.aulaPlanejadaId).toBe(PASSADA)
+  })
+
+  it('enquanto o cronograma da data carrega, Salvar aula fica desabilitado', async () => {
+    servidor.use(http.get('/api/classes/:id/cronograma', () => new Promise<Response>(() => undefined)))
+    montar(NOVA)
+    await screen.findByText('Registro de aula')
+    expect(botaoSalvar()).toBeDisabled()
   })
 
   it('requisito só para presente: faltou desabilita a coluna e desfaz a marcação', async () => {

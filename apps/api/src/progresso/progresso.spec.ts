@@ -89,17 +89,23 @@ describe('progresso', () => {
       const inativo = await prismaDeTeste().requisito.create({
         data: { secaoId: (await prismaDeTeste().secaoRequisito.findFirstOrThrow({ where: { classeId: amigo.id } })).id, codigo: `X${Date.now()}`, texto: 'Extra', ordem: 999, ativo: false },
       })
-      await prismaDeTeste().requisitoAjuste.create({ data: { clubeId: clube.id, requisitoId: inativo.id, ativo: true } })
-      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
-      const outroClube = await criarClube()
-      const admDoOutro = await criarAcesso({ clubeId: outroClube.id, papel: 'ADM' })
+      try {
+        await prismaDeTeste().requisitoAjuste.create({ data: { clubeId: clube.id, requisitoId: inativo.id, ativo: true } })
+        const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+        const outroClube = await criarClube()
+        const admDoOutro = await criarAcesso({ clubeId: outroClube.id, papel: 'ADM' })
 
-      const saida = corpo<Classe>(await api.get(`/api/classes/${amigo.id}/progresso`, adm.autorizacao).expect(200))
-      const semAjuste = corpo<Classe>(await api.get(`/api/classes/${amigo.id}/progresso`, admDoOutro.autorizacao).expect(200))
+        const saida = corpo<Classe>(await api.get(`/api/classes/${amigo.id}/progresso`, adm.autorizacao).expect(200))
+        const semAjuste = corpo<Classe>(await api.get(`/api/classes/${amigo.id}/progresso`, admDoOutro.autorizacao).expect(200))
 
-      expect(saida.totalRequisitos).toBe(requisitos.length + 1)
-      expect(semAjuste.totalRequisitos).toBe(requisitos.length)
-      expect(saida.media).toBeNull()
+        expect(saida.totalRequisitos).toBe(requisitos.length + 1)
+        expect(semAjuste.totalRequisitos).toBe(requisitos.length)
+        expect(saida.media).toBeNull()
+      } finally {
+        // Requisito oficial e compartilhado por todas as specs: o que este teste criou sai daqui.
+        await prismaDeTeste().requisitoAjuste.deleteMany({ where: { requisitoId: inativo.id } })
+        await prismaDeTeste().requisito.delete({ where: { id: inativo.id } })
+      }
     })
 
     it('prontos (regular 100%), concluiram a avancada e abaixo do limiar', async () => {

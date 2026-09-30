@@ -2,6 +2,7 @@ import { AreaComEspecialidades, EspecialidadesDoDbvSaida } from '@desbravadores/
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { requisitar } from './cliente'
+import { chavesPerfil } from './perfil'
 
 export type AreaEspecialidades = z.infer<typeof AreaComEspecialidades>
 export type EspecialidadesDoDbv = z.infer<typeof EspecialidadesDoDbvSaida>
@@ -48,6 +49,7 @@ export function useMarcarEspecialidade(dbvId: string) {
       clienteConsultas.setQueryData(chavesEspecialidades.doDbv(dbvId), saida)
       void clienteConsultas.invalidateQueries({ queryKey: ['ranking'] })
       void clienteConsultas.invalidateQueries({ queryKey: ['progresso'] })
+      void clienteConsultas.invalidateQueries({ queryKey: chavesPerfil.dbv(dbvId) })
     },
   })
 }
@@ -62,6 +64,7 @@ export function useDesmarcarEspecialidade(dbvId: string) {
       clienteConsultas.setQueryData(chavesEspecialidades.doDbv(dbvId), saida)
       void clienteConsultas.invalidateQueries({ queryKey: ['ranking'] })
       void clienteConsultas.invalidateQueries({ queryKey: ['progresso'] })
+      void clienteConsultas.invalidateQueries({ queryKey: chavesPerfil.dbv(dbvId) })
     },
   })
 }

@@ -1,4 +1,8 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { renderHook, screen, waitFor, within } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { useDesmarcarEspecialidade, useMarcarEspecialidade } from '../../api/especialidades-dbv'
+import { chavesPerfil } from '../../api/perfil'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -141,5 +145,30 @@ describe('Especialidades', () => {
     estado.modo = 'SEM_CONEXAO'
     abrir(`?classe=${CLASSE_AMIGO.id}&dbv=${ANA}`)
     expect(await screen.findByText('Disponível quando houver internet')).toBeInTheDocument()
+  })
+})
+
+describe('Marcar e desmarcar especialidade invalidam o perfil do desbravador', () => {
+  function comCliente() {
+    const cliente = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={cliente}>{children}</QueryClientProvider>
+    cliente.setQueryData(chavesPerfil.dbv(ANA), { pontosMes: 1 })
+    return { cliente, wrapper }
+  }
+
+  it('marcar', async () => {
+    servidor.use(http.put(`/api/desbravadores/${ANA}/especialidades/${ESP_NOS}`, () => HttpResponse.json({ dbvId: ANA, concluidas })))
+    const { cliente, wrapper } = comCliente()
+    const { result } = renderHook(() => useMarcarEspecialidade(ANA), { wrapper })
+    result.current.mutate({ especialidadeId: ESP_NOS, concluidoEm: '2030-09-10' })
+    await waitFor(() => expect(cliente.getQueryState(chavesPerfil.dbv(ANA))?.isInvalidated).toBe(true))
+  })
+
+  it('desmarcar', async () => {
+    servidor.use(http.delete(`/api/desbravadores/${ANA}/especialidades/${ESP_NOS}`, () => HttpResponse.json({ dbvId: ANA, concluidas: [] })))
+    const { cliente, wrapper } = comCliente()
+    const { result } = renderHook(() => useDesmarcarEspecialidade(ANA), { wrapper })
+    result.current.mutate(ESP_NOS)
+    await waitFor(() => expect(cliente.getQueryState(chavesPerfil.dbv(ANA))?.isInvalidated).toBe(true))
   })
 })

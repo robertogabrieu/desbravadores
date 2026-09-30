@@ -107,7 +107,9 @@ function CorpoAula({ pacote, baixadoEm, classe, data, base, chave, registroAulaI
   const [estado, setEstado] = useState(inicial)
 
   const membros: Membro[] = classe.membros
-  const cronograma = useCronograma(modo === 'SEM_CONEXAO' ? undefined : classe.classe.id)
+  // A fonte se fixa na abertura: se o sinal cair no meio, o cronograma já lido continua valendo.
+  const [lerCronograma] = useState(modo !== 'SEM_CONEXAO')
+  const cronograma = useCronograma(lerCronograma ? classe.classe.id : undefined)
   const planejada = aulaPlanejadaDaData({ cronograma: cronograma.data, aulasProximas: classe.aulasProximas, base, data })
   const requisitos = requisitosVisiveis({ daClasse: classe.requisitos, base, planejados: planejada?.requisitoIds ?? [], estado })
   const disponiveis = classe.requisitos.filter((r) => !requisitos.some((v) => v.id === r.id))
@@ -223,7 +225,7 @@ function CorpoAula({ pacote, baixadoEm, classe, data, base, chave, registroAulaI
         )}
         <Botao
           largura="total"
-          disabled={!entrada || salvar.isPending}
+          disabled={!entrada || salvar.isPending || cronograma.isLoading}
           carregando={salvar.isPending}
           onClick={() => {
             if (entrada) salvar.mutate(entrada)
