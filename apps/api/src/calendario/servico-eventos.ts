@@ -144,44 +144,49 @@ export class ServicoEventos {
     const inicio = datas.reduce((menor, d) => (d < menor ? d : menor))
     const fim = datas.reduce((maior, d) => (d > maior ? d : maior))
 
-    const [relogio, aulas, registros] = await Promise.all([
-      this.escopo.relogio(clubeId),
-      this.aulasVistas(clubeId, inicio, fim),
-      this.registrosNoIntervalo(clubeId, inicio, fim),
-    ])
-    const vizinhos = await this.prisma.eventoCalendario.findMany({
-      where: { clubeId, removidoEm: null, inicio: { lte: daDataCivil(fim) }, fim: { gte: daDataCivil(inicio) }, id: { not: antes?.id } },
-    })
-    const outros = vizinhos.map((evento) => paraCalendario(paraSaida(evento)))
-    const eventosDepois = depois ? [...outros, depois] : outros
-    const eventosAntes = antes ? [...outros, paraCalendario(paraSaida(antes))] : outros
+    // Serializa as gravações de eventos do clube: o "antes/depois" só vale lendo os vizinhos já confirmados pela gravação anterior.
+    return this.prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('eventos-do-clube'), hashtext(${clubeId}))`
+        const [relogio, aulas, registros] = await Promise.all([
+          this.escopo.relogio(clubeId),
+          this.aulasVistas(clubeId, inicio, fim),
+          this.registrosNoIntervalo(clubeId, inicio, fim),
+        ])
+        const vizinhos = await tx.eventoCalendario.findMany({
+          where: { clubeId, removidoEm: null, inicio: { lte: daDataCivil(fim) }, fim: { gte: daDataCivil(inicio) }, id: { not: antes?.id } },
+        })
+        const outros = vizinhos.map((evento) => paraCalendario(paraSaida(evento)))
+        const eventosDepois = depois ? [...outros, depois] : outros
+        const eventosAntes = antes ? [...outros, paraCalendario(paraSaida(antes))] : outros
 
-    const conflitos = (eventos: EventoDoCalendario[]): Set<string> =>
-      new Set(
-        aulas
-          .filter((aula) =>
-            emConflito({
-              trilha: aula.trilha,
-              temRequisitos: aula.temRequisitos,
-              temRegistro: registros.has(`${aula.classeId}|${aula.data}`),
-              data: aula.data,
-              hoje: relogio.hoje,
-              situacaoDaData: situacaoDaData(aula.data, eventos),
-            }),
+        const conflitos = (eventos: EventoDoCalendario[]): Set<string> =>
+          new Set(
+            aulas
+              .filter((aula) =>
+                emConflito({
+                  trilha: aula.trilha,
+                  temRequisitos: aula.temRequisitos,
+                  temRegistro: registros.has(`${aula.classeId}|${aula.data}`),
+                  data: aula.data,
+                  hoje: relogio.hoje,
+                  situacaoDaData: situacaoDaData(aula.data, eventos),
+                }),
+              )
+              .map((aula) => aula.aulaId),
           )
-          .map((aula) => aula.aulaId),
-      )
-    const jaEmConflito = conflitos(eventosAntes)
-    const emConflitoDepois = conflitos(eventosDepois)
-    const entraram = new Map<string, AulaVista>()
-    for (const aula of aulas) {
-      if (emConflitoDepois.has(aula.aulaId) && !jaEmConflito.has(aula.aulaId)) entraram.set(aula.aulaId, aula)
-    }
+        const jaEmConflito = conflitos(eventosAntes)
+        const emConflitoDepois = conflitos(eventosDepois)
+        const entraram = new Map<string, AulaVista>()
+        for (const aula of aulas) {
+          if (emConflitoDepois.has(aula.aulaId) && !jaEmConflito.has(aula.aulaId)) entraram.set(aula.aulaId, aula)
+        }
 
-    return this.prisma.$transaction(async (tx) => {
-      await gravacao(tx)
-      return this.avisar(tx, sessao, [...entraram.values()])
-    })
+        await gravacao(tx)
+        return this.avisar(tx, sessao, [...entraram.values()])
+      },
+      { timeout: 20_000 },
+    )
   }
 
   /** Aulas do cronograma vivo e da última publicação no intervalo, uma linha por (aula, fonte). */

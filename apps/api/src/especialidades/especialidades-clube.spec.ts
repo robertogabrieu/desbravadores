@@ -70,4 +70,14 @@ describe('A5: especialidade do clube', () => {
     await api.post('/api/especialidades', adm.autorizacao, { areaId: area.id }).expect(400)
     await api.post('/api/especialidades', instrutor.autorizacao, { areaId: area.id, nome: 'X' }).expect(403)
   })
+
+  it('duas criacoes simultaneas do mesmo nome na mesma area: uma 201 e uma 409', async () => {
+    const clube = await criarClube()
+    const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+    const area = await prismaDeTeste().areaEspecialidade.findFirstOrThrow()
+    const criar = () => api.post('/api/especialidades', adm.autorizacao, { areaId: area.id, nome: 'Corrida de nomes' })
+    const respostas = await Promise.all([criar(), criar()])
+    expect(respostas.map((r) => r.status).sort()).toEqual([201, 409])
+    expect(await prismaDeTeste().especialidade.count({ where: { clubeId: clube.id, areaId: area.id } })).toBe(1)
+  })
 })

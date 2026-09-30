@@ -183,6 +183,18 @@ describe('calendário do clube — eventos', () => {
       expect(await notificacoesDe(instrutor.usuario.id)).toHaveLength(1)
     })
 
+    it('dois Adms gravando eventos na mesma data ao mesmo tempo avisam uma vez só por pessoa e classe', async () => {
+      const { clube, amigo, adm, instrutor, requisitos } = await cenario()
+      const outroAdm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      await criarCronograma({ clubeId: clube.id, classeId: amigo.id, aulas: [{ data: dia(10), requisitoIds: requisitos }] })
+      await Promise.all([
+        http.post('/api/calendario/eventos', adm.autorizacao, evento({ nome: 'A', bomParaCampo: false })),
+        http.post('/api/calendario/eventos', outroAdm.autorizacao, evento({ nome: 'B', bomParaCampo: false })),
+      ])
+      expect(await notificacoesDe(instrutor.usuario.id)).toHaveLength(1)
+      expect(await notificacoesDe(adm.usuario.id)).toHaveLength(1)
+    })
+
     it('uma notificação por pessoa e classe mesmo com várias aulas afetadas', async () => {
       const { clube, amigo, adm, instrutor, requisitos } = await cenario()
       await criarCronograma({

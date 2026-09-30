@@ -20,16 +20,19 @@ export class EspecialidadesClubeService {
     const area = await this.prisma.areaEspecialidade.findUnique({ where: { id: entrada.areaId }, select: { id: true } })
     if (!area) throw new ErroApp('NAO_ENCONTRADO', 'Área não encontrada.')
 
-    const existentes = await this.prisma.especialidade.findMany({
-      where: { areaId: area.id, OR: [{ clubeId: null }, { clubeId }] },
-      select: { nome: true },
+    // Serializa a criação por (clube, área): o banco não tem índice único para o nome, então a checagem e a gravação andam juntas sob o lock.
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('especialidade-do-clube'), hashtext(${`${clubeId}:${area.id}`}))`
+      const existentes = await tx.especialidade.findMany({
+        where: { areaId: area.id, OR: [{ clubeId: null }, { clubeId }] },
+        select: { nome: true },
+      })
+      const nomeNormalizado = semAcento(entrada.nome)
+      if (existentes.some((existente) => semAcento(existente.nome) === nomeNormalizado)) {
+        throw new ErroApp('CONFLITO', 'Já existe uma especialidade com esse nome nesta área.')
+      }
+      await tx.especialidade.create({ data: { clubeId, origem: 'CLUBE', areaId: area.id, nome: entrada.nome } })
     })
-    const nomeNormalizado = semAcento(entrada.nome)
-    if (existentes.some((existente) => semAcento(existente.nome) === nomeNormalizado)) {
-      throw new ErroApp('CONFLITO', 'Já existe uma especialidade com esse nome nesta área.')
-    }
-
-    await this.prisma.especialidade.create({ data: { clubeId, origem: 'CLUBE', areaId: area.id, nome: entrada.nome } })
     return this.especialidades.listar(clubeId, {})
   }
 }
