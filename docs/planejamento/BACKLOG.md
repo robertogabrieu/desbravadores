@@ -248,7 +248,7 @@ Como instrutor, quero marcar quem foi e quem cumpriu cada requisito para acompan
 
 ### I10 · Materiais de apoio — `Materiais.dc.html` · Fase 2
 - Chips de classe; materiais agrupados por seção do caderno; contagem real no cabeçalho.
-- "Enviar arquivo" (PDF, apresentação, vídeo até 50 MB) e "Adicionar link" (título + URL).
+- "Enviar arquivo" (PDF, PPTX, ODP, DOCX ou ODT até 20 MB; sem vídeo e sem os formatos antigos .doc/.ppt; 1 GB por clube) e "Adicionar link" (título + URL `https`).
 - Menu do item: abrir, renomear, mover de seção, apagar (autor ou Adm).
 
 ---

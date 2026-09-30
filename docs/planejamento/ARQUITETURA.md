@@ -174,8 +174,8 @@ Sair da conta com fila pendente exige confirmação explícita na própria tela.
   a foto na origem. (O desenho não tem o passo de marcar quem aparece; ele fica para depois.)
 - **Fotos não têm URL pública.** São servidas por um endpoint autenticado que confere o clube e
   a permissão; o link expira (URL assinada de 10 min).
-- **Materiais de apoio**: PDF, PPT, vídeo curto (limite 50 MB) ou link. Mesma interface de
-  armazenamento.
+- **Materiais de apoio**: PDF, PPTX, ODP, DOCX, ODT (limite 20 MB por arquivo, 1 GB por clube) ou
+  link https. Sem vídeo. Mesma interface de armazenamento.
 - **Onde fica:** pasta no volume Docker do servidor, organizada por `clube/tipo/ano/uuid`. A
   interface `Armazenamento` tem duas implementações (disco e R2); troca por variável de ambiente.
 - **Volume estimado:** ~2.000 fotos/ano × ~350 KB ≈ **0,7 GB/ano**. Cabe no disco do VPS por

@@ -70,7 +70,7 @@ describe('LayoutCelular', () => {
     expect(within(screen.getByRole('navigation')).queryByText('Classes')).not.toBeInTheDocument()
   })
 
-  it('instrutor: Início e Ranking habilitados; Classes e Cronograma "em breve"', async () => {
+  it('instrutor: Início, Classes, Cronograma e Ranking habilitados', async () => {
     servidor.use(...handlersSessao([criarVinculo('INSTRUTOR')]))
     renderizarRotas(rotasCelular, '/inicio')
     await screen.findByText('conteúdo')
@@ -78,21 +78,19 @@ describe('LayoutCelular', () => {
 
     expect(itemDoMenu('Início')).toHaveAttribute('href', '/inicio')
     expect(itemDoMenu('Ranking')).toHaveAttribute('href', '/ranking')
-    for (const nome of ['Classes', 'Cronograma']) {
-      expect(itemDoMenu(nome)).toHaveAttribute('aria-disabled', 'true')
-    }
+    expect(itemDoMenu('Classes')).toHaveAttribute('href', '/classes')
+    expect(itemDoMenu('Cronograma')).toHaveAttribute('href', '/cronograma')
     expect(within(screen.getByRole('navigation')).queryByText('Unidade')).not.toBeInTheDocument()
   })
 
   it('item desabilitado não navega ao ser tocado', async () => {
-    servidor.use(...handlersSessao([criarVinculo('INSTRUTOR')]))
-    const { roteador } = renderizarRotas(rotasCelular, '/inicio')
-    await screen.findByText('conteúdo')
-    await esperarSessao()
+    servidor.use(...handlersSessao([criarVinculo('ADM')]))
+    const { roteador } = renderizarRotas(rotasAdm, '/adm/desbravadores')
+    await screen.findByText('lista')
 
-    await userEvent.click(itemDoMenu('Classes'))
+    await userEvent.click(screen.getByText('Visão geral'))
 
-    expect(roteador.state.location.pathname).toBe('/inicio')
+    expect(roteador.state.location.pathname).toBe('/adm/desbravadores')
   })
 
   it('menu do usuário: 1 vínculo não oferece "Trocar de papel"', async () => {

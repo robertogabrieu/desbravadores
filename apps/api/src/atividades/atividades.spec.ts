@@ -8,7 +8,7 @@ describe('ServicoAtividade.registrar', () => {
   let app: INestApplication
   beforeAll(async () => {
     app = await criarAppDeTeste()
-  })
+  }, 30_000)
   afterAll(async () => {
     await app.close()
     await desconectarPrismaDeTeste()

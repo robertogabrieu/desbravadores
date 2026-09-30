@@ -5,10 +5,10 @@ import type { PerfilDbv as PerfilDaApi } from '../../api/perfil'
 import { usePerfilDbv } from '../../api/perfil'
 import { useConexao } from '../../offline'
 import { Avatar } from '../../ui/Avatar'
-import { Cartao } from '../../ui/Cartao'
 import { Esqueleto } from '../../ui/Esqueleto'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../ui/EstadosDeCarga'
 import { classeDoAvatar } from '../ranking/classeDoAvatar'
+import { SecaoProgresso } from './SecaoProgresso'
 
 const TRACO = '—'
 
@@ -46,9 +46,7 @@ function Conteudo({ perfil }: { perfil: PerfilDaApi }) {
         <Numero valor={perfil.frequenciaMes === null ? TRACO : `${perfil.frequenciaMes}%`} rotulo="frequência" />
       </section>
 
-      <Cartao>
-        <p className="text-base text-texto-2">Progresso da classe em breve</p>
-      </Cartao>
+      <SecaoProgresso dbvId={dbv.id} />
 
       <section className="flex flex-col gap-2">
         <h2 className="font-titulo text-lg font-bold text-texto">Classes concluídas</h2>

@@ -4,6 +4,9 @@ import argon2 from 'argon2'
 import { PrismaSistema } from '../src/comum/prisma/prisma-sistema'
 import { MARCACOES_PADRAO, anoClube as anoDoClube, hojeNoFuso } from '@desbravadores/shared'
 import type {
+  RequisitoAjuste,
+  Especialidade,
+  ClasseClube,
   Album,
   Arquivo,
   AulaPlanejada,
@@ -11,17 +14,16 @@ import type {
   CronogramaPublicacao,
   EspecialidadeConcluida,
   EventoCalendario,
+  Material,
   Notificacao,
+  Observacao,
   RegistroAula,
   RequisitoConcluido,
   Chamada,
   Clube,
   ConfiguracaoClube,
   CriterioRanking,
-  ClasseClube,
   Desbravador,
-  Especialidade,
-  RequisitoAjuste,
   Foto,
   GatilhoCriterio,
   LancamentoPontos,
@@ -596,6 +598,54 @@ export async function criarNotificacao(dados: {
       link: dados.link ?? '/cronograma',
       criadaEm,
       lidaEm: dados.lida ? criadaEm : null,
+    },
+  })
+}
+
+export async function criarObservacao(dados: {
+  clubeId: string
+  classeId: string
+  autorId: string
+  texto: string
+  titulo?: string
+  registroAulaId?: string
+  dbvId?: string
+}): Promise<Observacao> {
+  return prismaDeTeste().observacao.create({
+    data: {
+      clubeId: dados.clubeId,
+      classeId: dados.classeId,
+      autorId: dados.autorId,
+      alvo: dados.dbvId ? 'DBV' : 'AULA',
+      registroAulaId: dados.registroAulaId ?? null,
+      dbvId: dados.dbvId ?? null,
+      titulo: dados.titulo ?? null,
+      texto: dados.texto,
+    },
+  })
+}
+
+/** Link (`link`) ou arquivo (`arquivo`, o id de um `Arquivo` do mesmo clube); sem nenhum dos dois, um link de exemplo. */
+export async function criarMaterial(
+  dados: {
+    clubeId: string
+    classeId: string
+    autorId: string
+    titulo: string
+    secaoId?: string
+  } & ({ link?: string; arquivo?: undefined } | { arquivo: string; link?: undefined }),
+): Promise<Material> {
+  const comArquivo = dados.arquivo !== undefined
+  return prismaDeTeste().material.create({
+    data: {
+      clubeId: dados.clubeId,
+      classeId: dados.classeId,
+      secaoId: dados.secaoId ?? null,
+      titulo: dados.titulo,
+      tipo: comArquivo ? 'PDF' : 'LINK',
+      arquivoId: dados.arquivo ?? null,
+      url: comArquivo ? null : (dados.link ?? 'https://exemplo.test/material'),
+      enviadoPorId: dados.autorId,
     },
   })
 }

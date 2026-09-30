@@ -27,15 +27,15 @@ npm run dev              # API (porta 3001) e front (http://localhost:5173)
 
 Os e-mails enviados pela API em dev (convites, por exemplo) aparecem no Mailpit.
 
-Arquivos enviados (fotos) ficam em disco, na pasta de `ARQUIVOS_DIR` (`./.arquivos` no `.env.exemplo`). `ARQUIVOS_SEGREDO` assina os links de imagem; gere com `openssl rand -hex 32`. Os dois entram no `.env`.
+Arquivos enviados (fotos e materiais de apoio) ficam em disco, na pasta de `ARQUIVOS_DIR` (`./.arquivos` no `.env.exemplo`). `ARQUIVOS_SEGREDO` assina os links de imagem; gere com `openssl rand -hex 32`. Os dois entram no `.env`.
 
 ## Uso sem conexão
 
 O app do conselheiro e do instrutor abre sem internet. Na abertura ele tenta renovar a sessão, espera 5 s e tenta de novo; se a rede continua fora e a pessoa entrou há menos de 7 dias (último contato com a API), abre em modo sem conexão com a faixa "Sem conexão" no topo, usando o último pacote guardado no aparelho. Sem identidade guardada válida (nunca entrou ou passou de 7 dias), vai para `/conectar`, que pede internet e tem "Tentar de novo". Em modo sem conexão o app tenta renovar a sessão a cada 30 s (aba visível) e quando o navegador avisa que a rede voltou.
 
-- **Pacote:** `GET /api/sync/pacote` (exige login). Traz clube, critérios da chamada, e, para o conselheiro, as unidades com membros, reuniões dos últimos 30 dias e álbuns dos últimos 60; ADM e instrutor recebem as listas de unidades vazias. Só é regravado no aparelho quando a `versao` muda. Baixa na abertura se o guardado tem mais de 15 min, e sempre ao voltar a conexão.
+- **Pacote:** `GET /api/sync/pacote` (exige login). Traz clube, critérios da chamada, e, para o conselheiro, as unidades com membros, reuniões dos últimos 30 dias e álbuns dos últimos 60; ADM e instrutor recebem as listas de unidades vazias. O instrutor recebe também o campo `instrutor`, com o que precisa para registrar aula sem internet: por classe (as do seu vínculo), os desbravadores cursando no ano com os requisitos já concluídos, os requisitos ativos, as aulas publicadas dos próximos 14 dias e os registros de aula dos últimos 30 dias (presenças com versão), mais os pontos por requisito. Só é regravado no aparelho quando a `versao` muda. Baixa na abertura se o guardado tem mais de 15 min, e sempre ao voltar a conexão.
 - **Fila de envio (`/fila`, "Aguardando envio"):** o que foi registrado sem conexão fica guardado no aparelho e sobe sozinho, em ordem, quando há internet. Falha de rede ou servidor tenta de novo após 5 s, 15 s, 60 s e 5 min; item em erro mostra a mensagem e oferece "Tentar de novo" e "Descartar" (o descarte avisa quais envios dependem dele e passam a dar erro). "Tentar enviar agora" força uma passada mesmo em modo sem conexão. O selo "N aguardando envio" (pendentes mais erros) leva à fila. Só envia com o app aberto.
-- **Tipos de envio:** a fila conhece `REUNIAO` (chamada e correção) e `FOTO`. Cada tipo se registra com `registrarTipo` em seu arquivo em `apps/web/src/offline/tipos/` e é importado em `apps/web/src/offline/tipos/todos.ts`, que o `main.tsx` carrega uma vez; tipo novo entra por essa lista. Dois envios da mesma chave viram um só (`fundir`): na chamada a linha mais nova de cada desbravador vence; na foto a chave é única, então nada se funde. Depois de cada envio, o tipo invalida as consultas afetadas; a chamada também renova as versões dos itens seguintes da mesma chave e baixa o pacote de novo.
+- **Tipos de envio:** a fila conhece `REUNIAO` (chamada e correção), `FOTO` e `AULA` (registro de aula e correção). Cada tipo se registra com `registrarTipo` em seu arquivo em `apps/web/src/offline/tipos/` e é importado em `apps/web/src/offline/tipos/todos.ts`, que o `main.tsx` carrega uma vez; tipo novo entra por essa lista. Dois envios da mesma chave viram um só (`fundir`): na chamada a linha mais nova de cada desbravador vence; na foto a chave é única, então nada se funde; na aula (chave `aula:<classeId>:<data>`) a presença mais nova de cada desbravador vence e, por par desbravador+requisito, a última ação (marcar ou desmarcar) vence. Depois de cada envio, o tipo invalida as consultas afetadas; a chamada e a aula também renovam as versões dos itens seguintes da mesma chave e baixam o pacote de novo (a aula ainda invalida aulas, progresso, início, cronograma e ranking).
 - **Ler o pacote e rascunhos:** `usePacote()` devolve o pacote guardado no aparelho e reemite a cada gravação no banco local; as telas leem dele quando estão sem conexão. `lerRascunho`, `gravarRascunho` e `apagarRascunho` guardam estado de formulário por usuário e chave; sair do app apaga os rascunhos.
 - **Consultas e mutações com `networkMode: 'always'`:** o padrão do cliente de consultas (`main.tsx`) é não esperar o navegador se dizer online. Sem isso, com a rede fora a consulta ficaria pausada e a tela em "carregando" para sempre em vez de falhar e levar o app ao modo sem conexão; e a mutação de salvar a chamada ficaria pausada e nunca chegaria à fila. Mutações que precisam da API (como remover foto) falham nesse caso e a tela avisa.
 - **Avisos na fila:** "Entre de novo para enviar" (sessão expirada), "Pouco espaço" (mais de 100 MB de arquivos esperando), envios antigos de outra pessoa descartados (mais de 30 dias) e "Instale o app na tela inicial" (só no iPhone fora da tela inicial). Itens já enviados somem do aparelho após 24 h.
@@ -44,7 +44,7 @@ O app do conselheiro e do instrutor abre sem internet. Na abertura ele tenta ren
 
 ## O domingo do conselheiro
 
-Telas do conselheiro (o instrutor tem só um Início provisório, a fila e a montagem de cronograma descrita em "O Adm"), em `apps/web/src/modulos`:
+Telas do conselheiro, em `apps/web/src/modulos`:
 
 | Rota | O que é |
 |---|---|
@@ -53,7 +53,7 @@ Telas do conselheiro (o instrutor tem só um Início provisório, a fila e a mon
 | `/reunioes`, `/reunioes/:id` | Histórico e detalhe da reunião (`GET /api/reunioes`, `/api/reunioes/:id`) |
 | `/reunioes/nova`, `/reunioes/:id/editar` | Chamada nova e correção de chamada já feita |
 | `/galeria`, `/galeria/:albumId`, `/galeria/enviar` | Álbuns, fotos do álbum e envio de fotos (`GET /api/albuns`, `/api/albuns/:id`, `DELETE /api/fotos/:id`) |
-| `/dbv/:id` | Perfil do desbravador, visível também ao Adm e ao instrutor (`GET /api/desbravadores/:id/perfil`) |
+| `/dbv/:id` | Perfil do desbravador, visível também ao Adm e ao instrutor (`GET /api/desbravadores/:id/perfil`); a seção de progresso da classe vem de `GET /api/desbravadores/:id/progresso` e, com `requisito.marcar`, permite marcar e desmarcar requisitos |
 | `/ranking` | Ranking do mês, também para Adm e instrutor (`GET /api/ranking?mes=AAAA-MM`; sem `mes`, o mês corrente; `GET /api/ranking/unidades`) |
 
 Permissões: registrar chamada e avisar o Adm exigem `reuniao.registrar`; ver reuniões e frequência, `reuniao.ver`; enviar foto, `foto.enviar`; ver álbuns e remover foto, `foto.ver`; perfil e membros, `dbv.ver`.
@@ -102,6 +102,34 @@ O menu do Adm agora tem link em Visão geral, Classes e especialidades, Calendá
 | `POST /api/cronogramas/:id/publicar` | Publica; só o Adm, e recusa se já publicado. Notifica os instrutores |
 
 Enviar e publicar recebem `atualizadoEmVisto`; se o cronograma mudou depois da versão vista, a API responde conflito em vez de sobrescrever. Enviar e publicar também entram na atividade recente da visão geral. A montagem exige internet: sem conexão as telas mostram "Disponível quando houver internet" e não passam pela fila de envio.
+## O instrutor
+
+Telas do instrutor, em `apps/web/src/modulos`. As rotas da tabela abaixo, exceto `/inicio`, só o instrutor abre; o `/inicio` mostra a tela dele quando o papel ativo é instrutor. A barra de baixo dele tem Início, Classes, Cronograma e Ranking.
+
+| Rota | O que é |
+|---|---|
+| `/inicio` | Por classe: próxima aula, progresso médio, aula de hoje (registrada ou não), aulas dadas no ano; alerta de desbravadores que faltaram nas duas últimas aulas registradas (`GET /api/inicio/instrutor`) |
+| `/classes` | Classes do instrutor, com atalho para registrar aula |
+| `/classes/:id/progresso` | Progresso da turma na classe (`GET /api/classes/:id/progresso?anoClube=`) |
+| `/classes/:id/materiais` | Materiais de apoio da classe |
+| `/cronograma` | Cronograma da classe, em leitura (`GET /api/classes/:id/cronograma`). A tela não monta cronograma; com o cronograma ainda sem status e sem liberação para montar, a tela oferece "Pedir para eu montar" (avisa o Adm) |
+| `/aulas/nova`, `/aulas/:id/editar` | Registro de aula (presença e requisitos) e correção (`GET /api/classes/:id/aulas?anoClube=`, `GET /api/aulas/:id`) |
+| `/especialidades` | Marcar especialidades concluídas por desbravador (`GET /api/especialidades`, `GET/PUT/DELETE /api/desbravadores/:id/especialidades/:especialidadeId`) |
+| `/observacoes` | Observações sobre aula ou desbravador |
+
+Só o registro de aula funciona sem conexão. As demais telas dependem da API e, sem internet, mostram a mensagem de que só ficam disponíveis com conexão; em `/classes` e no cronograma o app oferece "Registrar aula" a partir do pacote guardado no aparelho.
+
+**Registro de aula.** Salvar grava um item `AULA` na fila e envia por `PUT /api/sync/aulas/:uuid` (`aula.registrar`; o `:uuid` é o id do registro, novo ou existente, então reenviar não duplica). Cada presença carrega a versão vista; se outra pessoa a mudou antes, vale a de quem enviou, a anterior fica registrada e a tela avisa. Requisito marcado só vale para quem estava presente; requisito já concluído fica como estava; requisito que já não é da classe fica de fora, e cada caso volta como aviso depois do envio. Desbravador que não era da classe na data também fica fora e é avisado. A classe considera matrícula cursando no ano do clube, desbravador ativo do tipo DBV ou líder. Prazo: o Adm corrige sem limite; o instrutor, até 30 dias depois da data da aula e com envio feito em até 7 dias; passado disso, "Esta aula já não pode ser alterada." Os pontos por requisito seguem o critério de requisito ativo do clube.
+
+**Progresso e especialidades.** `GET /api/classes/:id/progresso` exige `classe.ver_relatorio`; `GET /api/desbravadores/:id/progresso` e `GET /api/desbravadores/:id/especialidades`, `dbv.ver`; marcar e desmarcar requisito (`PUT/DELETE /api/desbravadores/:id/requisitos/:requisitoId`, corpo `{ concluidoEm }` no PUT) e especialidade, `requisito.marcar`.
+
+**Observações.** `GET/POST /api/observacoes`, `PATCH/DELETE /api/observacoes/:id`, para instrutor e Adm (conselheiro recebe 403; instrutor só nas classes do seu vínculo, e classe de fora responde 404 como a que não existe). Por padrão o instrutor lista só as suas; ver as de outros exige `observacao.ver_outros`.
+
+**Materiais.** `GET /api/classes/:id/materiais` (qualquer logado com acesso à classe), `POST /api/materiais/link` (só `https://`), `POST /api/materiais/arquivo` (multipart: `dados` em JSON com `classeId`, `secaoId` e `titulo`, e `arquivo`), `PATCH` e `DELETE /api/materiais/:id`; escrita exige `material.enviar`. Formatos aceitos: PDF, PPTX, ODP, DOCX e ODT, conferidos pelo conteúdo e não só pela extensão. Limites: 20 MB por arquivo (acima disso, 422 "O arquivo precisa ter até 20 MB.") e 1 GB de materiais por clube ("O espaço de materiais do clube acabou."). A URL do arquivo é assinada. Remover um material apaga o arquivo do disco; se a API cair no meio, a limpeza roda na próxima subida.
+
+**Pedir liberação do cronograma.** `POST /api/classes/:id/pedir-liberacao` (204) avisa os Adm do clube por notificação. Um segundo pedido da mesma classe em menos de 24 h não gera aviso novo; classe que o instrutor já pode montar responde erro de regra.
+
+**Operação: limite de upload no nginx.** O `nginx.conf` do container web já aceita 21 MB em `/api/materiais/arquivo` (3 MB no resto). O nginx do host, que termina o HTTPS e fica fora do repositório, precisa de `client_max_body_size 21m;` para essa rota; sem isso, arquivos entre o limite dele (1 MB por padrão do nginx) e 20 MB são recusados antes de chegar à API.
 
 ## Testar
 
