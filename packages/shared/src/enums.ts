@@ -32,3 +32,31 @@ export const ORIGENS_ALTERACAO = ['EDICAO', 'CONFLITO_SYNC'] as const
 export const MesCivil = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Mês inválido')
 /** "HH:MM" 24 h */
 export const Horario = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Horário inválido')
+
+// Fases 2 e 3
+export const TIPOS_EVENTO = ['SEM_REUNIAO', 'ACAMPAMENTO', 'EVENTO', 'FERIADO'] as const
+export const TipoEvento = z.enum(TIPOS_EVENTO)
+export const STATUS_CRONOGRAMA = ['RASCUNHO', 'ENVIADO', 'PUBLICADO'] as const
+export const StatusCronograma = z.enum(STATUS_CRONOGRAMA)
+export const ALVOS_OBSERVACAO = ['AULA', 'DBV'] as const
+export const AlvoObservacao = z.enum(ALVOS_OBSERVACAO)
+export const TIPOS_MATERIAL = ['PDF', 'APRESENTACAO', 'DOCUMENTO', 'LINK'] as const
+/** Extensão → mime → tipo. O mime gravado vem SEMPRE desta tabela (nunca do cliente/multer). */
+export const FORMATOS_MATERIAL = {
+  pdf: { mime: 'application/pdf', tipo: 'PDF' },
+  pptx: { mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', tipo: 'APRESENTACAO' },
+  odp: { mime: 'application/vnd.oasis.opendocument.presentation', tipo: 'APRESENTACAO' },
+  docx: { mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', tipo: 'DOCUMENTO' },
+  odt: { mime: 'application/vnd.oasis.opendocument.text', tipo: 'DOCUMENTO' },
+} as const
+export const TipoMaterial = z.enum(TIPOS_MATERIAL)
+export const TIPOS_NOTIFICACAO = ['CONFLITO_CRONOGRAMA', 'CRONOGRAMA_ENVIADO', 'CRONOGRAMA_PUBLICADO', 'PEDIDO_LIBERAR_CRONOGRAMA'] as const
+export const TipoNotificacao = z.enum(TIPOS_NOTIFICACAO)
+
+/** Padrão das três marcações por tipo de evento (editáveis no formulário). */
+export const MARCACOES_PADRAO = {
+  SEM_REUNIAO: { cancelaReuniao: true, bloqueiaAula: true, bomParaCampo: false },
+  EVENTO: { cancelaReuniao: false, bloqueiaAula: true, bomParaCampo: false },
+  ACAMPAMENTO: { cancelaReuniao: true, bloqueiaAula: false, bomParaCampo: true },
+  FERIADO: { cancelaReuniao: false, bloqueiaAula: false, bomParaCampo: false },
+} as const

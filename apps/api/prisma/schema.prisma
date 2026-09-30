@@ -1,3 +1,5 @@
+// Fases 2 e 3 — contrato do banco (schema COMPLETO: Fases 0, 1, 2 e 3; blocos novos marcados // FASE 2-3).
+// A onda 0 da PR base copia este arquivo e gera a migration `fase2_3_instrutor_adm`. Validado com prisma 7.5.0.
 // Fase 1 — contrato do banco (schema COMPLETO: Fase 0 + Fase 1). A onda 1a-0 copia este arquivo
 // para apps/api/prisma/schema.prisma e gera a migration `fase1_conselheiro`. Validado com prisma 7.5.0.
 // Blocos novos marcados com  // FASE 1.
@@ -124,6 +126,43 @@ enum TipoPedidoAdm {
   UNIDADE_SEM_DBV
 }
 
+// FASE 2-3
+enum TipoEvento {
+  SEM_REUNIAO
+  ACAMPAMENTO
+  EVENTO
+  FERIADO
+}
+
+// FASE 2-3
+enum StatusCronograma {
+  RASCUNHO
+  ENVIADO
+  PUBLICADO
+}
+
+// FASE 2-3
+enum AlvoObservacao {
+  AULA
+  DBV
+}
+
+// FASE 2-3
+enum TipoMaterial {
+  PDF
+  APRESENTACAO
+  DOCUMENTO
+  LINK
+}
+
+// FASE 2-3
+enum TipoNotificacao {
+  CONFLITO_CRONOGRAMA
+  CRONOGRAMA_ENVIADO
+  CRONOGRAMA_PUBLICADO
+  PEDIDO_LIBERAR_CRONOGRAMA
+}
+
 // ───────────────────────── clube e acesso ─────────────────────────
 
 model Clube {
@@ -157,6 +196,20 @@ model Clube {
   fotos            Foto[]
   pedidosAdm       PedidoAoAdm[]
   enviosProcessados EnvioProcessado[]
+  eventos             EventoCalendario[]
+  cronogramas         Cronograma[]
+  publicacoes         CronogramaPublicacao[]
+  aulasPlanejadas     AulaPlanejada[]
+  aulaRequisitos      AulaRequisito[]
+  registrosAula       RegistroAula[]
+  presencasAula       PresencaAula[]
+  enviosAula          EnvioAulaProcessado[]
+  requisitosConcluidos RequisitoConcluido[]
+  especialidadesConcluidas EspecialidadeConcluida[]
+  observacoes         Observacao[]
+  materiais           Material[]
+  notificacoes        Notificacao[]
+  atividades          Atividade[]
 }
 
 model ConfiguracaoClube {
@@ -203,6 +256,19 @@ model Usuario {
   fotosEnviadas       Foto[]             @relation("FotoEnviadaPor")
   fotosRemovidas      Foto[]             @relation("FotoRemovidaPor")
   pedidosAdm          PedidoAoAdm[]
+  eventosCriados      EventoCalendario[]
+  cronogramasEnviados Cronograma[]           @relation("CronogramaEnviadoPor")
+  publicacoes         CronogramaPublicacao[]
+  registrosAula       RegistroAula[]
+  presencasAlteradas  PresencaAula[]
+  requisitosMarcados  RequisitoConcluido[]   @relation("RequisitoMarcadoPor")
+  requisitosRemovidos RequisitoConcluido[]   @relation("RequisitoRemovidoPor")
+  especialidadesMarcadas EspecialidadeConcluida[] @relation("EspecialidadeMarcadaPor")
+  especialidadesRemovidas EspecialidadeConcluida[] @relation("EspecialidadeRemovidaPor")
+  observacoes         Observacao[]
+  materiais           Material[]
+  notificacoes        Notificacao[]
+  atividades          Atividade[]
 }
 
 model Vinculo {
@@ -322,6 +388,10 @@ model Desbravador {
   chamadas    Chamada[]
   alteracoes  ChamadaAlteracao[]
   lancamentos LancamentoPontos[]
+  presencasAula            PresencaAula[]
+  requisitosConcluidos     RequisitoConcluido[]
+  especialidadesConcluidas EspecialidadeConcluida[]
+  observacoes              Observacao[]
 
   @@unique([clubeId, id])
   @@index([clubeId, ativo, nome])
@@ -383,6 +453,10 @@ model Classe {
   clubes     ClasseClube[]
   vinculos   VinculoClasse[]
   matriculas MatriculaClasse[]
+  cronogramas   Cronograma[]
+  registrosAula RegistroAula[]
+  observacoes   Observacao[]
+  materiais     Material[]
 
   @@unique([nome, trilha], where: { clubeId: null }, map: "classe_oficial_nome_trilha")
   @@unique([clubeId, nome, trilha])
@@ -410,6 +484,7 @@ model SecaoRequisito {
 
   classe     Classe      @relation(fields: [classeId], references: [id], onDelete: Restrict)
   requisitos Requisito[]
+  materiais  Material[]
 
   @@unique([classeId, codigo])
 }
@@ -426,6 +501,8 @@ model Requisito {
 
   secao   SecaoRequisito    @relation(fields: [secaoId], references: [id], onDelete: Restrict)
   ajustes RequisitoAjuste[]
+  aulas      AulaRequisito[]
+  concluidos RequisitoConcluido[]
 
   @@unique([secaoId, codigo])
 }
@@ -461,6 +538,7 @@ model Especialidade {
 
   clube Clube?            @relation(fields: [clubeId], references: [id], onDelete: Restrict)
   area  AreaEspecialidade @relation(fields: [areaId], references: [id], onDelete: Restrict)
+  concluidas EspecialidadeConcluida[]
 
   @@unique([areaId, nome], where: { clubeId: null }, map: "especialidade_oficial_area_nome")
   @@unique([clubeId, areaId, nome])
@@ -628,6 +706,7 @@ model Arquivo {
   clube     Clube   @relation(fields: [clubeId], references: [id], onDelete: Restrict)
   criadoPor Usuario @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
   foto      Foto?
+  material  Material?
 
   @@unique([clubeId, id])
 }
@@ -702,4 +781,297 @@ model EnvioProcessado {
   reuniao Reuniao @relation(fields: [clubeId, reuniaoId], references: [clubeId, id], onDelete: Restrict)
 
   @@index([clubeId, reuniaoId])
+}
+
+// ═════════════════════════ FASE 2-3: calendário, cronograma, aula, progresso, conteúdo, avisos ═════════════════════════
+
+// FASE 2-3
+model EventoCalendario {
+  id             String     @id @default(uuid(7)) @db.Uuid
+  clubeId        String     @db.Uuid
+  nome           String
+  tipo           TipoEvento
+  inicio         DateTime   @db.Date
+  fim            DateTime   @db.Date
+  horario        String?
+  local          String?
+  cancelaReuniao Boolean
+  bloqueiaAula   Boolean
+  bomParaCampo   Boolean
+  criadoPorId    String     @db.Uuid
+  criadoEm       DateTime   @default(now()) @db.Timestamptz
+  atualizadoEm   DateTime   @updatedAt @db.Timestamptz
+  removidoEm     DateTime?  @db.Timestamptz
+
+  clube     Clube   @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  criadoPor Usuario @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
+
+  @@unique([clubeId, id])
+  @@index([clubeId, inicio, fim])
+}
+
+// FASE 2-3 — um cronograma por classe por ano do clube. Quem monta edita o "vivo"; os demais
+// veem a última CronogramaPublicacao (retrato do que o Adm publicou).
+model Cronograma {
+  id           String           @id @default(uuid(7)) @db.Uuid
+  clubeId      String           @db.Uuid
+  classeId     String           @db.Uuid
+  anoClube     Int
+  inicio       DateTime         @db.Date
+  fim          DateTime         @db.Date
+  status       StatusCronograma @default(RASCUNHO)
+  enviadoEm    DateTime?        @db.Timestamptz
+  enviadoPorId String?          @db.Uuid
+  criadoEm     DateTime         @default(now()) @db.Timestamptz
+  atualizadoEm DateTime         @updatedAt @db.Timestamptz
+
+  clube      Clube                  @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  classe     Classe                 @relation(fields: [classeId], references: [id], onDelete: Restrict)
+  enviadoPor Usuario?               @relation("CronogramaEnviadoPor", fields: [enviadoPorId], references: [id], onDelete: Restrict)
+  aulas      AulaPlanejada[]
+  requisitos AulaRequisito[]
+  publicacoes CronogramaPublicacao[]
+
+  @@unique([clubeId, classeId, anoClube])
+  @@unique([clubeId, id])
+}
+
+// FASE 2-3 — retrato publicado: { aulas: [{ id, data, horario, local, titulo, requisitoIds[] }] }
+model CronogramaPublicacao {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  clubeId        String   @db.Uuid
+  cronogramaId   String   @db.Uuid
+  conteudo       Json
+  publicadoPorId String   @db.Uuid
+  publicadoEm    DateTime @default(now()) @db.Timestamptz
+
+  clube        Clube      @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  cronograma   Cronograma @relation(fields: [clubeId, cronogramaId], references: [clubeId, id], onDelete: Restrict)
+  publicadoPor Usuario    @relation(fields: [publicadoPorId], references: [id], onDelete: Restrict)
+
+  @@index([clubeId, cronogramaId, publicadoEm])
+}
+
+// FASE 2-3 — aula do cronograma vivo. Removida só sem requisitos (removidoEm; nunca apagar).
+model AulaPlanejada {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  clubeId      String    @db.Uuid
+  cronogramaId String    @db.Uuid
+  data         DateTime  @db.Date
+  horario      String?
+  local        String?
+  titulo       String?
+  removidaEm   DateTime? @db.Timestamptz
+
+  clube      Clube           @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  cronograma Cronograma      @relation(fields: [clubeId, cronogramaId], references: [clubeId, id], onDelete: Restrict)
+  requisitos AulaRequisito[]
+  registros  RegistroAula[]
+
+  @@unique([clubeId, id])
+  @@unique([cronogramaId, data], where: { removidaEm: null }, map: "aula_planejada_ativa_por_data")
+  @@index([clubeId, data])
+}
+
+// FASE 2-3 — cada requisito numa data só por cronograma.
+model AulaRequisito {
+  clubeId         String @db.Uuid
+  cronogramaId    String @db.Uuid
+  aulaPlanejadaId String @db.Uuid
+  requisitoId     String @db.Uuid
+
+  clube      Clube         @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  cronograma Cronograma    @relation(fields: [clubeId, cronogramaId], references: [clubeId, id], onDelete: Restrict)
+  aula       AulaPlanejada @relation(fields: [clubeId, aulaPlanejadaId], references: [clubeId, id], onDelete: Restrict)
+  requisito  Requisito     @relation(fields: [requisitoId], references: [id], onDelete: Restrict)
+
+  @@id([aulaPlanejadaId, requisitoId])
+  @@unique([cronogramaId, requisitoId])
+}
+
+// FASE 2-3 — uma aula registrada por classe por data. O id pode vir do celular.
+model RegistroAula {
+  id              String   @id @default(uuid(7)) @db.Uuid
+  clubeId         String   @db.Uuid
+  classeId        String   @db.Uuid
+  aulaPlanejadaId String?  @db.Uuid
+  data            DateTime @db.Date
+  registradoPorId String   @db.Uuid
+  registradoEm    DateTime @default(now()) @db.Timestamptz
+  atualizadoEm    DateTime @db.Timestamptz
+
+  clube         Clube                @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  classe        Classe               @relation(fields: [classeId], references: [id], onDelete: Restrict)
+  aulaPlanejada AulaPlanejada?       @relation(fields: [clubeId, aulaPlanejadaId], references: [clubeId, id], onDelete: Restrict)
+  registradoPor Usuario              @relation(fields: [registradoPorId], references: [id], onDelete: Restrict)
+  presencas     PresencaAula[]
+  requisitos    RequisitoConcluido[]
+  observacoes   Observacao[]
+  envios        EnvioAulaProcessado[]
+
+  @@unique([clubeId, classeId, data])
+  @@unique([clubeId, id])
+}
+
+// FASE 2-3 — presença por DBV na aula; `versao` para conflito, como a Chamada.
+model PresencaAula {
+  clubeId        String   @db.Uuid
+  registroAulaId String   @db.Uuid
+  dbvId          String   @db.Uuid
+  presente       Boolean
+  versao         DateTime @db.Timestamptz(3)
+  alteradaPorId  String   @db.Uuid
+  envioId        String   @db.Uuid
+
+  clube       Clube        @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  registro    RegistroAula @relation(fields: [clubeId, registroAulaId], references: [clubeId, id], onDelete: Restrict)
+  dbv         Desbravador  @relation(fields: [clubeId, dbvId], references: [clubeId, id], onDelete: Restrict)
+  alteradaPor Usuario      @relation(fields: [alteradaPorId], references: [id], onDelete: Restrict)
+
+  @@id([registroAulaId, dbvId])
+  @@index([clubeId, dbvId])
+}
+
+// FASE 2-3
+model EnvioAulaProcessado {
+  envioId        String   @id @db.Uuid
+  clubeId        String   @db.Uuid
+  registroAulaId String   @db.Uuid
+  processadoEm   DateTime @default(now()) @db.Timestamptz
+
+  clube    Clube        @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  registro RegistroAula @relation(fields: [clubeId, registroAulaId], references: [clubeId, id], onDelete: Restrict)
+
+  @@index([clubeId, registroAulaId])
+}
+
+// FASE 2-3 — progresso. Remoção lógica; um ativo por (DBV, requisito).
+model RequisitoConcluido {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  clubeId        String    @db.Uuid
+  dbvId          String    @db.Uuid
+  requisitoId    String    @db.Uuid
+  concluidoEm    DateTime  @db.Date
+  registroAulaId String?   @db.Uuid
+  marcadoPorId   String    @db.Uuid
+  marcadoEm      DateTime  @default(now()) @db.Timestamptz
+  removidoEm     DateTime? @db.Timestamptz
+  removidoPorId  String?   @db.Uuid
+
+  clube       Clube         @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  dbv         Desbravador   @relation(fields: [clubeId, dbvId], references: [clubeId, id], onDelete: Restrict)
+  requisito   Requisito     @relation(fields: [requisitoId], references: [id], onDelete: Restrict)
+  registro    RegistroAula? @relation(fields: [clubeId, registroAulaId], references: [clubeId, id], onDelete: Restrict)
+  marcadoPor  Usuario       @relation("RequisitoMarcadoPor", fields: [marcadoPorId], references: [id], onDelete: Restrict)
+  removidoPor Usuario?      @relation("RequisitoRemovidoPor", fields: [removidoPorId], references: [id], onDelete: Restrict)
+
+  @@unique([dbvId, requisitoId], where: { removidoEm: null }, map: "requisito_concluido_ativo")
+  @@index([clubeId, dbvId])
+  @@index([clubeId, registroAulaId])
+}
+
+// FASE 2-3
+model EspecialidadeConcluida {
+  id              String    @id @default(uuid(7)) @db.Uuid
+  clubeId         String    @db.Uuid
+  dbvId           String    @db.Uuid
+  especialidadeId String    @db.Uuid
+  concluidaEm     DateTime  @db.Date
+  marcadoPorId    String    @db.Uuid
+  marcadoEm       DateTime  @default(now()) @db.Timestamptz
+  removidoEm      DateTime? @db.Timestamptz
+  removidoPorId   String?   @db.Uuid
+
+  clube         Clube         @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  dbv           Desbravador   @relation(fields: [clubeId, dbvId], references: [clubeId, id], onDelete: Restrict)
+  especialidade Especialidade @relation(fields: [especialidadeId], references: [id], onDelete: Restrict)
+  marcadoPor    Usuario       @relation("EspecialidadeMarcadaPor", fields: [marcadoPorId], references: [id], onDelete: Restrict)
+  removidoPor   Usuario?      @relation("EspecialidadeRemovidaPor", fields: [removidoPorId], references: [id], onDelete: Restrict)
+
+  @@unique([dbvId, especialidadeId], where: { removidoEm: null }, map: "especialidade_concluida_ativa")
+  @@index([clubeId, dbvId])
+  @@index([clubeId, concluidaEm])
+}
+
+// FASE 2-3 — nunca exposta fora de instrutores e Adm.
+model Observacao {
+  id             String         @id @default(uuid(7)) @db.Uuid
+  clubeId        String         @db.Uuid
+  classeId       String         @db.Uuid
+  autorId        String         @db.Uuid
+  alvo           AlvoObservacao
+  registroAulaId String?        @db.Uuid
+  dbvId          String?        @db.Uuid
+  titulo         String?
+  texto          String
+  criadaEm       DateTime       @default(now()) @db.Timestamptz
+  editadaEm      DateTime?      @db.Timestamptz
+  removidaEm     DateTime?      @db.Timestamptz
+
+  clube    Clube         @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  classe   Classe        @relation(fields: [classeId], references: [id], onDelete: Restrict)
+  autor    Usuario       @relation(fields: [autorId], references: [id], onDelete: Restrict)
+  registro RegistroAula? @relation(fields: [clubeId, registroAulaId], references: [clubeId, id], onDelete: Restrict)
+  dbv      Desbravador?  @relation(fields: [clubeId, dbvId], references: [clubeId, id], onDelete: Restrict)
+
+  @@index([clubeId, classeId, criadaEm])
+  @@index([clubeId, dbvId])
+}
+
+// FASE 2-3 — arquivo (PDF, apresentação, documento) ou link.
+model Material {
+  id           String       @id @default(uuid(7)) @db.Uuid
+  clubeId      String       @db.Uuid
+  classeId     String       @db.Uuid
+  secaoId      String?      @db.Uuid
+  titulo       String
+  tipo         TipoMaterial
+  arquivoId    String?      @unique @db.Uuid
+  url          String?
+  enviadoPorId String       @db.Uuid
+  criadoEm     DateTime     @default(now()) @db.Timestamptz
+  removidoEm   DateTime?    @db.Timestamptz
+
+  clube      Clube           @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  classe     Classe          @relation(fields: [classeId], references: [id], onDelete: Restrict)
+  secao      SecaoRequisito? @relation(fields: [secaoId], references: [id], onDelete: Restrict)
+  arquivo    Arquivo?        @relation(fields: [clubeId, arquivoId], references: [clubeId, id], onDelete: Restrict)
+  enviadoPor Usuario         @relation(fields: [enviadoPorId], references: [id], onDelete: Restrict)
+
+  @@unique([clubeId, arquivoId])
+  @@index([clubeId, classeId, removidoEm])
+}
+
+// FASE 2-3 — sino.
+model Notificacao {
+  id        String          @id @default(uuid(7)) @db.Uuid
+  clubeId   String          @db.Uuid
+  usuarioId String          @db.Uuid
+  tipo      TipoNotificacao
+  titulo    String
+  texto     String
+  link      String
+  criadaEm  DateTime        @default(now()) @db.Timestamptz
+  lidaEm    DateTime?       @db.Timestamptz
+
+  clube   Clube   @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+
+  @@index([clubeId, usuarioId, lidaEm, criadaEm])
+}
+
+// FASE 2-3 — feed da visão geral do Adm.
+model Atividade {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  clubeId   String   @db.Uuid
+  autorId   String?  @db.Uuid
+  tipo      String
+  descricao String
+  link      String?
+  criadaEm  DateTime @default(now()) @db.Timestamptz
+
+  clube Clube    @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  autor Usuario? @relation(fields: [autorId], references: [id], onDelete: Restrict)
+
+  @@index([clubeId, criadaEm])
 }

@@ -27,4 +27,13 @@ describe('nginx.conf: política de segurança de conteúdo', () => {
     expect(conteudo).toMatch(/log_format/)
     expect(conteudo).toMatch(/\$uri/)
   })
+
+  it('o bloco de documentos de material aceita 21 MB, encaminha para a API e não tem CSP própria', () => {
+    const bloco = conteudo.split('location').find((trecho) => trecho.includes('/api/materiais/arquivo')) ?? ''
+    expect(bloco).toMatch(/client_max_body_size\s+21m;/)
+    expect(bloco).toMatch(/set \$api http:\/\/api:3001;/)
+    expect(bloco).toMatch(/proxy_pass \$api;/)
+    expect(bloco).toContain('X-Forwarded-Proto')
+    expect(bloco).not.toContain('Content-Security-Policy')
+  })
 })

@@ -26,6 +26,7 @@ export function criarPacote(parcial: Partial<Pacote> = {}): Pacote {
     unidades: [],
     reunioesRecentes: [],
     albunsRecentes: [],
+    instrutor: null,
     ...parcial,
   }
 }

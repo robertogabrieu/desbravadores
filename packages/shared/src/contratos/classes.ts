@@ -20,6 +20,9 @@ export const ClasseSaida = z.object({
 })
 export const RequisitoSaida = z.object({
   id: Uuid, codigo: z.string(), texto: z.string(), campo: z.boolean(), ativo: z.boolean(),
+  /** Preenchidos em GET /classes/:id para quem tem classe.gerenciar. */
+  oficial: z.object({ ativo: z.boolean(), campo: z.boolean() }).optional(),
+  ajustado: z.boolean().optional(),
 })
 export const ClasseDetalheSaida = ClasseSaida.extend({
   secoes: z.array(z.object({
@@ -29,3 +32,8 @@ export const ClasseDetalheSaida = ClasseSaida.extend({
 })
 // GET /classes → ClasseSaida[] (ordem: ordem ascendente)
 
+export const ClasseClubeEditarEntrada = z.object({ ativa: z.boolean(), quemMontaCronograma: z.enum(['ADM', 'INSTRUTOR']) }).partial()
+/** null = volta a seguir o oficial. */
+export const RequisitoAjusteEntrada = z.object({ ativo: z.boolean().nullable(), campo: z.boolean().nullable() }).partial()
+// PATCH /classes/:id {ClasseClubeEditarEntrada} → ClasseDetalheSaida
+// PATCH /requisitos/:id/ajuste {RequisitoAjusteEntrada} → ClasseDetalheSaida
