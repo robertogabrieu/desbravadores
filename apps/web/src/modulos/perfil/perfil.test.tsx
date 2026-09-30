@@ -4,6 +4,7 @@ import { HttpResponse, http } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ModoConexao } from '../../offline'
 import { CLASSE_AMIGO, criarPerfil, handlerErroPerfil, handlerPerfil } from '../../testes/handlers/perfil'
+import { handlerProgressoDbv } from '../../testes/handlers/progresso'
 import { criarVinculo, handlersSessao } from '../../testes/handlers/sessao'
 import { renderizarRotas } from '../../testes/renderizar'
 import { servidor } from '../../testes/servidor'
@@ -23,7 +24,7 @@ beforeEach(() => {
 const ID = '00000000-0000-4000-8000-000000000201'
 
 function abrir() {
-  servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO')]))
+  servidor.use(handlerProgressoDbv(), ...handlersSessao([criarVinculo('CONSELHEIRO')]))
   return renderizarRotas(rotasPerfil, `/dbv/${ID}`)
 }
 
@@ -39,16 +40,14 @@ describe('perfil do DBV', () => {
     expect(screen.getByText('frequência').previousSibling).toHaveTextContent('94%')
   })
 
-  it('lista as classes investidas e avisa que o progresso da classe vem depois; sem anel, seções ou especialidades', async () => {
+  it('lista as classes investidas; sem especialidades nem instrutor (a seção de progresso tem os próprios testes)', async () => {
     servidor.use(handlerPerfil())
     abrir()
     await screen.findByRole('heading', { name: 'Ana Clara Souza' })
     expect(screen.getByText(CLASSE_AMIGO.nome)).toBeInTheDocument()
     expect(screen.getByText('Investida em 2029')).toBeInTheDocument()
-    expect(screen.getByText('Progresso da classe em breve')).toBeInTheDocument()
     expect(screen.queryByText(/Especialidades/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Instrutor/i)).not.toBeInTheDocument()
-    expect(screen.queryByRole('img')).not.toBeInTheDocument()
   })
 
   it('sem posição, sem frequência e sem classe: traços e nada de inventado', async () => {
