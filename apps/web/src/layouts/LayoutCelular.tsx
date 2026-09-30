@@ -14,7 +14,7 @@ const RANKING: ItemDeNavegacao = { rotulo: 'Ranking', icone: Trophy, para: '/ran
 
 const ITENS_POR_PAPEL = {
   CONSELHEIRO: [INICIO, { rotulo: 'Unidade', icone: Users, para: '/unidade' }, { rotulo: 'Reuniões', icone: CalendarDays, para: '/reunioes' }, RANKING],
-  INSTRUTOR: [INICIO, { rotulo: 'Classes', icone: GraduationCap }, { rotulo: 'Cronograma', icone: CalendarDays }, RANKING],
+  INSTRUTOR: [INICIO, { rotulo: 'Classes', icone: GraduationCap, para: '/classes' }, { rotulo: 'Cronograma', icone: CalendarDays, para: '/cronograma' }, RANKING],
   ADM: [INICIO],
 } satisfies Record<string, ItemDeNavegacao[]>
 

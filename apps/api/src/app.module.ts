@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common'
+import { AulasModule } from './aulas/aulas.module'
 import { ArquivosModule } from './arquivos/arquivos.module'
 import { AuthModule } from './auth/auth.module'
 import { AtividadesModule } from './atividades/atividades.module'
@@ -12,6 +13,10 @@ import { EmailModule } from './email/email.module'
 import { EspecialidadesModule } from './especialidades/especialidades.module'
 import { FotosModule } from './fotos/fotos.module'
 import { InicioModule } from './inicio/inicio.module'
+import { InstrutorModule } from './instrutor/instrutor.module'
+import { MateriaisModule } from './materiais/materiais.module'
+import { ObservacoesModule } from './observacoes/observacoes.module'
+import { ProgressoModule } from './progresso/progresso.module'
 import { NotificacoesModule } from './notificacoes/notificacoes.module'
 import { PermissoesModule } from './permissoes/permissoes.module'
 import { PedidosModule } from './pedidos/pedidos.module'
@@ -51,6 +56,11 @@ import { UsuariosModule } from './usuarios/usuarios.module'
     CronogramasModule,
     NotificacoesModule,
     AtividadesModule,
+    AulasModule,
+    ProgressoModule,
+    ObservacoesModule,
+    MateriaisModule,
+    InstrutorModule,
   ],
 })
 export class AppModule {}
