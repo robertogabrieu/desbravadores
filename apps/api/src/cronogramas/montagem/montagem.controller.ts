@@ -96,6 +96,12 @@ export class MontagemController {
   }
 
   @Logado()
+  @Delete('aulas-planejadas/:id')
+  removerAula(@SessaoDoClube() sessao: SessaoLogada, @Param('id', id()) aulaId: string): Saida {
+    return this.montagem.removerAula(sessao, aulaId)
+  }
+
+  @Logado()
   @HttpCode(200)
   @Post('cronogramas/:id/enviar')
   enviar(

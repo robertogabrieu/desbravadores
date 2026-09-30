@@ -242,6 +242,56 @@ describe('A7 · montar', () => {
   })
 })
 
+const SEM_REUNIAO = { cancelaReuniao: true, bloqueiaAula: false, bomParaCampo: false, eventos: ['Retiro da igreja'] }
+
+describe('A7 · achados de montagem', () => {
+  it('dia de reunião cancelado sem aula: hachurado, com o texto e sem "Colocar aqui"', async () => {
+    abrir(criarMontagem({ datas: [criarDataMontagem('2026-10-11', { situacao: SEM_REUNIAO })], requisitos: [REQ_LIVRE] }))
+    await screen.findByText(/agendados/)
+    const bloqueada = linha('2026-10-11')
+    expect(bloqueada).toHaveAttribute('data-estado', 'bloqueada')
+    expect(within(bloqueada).getByText('Retiro da igreja · sem aula de classe')).toBeInTheDocument()
+    expect(within(bloqueada).queryByRole('button', { name: /Colocar aqui/ })).not.toBeInTheDocument()
+  })
+
+  it('o requisito de cada data tem o texto visível "remover" e mantém o nome acessível', async () => {
+    abrir()
+    await screen.findByText(/agendados/)
+    const botao = within(linha('2026-10-04')).getByRole('button', { name: `Tirar ${REQ_COLOCADO.codigo} desta data` })
+    expect(botao).toHaveTextContent('remover')
+  })
+
+  it('"Colocar aqui" some na data que já tem o requisito selecionado', async () => {
+    abrir()
+    const usuario = userEvent.setup()
+    await screen.findByText(/agendados/)
+    await usuario.click(screen.getByRole('button', { name: new RegExp(REQ_COLOCADO.texto) }))
+    expect(screen.queryByRole('button', { name: 'Colocar aqui em 04/10' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Colocar aqui em 18/10' })).toBeInTheDocument()
+  })
+
+  it('"Remover aula" pede confirmação e chama DELETE da aula; aula dada não tem o botão', async () => {
+    const registro = abrir()
+    const usuario = userEvent.setup()
+    await screen.findByText(/agendados/)
+    expect(within(linha('2026-11-01')).queryByRole('button', { name: 'Remover aula' })).not.toBeInTheDocument()
+    await usuario.click(within(linha('2026-10-04')).getByRole('button', { name: 'Remover aula' }))
+    expect(registro.chamadas).toHaveLength(0)
+    await usuario.click(screen.getByRole('button', { name: 'Remover' }))
+    await waitFor(() => expect(registro.chamadas).toHaveLength(1))
+    expect(registro.chamadas[0]).toMatchObject({ metodo: 'DELETE', caminho: `/api/aulas-planejadas/${uuid(2001)}` })
+  })
+
+  it('classe desativada (422): mostra a mensagem na faixa', async () => {
+    const registro = abrir()
+    const usuario = userEvent.setup()
+    await screen.findByText(/agendados/)
+    registro.falharProxima(422, { codigo: 'VALIDACAO', mensagem: 'Esta classe está desativada no clube.' })
+    await usuario.click(screen.getByRole('button', { name: `Tirar ${REQ_COLOCADO.codigo} desta data` }))
+    expect(await screen.findByText('Esta classe está desativada no clube.')).toBeInTheDocument()
+  })
+})
+
 describe('A7 · concorrência e publicação', () => {
   it('409: mostra a faixa e "Atualizar" refaz a busca', async () => {
     const registro = abrir()

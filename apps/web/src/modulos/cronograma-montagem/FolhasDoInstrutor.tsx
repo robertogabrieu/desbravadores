@@ -4,7 +4,7 @@ import { Botao } from '../../ui/Botao'
 import { FolhaLateral } from '../../ui/FolhaLateral'
 import { cn } from '../../ui/cn'
 import { EtiquetaCampo } from './EtiquetaCampo'
-import { diaMes, textoDaData } from './datas'
+import { dataBloqueada, diaMes, textoDaData } from './datas'
 
 interface PropriedadesAdicionar {
   dado: DataDaMontagem
@@ -80,7 +80,7 @@ interface PropriedadesMover {
 
 /** Folha do "Mover": as datas que aceitam aula (não bloqueadas, sem aula dada). */
 export function FolhaMover({ requisito, datas, desabilitado, aoEscolher, aoFechar }: PropriedadesMover) {
-  const destinos = datas.filter((dado) => !dado.situacao.bloqueiaAula && !dado.aulaDada && dado.data !== requisito.data)
+  const destinos = datas.filter((dado) => !dataBloqueada(dado) && !dado.aulaDada && dado.data !== requisito.data)
 
   async function escolher(data: string) {
     await aoEscolher(data)

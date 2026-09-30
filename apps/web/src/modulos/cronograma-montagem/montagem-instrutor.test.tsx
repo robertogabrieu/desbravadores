@@ -63,6 +63,40 @@ describe('I3b · data em conflito', () => {
   })
 })
 
+describe('I3b · achados de montagem', () => {
+  it('dia de reunião cancelado sem aula: hachurado, com o texto e sem "+"', async () => {
+    const situacao = { cancelaReuniao: true, bloqueiaAula: false, bomParaCampo: false, eventos: ['Retiro da igreja'] }
+    abrir(criarMontagem({ datas: [criarDataMontagem('2026-10-11', { situacao })] }))
+    await screen.findByText(/requisitos com data/)
+    const bloqueada = linha('2026-10-11')
+    expect(bloqueada).toHaveAttribute('data-estado', 'bloqueada')
+    expect(within(bloqueada).getByText('Retiro da igreja · sem aula de classe')).toBeInTheDocument()
+    expect(within(bloqueada).queryByRole('button', { name: 'Adicionar requisito nesta data' })).not.toBeInTheDocument()
+  })
+
+  it('"Remover aula" pede confirmação e chama DELETE; aula dada não tem o botão', async () => {
+    const registro = abrir()
+    const usuario = userEvent.setup()
+    await screen.findByText(/requisitos com data/)
+    expect(within(linha('2026-11-01')).queryByRole('button', { name: 'Remover aula' })).not.toBeInTheDocument()
+    await usuario.click(within(linha('2026-10-04')).getByRole('button', { name: 'Remover aula' }))
+    expect(registro.chamadas).toHaveLength(0)
+    await usuario.click(screen.getByRole('button', { name: 'Remover' }))
+    await waitFor(() => expect(registro.chamadas).toHaveLength(1))
+    expect(registro.chamadas[0]).toMatchObject({ metodo: 'DELETE', caminho: `/api/aulas-planejadas/${uuid(2001)}` })
+  })
+
+  it('classe desativada (422): mostra a mensagem na faixa', async () => {
+    const registro = abrir()
+    const usuario = userEvent.setup()
+    await screen.findByText(/requisitos com data/)
+    registro.falharProxima(422, { codigo: 'VALIDACAO', mensagem: 'Esta classe está desativada no clube.' })
+    await usuario.click(within(linha('2026-10-04')).getByRole('button', { name: 'Remover aula' }))
+    await usuario.click(screen.getByRole('button', { name: 'Remover' }))
+    expect(await screen.findByText('Esta classe está desativada no clube.')).toBeInTheDocument()
+  })
+})
+
 describe('I3b · quatro estados', () => {
   it('carregando, depois o conteúdo', async () => {
     abrir()

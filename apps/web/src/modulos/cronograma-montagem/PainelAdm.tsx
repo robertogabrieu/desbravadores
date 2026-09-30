@@ -127,11 +127,12 @@ export function PainelAdm({ montagem, cronograma, classe, ano, aoAtualizar }: Pr
                   destaqueCampo={Boolean(selecionado?.campo) && dado.situacao.bomParaCampo}
                   desabilitada={acoes.ocupada}
                   aoTirar={(requisito) => void acoes.tirar(requisito.id)}
+                  aoRemoverAula={(aula) => aula.aulaId && void acoes.removerAula(aula.aulaId)}
                   aoEditar={(aula) =>
                     setAulaEmEdicao({ data: aula.data, aulaId: aula.aulaId, dados: { horario: aula.horario, local: aula.local, titulo: aula.titulo } })
                   }
                   acaoDaData={
-                    aceitaRequisitoNovo(montagem, dado) && (
+                    aceitaRequisitoNovo(montagem, dado) && selecionado?.data !== dado.data && (
                       <Botao
                         variante="secundario"
                         aria-label={`Colocar aqui em ${diaMes(dado.data)}`}

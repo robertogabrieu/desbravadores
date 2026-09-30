@@ -369,6 +369,114 @@ describe('Montagem do cronograma', () => {
     })
   })
 
+  describe('lote M1: remover aula, classe desativada e datas bloqueadas', () => {
+    const removerAula = (aulaId: string, auth: string) =>
+      request(app.getHttpServer() as Server).delete(`/api/aulas-planejadas/${aulaId}`).set('Authorization', auth)
+    const criarAulaAgrupada = (cronogramaId: string, data: string, auth: string) =>
+      http.post(`/api/cronogramas/${cronogramaId}/aulas`, auth, { data, horario: null, local: null, titulo: null })
+
+    it('DELETE aula individual: remoção lógica, requisitos voltam a sem data e o cronograma volta a rascunho', async () => {
+      const { adm, requisitos, cronograma } = await cenario()
+      await colocar(cronograma.id, requisitos[0], DOMINGO_A, adm.autorizacao)
+      await colocar(cronograma.id, requisitos[1], DOMINGO_A, adm.autorizacao)
+      const [aula] = await aulasAtivas(cronograma.id)
+      await prismaDeTeste().cronograma.update({ where: { id: cronograma.id }, data: { status: 'PUBLICADO' } })
+      const antes = (await prismaDeTeste().cronograma.findUniqueOrThrow({ where: { id: cronograma.id } })).atualizadoEm.getTime()
+
+      const resposta = await removerAula(aula.id, adm.autorizacao)
+      expect(resposta.status).toBe(200)
+      const saida = corpo<Saida>(resposta)
+      expect(saida.cronograma?.status).toBe('RASCUNHO')
+      expect(new Date(saida.cronograma?.atualizadoEm ?? 0).getTime()).toBeGreaterThan(antes)
+      expect(requisitoNaSaida(saida, requisitos[0])?.data).toBeNull()
+      expect(requisitoNaSaida(saida, requisitos[1])?.aulaId).toBeNull()
+      expect(await aulasAtivas(cronograma.id)).toHaveLength(0)
+      expect(await prismaDeTeste().aulaPlanejada.count({ where: { id: aula.id, removidaEm: { not: null } } })).toBe(1)
+    })
+
+    it('DELETE aula agrupada remove a aula; aula dada 422; outra aula inexistente 404; instrutor que não monta 403', async () => {
+      const clube = await criarClube()
+      const classe = await prismaDeTeste().classe.findFirstOrThrow({ where: { trilha: 'AGRUPADAS', clubeId: null }, select: { id: true } })
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const instrutor = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [classe.id] })
+      const cronograma = await criarCronograma({ clubeId: clube.id, classeId: classe.id })
+      await criarAulaAgrupada(cronograma.id, SEGUNDA, adm.autorizacao)
+      await criarAulaAgrupada(cronograma.id, '2026-07-07', adm.autorizacao)
+      const [primeira, segunda] = await aulasAtivas(cronograma.id)
+      await criarRegistroAula({ clubeId: clube.id, classeId: classe.id, data: '2026-07-07' })
+
+      expect((await removerAula(segunda.id, adm.autorizacao)).status).toBe(422)
+      expect((await removerAula(primeira.id, instrutor.autorizacao)).status).toBe(403)
+      expect((await removerAula('019d0000-0000-7000-8000-000000000000', adm.autorizacao)).status).toBe(404)
+      const resposta = await removerAula(primeira.id, adm.autorizacao)
+      expect(resposta.status).toBe(200)
+      expect((await aulasAtivas(cronograma.id)).map((aula) => aula.id)).toEqual([segunda.id])
+      expect((await removerAula(primeira.id, adm.autorizacao)).status).toBe(404)
+    })
+
+    it('DELETE aula de outro clube responde 404', async () => {
+      const { adm, requisitos, cronograma } = await cenario()
+      await colocar(cronograma.id, requisitos[0], DOMINGO_A, adm.autorizacao)
+      const [aula] = await aulasAtivas(cronograma.id)
+      const intruso = await criarAcesso({ clubeId: (await criarClube()).id, papel: 'ADM' })
+      expect((await removerAula(aula.id, intruso.autorizacao)).status).toBe(404)
+      expect(await aulasAtivas(cronograma.id)).toHaveLength(1)
+    })
+
+    it('classe desativada no clube: toda mutação responde 422 e o GET continua lendo', async () => {
+      const { clube, amigo, adm, requisitos, cronograma } = await cenario()
+      await colocar(cronograma.id, requisitos[0], DOMINGO_A, adm.autorizacao)
+      const [aula] = await aulasAtivas(cronograma.id)
+      const vistoAgora = (await prismaDeTeste().cronograma.findUniqueOrThrow({ where: { id: cronograma.id } })).atualizadoEm.toISOString()
+      await admDefinirClasseClube({ clubeId: clube.id, classeId: amigo.id, ativa: false })
+      const auth = adm.autorizacao
+      const chamadas = [
+        () => http.post('/api/cronogramas', auth, { classeId: amigo.id, anoClube: 2030, inicio: '2030-02-01', fim: '2030-12-31' }),
+        () => http.patch(`/api/cronogramas/${cronograma.id}`, auth, { inicio: '2026-02-01', fim: '2026-12-31' }),
+        () => colocar(cronograma.id, requisitos[1], DOMINGO_B, auth),
+        () => tirar(cronograma.id, requisitos[0], auth),
+        () => http.post(`/api/cronogramas/${cronograma.id}/aulas`, auth, { data: DOMINGO_B, horario: null, local: null, titulo: null }),
+        () => http.patch(`/api/aulas-planejadas/${aula.id}`, auth, { horario: '10:00' }),
+        () => removerAula(aula.id, auth),
+        () => http.post(`/api/cronogramas/${cronograma.id}/publicar`, auth, { atualizadoEmVisto: vistoAgora }),
+      ]
+      const respostas = []
+      for (const chamada of chamadas) respostas.push(await chamada())
+      expect(respostas.map((resposta) => resposta.status)).toEqual(Array(chamadas.length).fill(422))
+      expect(corpo<{ mensagem: string }>(respostas[2]).mensagem).toBe('Esta classe está desativada no clube.')
+      expect((await http.get(`/api/classes/${amigo.id}/cronograma/montagem`, auth)).status).toBe(200)
+      expect(await aulasAtivas(cronograma.id)).toHaveLength(1)
+    })
+
+    it('classe desativada: enviar também responde 422', async () => {
+      const { clube, amigo, cronograma } = await cenario()
+      const instrutor = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [amigo.id] })
+      await admDefinirClasseClube({ clubeId: clube.id, classeId: amigo.id, quemMontaCronograma: 'INSTRUTOR', ativa: false })
+      const visto = (await prismaDeTeste().cronograma.findUniqueOrThrow({ where: { id: cronograma.id } })).atualizadoEm.toISOString()
+      const resposta = await http.post(`/api/cronogramas/${cronograma.id}/enviar`, instrutor.autorizacao, { atualizadoEmVisto: visto })
+      expect(resposta.status).toBe(422)
+      expect(corpo<{ mensagem: string }>(resposta).mensagem).toBe('Esta classe está desativada no clube.')
+    })
+
+    it('individuais: dia de reunião com evento que bloqueia aparece sem aula, com a situação e sem conflito', async () => {
+      const { clube, amigo, adm } = await cenario()
+      await criarEvento({ clubeId: clube.id, tipo: 'EVENTO', inicio: DOMINGO_A })
+      await criarEvento({ clubeId: clube.id, tipo: 'SEM_REUNIAO', inicio: DOMINGO_B })
+      const saida = corpo<Saida>(await http.get(`/api/classes/${amigo.id}/cronograma/montagem`, adm.autorizacao))
+      const bloqueada = saida.datas.find((data) => data.data === DOMINGO_A)
+      expect(bloqueada).toMatchObject({ aulaId: null, conflito: false, situacao: { bloqueiaAula: true } })
+      expect(saida.datas.find((data) => data.data === DOMINGO_B)).toMatchObject({ aulaId: null, conflito: false, situacao: { cancelaReuniao: true } })
+      expect(saida.datas.some((data) => data.data === SEGUNDA)).toBe(false)
+    })
+
+    it('individuais: data bomParaCampo fora do dia de reunião aparece sem aula', async () => {
+      const { clube, amigo, adm } = await cenario()
+      await criarEvento({ clubeId: clube.id, tipo: 'ACAMPAMENTO', inicio: '2026-07-17', fim: '2026-07-18' })
+      const saida = corpo<Saida>(await http.get(`/api/classes/${amigo.id}/cronograma/montagem`, adm.autorizacao))
+      expect(saida.datas.find((data) => data.data === '2026-07-17')).toMatchObject({ aulaId: null, situacao: { bomParaCampo: true } })
+    })
+  })
+
   describe('isolamento entre clubes', () => {
     it('Adm de outro clube recebe 404 em toda rota de cronograma alheio e nada muda', async () => {
       const { requisitos, cronograma } = await cenario()

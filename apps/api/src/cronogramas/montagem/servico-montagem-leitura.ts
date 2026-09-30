@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import {
-  datasDeAula,
+  datasDoIntervalo,
   emConflito,
   type EventoDoCalendario,
   type MontagemSaida,
@@ -110,8 +110,10 @@ export class ServicoMontagemLeitura {
       }),
     ])
     const datasDadas = new Set(registros.map((registro) => paraDataCivil(registro.data)))
-    const datasDeReuniao =
-      classe.trilha === 'INDIVIDUAL' ? datasDeAula(inicio, fim, configuracao.diaReuniao, eventosDasSituacoes(situacoes)) : []
+    const datasDoPeriodo = classe.trilha === 'INDIVIDUAL' ? datasDoIntervalo(inicio, fim) : []
+    const datasDeReuniao = datasDoPeriodo.filter(
+      (data) => new Date(`${data}T00:00:00Z`).getUTCDay() === configuracao.diaReuniao || situacoes.get(data)?.bomParaCampo === true,
+    )
     const datas = [...new Set([...datasDeReuniao, ...datasDasAulas])].sort()
     const aulaPorData = new Map(aulas.map((aula) => [paraDataCivil(aula.data), aula]))
 

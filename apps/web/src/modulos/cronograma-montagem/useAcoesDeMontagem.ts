@@ -6,6 +6,7 @@ import {
   useCriarAula,
   useEditarAula,
   useEnviarOuPublicar,
+  useRemoverAula,
   useTirarRequisito,
 } from '../../api/montagem'
 
@@ -31,10 +32,11 @@ export function useAcoesDeMontagem(classeId: string, ano: number | undefined, cr
   const tirarMutacao = useTirarRequisito(classeId, ano, cronogramaId)
   const criarAulaMutacao = useCriarAula(classeId, ano, cronogramaId)
   const editarMutacao = useEditarAula(classeId, ano)
+  const removerAulaMutacao = useRemoverAula(classeId, ano)
   const enviarMutacao = useEnviarOuPublicar(classeId, ano, cronogramaId, 'enviar')
   const publicarMutacao = useEnviarOuPublicar(classeId, ano, cronogramaId, 'publicar')
 
-  const ocupada = [colocarMutacao, tirarMutacao, criarAulaMutacao, editarMutacao, enviarMutacao, publicarMutacao].some(
+  const ocupada = [colocarMutacao, tirarMutacao, criarAulaMutacao, editarMutacao, removerAulaMutacao, enviarMutacao, publicarMutacao].some(
     (mutacao) => mutacao.isPending,
   )
 
@@ -60,6 +62,7 @@ export function useAcoesDeMontagem(classeId: string, ano: number | undefined, cr
     tirar: (requisitoId: string) => tentar(() => tirarMutacao.mutateAsync(requisitoId)),
     criarAula: (data: string, dados: DadosDaAula) => tentar(() => criarAulaMutacao.mutateAsync({ data, ...dados })),
     editarAula: (aulaId: string, dados: DadosDaAula) => tentar(() => editarMutacao.mutateAsync({ aulaId, ...dados })),
+    removerAula: (aulaId: string) => tentar(() => removerAulaMutacao.mutateAsync(aulaId)),
     enviar: () => tentar(() => enviarMutacao.mutateAsync(atualizadoEmVisto)),
     publicar: () => tentar(() => publicarMutacao.mutateAsync(atualizadoEmVisto)),
   }

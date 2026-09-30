@@ -1,10 +1,12 @@
-import { Pencil, X } from 'lucide-react'
+import { Pencil, Trash2, X } from 'lucide-react'
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import type { DataDaMontagem, RequisitoDaMontagem } from '../../api/montagem'
 import { Botao } from '../../ui/Botao'
+import { Confirmacao } from '../../ui/Confirmacao'
 import { Selo } from '../../ui/Selo'
 import { cn } from '../../ui/cn'
-import { detalheDaAula, partesDaData, textoDaData } from './datas'
+import { dataBloqueada, detalheDaAula, partesDaData, textoDaData } from './datas'
 
 const HACHURA =
   'bg-[repeating-linear-gradient(135deg,var(--color-surface-muted),var(--color-surface-muted)_8px,var(--color-divider)_8px,var(--color-divider)_16px)]'
@@ -23,13 +25,16 @@ interface Propriedades {
   /** Só no celular: "Mover" ao lado de cada requisito de uma data em conflito. */
   aoMover?: (requisito: RequisitoDaMontagem) => void
   aoEditar: (dado: DataDaMontagem) => void
+  /** "Remover aula" (com confirmação) nas aulas ainda não dadas. */
+  aoRemoverAula: (dado: DataDaMontagem) => void
 }
 
-export function LinhaData({ dado, requisitos, destaqueCampo = false, desabilitada, acaoDaData, aoTirar, aoMover, aoEditar }: Propriedades) {
+export function LinhaData({ dado, requisitos, destaqueCampo = false, desabilitada, acaoDaData, aoTirar, aoMover, aoEditar, aoRemoverAula }: Propriedades) {
+  const [confirmandoRemocao, setConfirmandoRemocao] = useState(false)
   const { semana, dia, mes } = partesDaData(dado.data)
   const texto = textoDaData(dado)
   const detalhe = detalheDaAula(dado)
-  const bloqueada = dado.situacao.bloqueiaAula
+  const bloqueada = dataBloqueada(dado)
   const podeEditar = dado.aulaId !== null && !dado.aulaDada
 
   return (
@@ -74,9 +79,10 @@ export function LinhaData({ dado, requisitos, destaqueCampo = false, desabilitad
                 aria-label={`Tirar ${requisito.codigo} desta data`}
                 disabled={desabilitada}
                 onClick={() => aoTirar(requisito)}
-                className="flex size-[var(--touch-min)] shrink-0 items-center justify-center rounded-full hover:bg-superficie disabled:opacity-50"
+                className="flex min-h-[var(--touch-min)] shrink-0 items-center justify-center gap-1 rounded-controle px-2 hover:bg-superficie disabled:opacity-50"
               >
                 <X aria-hidden className="size-4" />
+                <span className="text-xs font-bold">remover</span>
               </button>
             )}
           </div>
@@ -88,9 +94,30 @@ export function LinhaData({ dado, requisitos, destaqueCampo = false, desabilitad
             Editar horário, local e título
           </Botao>
         )}
+
+        {podeEditar && (
+          <Botao variante="texto" className="self-start px-2 text-perigo" disabled={desabilitada} onClick={() => setConfirmandoRemocao(true)}>
+            <Trash2 aria-hidden className="size-4" />
+            Remover aula
+          </Botao>
+        )}
       </div>
 
       {acaoDaData}
+
+      <Confirmacao
+        aberta={confirmandoRemocao}
+        titulo="Remover esta aula?"
+        rotuloConfirmar="Remover"
+        perigo
+        aoConfirmar={() => {
+          setConfirmandoRemocao(false)
+          aoRemoverAula(dado)
+        }}
+        aoCancelar={() => setConfirmandoRemocao(false)}
+      >
+        Os requisitos desta aula voltam a ficar sem data.
+      </Confirmacao>
     </li>
   )
 }

@@ -115,6 +115,7 @@ export function handlersMontagem(inicial: Montagem): { handlers: HttpHandler[]; 
     http.delete('/api/cronogramas/:id/requisitos/:rid', gravar),
     http.post('/api/cronogramas/:id/aulas', gravar),
     http.patch('/api/aulas-planejadas/:id', gravar),
+    http.delete('/api/aulas-planejadas/:id', gravar),
     http.post('/api/cronogramas/:id/enviar', gravar),
     http.post('/api/cronogramas/:id/publicar', gravar),
     http.get('/api/clube/configuracao', () =>

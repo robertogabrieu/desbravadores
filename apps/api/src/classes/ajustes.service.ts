@@ -4,6 +4,7 @@ import { anoClube, hojeNoFuso } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
+import { ServicoMontagem } from '../cronogramas/montagem/servico-montagem'
 import { ClassesService } from './classes.service'
 
 type Detalhe = z.infer<typeof ClasseDetalheSaida>
@@ -15,6 +16,7 @@ export class AjustesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly classes: ClassesService,
+    private readonly montagem: ServicoMontagem,
   ) {}
 
   /** Ativa/desativa a classe no clube e escolhe quem monta o cronograma; desativar exige ninguem cursando. */
@@ -35,7 +37,7 @@ export class AjustesService {
     return this.classes.detalhar(clubeId, classeId)
   }
 
-  /** `null` volta o campo ao oficial; ausente mantem o que o clube ja tinha. Sem nenhum ajuste, a linha some. */
+  /** `null` volta o campo ao oficial; ausente mantem o que o clube ja tinha. Sem nenhum ajuste, a linha fica com os dois campos nulos (nunca é apagada). */
   async ajustarRequisito(clubeId: string, requisitoId: string, entrada: z.infer<typeof RequisitoAjusteEntrada>): Promise<Detalhe> {
     const requisito = await this.prisma.requisito.findFirst({
       where: { id: requisitoId, secao: { classe: { OR: [{ clubeId: null }, { clubeId }] } } },
@@ -47,15 +49,14 @@ export class AjustesService {
     const ativo = entrada.ativo === undefined ? (atual?.ativo ?? null) : entrada.ativo
     const campo = entrada.campo === undefined ? (atual?.campo ?? null) : entrada.campo
 
-    if (ativo === null && campo === null) {
-      await this.prisma.requisitoAjuste.deleteMany({ where: { clubeId, requisitoId } })
-    } else {
-      await this.prisma.requisitoAjuste.upsert({
+    await this.prisma.$transaction(async (tx) => {
+      await tx.requisitoAjuste.upsert({
         where: { clubeId_requisitoId: { clubeId, requisitoId } },
         create: { clubeId, requisitoId, ativo, campo },
         update: { ativo, campo },
       })
-    }
+      if (ativo === false) await this.montagem.retirarRequisitoDoClube(tx, clubeId, requisitoId)
+    })
     return this.classes.detalhar(clubeId, requisito.secao.classeId)
   }
 

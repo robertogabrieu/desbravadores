@@ -98,6 +98,7 @@ export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Prop
                   destaqueCampo={dado.situacao.bomParaCampo}
                   desabilitada={acoes.ocupada}
                   aoTirar={(requisito) => void acoes.tirar(requisito.id)}
+                  aoRemoverAula={(aula) => aula.aulaId && void acoes.removerAula(aula.aulaId)}
                   aoMover={setEmMovimento}
                   aoEditar={(aula) =>
                     setAulaEmEdicao({ data: aula.data, aulaId: aula.aulaId, dados: { horario: aula.horario, local: aula.local, titulo: aula.titulo } })

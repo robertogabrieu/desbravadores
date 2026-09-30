@@ -83,6 +83,12 @@ export function useEditarAula(classeId: string, ano: number | undefined) {
   )
 }
 
+export function useRemoverAula(classeId: string, ano: number | undefined) {
+  return useGravacao(classeId, ano, (aulaId: string) =>
+    requisitar(`/api/aulas-planejadas/${aulaId}`, MontagemSaida, corpo('DELETE')),
+  )
+}
+
 /** `enviar` (instrutor) e `publicar` (Adm) levam o `atualizadoEm` que a tela viu. */
 export function useEnviarOuPublicar(classeId: string, ano: number | undefined, cronogramaId: string, acao: 'enviar' | 'publicar') {
   return useGravacao(classeId, ano, (atualizadoEmVisto: string) =>

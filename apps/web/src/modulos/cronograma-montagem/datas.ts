@@ -12,12 +12,18 @@ export function partesDaData(data: string): { semana: string; dia: string; mes: 
   return { semana, dia: data.slice(8, 10), mes: MESES[Number(data.slice(5, 7)) - 1] ?? '' }
 }
 
+/** Dia sem aula de classe: bloqueio, ou reunião cancelada (que não é dia de campo) sem aula marcada. */
+export const dataBloqueada = ({ situacao, aulaId }: DataDaMontagem): boolean =>
+  situacao.bloqueiaAula || (situacao.cancelaReuniao && !situacao.bomParaCampo && aulaId === null)
+
 /** Nome(s) do evento + rótulo pelas marcações; vazio quando a data não tem nada de especial. */
-export function textoDaData({ situacao }: DataDaMontagem): string {
+export function textoDaData(dado: DataDaMontagem): string {
+  const { situacao } = dado
+  const bloqueada = dataBloqueada(dado)
   const rotulos: string[] = []
-  if (situacao.bloqueiaAula) rotulos.push('sem aula de classe')
+  if (bloqueada) rotulos.push('sem aula de classe')
   if (situacao.bomParaCampo) rotulos.push('ótimo para campo')
-  if (situacao.eventos.length > 0 && !situacao.cancelaReuniao && !situacao.bloqueiaAula) rotulos.push('reunião mantida')
+  if (situacao.eventos.length > 0 && !situacao.cancelaReuniao && !bloqueada) rotulos.push('reunião mantida')
   return [situacao.eventos.join(', '), ...rotulos].filter(Boolean).join(' · ')
 }
 
@@ -39,4 +45,4 @@ export const detalheDaAula = (d: DataDaMontagem): string => [d.horario, d.local,
 
 /** Colocar requisito novo na data: fora bloqueio e aula dada; nas individuais, também fora data em conflito (a API responde 422). */
 export const aceitaRequisitoNovo = (montagem: { datasLivres: boolean }, dado: DataDaMontagem): boolean =>
-  !dado.situacao.bloqueiaAula && !dado.aulaDada && (montagem.datasLivres || !dado.conflito)
+  !dataBloqueada(dado) && !dado.aulaDada && (montagem.datasLivres || !dado.conflito)

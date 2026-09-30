@@ -28,6 +28,7 @@ interface Contexto {
 type MudancaDoCronograma = Prisma.CronogramaUncheckedUpdateManyInput
 
 const AULA_DADA = 'Esta aula já foi dada.'
+const CLASSE_DESATIVADA = 'Esta classe está desativada no clube.'
 const OUTRA_PESSOA_MUDOU = 'Outra pessoa acabou de mudar esta data. Atualize a tela.'
 const CRONOGRAMA_MUDOU = 'O cronograma mudou desde que você abriu. Revise antes de publicar.'
 const CODIGOS_DE_CORRIDA = ['P2002', 'P2034']
@@ -54,6 +55,7 @@ export class ServicoMontagem {
 
   async criar(sessao: SessaoLogada, entrada: { classeId: string; anoClube: number; inicio: string; fim: string }): Promise<Saida> {
     await this.leitura.classeQueMonta(sessao, entrada.classeId)
+    await this.exigirClasseAtiva(sessao.clubeId, entrada.classeId)
     try {
       const criado = await this.prisma.cronograma.create({
         data: {
@@ -153,20 +155,57 @@ export class ServicoMontagem {
     aulaId: string,
     entrada: { horario?: string | null; local?: string | null; titulo?: string | null },
   ): Promise<Saida> {
-    const aula = await this.prisma.aulaPlanejada.findFirst({
-      where: { clubeId: sessao.clubeId, id: aulaId, removidaEm: null },
-      select: { cronogramaId: true },
-    })
-    if (!aula) throw new ErroApp('NAO_ENCONTRADO', 'Aula não encontrada.')
-    return this.executar(sessao, aula.cronogramaId, 'MONTAR', async ({ tx, cronograma }) => {
-      const atual = await tx.aulaPlanejada.findFirst({ where: { clubeId: cronograma.clubeId, id: aulaId, removidaEm: null } })
-      if (!atual) throw new ErroApp('NAO_ENCONTRADO', 'Aula não encontrada.')
+    const cronogramaId = await this.cronogramaDaAula(sessao, aulaId)
+    return this.executar(sessao, cronogramaId, 'MONTAR', async ({ tx, cronograma }) => {
+      const atual = await this.aulaAtiva(tx, cronograma, aulaId)
       await this.exigirAulaNaoDada(tx, cronograma, paraDataCivil(atual.data))
       await tx.aulaPlanejada.updateMany({
         where: { clubeId: cronograma.clubeId, id: aulaId },
         data: { horario: entrada.horario, local: entrada.local, titulo: entrada.titulo },
       })
     })
+  }
+
+  /** Remoção lógica da aula (Agrupadas e individuais); os requisitos dela voltam a ficar sem data. */
+  async removerAula(sessao: SessaoLogada, aulaId: string): Promise<Saida> {
+    const cronogramaId = await this.cronogramaDaAula(sessao, aulaId)
+    return this.executar(sessao, cronogramaId, 'MONTAR', async ({ tx, cronograma }) => {
+      const atual = await this.aulaAtiva(tx, cronograma, aulaId)
+      await this.exigirAulaNaoDada(tx, cronograma, paraDataCivil(atual.data))
+      await tx.aulaRequisito.deleteMany({ where: { clubeId: cronograma.clubeId, aulaPlanejadaId: aulaId } })
+      await tx.aulaPlanejada.updateMany({ where: { clubeId: cronograma.clubeId, id: aulaId }, data: { removidaEm: new Date() } })
+    })
+  }
+
+  /**
+   * Desativar um requisito no clube (G2/G3): sai das aulas ainda não dadas de cada cronograma que o contém; aula
+   * dada mantém o vínculo. Roda na transação de quem chama; cada cronograma afetado é travado e renovado.
+   */
+  async retirarRequisitoDoClube(tx: Tx, clubeId: string, requisitoId: string): Promise<void> {
+    const ligacoes = await tx.aulaRequisito.findMany({ where: { clubeId, requisitoId }, select: { cronogramaId: true } })
+    const cronogramaIds = [...new Set(ligacoes.map((ligacao) => ligacao.cronogramaId))].sort()
+    for (const cronogramaId of cronogramaIds) {
+      await this.travarCronograma(tx, clubeId, cronogramaId)
+      const cronograma = await tx.cronograma.findFirstOrThrow({ where: { clubeId, id: cronogramaId }, include: { classe: { select: { trilha: true } } } })
+      const aulasDoRequisito = await tx.aulaRequisito.findMany({ where: { clubeId, cronogramaId, requisitoId }, select: { aulaPlanejadaId: true } })
+      let retirou = false
+      for (const { aulaPlanejadaId } of aulasDoRequisito) {
+        const aula = await tx.aulaPlanejada.findFirstOrThrow({ where: { clubeId, id: aulaPlanejadaId } })
+        const dada = await tx.registroAula.findFirst({
+          where: { clubeId, classeId: cronograma.classeId, data: aula.data },
+          select: { id: true },
+        })
+        if (dada) continue
+        await tx.aulaRequisito.deleteMany({ where: { clubeId, cronogramaId, requisitoId, aulaPlanejadaId } })
+        retirou = true
+        if (cronograma.classe.trilha === 'INDIVIDUAL') await this.removerSeVazia(tx, clubeId, aula.id)
+      }
+      if (!retirou) continue
+      await tx.cronograma.updateMany({
+        where: { clubeId, id: cronogramaId },
+        data: { status: 'RASCUNHO', atualizadoEm: instanteNovo(cronograma.atualizadoEm) },
+      })
+    }
   }
 
   enviar(sessao: SessaoLogada, cronogramaId: string, atualizadoEmVisto: string): Promise<Saida> {
@@ -244,7 +283,7 @@ export class ServicoMontagem {
     const classe = await this.autorizar(sessao, cronogramaId, autorizacao)
     try {
       await this.prisma.$transaction(async (tx) => {
-        await tx.$queryRaw`SELECT id FROM "Cronograma" WHERE id = ${cronogramaId}::uuid AND "clubeId" = ${sessao.clubeId}::uuid FOR UPDATE`
+        await this.travarCronograma(tx, sessao.clubeId, cronogramaId)
         const cronograma = await tx.cronograma.findFirstOrThrow({ where: { clubeId: sessao.clubeId, id: cronogramaId } })
         const mudanca = await mudar({ tx, sessao, cronograma, classeNome: classe.nome, trilha: classe.trilha })
         await tx.cronograma.updateMany({
@@ -259,6 +298,31 @@ export class ServicoMontagem {
     return this.leitura.saida(sessao.clubeId, cronogramaId)
   }
 
+  private async travarCronograma(tx: Tx, clubeId: string, cronogramaId: string): Promise<void> {
+    await tx.$queryRaw`SELECT id FROM "Cronograma" WHERE id = ${cronogramaId}::uuid AND "clubeId" = ${clubeId}::uuid FOR UPDATE`
+  }
+
+  private async cronogramaDaAula(sessao: SessaoLogada, aulaId: string): Promise<string> {
+    const aula = await this.prisma.aulaPlanejada.findFirst({
+      where: { clubeId: sessao.clubeId, id: aulaId, removidaEm: null },
+      select: { cronogramaId: true },
+    })
+    if (!aula) throw new ErroApp('NAO_ENCONTRADO', 'Aula não encontrada.')
+    return aula.cronogramaId
+  }
+
+  private async aulaAtiva(tx: Tx, cronograma: Cronograma, aulaId: string) {
+    const aula = await tx.aulaPlanejada.findFirst({ where: { clubeId: cronograma.clubeId, id: aulaId, removidaEm: null } })
+    if (!aula) throw new ErroApp('NAO_ENCONTRADO', 'Aula não encontrada.')
+    return aula
+  }
+
+  /** Classe desativada no clube não recebe mutação de montagem; sem linha de ajuste vale o padrão (ativa). */
+  private async exigirClasseAtiva(clubeId: string, classeId: string): Promise<void> {
+    const ajuste = await this.prisma.classeClube.findUnique({ where: { clubeId_classeId: { clubeId, classeId } }, select: { ativa: true } })
+    if (ajuste?.ativa === false) throw regra(CLASSE_DESATIVADA)
+  }
+
   /** Cronograma de outro clube é 404; depois valem as regras de quem monta, envia ou publica. */
   private async autorizar(sessao: SessaoLogada, cronogramaId: string, autorizacao: Autorizacao) {
     const cronograma = await this.prisma.cronograma.findFirst({
@@ -269,9 +333,11 @@ export class ServicoMontagem {
     if (autorizacao === 'PUBLICAR') {
       const classe = await this.leitura.classeDoEscopo(sessao, cronograma.classeId)
       if (sessao.papel !== 'ADM') throw new ErroApp('SEM_PERMISSAO', 'Só o Adm publica o cronograma.')
+      await this.exigirClasseAtiva(sessao.clubeId, cronograma.classeId)
       return classe
     }
     const classe = await this.leitura.classeQueMonta(sessao, cronograma.classeId)
+    await this.exigirClasseAtiva(sessao.clubeId, cronograma.classeId)
     if (autorizacao === 'ENVIAR' && sessao.papel !== 'INSTRUTOR') {
       throw new ErroApp('SEM_PERMISSAO', 'Só o instrutor liberado envia o cronograma; o Adm publica direto.')
     }

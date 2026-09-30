@@ -8,6 +8,8 @@ import {
   classeOficial,
   criarAcesso,
   criarClube,
+  criarCronograma,
+  criarRegistroAula,
   criarDbv,
   criarMatricula,
   desconectarPrismaDeTeste,
@@ -59,7 +61,7 @@ describe('A5: ajustes de classe e requisito', () => {
     expect(depois.totalRequisitos).toBe(detalhe.totalRequisitos - 1)
   })
 
-  it('PATCH /requisitos/:id/ajuste grava; null volta ao oficial e apaga o ajuste', async () => {
+  it('PATCH /requisitos/:id/ajuste grava; null volta ao oficial e zera a linha do ajuste', async () => {
     const { clube, adm, amigo, requisito } = await cenario()
     const desligado = corpo<Detalhe>(await api.patch(`/api/requisitos/${requisito.id}/ajuste`, adm.autorizacao, { ativo: false, campo: true }).expect(200))
     expect(desligado.id).toBe(amigo.id)
@@ -67,7 +69,63 @@ describe('A5: ajustes de classe e requisito', () => {
 
     const volta = corpo<Detalhe>(await api.patch(`/api/requisitos/${requisito.id}/ajuste`, adm.autorizacao, { ativo: null, campo: null }).expect(200))
     expect(todos(volta).find((r) => r.id === requisito.id)).toMatchObject({ ativo: true, campo: false, ajustado: false })
-    expect(await prismaDeTeste().requisitoAjuste.count({ where: { clubeId: clube.id, requisitoId: requisito.id } })).toBe(0)
+    const linha = await prismaDeTeste().requisitoAjuste.findMany({ where: { clubeId: clube.id, requisitoId: requisito.id } })
+    expect(linha).toMatchObject([{ ativo: null, campo: null }])
+  })
+
+  describe('desativar requisito que já tem data no cronograma do clube', () => {
+    const DOMINGO_A = '2026-07-05'
+    const DOMINGO_B = '2026-07-12'
+
+    async function comDuasAulas() {
+      const base = await cenario()
+      const outro = todos(base.detalhe).filter((r) => r.ativo && r.id !== base.requisito.id)[0]
+      const cronograma = await criarCronograma({ clubeId: base.clube.id, classeId: base.amigo.id })
+      const colocar = (requisitoId: string, data: string) =>
+        api.put(`/api/cronogramas/${cronograma.id}/requisitos/${requisitoId}`, base.adm.autorizacao, { data }).expect(200)
+      await colocar(base.requisito.id, DOMINGO_A)
+      await colocar(outro.id, DOMINGO_B)
+      await prismaDeTeste().cronograma.update({ where: { id: cronograma.id }, data: { status: 'PUBLICADO' } })
+      return { ...base, outro, cronograma }
+    }
+    const ligacoes = (cronogramaId: string, requisitoId: string) =>
+      prismaDeTeste().aulaRequisito.count({ where: { cronogramaId, requisitoId } })
+    const aulasVivas = (cronogramaId: string) => prismaDeTeste().aulaPlanejada.count({ where: { cronogramaId, removidaEm: null } })
+
+    it('tira o requisito das aulas, remove a aula individual que esvaziou e volta o cronograma a rascunho', async () => {
+      const { adm, requisito, outro, cronograma } = await comDuasAulas()
+      const antes = (await prismaDeTeste().cronograma.findUniqueOrThrow({ where: { id: cronograma.id } })).atualizadoEm.getTime()
+
+      await api.patch(`/api/requisitos/${requisito.id}/ajuste`, adm.autorizacao, { ativo: false }).expect(200)
+
+      expect(await ligacoes(cronograma.id, requisito.id)).toBe(0)
+      expect(await ligacoes(cronograma.id, outro.id)).toBe(1)
+      expect(await aulasVivas(cronograma.id)).toBe(1)
+      const depois = await prismaDeTeste().cronograma.findUniqueOrThrow({ where: { id: cronograma.id } })
+      expect(depois.status).toBe('RASCUNHO')
+      expect(depois.atualizadoEm.getTime()).toBeGreaterThan(antes)
+    })
+
+    it('aula já dada mantém o vínculo e o cronograma publicado continua PUBLICADO', async () => {
+      const { clube, adm, amigo, requisito, cronograma } = await comDuasAulas()
+      await criarRegistroAula({ clubeId: clube.id, classeId: amigo.id, data: DOMINGO_A })
+      const antes = (await prismaDeTeste().cronograma.findUniqueOrThrow({ where: { id: cronograma.id } })).atualizadoEm.getTime()
+
+      await api.patch(`/api/requisitos/${requisito.id}/ajuste`, adm.autorizacao, { ativo: false }).expect(200)
+
+      expect(await ligacoes(cronograma.id, requisito.id)).toBe(1)
+      expect(await aulasVivas(cronograma.id)).toBe(2)
+      const depois = await prismaDeTeste().cronograma.findUniqueOrThrow({ where: { id: cronograma.id } })
+      expect(depois.status).toBe('PUBLICADO')
+      expect(depois.atualizadoEm.getTime()).toBe(antes)
+    })
+
+    it('mudar só o campo do requisito não mexe no cronograma', async () => {
+      const { adm, requisito, cronograma } = await comDuasAulas()
+      await api.patch(`/api/requisitos/${requisito.id}/ajuste`, adm.autorizacao, { campo: true }).expect(200)
+      expect(await ligacoes(cronograma.id, requisito.id)).toBe(1)
+      expect((await prismaDeTeste().cronograma.findUniqueOrThrow({ where: { id: cronograma.id } })).status).toBe('PUBLICADO')
+    })
   })
 
   it('PATCH /requisitos/:id/ajuste: requisito inexistente → 404; nao-Adm → 403', async () => {

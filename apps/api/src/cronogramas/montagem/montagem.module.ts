@@ -12,5 +12,6 @@ import { ServicoMontagemLeitura } from './servico-montagem-leitura'
   imports: [AtividadesModule, CalendarioModule, CronogramasModule, DesbravadoresModule, NotificacoesModule],
   controllers: [MontagemController],
   providers: [ServicoMontagem, ServicoMontagemLeitura],
+  exports: [ServicoMontagem],
 })
 export class MontagemModule {}
