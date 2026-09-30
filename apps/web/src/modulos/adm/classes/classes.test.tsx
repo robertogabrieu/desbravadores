@@ -241,14 +241,26 @@ describe('A5 · especialidades', () => {
     expect(await screen.findByText('Disponível quando houver internet')).toBeInTheDocument()
   })
 
-  it('lista por área com contagem e marca as do clube; a busca ignora acento e caixa', async () => {
+  it('áreas chegam fechadas com contagem, quantas são do clube e exemplos; abrem pelo cabeçalho', async () => {
     await abrirEspecialidades()
     const aventura = within(await screen.findByRole('region', { name: 'Aventura' }))
-    expect(aventura.getByText('2 esp.')).toBeInTheDocument()
-    expect(aventura.getByText('Do clube')).toBeInTheDocument()
+    const cabecalho = aventura.getByRole('button', { name: /Aventura/ })
+    expect(cabecalho).toHaveAttribute('aria-expanded', 'false')
+    expect(aventura.getByText('2 especialidades · 1 do clube')).toBeInTheDocument()
+    expect(aventura.getByText('Acampamento, Orientação')).toBeInTheDocument()
+    expect(aventura.queryByRole('listitem')).not.toBeInTheDocument()
+    await userEvent.click(cabecalho)
+    expect(cabecalho).toHaveAttribute('aria-expanded', 'true')
+    expect(aventura.getAllByRole('listitem').map((item) => item.textContent)).toEqual(['Acampamento', 'OrientaçãoDo clube'])
+  })
+
+  it('a busca ignora acento e caixa, abre as áreas com resultado e esconde as outras', async () => {
+    await abrirEspecialidades()
+    await screen.findByRole('region', { name: 'Aventura' })
     await userEvent.type(screen.getByLabelText('Buscar especialidade'), 'ORIENTACAO')
-    expect(screen.getByText('Orientação')).toBeInTheDocument()
-    expect(screen.queryByText('Acampamento')).not.toBeInTheDocument()
+    const aventura = within(screen.getByRole('region', { name: 'Aventura' }))
+    expect(aventura.getByRole('button', { name: /Aventura/ })).toHaveAttribute('aria-expanded', 'true')
+    expect(aventura.getAllByRole('listitem').map((item) => item.textContent)).toEqual(['OrientaçãoDo clube'])
     expect(screen.queryByRole('region', { name: 'Artes e habilidades manuais' })).not.toBeInTheDocument()
     await userEvent.clear(screen.getByLabelText('Buscar especialidade'))
     await userEvent.type(screen.getByLabelText('Buscar especialidade'), 'zzz')
