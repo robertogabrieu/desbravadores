@@ -2,9 +2,7 @@ import { Injectable } from '@nestjs/common'
 import {
   datasDoIntervalo,
   emConflito,
-  type EventoDoCalendario,
   type MontagemSaida,
-  type SituacaoDeData,
 } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { refClasse, SELECAO_REF_CLASSE } from '../../classes/apresentacao-classe'
@@ -19,20 +17,6 @@ import type { Prisma } from '../../generated/prisma/client.js'
 type Saida = z.infer<typeof MontagemSaida>
 
 const CLASSE_NAO_ENCONTRADA = 'Classe não encontrada.'
-
-/** As situações já resolvidas de cada data, de volta ao formato de eventos que as fórmulas do calendário recebem. */
-export function eventosDasSituacoes(situacoes: ReadonlyMap<string, SituacaoDeData>): EventoDoCalendario[] {
-  return [...situacoes]
-    .filter(([, situacao]) => situacao.cancelaReuniao || situacao.bloqueiaAula || situacao.bomParaCampo)
-    .map(([data, situacao]) => ({
-      nome: situacao.eventos.join(', '),
-      inicio: data,
-      fim: data,
-      cancelaReuniao: situacao.cancelaReuniao,
-      bloqueiaAula: situacao.bloqueiaAula,
-      bomParaCampo: situacao.bomParaCampo,
-    }))
-}
 
 /** Acesso à montagem (B3) e leitura do cronograma vivo no formato que as duas telas de montagem usam. */
 @Injectable()

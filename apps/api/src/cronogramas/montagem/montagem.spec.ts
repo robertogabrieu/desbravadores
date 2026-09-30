@@ -347,11 +347,17 @@ describe('Montagem do cronograma', () => {
       const { adm, requisitos, cronograma } = await cenario()
       const versao = async () => (await prismaDeTeste().cronograma.findUniqueOrThrow({ where: { id: cronograma.id } })).atualizadoEm.toISOString()
 
-      const colocando = await consultasDuranteA(() => colocar(cronograma.id, requisitos[0], DOMINGO_A, adm.autorizacao))
-      expect(consultasDeOutrasConexoesComATrava(colocando)).toEqual([])
+      const statusDasChamadas: number[] = []
+      const colocando = await consultasDuranteA(async () => {
+        statusDasChamadas.push((await colocar(cronograma.id, requisitos[0], DOMINGO_A, adm.autorizacao)).status)
+      })
 
       const visto = await versao()
-      const publicando = await consultasDuranteA(() => http.post(`/api/cronogramas/${cronograma.id}/publicar`, adm.autorizacao, { atualizadoEmVisto: visto }))
+      const publicando = await consultasDuranteA(async () => {
+        statusDasChamadas.push((await http.post(`/api/cronogramas/${cronograma.id}/publicar`, adm.autorizacao, { atualizadoEmVisto: visto })).status)
+      })
+      expect(statusDasChamadas).toEqual([200, 200])
+      expect(consultasDeOutrasConexoesComATrava(colocando)).toEqual([])
       expect(consultasDeOutrasConexoesComATrava(publicando)).toEqual([])
     })
 
