@@ -7,12 +7,16 @@ export interface ItemDeNavegacao {
   icone: LucideIcon
   /** Sem `para`, o item ainda não existe na fase: aparece desabilitado com "em breve". */
   para?: string
+  /** Só acende na própria rota, não nas de baixo: `/adm` é o começo de todas as rotas do Adm. */
+  exato?: boolean
 }
 
 interface Propriedades {
   item: ItemDeNavegacao
   /** `barra`: coluna de ícone sobre rótulo (celular); `lateral`: linha (Adm). */
   layout: 'barra' | 'lateral'
+  /** Chamado ao escolher o item: a gaveta do Adm no celular fecha por aqui. */
+  aoEscolher?: () => void
 }
 
 const BASE = {
@@ -20,7 +24,7 @@ const BASE = {
   lateral: 'flex min-h-[var(--touch-min)] shrink-0 items-center gap-3 rounded-botao px-3 text-base font-semibold',
 }
 
-export function ItemNavegacao({ item, layout }: Propriedades) {
+export function ItemNavegacao({ item, layout, aoEscolher }: Propriedades) {
   const Icone = item.icone
   const conteudo = (
     <>
@@ -41,6 +45,8 @@ export function ItemNavegacao({ item, layout }: Propriedades) {
   return (
     <NavLink
       to={item.para}
+      end={item.exato}
+      onClick={aoEscolher}
       className={({ isActive }) =>
         cn(BASE[layout], isActive ? (layout === 'barra' ? 'text-marca' : 'bg-marca-escura text-white') : layout === 'barra' ? 'text-texto-2' : 'text-sobre-marca hover:bg-marca-escura')
       }

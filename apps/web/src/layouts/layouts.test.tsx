@@ -151,12 +151,61 @@ describe('LayoutAdm', () => {
     expect(itemDoMenu('Relatórios')).toHaveAttribute('aria-disabled', 'true')
   })
 
+  it('só o item da tela aberta fica marcado: Visão geral não acende nas outras telas do Adm', async () => {
+    servidor.use(...handlersSessao([criarVinculo('ADM')]))
+    renderizarRotas(rotasAdm, '/adm/desbravadores')
+    await screen.findByText('lista')
+
+    expect(itemDoMenu('Desbravadores')).toHaveAttribute('aria-current', 'page')
+    expect(itemDoMenu('Visão geral')).not.toHaveAttribute('aria-current')
+  })
+
   it('largura de 1280 px: sem faixa', async () => {
     servidor.use(...handlersSessao([criarVinculo('ADM')]))
     renderizarRotas(rotasAdm, '/adm/desbravadores')
     await screen.findByText('lista')
 
     expect(screen.queryByText('O painel do Adm é melhor no computador')).not.toBeInTheDocument()
+  })
+
+  it('largura de 1280 px: menu lateral sempre à vista, sem botão de abrir', async () => {
+    servidor.use(...handlersSessao([criarVinculo('ADM')]))
+    renderizarRotas(rotasAdm, '/adm/desbravadores')
+    await screen.findByText('lista')
+
+    expect(screen.getByRole('navigation', { name: 'Menu do Adm' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Abrir o menu' })).not.toBeInTheDocument()
+  })
+
+  it('abaixo de 900 px o menu fica numa gaveta: abre pelo botão e fecha ao escolher um item', async () => {
+    simularLargura(390)
+    servidor.use(...handlersSessao([criarVinculo('ADM')]))
+    const { roteador } = renderizarRotas(rotasAdm, '/adm/desbravadores')
+    await screen.findByText('lista')
+    expect(screen.queryByRole('navigation', { name: 'Menu do Adm' })).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Abrir o menu' }))
+    const gaveta = screen.getByRole('dialog', { name: 'Menu do Adm' })
+    await userEvent.click(within(gaveta).getByText('Usuários'))
+
+    expect(roteador.state.location.pathname).toBe('/adm/usuarios')
+    expect(screen.queryByRole('dialog', { name: 'Menu do Adm' })).not.toBeInTheDocument()
+  })
+
+  it('abaixo de 900 px a gaveta fecha com Esc e pelo botão Fechar', async () => {
+    simularLargura(390)
+    servidor.use(...handlersSessao([criarVinculo('ADM')]))
+    renderizarRotas(rotasAdm, '/adm/desbravadores')
+    await screen.findByText('lista')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Abrir o menu' }))
+    await userEvent.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog', { name: 'Menu do Adm' })).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Abrir o menu' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Fechar o menu' }))
+    expect(screen.queryByRole('dialog', { name: 'Menu do Adm' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Abrir o menu' })).toHaveFocus()
   })
 
   it('abaixo de 900 px mostra a faixa e não bloqueia o conteúdo', async () => {

@@ -1,6 +1,6 @@
 import { ConfiguracaoClubeEntrada } from '@desbravadores/shared'
 import { useState } from 'react'
-import type { FormEvent } from 'react'
+import type { FormEvent, ReactNode } from 'react'
 import { useConfiguracaoClube, useSalvarConfiguracao } from '../../../api/clube'
 import type { ConfiguracaoClube } from '../../../api/clube'
 import { useConexao } from '../../../offline'
@@ -43,7 +43,7 @@ export function AdmConfiguracoes() {
     )
 
   return (
-    <div className="flex max-w-xl flex-col gap-4 p-4">
+    <div className="flex max-w-5xl flex-col gap-6">
       <header>
         <p className="text-sm font-semibold text-texto-2">Regras que valem para o clube todo</p>
         <h1 className="font-titulo text-2xl font-extrabold text-texto">Configurações do clube</h1>
@@ -99,11 +99,8 @@ function FormularioConfiguracao({ atual }: { atual: ConfiguracaoClube }) {
   }
 
   return (
-    <form noValidate onSubmit={(evento) => void enviar(evento)} className="flex flex-col gap-4">
-      <section aria-labelledby="secao-reuniao" className="flex flex-col gap-4 rounded-folha bg-superficie p-5">
-        <h2 id="secao-reuniao" className="text-lg font-extrabold text-texto">
-          Reunião semanal
-        </h2>
+    <form noValidate onSubmit={(evento) => void enviar(evento)} className="flex flex-col gap-6">
+      <Secao id="secao-reuniao" titulo="Reunião semanal" descricao="O dia define as datas de reunião no calendário e nos cronogramas.">
         <Selecao rotulo="Dia da reunião" value={diaReuniao} erro={erros['diaReuniao']} onChange={(e) => setDiaReuniao(e.target.value)}>
           {DIAS_DA_SEMANA.map((nome, indice) => (
             <option key={nome} value={indice}>
@@ -112,13 +109,12 @@ function FormularioConfiguracao({ atual }: { atual: ConfiguracaoClube }) {
           ))}
         </Selecao>
         <Campo rotulo="Hora da reunião" type="time" value={horaReuniao} erro={erros['horaReuniao']} onChange={(e) => setHoraReuniao(e.target.value)} />
-        <Campo rotulo="Local padrão" value={local} erro={erros['localReuniaoPadrao']} onChange={(e) => setLocal(e.target.value)} />
-      </section>
+        <div className="sm:col-span-2">
+          <Campo rotulo="Local padrão" value={local} erro={erros['localReuniaoPadrao']} onChange={(e) => setLocal(e.target.value)} />
+        </div>
+      </Secao>
 
-      <section aria-labelledby="secao-alertas" className="flex flex-col gap-4 rounded-folha bg-superficie p-5">
-        <h2 id="secao-alertas" className="text-lg font-extrabold text-texto">
-          Alertas e meta
-        </h2>
+      <Secao id="secao-alertas" titulo="Alertas e meta" descricao="Percentuais que marcam quem precisa de atenção.">
         <Campo
           rotulo="Alerta de frequência (%)"
           ajuda="Abaixo disto o desbravador aparece com alerta."
@@ -138,15 +134,12 @@ function FormularioConfiguracao({ atual }: { atual: ConfiguracaoClube }) {
           onChange={(e) => setLimiarProgresso(e.target.value)}
         />
         <Campo rotulo="Meta de frequência (%)" type="number" inputMode="numeric" value={meta} erro={erros['metaFrequencia']} onChange={(e) => setMeta(e.target.value)} />
-      </section>
+      </Secao>
 
-      <section aria-labelledby="secao-fixas" className="flex flex-col gap-4 rounded-folha bg-superficie p-5">
-        <h2 id="secao-fixas" className="text-lg font-extrabold text-texto">
-          Definidas na implantação
-        </h2>
-        <Campo rotulo="Fuso horário" value={atual.fuso} readOnly disabled ajuda="Não pode ser alterado aqui." />
-        <Campo rotulo="Início do ano do clube" value={diaEMesDoAno(atual.inicioAnoClube)} readOnly disabled ajuda="Não pode ser alterado aqui." />
-      </section>
+      <Secao id="secao-fixas" titulo="Definidas na implantação" descricao="Não podem ser alteradas aqui.">
+        <Campo rotulo="Fuso horário" value={atual.fuso} readOnly disabled />
+        <Campo rotulo="Início do ano do clube" value={diaEMesDoAno(atual.inicioAnoClube)} readOnly disabled />
+      </Secao>
 
       {erroGeral && (
         <p role="alert" className="text-base font-medium text-perigo">
@@ -158,11 +151,26 @@ function FormularioConfiguracao({ atual }: { atual: ConfiguracaoClube }) {
           Configurações salvas.
         </p>
       )}
-      <div className="flex justify-end">
+      <div className="flex justify-end border-t border-divisor pt-4">
         <Botao type="submit" carregando={salvar.isPending}>
           Salvar
         </Botao>
       </div>
     </form>
+  )
+}
+
+/** No computador, título e explicação à esquerda e campos em duas colunas à direita; no celular, empilhado. */
+function Secao({ id, titulo, descricao, children }: { id: string; titulo: string; descricao: string; children: ReactNode }) {
+  return (
+    <section aria-labelledby={id} className="grid gap-4 rounded-folha bg-superficie p-5 lg:grid-cols-[16rem_1fr] lg:gap-8 lg:p-6">
+      <div>
+        <h2 id={id} className="text-lg font-extrabold text-texto">
+          {titulo}
+        </h2>
+        <p className="mt-1 text-sm text-texto-2">{descricao}</p>
+      </div>
+      <div className="grid content-start gap-4 sm:grid-cols-2">{children}</div>
+    </section>
   )
 }
