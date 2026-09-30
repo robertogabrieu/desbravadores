@@ -62,7 +62,8 @@ services:
       api:
         condition: service_healthy
     ports:
-      - '${WEB_PORTA:-8090}:80'
+      # So na propria maquina: o acesso de fora passa pelo Nginx do servidor (HTTPS e TRUST_PROXY=2).
+      - '127.0.0.1:${WEB_PORTA:-8090}:80'
 
 volumes:
   postgres-dados:

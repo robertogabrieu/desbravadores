@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 // Modelo do site no Nginx do servidor, preenchido por scripts/instalar.sh --nginx.
 const conteudo = readFileSync(resolve(__dirname, '../../../../scripts/nginx-host.conf'), 'utf8')
+const formatoDeLog = readFileSync(resolve(__dirname, '../../../../scripts/nginx-host-log.conf'), 'utf8')
 const semComentarios = conteudo
   .split('\n')
   .filter((linha) => !linha.trim().startsWith('#'))
@@ -25,11 +26,14 @@ describe('nginx-host.conf: site no Nginx do servidor', () => {
   })
 
   it('grava o log de acesso sem a query, onde vai a assinatura dos links de arquivo', () => {
-    const formato = /log_format desbravadores_sem_query([^;]*);/.exec(conteudo)?.[1] ?? ''
+    const formato = /log_format desbravadores_sem_query([^;]*);/.exec(formatoDeLog)?.[1] ?? ''
     expect(formato).toContain('$uri')
-    expect(formato).not.toContain('$request ')
-    expect(formato).not.toContain('$request_uri')
+    expect(formato).not.toMatch(/\$(request|request_uri|args|query_string)\b(?!_)/)
     expect(conteudo).toMatch(/access_log \S+ desbravadores_sem_query;/)
+  })
+
+  it('não define o formato de log no site (um segundo domínio repetiria o nome)', () => {
+    expect(semComentarios).not.toContain('log_format')
   })
 
   it('escuta só na porta 80 (o certbot acrescenta o 443)', () => {

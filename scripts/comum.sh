@@ -41,6 +41,7 @@ criar_env_se_faltar() {
     fi
     return 1
   fi
+  # Dentro de `if`, o set -e nao vale aqui: cada falha e conferida a mao.
   (
     umask 077
     cat > "$ENV_ARQUIVO" <<ENV
@@ -60,7 +61,12 @@ SMTP_FROM="Desbravadores <nao-responda@exemplo.org>"
 BACKUP_AGE_DESTINATARIO=
 RCLONE_REMOTO=
 ENV
-  )
+  ) || { echo "Nao consegui gravar $ENV_ARQUIVO." >&2; exit 1; }
+  if grep -qE '^(POSTGRES_SENHA|DB_SENHA|JWT_SEGREDO|ARQUIVOS_SEGREDO)=$' "$ENV_ARQUIVO"; then
+    rm -f "$ENV_ARQUIVO"
+    echo "O openssl nao gerou os segredos; $ENV_ARQUIVO descartado." >&2
+    exit 1
+  fi
   return 0
 }
 
