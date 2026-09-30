@@ -8,7 +8,7 @@ Monorepo do aplicativo de gestão de clubes de Desbravadores.
 | `apps/web` | Front (React + Vite, PWA) |
 | `packages/shared` | Código compartilhado entre API e front |
 
-Visão, arquitetura e decisões: `docs/planejamento`. Fase 0 (fundação): `docs/fases/fase-0`. Fase 1: `docs/fases/`. Convenções para agentes: `CLAUDE.md`.
+Visão, arquitetura e decisões: `docs/planejamento`. Fase 0 (fundação): `docs/fases/fase-0`. Fase 1: `docs/fases/`. Fase 3 (Adm): `docs/fases/fase-3`. Convenções para agentes: `CLAUDE.md`.
 
 ## Pré-requisitos
 
@@ -62,6 +62,46 @@ Permissões: registrar chamada e avisar o Adm exigem `reuniao.registrar`; ver re
 
 **Fotos.** As fotos são reduzidas no aparelho antes de entrar na fila (lado maior de 1600 px; o texto da tela promete no máximo 2 MB cada) e sobem por `PUT /api/sync/fotos/:uuid` (multipart: `dados` em JSON e `arquivo`). A tela de envio lista quem, na unidade, não tem autorização de imagem (`GET /api/unidades/:id/sem-autorizacao-imagem`; sem conexão usa o que está no pacote).
 
+## O Adm
+
+Telas do Adm, sob `LayoutAdm` (menu lateral) e guardadas só para ADM, em `apps/web/src/modulos/adm` e `apps/web/src/modulos/cronograma-montagem`:
+
+| Rota | O que é |
+|---|---|
+| `/adm` | Visão geral: indicadores, progresso por classe, resumo das unidades, cronogramas enviados aguardando publicação e atividade recente (`GET /api/visao-geral`, `relatorio.geral`) |
+| `/adm/classes` | Abas "Classes" e "Especialidades": ativar/desativar classe, escolher quem monta o cronograma, ajustar requisito (ativo, CAMPO) e acrescentar especialidade do clube |
+| `/adm/calendario` | Calendário do clube por mês: cria, edita e exclui eventos (`GET /api/calendario?ano=`) |
+| `/adm/cronogramas` | Montagem do cronograma de uma classe no computador, com escolha de classe e ano do clube |
+| `/adm/configuracoes` | Dia, hora e local padrão da reunião, alertas de frequência e de progresso, meta de frequência; fuso e início do ano do clube aparecem só para leitura |
+| `/cronograma/montar` | Um endereço, a tela do papel: ADM cai na montagem do computador, instrutor na montagem do celular (só das classes que ele monta). Abre também para instrutor; substituiu a página "Em breve" |
+
+O menu do Adm agora tem link em Visão geral, Classes e especialidades, Calendário do clube, Cronogramas e Configurações do clube; só Relatórios segue "em breve".
+
+| Endpoint | O que faz | Permissão |
+|---|---|---|
+| `GET /api/visao-geral` | Indicadores do clube, no formato `VisaoGeralSaida` (`packages/shared`) | `relatorio.geral` |
+| `GET` / `PATCH /api/clube/configuracao` | Lê e edita a configuração do clube (PATCH parcial) | `clube.configurar` |
+| `PATCH /api/classes/:id` | Ativa/desativa a classe no clube e define `quemMontaCronograma`. Desativar com desbravador cursando no ano do clube é recusado | `classe.gerenciar` |
+| `PATCH /api/requisitos/:id/ajuste` | Ajuste do clube sobre requisito oficial (`ativo`, `campo`); `null` volta ao oficial | `classe.gerenciar` |
+| `POST /api/especialidades` | Especialidade do clube numa área; nome repetido na área (sem distinguir caixa e acento) dá conflito | `classe.gerenciar` |
+| `GET /api/calendario?ano=` | Eventos do ano do clube | logado |
+| `POST /api/calendario/eventos` · `PATCH` / `DELETE /api/calendario/eventos/:id` | Cria, edita e exclui. `cancelaReuniao`, `bloqueiaAula` e `bomParaCampo` podem faltar e então valem os padrões do tipo (`MARCACOES_PADRAO`). A resposta traz `aulasAfetadas` | `calendario.gerenciar` |
+
+**Conflito de calendário.** Evento criado ou editado que tira o dia de aula de uma aula já agendada gera a notificação "Aula em conflito com o calendário" (tipo `CONFLITO_CRONOGRAMA`) para os instrutores da classe e, quando o Adm monta aquela classe, para os Adm. Evento criado também entra na atividade recente da visão geral.
+
+**Montagem do cronograma.** Todas as rotas abaixo exigem só login; a autorização é do serviço: monta o Adm e, se a classe estiver com `quemMontaCronograma = INSTRUTOR`, o instrutor dela. Cronograma de outro clube dá 404.
+
+| Endpoint | O que faz |
+|---|---|
+| `GET /api/classes/:id/cronograma/montagem?anoClube=` | Cronograma vivo com datas, bloqueios e requisitos alocados; sem cronograma vem `cronograma: null` |
+| `POST /api/cronogramas` | Cria o cronograma da classe no ano com início e fim; um por classe e ano (senão conflito) |
+| `PATCH /api/cronogramas/:id` | Muda o período; recusado se sobrariam aulas fora dele |
+| `PUT` / `DELETE /api/cronogramas/:id/requisitos/:requisitoId` | Coloca (`{ data }`) ou tira o requisito. A data precisa estar no período e ser dia de aula (reunião mantida ou data boa para campo, sem bloqueio) e não pode já ter aula registrada |
+| `POST /api/cronogramas/:id/aulas` · `PATCH /api/aulas-planejadas/:id` | Cria aula em data livre (só classes agrupadas; uma por data) e edita horário, local e título |
+| `POST /api/cronogramas/:id/enviar` | Rascunho para enviado; só o instrutor liberado (o Adm publica direto). Notifica o Adm |
+| `POST /api/cronogramas/:id/publicar` | Publica; só o Adm, e recusa se já publicado. Notifica os instrutores |
+
+Enviar e publicar recebem `atualizadoEmVisto`; se o cronograma mudou depois da versão vista, a API responde conflito em vez de sobrescrever. Enviar e publicar também entram na atividade recente da visão geral. A montagem exige internet: sem conexão as telas mostram "Disponível quando houver internet" e não passam pela fila de envio.
 ## O instrutor
 
 Telas do instrutor, em `apps/web/src/modulos`. As rotas da tabela abaixo, exceto `/inicio`, só o instrutor abre; o `/inicio` mostra a tela dele quando o papel ativo é instrutor. A barra de baixo dele tem Início, Classes, Cronograma e Ranking.
