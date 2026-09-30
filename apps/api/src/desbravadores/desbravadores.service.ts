@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import {
+  avisoDeSexoDaUnidade,
   idade,
   nomePublico as calcularNomePublico,
   type Aviso as AvisoContrato,
@@ -25,6 +26,7 @@ type Saida = z.infer<typeof DesbravadorSaida>
 type Matricula = z.infer<typeof MatriculaSaida>
 type Aviso = z.infer<typeof AvisoContrato>
 type Cliente = Prisma.TransactionClient
+export type ClasseParaMatricula = { id: string; tipo: 'REGULAR' | 'AVANCADA'; trilha: 'INDIVIDUAL' | 'AGRUPADAS' }
 
 /** O caderno das Agrupadas e para 16 anos ou mais: uma turma so, sem divisao por idade. */
 const IDADE_MINIMA_AGRUPADAS = 16
@@ -90,6 +92,22 @@ export function montarSaida(dbv: DesbravadorCompleto, relogio: RelogioDoClube, c
   }
   return saida
 }
+
+/**
+ * Classe regular ativa que a idade no início do ano do clube pede: na individual, a da idade exata; nas
+ * agrupadas, a maior que a idade já alcança (com `ORDEM_CLASSE_DA_IDADE`).
+ */
+export function ondeClasseDaIdade(clubeId: string, trilha: 'INDIVIDUAL' | 'AGRUPADAS', idadeNoInicio: number): Prisma.ClasseWhereInput {
+  return {
+    OR: [{ clubeId: null }, { clubeId }],
+    ativa: true,
+    tipo: 'REGULAR',
+    trilha,
+    idade: trilha === 'INDIVIDUAL' ? idadeNoInicio : { lte: idadeNoInicio },
+  }
+}
+
+export const ORDEM_CLASSE_DA_IDADE = { idade: 'desc' } satisfies Prisma.ClasseOrderByWithRelationInput
 
 @Injectable()
 export class DesbravadoresService {
@@ -160,41 +178,55 @@ export class DesbravadoresService {
       throw new ErroApp('REGRA', 'Escolha a classe regular; a avançada entra junto.')
     }
 
-    const criado = await this.prisma.$transaction(async (tx) => {
-      const dbv = await tx.desbravador.create({
-        data: {
-          clubeId,
-          nome: entrada.nome,
-          nomePublico: entrada.nomePublico ?? calcularNomePublico(entrada.nome),
-          tipo: entrada.tipo,
-          usuarioId: entrada.usuarioId ?? null,
-          nascimento: daDataCivil(entrada.nascimento),
-          sexo: entrada.sexo,
-          responsavelNome: entrada.responsavelNome ?? null,
-          responsavelTelefone: entrada.responsavelTelefone ?? null,
-          responsavelEmail: entrada.responsavelEmail ?? null,
-          autorizacaoImagem: entrada.autorizacaoImagem,
-          autorizacaoImagemEm: entrada.autorizacaoImagemEm ? daDataCivil(entrada.autorizacaoImagemEm) : null,
-          entradaEm: daDataCivil(entrada.entradaEm),
-        },
-      })
-      if (entrada.unidadeId) {
-        await tx.membroUnidade.create({
-          data: { clubeId, dbvId: dbv.id, unidadeId: entrada.unidadeId, inicio: daDataCivil(entrada.entradaEm) },
-        })
-      }
-      if (classe) {
-        await this.matricular(tx, {
-          clubeId,
-          dbvId: dbv.id,
-          classe,
-          anoClube: relogio.anoClube,
-          incluirAvancada: entrada.incluirAvancada,
-        })
-      }
-      return dbv
-    })
+    const criado = await this.prisma.$transaction((tx) =>
+      this.gravarNovo(tx, { clubeId, anoClube: relogio.anoClube, entrada, classe }),
+    )
     return this.saidaComAvisos(sessao, criado.id, relogio)
+  }
+
+  /** Miolo do cadastro: pessoa, membro da unidade e matrícula (regular + avançada), no cliente da transação. */
+  async gravarNovo(
+    tx: Cliente,
+    dados: {
+      clubeId: string
+      anoClube: number
+      entrada: z.infer<typeof DesbravadorCriarEntrada>
+      classe: ClasseParaMatricula | undefined
+    },
+  ): Promise<{ id: string }> {
+    const { clubeId, anoClube, entrada, classe } = dados
+    const dbv = await tx.desbravador.create({
+      data: {
+        clubeId,
+        nome: entrada.nome,
+        nomePublico: entrada.nomePublico ?? calcularNomePublico(entrada.nome),
+        tipo: entrada.tipo,
+        usuarioId: entrada.usuarioId ?? null,
+        nascimento: daDataCivil(entrada.nascimento),
+        sexo: entrada.sexo,
+        responsavelNome: entrada.responsavelNome ?? null,
+        responsavelTelefone: entrada.responsavelTelefone ?? null,
+        responsavelEmail: entrada.responsavelEmail ?? null,
+        autorizacaoImagem: entrada.autorizacaoImagem,
+        autorizacaoImagemEm: entrada.autorizacaoImagemEm ? daDataCivil(entrada.autorizacaoImagemEm) : null,
+        entradaEm: daDataCivil(entrada.entradaEm),
+      },
+    })
+    if (entrada.unidadeId) {
+      await tx.membroUnidade.create({
+        data: { clubeId, dbvId: dbv.id, unidadeId: entrada.unidadeId, inicio: daDataCivil(entrada.entradaEm) },
+      })
+    }
+    if (classe) {
+      await this.matricular(tx, {
+        clubeId,
+        dbvId: dbv.id,
+        classe,
+        anoClube,
+        incluirAvancada: entrada.incluirAvancada,
+      })
+    }
+    return dbv
   }
 
   async editar(sessao: SessaoLogada, id: string, entrada: z.infer<typeof DesbravadorEditarEntrada>) {
@@ -348,7 +380,7 @@ export class DesbravadoresService {
     dados: {
       clubeId: string
       dbvId: string
-      classe: { id: string; tipo: 'REGULAR' | 'AVANCADA'; trilha: 'INDIVIDUAL' | 'AGRUPADAS' }
+      classe: ClasseParaMatricula
       anoClube: number
       incluirAvancada: boolean
     },
@@ -424,12 +456,8 @@ export class DesbravadoresService {
   private async avisosDoCadastro(clubeId: string, dbv: DesbravadorCompleto, relogio: RelogioDoClube): Promise<Aviso[]> {
     const avisos: Aviso[] = []
     const unidade = dbv.membros[0]?.unidade
-    if (unidade && unidade.tipo === 'MASCULINA' && dbv.sexo === 'F') {
-      avisos.push({ codigo: 'AVISO_SEXO_UNIDADE', mensagem: `A unidade ${unidade.nome} é masculina.` })
-    }
-    if (unidade && unidade.tipo === 'FEMININA' && dbv.sexo === 'M') {
-      avisos.push({ codigo: 'AVISO_SEXO_UNIDADE', mensagem: `A unidade ${unidade.nome} é feminina.` })
-    }
+    const avisoDeSexo = unidade ? avisoDeSexoDaUnidade(unidade, dbv.sexo) : undefined
+    if (avisoDeSexo) avisos.push(avisoDeSexo)
     const classe = classeRegularAtual(dbv)
     if (dbv.tipo === 'DBV' && classe?.idade != null) {
       const idadeNoInicio = idade(paraDataCivil(dbv.nascimento), `${relogio.anoClube}-${relogio.inicioAnoClube}`)
@@ -451,8 +479,8 @@ export class DesbravadoresService {
 
   private async classeEsperada(clubeId: string, idadeNoInicio: number) {
     return this.prisma.classe.findFirst({
-      where: { OR: [{ clubeId: null }, { clubeId }], ativa: true, tipo: 'REGULAR', trilha: 'INDIVIDUAL', idade: idadeNoInicio },
-      orderBy: { idade: 'desc' },
+      where: ondeClasseDaIdade(clubeId, 'INDIVIDUAL', idadeNoInicio),
+      orderBy: ORDEM_CLASSE_DA_IDADE,
       select: { nome: true },
     })
   }

@@ -18,6 +18,8 @@ export class ErroDaApi extends Error {
     readonly status: number,
     readonly erro: ErroApi,
     readonly classe: ClasseFalha = classificarStatus(status, true),
+    /** Corpo cru da resposta, para a rota que devolve mais que o `ErroApi` (ex.: erros por linha). */
+    readonly corpo: unknown = null,
   ) {
     super(erro.mensagem)
     this.name = 'ErroDaApi'
@@ -104,6 +106,7 @@ export function erroDeResposta(status: number, corpo: unknown): ErroDaApi {
     status,
     lido.success ? lido.data : { codigo: 'ERRO_INTERNO', mensagem: MENSAGEM_GENERICA },
     classificarStatus(status, lido.success),
+    corpo,
   )
 }
 

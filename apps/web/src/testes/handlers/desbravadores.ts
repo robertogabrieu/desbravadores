@@ -1,5 +1,7 @@
 import { HttpResponse, http } from 'msw'
+import type { JsonBodyType } from 'msw'
 import type { Aviso, Desbravador, ListaDesbravadores } from '../../api/desbravadores'
+import type { LinhaDaPreviaImportacao } from '../../api/importacao'
 import { uuid } from './sessao'
 
 export function criarDesbravador(parcial: Partial<Desbravador> = {}): Desbravador {
@@ -89,3 +91,28 @@ export const handlerMoverUnidade = (aoReceber?: (id: string, corpo: { unidadeId:
 
 export const handlerErroDesbravador = (metodo: 'get' | 'post' | 'patch', caminho: string, status: number, erro: { codigo: string; mensagem: string; campos?: Record<string, string> }) =>
   http[metodo](caminho, () => HttpResponse.json(erro, { status }))
+
+export function criarLinhaDaPrevia(parcial: Partial<LinhaDaPreviaImportacao> = {}): LinhaDaPreviaImportacao {
+  return {
+    linha: 2,
+    nome: 'Ana Clara Souza',
+    nascimento: '2015-03-10',
+    sexo: 'F',
+    unidadeId: null,
+    classeId: null,
+    responsavelNome: null,
+    responsavelTelefone: null,
+    responsavelEmail: null,
+    entradaEm: '2026-02-01',
+    erros: [],
+    avisos: [],
+    duplicado: false,
+    ...parcial,
+  }
+}
+
+export const handlerConfirmarImportacao = (resposta: JsonBodyType, status = 201, aoReceber?: AoReceber) =>
+  http.post('/api/desbravadores/importacao', async ({ request }) => {
+    aoReceber?.(await request.json())
+    return HttpResponse.json(resposta, { status })
+  })
