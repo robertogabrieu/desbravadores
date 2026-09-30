@@ -10,6 +10,7 @@ import {
   REQ_CAMPO,
   REQ_EM_CONFLITO,
   REQ_LIVRE,
+  criarDataMontagem,
   criarMontagem,
   criarMontagemDeExemplo,
   criarRequisitoMontagem,
@@ -45,6 +46,22 @@ function abrir(montagem = criarMontagemDeExemplo()) {
 }
 
 const linha = (data: string) => document.querySelector<HTMLElement>(`li[data-data="${data}"]`) as HTMLElement
+
+describe('I3b · data em conflito', () => {
+  it('individual: "+" some na data em conflito que não é bloqueio; agrupada mantém', async () => {
+    const conflito = criarDataMontagem('2026-10-04', { aulaId: uuid(2001), conflito: true })
+    abrir(criarMontagem({ datasLivres: false, datas: [conflito] }))
+    await screen.findByText(/requisitos com data/)
+    expect(within(linha('2026-10-04')).queryByRole('button', { name: 'Adicionar requisito nesta data' })).not.toBeInTheDocument()
+  })
+
+  it('agrupada: a data em conflito mantém o "+"', async () => {
+    const conflito = criarDataMontagem('2026-10-04', { aulaId: uuid(2001), conflito: true })
+    abrir(criarMontagem({ datasLivres: true, datas: [conflito] }))
+    await screen.findByText(/requisitos com data/)
+    expect(within(linha('2026-10-04')).getByRole('button', { name: 'Adicionar requisito nesta data' })).toBeInTheDocument()
+  })
+})
 
 describe('I3b · quatro estados', () => {
   it('carregando, depois o conteúdo', async () => {

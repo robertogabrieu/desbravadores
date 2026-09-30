@@ -27,12 +27,22 @@ const somarDias = (data: string, dias: number): string => {
   return instante.toISOString().slice(0, 10)
 }
 
-/** Primeiro domingo (dia de reunião padrão do clube) daqui a pelo menos oito dias, pelo hoje do fuso do clube. */
-function proximoDomingoFuturo(): string {
+/**
+ * Dois domingos seguidos dentro do período semeado (o ano do clube de hoje vai até 31/12): o primeiro
+ * domingo daqui a pelo menos oito dias; se o par não couber até o fim do ano do clube (fim de dezembro
+ * e janeiro), os dois últimos domingos que cabem.
+ */
+function domingosDoCronograma(): { conflito: string; livre: string } {
   const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
-  let data = somarDias(hoje, 8)
-  while (new Date(`${data}T00:00:00Z`).getUTCDay() !== 0) data = somarDias(data, 1)
-  return data
+  const fimDoPeriodo = `${anoCorrente()}-12-31`
+  const ehDomingo = (data: string): boolean => new Date(`${data}T00:00:00Z`).getUTCDay() === 0
+  let conflito = somarDias(hoje, 8)
+  while (!ehDomingo(conflito)) conflito = somarDias(conflito, 1)
+  if (somarDias(conflito, 7) > fimDoPeriodo) {
+    conflito = somarDias(fimDoPeriodo, -7)
+    while (!ehDomingo(conflito)) conflito = somarDias(conflito, -1)
+  }
+  return { conflito, livre: somarDias(conflito, 7) }
 }
 
 const diaMes = (data: string): string => `${data.slice(8, 10)}/${data.slice(5, 7)}`
@@ -77,8 +87,7 @@ test('adm: evento em conflito avisa o instrutor, ele monta e envia, o Adm public
   const [primeiro, segundo, livre] = requisitos
   if (!primeiro || !segundo || !livre) throw new Error('A classe Amigo precisa de ao menos 3 requisitos na carga oficial')
 
-  const domingoDoConflito = proximoDomingoFuturo()
-  const domingoLivre = somarDias(domingoDoConflito, 7)
+  const { conflito: domingoDoConflito, livre: domingoLivre } = domingosDoCronograma()
   const cronograma = await criarCronograma({
     clubeId: clube.id,
     classeId: amigo.id,

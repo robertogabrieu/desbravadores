@@ -12,7 +12,7 @@ import { FormularioAula } from './FormularioAula'
 import type { AulaEmEdicao } from './FormularioAula'
 import { LinhaData } from './LinhaData'
 import { SeloDoCronograma } from './SeloDoCronograma'
-import { diaMes } from './datas'
+import { aceitaRequisitoNovo, diaMes } from './datas'
 import { useAcoesDeMontagem } from './useAcoesDeMontagem'
 
 interface Propriedades {
@@ -131,8 +131,7 @@ export function PainelAdm({ montagem, cronograma, classe, ano, aoAtualizar }: Pr
                     setAulaEmEdicao({ data: aula.data, aulaId: aula.aulaId, dados: { horario: aula.horario, local: aula.local, titulo: aula.titulo } })
                   }
                   acaoDaData={
-                    !dado.situacao.bloqueiaAula &&
-                    !dado.aulaDada && (
+                    aceitaRequisitoNovo(montagem, dado) && (
                       <Botao
                         variante="secundario"
                         aria-label={`Colocar aqui em ${diaMes(dado.data)}`}

@@ -1,5 +1,7 @@
+import { anoClube, hojeNoFuso } from '@desbravadores/shared'
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useConfiguracaoClube } from '../../api/clube'
 import { useClasses } from '../../api/leitura'
 import { useMontagem } from '../../api/montagem'
 import { useConexao } from '../../offline'
@@ -18,21 +20,26 @@ export function MontagemAdm() {
   const { modo } = useConexao()
   const online = modo === 'ONLINE'
   const classes = useClasses()
-  const [anoAtual] = useState(() => new Date().getFullYear())
-  const [ano, setAno] = useState(anoAtual)
+  const configuracao = useConfiguracaoClube()
+  const [agora] = useState(() => new Date())
+  // O ano do clube de hoje (não o civil): em janeiro, antes do início do ano do clube, vale o anterior.
+  const anoAtual = configuracao.data ? anoClube(hojeNoFuso(configuracao.data.fuso, agora), configuracao.data.inicioAnoClube) : undefined
+  const [anoEscolhido, setAno] = useState<number>()
+  const ano = anoEscolhido ?? anoAtual
 
   const regulares = (classes.data ?? []).filter((classe) => classe.ativa && classe.tipo === 'REGULAR')
   const classeId = busca.get('classe') ?? regulares[0]?.id
   const par = parDaClasse(classes.data ?? [], classeId)
   const classe = classes.data?.find((item) => item.id === classeId)
-  const montagem = useMontagem(classeId, ano, online)
+  const montagem = useMontagem(classeId, ano, online && ano !== undefined)
   const escolherClasse = (id: string) => definirBusca({ classe: id }, { replace: true })
-  const anos = [anoAtual - 1, anoAtual, anoAtual + 1]
+  const anos = anoAtual === undefined ? [] : [anoAtual - 1, anoAtual, anoAtual + 1]
 
   function conteudo() {
     if (!online) return <DisponivelComInternet />
     if (classes.isError) return <ErroDeCarga erro={classes.error} aoTentarDeNovo={() => void classes.refetch()} />
-    if (classes.isPending) return <Carregando rotulo="Carregando classes" />
+    if (configuracao.isError) return <ErroDeCarga erro={configuracao.error} aoTentarDeNovo={() => void configuracao.refetch()} />
+    if (classes.isPending || ano === undefined) return <Carregando rotulo="Carregando classes" />
     if (classeId === undefined) return <EstadoVazio titulo="Nenhuma classe ativa" descricao="Ative uma classe em Classes e especialidades para montar o cronograma." />
     return (
       <ResultadoConsulta consulta={montagem} rotuloCarga="Carregando cronograma">
@@ -58,7 +65,7 @@ export function MontagemAdm() {
             </option>
           ))}
         </Selecao>
-        <Selecao rotulo="Ano do clube" value={ano} onChange={(evento) => setAno(Number(evento.target.value))}>
+        <Selecao rotulo="Ano do clube" value={ano ?? ''} onChange={(evento) => setAno(Number(evento.target.value))}>
           {anos.map((valor) => (
             <option key={valor} value={valor}>
               {valor}

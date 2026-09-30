@@ -1,7 +1,8 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ModoConexao } from '../../offline'
+import { handlerConfiguracao } from '../../testes/handlers/clube'
 import { handlerClasses } from '../../testes/handlers/leitura'
 import { criarClasse } from '../../testes/handlers/leitura'
 import {
@@ -32,6 +33,10 @@ beforeEach(() => {
   offline.modo = 'ONLINE'
 })
 
+afterEach(() => {
+  vi.useRealTimers()
+})
+
 const CONFLITO = { codigo: 'CONFLITO', mensagem: 'Outra pessoa acabou de mudar esta data. Atualize a tela.' } as const
 
 function abrir(montagem = criarMontagemDeExemplo(), rota = '/adm/cronogramas') {
@@ -51,7 +56,7 @@ describe('A7 · quatro estados', () => {
   })
 
   it('erro: mostra a mensagem e o botão que busca de novo', async () => {
-    servidor.use(...handlersSessao([criarVinculo('ADM')]), handlerClasses(), handlerErroMontagem(500, { codigo: 'ERRO_INTERNO', mensagem: 'Falhou' }))
+    servidor.use(...handlersSessao([criarVinculo('ADM')]), handlerClasses(), handlerConfiguracao(), handlerErroMontagem(500, { codigo: 'ERRO_INTERNO', mensagem: 'Falhou' }))
     renderizarRotas(rotasAdmCronogramas, '/adm/cronogramas')
     expect(await screen.findByRole('button', { name: 'Tentar de novo' })).toBeInTheDocument()
   })
@@ -84,6 +89,20 @@ describe('A7 · criar cronograma', () => {
       caminho: '/api/cronogramas',
       corpo: { classeId: uuid(100), anoClube: ano, inicio: `${ano}-03-01`, fim: fimDoAno },
     })
+  })
+})
+
+describe('A7 · ano do clube', () => {
+  it('em janeiro, antes do início do ano do clube, abre e cria o ano anterior', async () => {
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2027-01-15T15:00:00.000Z') })
+    const registro = abrir(criarMontagem({ cronograma: null }))
+    const usuario = userEvent.setup()
+    const botao = await screen.findByRole('button', { name: 'Criar cronograma' })
+    await waitFor(() => expect(botao).toBeEnabled())
+    expect(screen.getByRole('combobox', { name: 'Ano do clube' })).toHaveValue('2026')
+    await usuario.click(botao)
+    await waitFor(() => expect(registro.chamadas).toHaveLength(1))
+    expect(registro.chamadas[0]).toMatchObject({ corpo: { anoClube: 2026, inicio: '2026-03-01', fim: '2027-02-28' } })
   })
 })
 
@@ -144,6 +163,20 @@ describe('A7 · montar', () => {
     expect(bloqueada).toHaveAttribute('data-estado', 'bloqueada')
     expect(within(bloqueada).getByText('Feriado prolongado · sem aula de classe')).toBeInTheDocument()
     expect(within(bloqueada).queryByRole('button', { name: /Colocar aqui/ })).not.toBeInTheDocument()
+  })
+
+  it('classe individual: data em conflito que ainda é dia de aula não aceita requisito novo; agrupada aceita', async () => {
+    const conflito = criarDataMontagem('2026-10-04', { aulaId: uuid(2001), conflito: true })
+    abrir(criarMontagem({ datasLivres: false, datas: [conflito] }))
+    await screen.findByText(/agendados/)
+    expect(within(linha('2026-10-04')).queryByRole('button', { name: /Colocar aqui/ })).not.toBeInTheDocument()
+  })
+
+  it('classe agrupada: a mesma data em conflito mantém "Colocar aqui"', async () => {
+    const conflito = criarDataMontagem('2026-10-04', { aulaId: uuid(2001), conflito: true })
+    abrir(criarMontagem({ datasLivres: true, datas: [conflito] }))
+    await screen.findByText(/agendados/)
+    expect(within(linha('2026-10-04')).getByRole('button', { name: /Colocar aqui/ })).toBeInTheDocument()
   })
 
   it('data de campo fica verde só quando o requisito escolhido é de campo', async () => {

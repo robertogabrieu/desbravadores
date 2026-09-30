@@ -12,6 +12,7 @@ import { FolhaAdicionar, FolhaMover } from './FolhasDoInstrutor'
 import { FormularioAula } from './FormularioAula'
 import type { AulaEmEdicao } from './FormularioAula'
 import { LinhaData } from './LinhaData'
+import { aceitaRequisitoNovo } from './datas'
 import { useAcoesDeMontagem } from './useAcoesDeMontagem'
 
 interface Propriedades {
@@ -102,8 +103,7 @@ export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Prop
                     setAulaEmEdicao({ data: aula.data, aulaId: aula.aulaId, dados: { horario: aula.horario, local: aula.local, titulo: aula.titulo } })
                   }
                   acaoDaData={
-                    !dado.situacao.bloqueiaAula &&
-                    !dado.aulaDada && (
+                    aceitaRequisitoNovo(montagem, dado) && (
                       <button
                         type="button"
                         aria-label="Adicionar requisito nesta data"

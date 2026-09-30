@@ -36,3 +36,7 @@ export const periodoPadrao = (ano: number, inicioAnoClube: string): { inicio: st
 
 /** "09:15 · Sala 2 · Título" com o que existir. */
 export const detalheDaAula = (d: DataDaMontagem): string => [d.horario, d.local, d.titulo].filter(Boolean).join(' · ')
+
+/** Colocar requisito novo na data: fora bloqueio e aula dada; nas individuais, também fora data em conflito (a API responde 422). */
+export const aceitaRequisitoNovo = (montagem: { datasLivres: boolean }, dado: DataDaMontagem): boolean =>
+  !dado.situacao.bloqueiaAula && !dado.aulaDada && (montagem.datasLivres || !dado.conflito)
