@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common'
+import { CronogramasModule } from '../cronogramas/cronogramas.module'
+import { VisaoGeralController } from './visao-geral.controller'
+import { VisaoGeralService } from './visao-geral.service'
 
-// Fase 3: o pacote dono preenche controllers, providers e imports.
-@Module({})
+@Module({ imports: [CronogramasModule], controllers: [VisaoGeralController], providers: [VisaoGeralService] })
 export class VisaoGeralModule {}

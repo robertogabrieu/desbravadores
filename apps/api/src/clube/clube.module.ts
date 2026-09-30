@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
+import { ClubeController } from './clube.controller'
+import { ClubeService } from './clube.service'
 
-// Fase 3: o pacote dono preenche controllers, providers e imports.
-@Module({})
+@Module({ controllers: [ClubeController], providers: [ClubeService] })
 export class ClubeModule {}

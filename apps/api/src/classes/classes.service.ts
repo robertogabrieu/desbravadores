@@ -88,6 +88,8 @@ export class ClassesService {
           texto: requisito.texto,
           campo: ajuste?.campo ?? requisito.campo,
           ativo: estaAtivo(requisito.ativo, ajuste?.ativo),
+          oficial: { ativo: requisito.ativo, campo: requisito.campo },
+          ajustado: ajuste !== undefined && (ajuste.ativo !== null || ajuste.campo !== null),
         }
       }),
     }))
