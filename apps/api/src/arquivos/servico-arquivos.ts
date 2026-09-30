@@ -12,6 +12,11 @@ export function caminhoDaFoto(clubeId: string, arquivoId: string, ano: number, v
   return `clube/${clubeId}/fotos/${ano}/${arquivoId}${sufixo}.jpg`
 }
 
+/** Caminho de um material (documento), montado pelo servidor; `ext` vem da tabela de formatos, nunca do cliente. */
+export function caminhoDoMaterial(clubeId: string, arquivoId: string, ext: string, ano: number = new Date().getUTCFullYear()): string {
+  return `clube/${clubeId}/materiais/${ano}/${arquivoId}.${ext}`
+}
+
 @Injectable()
 export class ServicoArquivos {
   /**

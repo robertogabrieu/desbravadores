@@ -2,9 +2,18 @@ import { randomUUID } from 'node:crypto'
 import { JwtService } from '@nestjs/jwt'
 import argon2 from 'argon2'
 import { PrismaSistema } from '../src/comum/prisma/prisma-sistema'
+import { MARCACOES_PADRAO } from '@desbravadores/shared'
 import type {
   Album,
   Arquivo,
+  AulaPlanejada,
+  Cronograma,
+  CronogramaPublicacao,
+  EspecialidadeConcluida,
+  EventoCalendario,
+  Notificacao,
+  RegistroAula,
+  RequisitoConcluido,
   Chamada,
   Clube,
   ConfiguracaoClube,
@@ -17,6 +26,9 @@ import type {
   OrigemPontos,
   Reuniao,
   SituacaoChamada,
+  StatusCronograma,
+  TipoEvento,
+  TipoNotificacao,
   MatriculaClasse,
   Papel,
   Sexo,
@@ -383,6 +395,199 @@ export async function criarFoto(dados: {
       enviadaPorId,
       removidaEm: dados.removida ? new Date() : null,
       removidaPorId: dados.removida ? enviadaPorId : null,
+    },
+  })
+}
+
+type Marcacoes = { cancelaReuniao: boolean; bloqueiaAula: boolean; bomParaCampo: boolean }
+
+/** Evento do calendario; sem `marcacoes`, valem as do tipo (`MARCACOES_PADRAO`). */
+export async function criarEvento(dados: {
+  clubeId: string
+  tipo: TipoEvento
+  inicio: string
+  fim?: string
+  marcacoes?: Partial<Marcacoes>
+}): Promise<EventoCalendario> {
+  return prismaDeTeste().eventoCalendario.create({
+    data: {
+      clubeId: dados.clubeId,
+      nome: `Evento ${unico()}`,
+      tipo: dados.tipo,
+      inicio: dataCivil(dados.inicio),
+      fim: dataCivil(dados.fim ?? dados.inicio),
+      ...MARCACOES_PADRAO[dados.tipo],
+      ...dados.marcacoes,
+      criadoPorId: (await criarUsuario()).id,
+    },
+  })
+}
+
+/** Cronograma vivo com as aulas dadas (cada uma com seus requisitos). Periodo: o ano do clube inteiro. */
+export async function criarCronograma(dados: {
+  clubeId: string
+  classeId: string
+  anoClube?: number
+  status?: StatusCronograma
+  aulas?: { data: string; requisitoIds: string[] }[]
+}): Promise<Cronograma & { aulas: AulaPlanejada[] }> {
+  const prisma = prismaDeTeste()
+  const anoClube = dados.anoClube ?? 2026
+  const cronograma = await prisma.cronograma.create({
+    data: {
+      clubeId: dados.clubeId,
+      classeId: dados.classeId,
+      anoClube,
+      inicio: dataCivil(`${anoClube}-02-01`),
+      fim: dataCivil(`${anoClube}-12-31`),
+      status: dados.status ?? 'RASCUNHO',
+    },
+  })
+  const aulas: AulaPlanejada[] = []
+  for (const aula of dados.aulas ?? []) {
+    const criada = await prisma.aulaPlanejada.create({
+      data: { clubeId: dados.clubeId, cronogramaId: cronograma.id, data: dataCivil(aula.data) },
+    })
+    if (aula.requisitoIds.length > 0) {
+      await prisma.aulaRequisito.createMany({
+        data: aula.requisitoIds.map((requisitoId) => ({
+          clubeId: dados.clubeId,
+          cronogramaId: cronograma.id,
+          aulaPlanejadaId: criada.id,
+          requisitoId,
+        })),
+      })
+    }
+    aulas.push(criada)
+  }
+  return { ...cronograma, aulas }
+}
+
+/** Grava o retrato do cronograma vivo (aulas ativas com seus requisitos), sem mexer no status. */
+export async function publicarCronograma(dados: { cronogramaId: string; publicadoPorId: string }): Promise<CronogramaPublicacao> {
+  const prisma = prismaDeTeste()
+  const cronograma = await prisma.cronograma.findUniqueOrThrow({ where: { id: dados.cronogramaId } })
+  const aulas = await prisma.aulaPlanejada.findMany({
+    where: { clubeId: cronograma.clubeId, cronogramaId: cronograma.id, removidaEm: null },
+    include: { requisitos: { select: { requisitoId: true } } },
+    orderBy: { data: 'asc' },
+  })
+  const conteudo = {
+    aulas: aulas.map((aula) => ({
+      id: aula.id,
+      data: aula.data.toISOString().slice(0, 10),
+      horario: aula.horario,
+      local: aula.local,
+      titulo: aula.titulo,
+      requisitoIds: aula.requisitos.map((requisito) => requisito.requisitoId),
+    })),
+  }
+  return prisma.cronogramaPublicacao.create({
+    data: { clubeId: cronograma.clubeId, cronogramaId: cronograma.id, conteudo, publicadoPorId: dados.publicadoPorId },
+  })
+}
+
+/** Aula registrada; se ha aula planejada ativa da classe naquela data, o registro se liga a ela. */
+export async function criarRegistroAula(dados: {
+  clubeId: string
+  classeId: string
+  data: string
+  presencas?: { dbvId: string; presente?: boolean }[]
+  concluidos?: { dbvId: string; requisitoId: string }[]
+}): Promise<RegistroAula> {
+  const prisma = prismaDeTeste()
+  const registradoPorId = (await criarUsuario()).id
+  const planejada = await prisma.aulaPlanejada.findFirst({
+    where: { clubeId: dados.clubeId, data: dataCivil(dados.data), removidaEm: null, cronograma: { classeId: dados.classeId } },
+    select: { id: true },
+  })
+  const agora = new Date()
+  const registro = await prisma.registroAula.create({
+    data: {
+      clubeId: dados.clubeId,
+      classeId: dados.classeId,
+      aulaPlanejadaId: planejada?.id ?? null,
+      data: dataCivil(dados.data),
+      registradoPorId,
+      atualizadoEm: agora,
+    },
+  })
+  if (dados.presencas?.length) {
+    await prisma.presencaAula.createMany({
+      data: dados.presencas.map((presenca) => ({
+        clubeId: dados.clubeId,
+        registroAulaId: registro.id,
+        dbvId: presenca.dbvId,
+        presente: presenca.presente ?? true,
+        versao: agora,
+        alteradaPorId: registradoPorId,
+        envioId: randomUUID(),
+      })),
+    })
+  }
+  for (const concluido of dados.concluidos ?? []) {
+    await criarRequisitoConcluido({ clubeId: dados.clubeId, ...concluido, concluidoEm: dados.data, registroAulaId: registro.id })
+  }
+  return registro
+}
+
+export async function criarRequisitoConcluido(dados: {
+  clubeId: string
+  dbvId: string
+  requisitoId: string
+  concluidoEm?: string
+  registroAulaId?: string | null
+}): Promise<RequisitoConcluido> {
+  return prismaDeTeste().requisitoConcluido.create({
+    data: {
+      clubeId: dados.clubeId,
+      dbvId: dados.dbvId,
+      requisitoId: dados.requisitoId,
+      concluidoEm: dataCivil(dados.concluidoEm ?? '2026-03-01'),
+      registroAulaId: dados.registroAulaId ?? null,
+      marcadoPorId: (await criarUsuario()).id,
+    },
+  })
+}
+
+export async function criarEspecialidadeConcluida(dados: {
+  clubeId: string
+  dbvId: string
+  especialidadeId: string
+  concluidaEm?: string
+}): Promise<EspecialidadeConcluida> {
+  return prismaDeTeste().especialidadeConcluida.create({
+    data: {
+      clubeId: dados.clubeId,
+      dbvId: dados.dbvId,
+      especialidadeId: dados.especialidadeId,
+      concluidaEm: dataCivil(dados.concluidaEm ?? '2026-03-01'),
+      marcadoPorId: (await criarUsuario()).id,
+    },
+  })
+}
+
+export async function criarNotificacao(dados: {
+  clubeId: string
+  usuarioId: string
+  tipo?: TipoNotificacao
+  titulo?: string
+  texto?: string
+  link?: string
+  criadaEm?: Date
+  lida?: boolean
+}): Promise<Notificacao> {
+  const criadaEm = dados.criadaEm ?? new Date()
+  return prismaDeTeste().notificacao.create({
+    data: {
+      clubeId: dados.clubeId,
+      usuarioId: dados.usuarioId,
+      tipo: dados.tipo ?? 'CRONOGRAMA_PUBLICADO',
+      titulo: dados.titulo ?? `Aviso ${unico()}`,
+      texto: dados.texto ?? 'Texto do aviso',
+      link: dados.link ?? '/cronograma',
+      criadaEm,
+      lidaEm: dados.lida ? criadaEm : null,
     },
   })
 }

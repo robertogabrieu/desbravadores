@@ -1,3 +1,4 @@
+import { extname } from 'node:path'
 import { Controller, Get, Inject, Param, Query, Res, StreamableFile } from '@nestjs/common'
 import { Uuid } from '@desbravadores/shared'
 import type { Response } from 'express'
@@ -6,6 +7,7 @@ import { Publica } from '../comum/decorators/publica.decorator'
 import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { ARMAZENAMENTO, type Armazenamento } from './armazenamento'
+import { cabecalhoDeDisposicao } from './disposicao'
 import { ServicoArquivos, VALIDADE_URL_SEGUNDOS } from './servico-arquivos'
 
 const ConsultaArquivo = z.object({
@@ -43,12 +45,33 @@ export class ArquivosController {
 
     const arquivo = await this.prisma.arquivo.findFirst({
       where: { clubeId: dados.data.c, id },
-      select: { caminho: true, miniaturaCaminho: true, foto: { select: { removidaEm: true } } },
+      select: {
+        caminho: true,
+        miniaturaCaminho: true,
+        mime: true,
+        foto: { select: { removidaEm: true } },
+        material: { select: { titulo: true, removidoEm: true } },
+      },
     })
     const caminho = dados.data.v === 'miniatura' ? arquivo?.miniaturaCaminho : arquivo?.caminho
-    if (!arquivo || arquivo.foto?.removidaEm || !caminho) throw new ErroApp('NAO_ENCONTRADO', 'Arquivo não encontrado.')
+    if (!arquivo || arquivo.foto?.removidaEm || arquivo.material?.removidoEm || !caminho) {
+      throw new ErroApp('NAO_ENCONTRADO', 'Arquivo não encontrado.')
+    }
 
+    // A miniatura e sempre JPEG; o original serve com o mime gravado no banco.
+    const mime = dados.data.v === 'miniatura' ? 'image/jpeg' : arquivo.mime
     resposta.setHeader('Cache-Control', 'no-store')
-    return new StreamableFile(this.armazenamento.abrir(caminho), { type: 'image/jpeg' })
+    resposta.setHeader('X-Content-Type-Options', 'nosniff')
+    // O helmet global poe uma CSP em toda resposta; imagem e PDF a dispensam (o visualizador de PDF nao abre sob `sandbox`).
+    resposta.removeHeader('Content-Security-Policy')
+    if (!mime.startsWith('image/')) this.protegerDocumento(resposta, mime, arquivo.material?.titulo ?? 'arquivo', extname(caminho).slice(1))
+    return new StreamableFile(this.armazenamento.abrir(caminho), { type: mime })
+  }
+
+  /** PDF abre no navegador (e o visualizador dele nao abre sob `sandbox`); o resto baixa e nunca executa aqui. */
+  private protegerDocumento(resposta: Response, mime: string, titulo: string, ext: string): void {
+    const ehPdf = mime === 'application/pdf'
+    resposta.setHeader('Content-Disposition', cabecalhoDeDisposicao(ehPdf ? 'inline' : 'attachment', titulo, ext))
+    if (!ehPdf) resposta.setHeader('Content-Security-Policy', 'sandbox')
   }
 }
