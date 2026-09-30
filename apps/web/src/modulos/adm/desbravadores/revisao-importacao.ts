@@ -1,5 +1,16 @@
-import { AVISOS_IMPORTACAO, avisoDeSexoDaUnidade, errosDaLinhaImportada, errosEmLista } from '@desbravadores/shared'
-import type { ErroDaLinha, ErrosPorLinha, LinhaDaPreviaImportacao, LinhaParaConfirmar, LinhaParaImportar } from '../../../api/importacao'
+import {
+  AVISOS_IMPORTACAO,
+  avisoDeSexoDaUnidade,
+  errosDaLinhaImportada,
+  errosEmLista,
+} from '@desbravadores/shared'
+import type {
+  ErroDaLinha,
+  ErrosPorLinha,
+  LinhaDaPreviaImportacao,
+  LinhaParaConfirmar,
+  LinhaParaImportar,
+} from '../../../api/importacao'
 
 export interface LinhaEmRevisao extends LinhaDaPreviaImportacao {
   marcada: boolean
@@ -39,11 +50,18 @@ const CAMPOS_DA_PESSOA: readonly CampoEditavel[] = ['nome', 'nascimento']
 
 /** Linha com erro não entra; duplicada chega desmarcada para o Adm decidir. */
 export function paraRevisao(linhas: LinhaDaPreviaImportacao[]): LinhaEmRevisao[] {
-  return linhas.map((linha) => ({ ...linha, errosDoServidor: [], marcada: linha.erros.length === 0 && !linha.duplicado }))
+  return linhas.map((linha) => ({
+    ...linha,
+    errosDoServidor: [],
+    marcada: linha.erros.length === 0 && !linha.duplicado,
+  }))
 }
 
 /** Todos os erros da linha, os da tela e os da última recusa. */
-export const todosOsErros = (linha: LinhaEmRevisao): ErroDaLinha[] => [...linha.erros, ...linha.errosDoServidor]
+export const todosOsErros = (linha: LinhaEmRevisao): ErroDaLinha[] => [
+  ...linha.erros,
+  ...linha.errosDoServidor,
+]
 
 /** Erro de campo impede marcar a linha; o de linha inteira (pessoa repetida) não: marcar é importar assim mesmo. */
 export const bloqueada = (linha: Pick<LinhaEmRevisao, 'erros' | 'errosDoServidor'>): boolean =>
@@ -61,21 +79,39 @@ export function editarCelula<C extends CampoEditavel>(
   const errosDoServidor = linha.errosDoServidor.filter(
     (erro) => erro.campo !== campo && !(erro.campo === null && CAMPOS_DA_PESSOA.includes(campo)),
   )
-  const descartados: readonly string[] = AVISOS_DO_CAMPO[campo] ?? []
+  // Outro nome ou nascimento é outra pessoa: a marca de repetida cai, e a confirmação volta a conferir.
+  const mudouPessoa = CAMPOS_DA_PESSOA.includes(campo)
+  const descartados: readonly string[] = [
+    ...(AVISOS_DO_CAMPO[campo] ?? []),
+    ...(mudouPessoa ? [AVISOS_IMPORTACAO.duplicado] : []),
+  ]
   const avisos = editada.avisos.filter((aviso) => !descartados.includes(aviso.codigo))
   if (campo === 'unidadeId' || campo === 'sexo') {
     const unidade = unidades.find((item) => item.id === editada.unidadeId)
-    const avisoDeSexo = unidade && editada.sexo ? avisoDeSexoDaUnidade(unidade, editada.sexo) : undefined
+    const avisoDeSexo =
+      unidade && editada.sexo ? avisoDeSexoDaUnidade(unidade, editada.sexo) : undefined
     if (avisoDeSexo) avisos.push(avisoDeSexo)
   }
   const agoraBloqueada = bloqueada({ erros, errosDoServidor })
   const corrigida = bloqueada(linha) && !agoraBloqueada && !linha.duplicado
-  return { ...editada, erros, errosDoServidor, avisos, marcada: agoraBloqueada ? false : corrigida || linha.marcada }
+  const duplicado = mudouPessoa ? false : linha.duplicado
+  return {
+    ...editada,
+    erros,
+    errosDoServidor,
+    avisos,
+    duplicado,
+    marcada: agoraBloqueada ? false : corrigida || linha.marcada,
+  }
 }
 
 /** Marcar ou desmarcar é a resposta do Adm ao erro de linha inteira: ele some. */
 export function marcarLinha(linha: LinhaEmRevisao, marcada: boolean): LinhaEmRevisao {
-  return { ...linha, marcada, errosDoServidor: linha.errosDoServidor.filter((erro) => erro.campo !== null) }
+  return {
+    ...linha,
+    marcada,
+    errosDoServidor: linha.errosDoServidor.filter((erro) => erro.campo !== null),
+  }
 }
 
 /**
@@ -89,13 +125,21 @@ export function aplicarRecusa(linhas: LinhaEmRevisao[], erros: ErrosPorLinha): L
     const mensagens = porLinha.get(linha.linha)
     if (!mensagens) return linha
     const repetida = mensagens.some((mensagem) => mensagem.campo === null)
-    return { ...linha, errosDoServidor: mensagens, duplicado: linha.duplicado || repetida, marcada: false }
+    return {
+      ...linha,
+      errosDoServidor: mensagens,
+      duplicado: linha.duplicado || repetida,
+      marcada: false,
+    }
   })
 }
 
 export function contar(linhas: LinhaEmRevisao[]) {
-  const comErro = linhas.filter((linha) => todosOsErros(linha).length > 0).length
-  const comAviso = linhas.filter((linha) => todosOsErros(linha).length === 0 && linha.avisos.length > 0).length
+  // "Com erro" é a linha que não pode ser marcada; o erro de linha inteira (repetida) é decisão do Adm.
+  const comErro = linhas.filter(bloqueada).length
+  const comAviso = linhas.filter(
+    (linha) => !bloqueada(linha) && (linha.avisos.length > 0 || linha.errosDoServidor.length > 0),
+  ).length
   return { prontas: linhas.length - comErro - comAviso, comAviso, comErro }
 }
 
