@@ -209,6 +209,32 @@ describe('materiais (F9)', () => {
     expect(await prismaDeTeste().material.count({ where: { clubeId: clube.id } })).toBe(0)
   })
 
+  it('a trava do clube nao cobre a copia: com a copia de um envio lenta, outro envio do mesmo clube conclui antes', async () => {
+    const { classe, autor } = await cenario()
+    const original = armazenamento.gravarDeArquivo.bind(armazenamento)
+    let copiaIniciada: () => void = () => undefined
+    const iniciou = new Promise<void>((resolver) => {
+      copiaIniciada = resolver
+    })
+    const gravar = jest.spyOn(armazenamento, 'gravarDeArquivo').mockImplementationOnce(async (caminho, origem) => {
+      copiaIniciada()
+      await new Promise((resolver) => setTimeout(resolver, 1500))
+      await original(caminho, origem)
+    })
+    try {
+      const lento = enviar(autor, classe.id, PDF, 'lento.pdf', { titulo: 'Lento' }).then((r) => ({ r, fim: Date.now() }))
+      await iniciou
+      const rapido = await enviar(autor, classe.id, PDF, 'rapido.pdf', { titulo: 'Rapido' }).expect(201)
+      const fimDoRapido = Date.now()
+      const resultadoLento = await lento
+      expect(resultadoLento.r.status).toBe(201)
+      expect(fimDoRapido).toBeLessThan(resultadoLento.fim)
+      expect(corpo<Saida>(rapido).titulo).toBe('Rapido')
+    } finally {
+      gravar.mockRestore()
+    }
+  })
+
   it('link so https; http recusado (400)', async () => {
     const { classe, autor } = await cenario()
     const ok = corpo<Saida>(await api.post('/api/materiais/link', autor.autorizacao, { classeId: classe.id, secaoId: null, titulo: 'Video', url: 'https://exemplo.test/v' }).expect(201))

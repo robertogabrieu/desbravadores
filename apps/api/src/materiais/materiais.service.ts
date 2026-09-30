@@ -13,6 +13,7 @@ import { ARMAZENAMENTO, type Armazenamento } from '../arquivos/armazenamento'
 import { caminhoDoMaterial, ServicoArquivos } from '../arquivos/servico-arquivos'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { ErroApp } from '../comum/erros'
+import { gerarUuidV7 } from '../comum/uuid-v7'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { exigirClasseDoEscopo } from '../observacoes/escopo-da-classe'
 import { conteudoConfereComExtensao, ehExtensaoDeMaterial } from './conferencia-de-documento'
@@ -21,9 +22,7 @@ type Saida = z.infer<typeof MaterialSaida>
 
 export const COTA_DE_MATERIAIS_BYTES = 1024 * 1024 * 1024
 
-/** A espera pela trava e a cópia de até 20 MB entram no prazo da transação (o padrão do Prisma é 5 s). */
-const TEMPO_DA_TRANSACAO_MS = 60_000
-const ESPERA_POR_CONEXAO_MS = 10_000
+const TEMPO_DA_TRANSACAO_MS = 20_000
 
 /** Arquivo que o multer guardou em disco temporário. */
 export interface ArquivoEmDisco {
@@ -169,30 +168,23 @@ export class MateriaisService {
     }
     const { clubeId } = sessao
     const formato = FORMATOS_MATERIAL[ext]
-    let caminho: string | null = null
-    const gravacoes: Promise<void>[] = []
+    const arquivoId = gerarUuidV7()
+    const destino = caminhoDoMaterial(clubeId, arquivoId, ext)
+
+    // Conferência sem trava, só para falhar cedo; a definitiva é a da transação.
+    await this.exigirEspaco(this.prisma, clubeId, arquivo.size)
+
+    // A cópia de até 20 MB fica fora de qualquer transação: a trava do clube só cobre o que é rápido.
     try {
+      await this.armazenamento.gravarDeArquivo(destino, arquivo.path)
       const criado = await this.prisma.$transaction(async (tx) => {
         // Serializa os envios do clube: quem chega depois confere a cota já com o material do primeiro.
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`materiais:${clubeId}`}, 0))`
-        const usado = await tx.arquivo.aggregate({
-          where: { clubeId, material: { is: { removidoEm: null } } },
-          _sum: { bytes: true },
-        })
-        if ((usado._sum.bytes ?? 0) + arquivo.size > COTA_DE_MATERIAIS_BYTES) {
-          throw new ErroApp('REGRA', 'O espaço de materiais do clube acabou.')
-        }
-        // O id vem do Prisma Client; o caminho, que leva o id, é gravado logo depois de criado.
-        const linhaDoArquivo = await tx.arquivo.create({
-          data: { clubeId, caminho: '', mime: formato.mime, bytes: arquivo.size, criadoPorId: sessao.usuarioId },
+        await this.exigirEspaco(tx, clubeId, arquivo.size)
+        await tx.arquivo.create({
+          data: { id: arquivoId, clubeId, caminho: destino, mime: formato.mime, bytes: arquivo.size, criadoPorId: sessao.usuarioId },
           select: { id: true },
         })
-        const destino = caminhoDoMaterial(clubeId, linhaDoArquivo.id, ext)
-        caminho = destino
-        const gravacao = this.armazenamento.gravarDeArquivo(destino, arquivo.path)
-        gravacoes.push(gravacao)
-        await gravacao
-        await tx.arquivo.updateMany({ where: { clubeId, id: linhaDoArquivo.id }, data: { caminho: destino } })
         return tx.material.create({
           data: {
             clubeId,
@@ -200,18 +192,26 @@ export class MateriaisService {
             secaoId: dados.secaoId,
             titulo: dados.titulo,
             tipo: formato.tipo,
-            arquivoId: linhaDoArquivo.id,
+            arquivoId,
             enviadoPorId: sessao.usuarioId,
           },
           select: SELECAO,
         })
-      }, { timeout: TEMPO_DA_TRANSACAO_MS, maxWait: ESPERA_POR_CONEXAO_MS })
+      }, { timeout: TEMPO_DA_TRANSACAO_MS })
       return this.saida(sessao, criado)
     } catch (erro) {
-      // Se a transação estourou no meio da cópia, a cópia segue: só apaga depois que ela termina.
-      await Promise.allSettled(gravacoes)
-      if (caminho) await this.apagarDoDisco(caminho)
+      await this.apagarDoDisco(destino)
       throw erro
+    }
+  }
+
+  private async exigirEspaco(banco: Pick<PrismaService, 'arquivo'>, clubeId: string, bytes: number): Promise<void> {
+    const usado = await banco.arquivo.aggregate({
+      where: { clubeId, material: { is: { removidoEm: null } } },
+      _sum: { bytes: true },
+    })
+    if ((usado._sum.bytes ?? 0) + bytes > COTA_DE_MATERIAIS_BYTES) {
+      throw new ErroApp('REGRA', 'O espaço de materiais do clube acabou.')
     }
   }
 
