@@ -21,7 +21,7 @@ fim_com_erro() { printf '[%s] ERRO: %s\n' "$(date -u '+%H:%M:%S')" "$*" >&2; exi
 [ -f .env ] || fim_com_erro ".env nao encontrado — rode scripts/instalar.sh uma vez antes"
 
 # Lido linha a linha em vez de executado: o .env tem segredos, e um valor mal citado derrubaria o deploy.
-PORTA="$(grep -E '^WEB_PORTA=' .env | tail -1 | cut -d= -f2-)"
+PORTA="$(grep -E '^WEB_PORTA=' .env | tail -1 | cut -d= -f2- || true)"
 PORTA="${PORTA:-8090}"
 [[ "$PORTA" =~ ^[0-9]+$ ]] || fim_com_erro "WEB_PORTA no .env nao e um numero ($PORTA)"
 
@@ -93,6 +93,14 @@ if [ "$NO_AR" = "$DEPOIS" ]; then
   git reset --hard "$DEPOIS"
   echo "$DEPOIS" > .deployed-commit
   log "ja esta na versao pedida"
+  exit 0
+fi
+
+# Jobs terminam fora de ordem (o de um push pode acabar depois do seguinte) e um job antigo pode ser
+# rodado de novo: subir um commit mais velho por cima do novo voltaria o codigo com as migrations
+# novas ja aplicadas. O pedido ja esta contido no que roda, entao nao ha o que fazer.
+if [ -n "$NO_AR" ] && git merge-base --is-ancestor "$DEPOIS" "$NO_AR"; then
+  log "o commit ${DEPOIS:0:8} ja esta contido no que roda (${NO_AR:0:8}); nada a fazer"
   exit 0
 fi
 

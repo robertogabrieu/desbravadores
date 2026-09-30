@@ -211,8 +211,11 @@ sendo o `instalar.sh`.
 
 O roteiro, em ordem:
 
-1. Busca a `main` e vai para o commit que o CI aprovou, não para a ponta da branch: com dois
-   pushes seguidos, cada um sobe o seu, em ordem. Compara com a versão que a API diz estar no ar.
+1. Busca a `main` e vai para o commit que o CI aprovou, não para a ponta da branch, que pode ter
+   testes ainda rodando. Compara com a versão que a API diz estar no ar. Se ela já contém o commit
+   pedido (um job que terminou depois do seguinte, ou um job antigo rodado de novo), não mexe em
+   nada: a produção nunca é rebaixada. Com vários pushes seguidos, deploys na fila podem ser
+   pulados, e o último sempre sobe. Para voltar uma versão, reverta o commit na `main`.
    Se só mudou documentação (`docs/` ou `.md` na raiz), atualiza o código sem
    reconstruir. `docs/planejamento/dados` não conta como documentação, porque entra na imagem da API.
 2. Faz uma cópia do banco em `backups/pre-deploy-*.sql.gz` e mantém as 10 últimas. A pasta é

@@ -116,6 +116,8 @@ jobs:
 
       # O codigo de saida do roteiro nao basta como prova: um roteiro interrompido no meio tambem sai
       # com zero. Quem decide se o deploy aconteceu e o servidor, dizendo em que versao ele ficou.
+      # Um commit mais novo ja no ar (job fora de ordem, ou rodado de novo) conta como feito: o
+      # roteiro nao rebaixa a producao.
       - name: Conferir a versao que ficou no servidor
         env:
           DEPLOY_USER: ${{ vars.DEPLOY_USER }}
@@ -127,7 +129,14 @@ jobs:
             "cat '${DEPLOY_PATH}/.deployed-commit' 2>/dev/null || echo nenhuma")"
           echo "servidor: ${no_servidor}"
           echo "esperado: ${GITHUB_SHA}"
-          if [ "${no_servidor}" != "${GITHUB_SHA}" ]; then
-            echo "::error::o deploy nao chegou ao fim — o servidor nao esta na versao deste commit"
-            exit 1
+          if [ "${no_servidor}" = "${GITHUB_SHA}" ]; then
+            exit 0
           fi
+          if [ "${no_servidor}" != "nenhuma" ] && ssh -n -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "cd '${DEPLOY_PATH}' && git merge-base --is-ancestor '${GITHUB_SHA}' '${no_servidor}'"; then
+            echo "::notice::o servidor ja esta num commit mais novo, que contem este"
+            exit 0
+          fi
+          echo "::error::o deploy nao chegou ao fim — o servidor nao esta na versao deste commit"
+          exit 1
