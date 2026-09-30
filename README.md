@@ -211,7 +211,9 @@ sendo o `instalar.sh`.
 
 O roteiro, em ordem:
 
-1. Busca a `main`. Se só mudou documentação (`docs/` ou `.md` na raiz), atualiza o código sem
+1. Busca a `main` e vai para o commit que o CI aprovou, não para a ponta da branch: com dois
+   pushes seguidos, cada um sobe o seu, em ordem. Compara com a versão que a API diz estar no ar.
+   Se só mudou documentação (`docs/` ou `.md` na raiz), atualiza o código sem
    reconstruir. `docs/planejamento/dados` não conta como documentação, porque entra na imagem da API.
 2. Faz uma cópia do banco em `backups/pre-deploy-*.sql.gz` e mantém as 10 últimas. A pasta é
    legível só pelo usuário de deploy, porque tem dados de menores.
@@ -222,7 +224,8 @@ O roteiro, em ordem:
 
 Se a construção falhar, ou a API não responder na versão nova em 240 s, o código volta para o commit
 anterior e a stack é reconstruída. O job fica vermelho. Uma migration já aplicada não é desfeita.
-Para ver o banco como estava antes do deploy, restaure a cópia num banco novo e aponte a API para ele:
+Para consultar ou recuperar dados de antes do deploy, restaure a cópia num banco novo, ao lado do
+atual (a API continua no `desbravador`):
 
 ```bash
 C="docker compose -f docker-compose.prod.yml --env-file .env"
@@ -243,7 +246,7 @@ descartadas, e o log as lista.
 
 O primeiro passo do job confere essas variáveis e para com a lista do que falta, antes de abrir a
 conexão. Para rodar o mesmo deploy à mão no servidor, como o usuário de deploy:
-`cd <pasta do app> && bash scripts/deploy-ci.sh`.
+`cd <pasta do app> && bash scripts/deploy-ci.sh [commit]` (sem commit, vai a ponta da `main`).
 
 ## Backup e restauração
 

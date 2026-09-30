@@ -47,8 +47,20 @@ subir() {
   VERSAO_APP="$1" "${COMPOSE[@]}" up -d --build
 }
 
+# O commit que o CI aprovou, e nao a ponta da main: com dois pushes seguidos, a ponta pode ser um
+# commit cujos testes ainda rodam. Sem argumento (deploy a mao), vai a ponta.
+ALVO="${1:-}"
+
+# O que decide e a versao que a API diz estar no ar, nao o codigo em disco: uma sessao que caiu entre
+# o reset e a subida deixa o disco na versao nova com a velha rodando.
+versao_no_ar() {
+  local resposta
+  resposta="$(curl -fsS --max-time 5 "http://127.0.0.1:${PORTA}/api/saude" 2>/dev/null || true)"
+  grep -q '"ok":true' <<<"$resposta" || return 0
+  grep -oE '"versao":"[0-9a-f]{40}"' <<<"$resposta" | cut -d'"' -f4 || true
+}
+
 ANTES="$(git rev-parse HEAD)"
-log "versao no ar: ${ANTES:0:8}"
 
 # O .deployed-commit e as copias do banco sao ignorados pelo git; so o que foi mexido a mao aparece.
 ALTERACOES_LOCAIS="$(git status --porcelain --untracked-files=no)"
@@ -59,16 +71,29 @@ fi
 
 log "buscando $BRANCH no GitHub"
 git fetch --prune origin "$BRANCH"
-DEPOIS="$(git rev-parse "origin/${BRANCH}")"
+if [ -n "$ALVO" ]; then
+  git cat-file -e "${ALVO}^{commit}" 2>/dev/null || fim_com_erro "o commit $ALVO nao existe na $BRANCH"
+  git merge-base --is-ancestor "$ALVO" "origin/${BRANCH}" || fim_com_erro "o commit $ALVO nao esta na $BRANCH"
+  DEPOIS="$(git rev-parse "${ALVO}^{commit}")"
+else
+  DEPOIS="$(git rev-parse "origin/${BRANCH}")"
+fi
 
-if [ "$ANTES" = "$DEPOIS" ] && [ -z "$ALTERACOES_LOCAIS" ]; then
-  # Servidor instalado a mao no commit certo ainda nao tem o .deployed-commit: grava, se estiver no ar.
-  if aguardar_saude 30; then
-    echo "$DEPOIS" > .deployed-commit
-    log "ja esta na versao mais recente"
-    exit 0
-  fi
-  log "na versao mais recente, mas sem responder; subindo de novo"
+NO_AR="$(versao_no_ar)"
+if [ -n "$NO_AR" ] && git cat-file -e "${NO_AR}^{commit}" 2>/dev/null; then
+  log "no ar e respondendo: ${NO_AR:0:8}"
+  # Rollback vai para o que de fato estava rodando, mesmo que o disco diga outra coisa.
+  ANTES="$NO_AR"
+else
+  NO_AR=""
+  log "nenhuma versao conhecida respondendo; o codigo em disco e ${ANTES:0:8}"
+fi
+
+if [ "$NO_AR" = "$DEPOIS" ]; then
+  git reset --hard "$DEPOIS"
+  echo "$DEPOIS" > .deployed-commit
+  log "ja esta na versao pedida"
+  exit 0
 fi
 
 MUDOU="$(git diff --name-only "$ANTES" "$DEPOIS")"
@@ -76,7 +101,9 @@ if grep -q '^docs/planejamento/dados/' <<<"$MUDOU"; then
   log "AVISO: os dados da carga oficial mudaram; depois do deploy, rode scripts/carga.sh no servidor"
 fi
 # Dados da carga ficam em docs/, mas entram na imagem da API: mudar so eles exige reconstruir.
-if [ -n "$MUDOU" ] && ! grep -qvE '^(docs/|[^/]*\.md$)' <<<"$MUDOU" && ! grep -q '^docs/planejamento/dados/' <<<"$MUDOU"; then
+# O atalho so vale com o app respondendo: sem isso, o que esta no ar nao e conhecido.
+if [ -n "$NO_AR" ] && [ -n "$MUDOU" ] && ! grep -qvE '^(docs/|[^/]*\.md$)' <<<"$MUDOU" \
+  && ! grep -q '^docs/planejamento/dados/' <<<"$MUDOU"; then
   log "so documentacao mudou; atualizando o codigo sem reconstruir"
   git reset --hard "$DEPOIS"
   echo "$DEPOIS" > .deployed-commit

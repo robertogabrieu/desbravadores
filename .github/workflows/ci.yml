@@ -93,7 +93,8 @@ jobs:
       # O roteiro viaja com o deploy: o que roda e sempre a versao que esta subindo. Ele e gravado la e
       # so entao executado — alimentar o bash pela entrada padrao nao funciona, porque o primeiro
       # `docker compose exec` de dentro dele consome essa entrada e engole o resto do roteiro, que
-      # termina no meio anunciando sucesso.
+      # termina no meio anunciando sucesso. O nome leva o app porque o usuario de deploy pode servir a
+      # outros apps no mesmo servidor.
       - name: Enviar o roteiro ao servidor
         env:
           DEPLOY_USER: ${{ vars.DEPLOY_USER }}
@@ -101,7 +102,7 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
             "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "cat > ~/deploy-ci.sh" < scripts/deploy-ci.sh
+            "cat > ~/deploy-ci-desbravadores.sh" < scripts/deploy-ci.sh
 
       - name: Atualizar o servidor
         env:
@@ -111,7 +112,7 @@ jobs:
         run: |
           ssh -n -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
             "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "cd '${DEPLOY_PATH}' && bash ~/deploy-ci.sh"
+            "cd '${DEPLOY_PATH}' && bash ~/deploy-ci-desbravadores.sh '${GITHUB_SHA}'"
 
       # O codigo de saida do roteiro nao basta como prova: um roteiro interrompido no meio tambem sai
       # com zero. Quem decide se o deploy aconteceu e o servidor, dizendo em que versao ele ficou.
