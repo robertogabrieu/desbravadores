@@ -2,10 +2,14 @@ import type { RouteObject } from 'react-router-dom'
 import { LayoutAdm } from './layouts/LayoutAdm'
 import { LayoutCelular } from './layouts/LayoutCelular'
 import { rotasAcessoPapel, rotasAcessoPublicas } from './modulos/acesso/rotas'
+import { rotasAdmCalendario } from './modulos/adm/calendario/rotas'
+import { rotasAdmClasses } from './modulos/adm/classes/rotas'
+import { rotasAdmConfiguracoes } from './modulos/adm/configuracoes/rotas'
 import { rotasAdmDesbravadores } from './modulos/adm/desbravadores/rotas'
 import { rotasAdmUnidades } from './modulos/adm/unidades/rotas'
 import { rotasAdmUsuarios } from './modulos/adm/usuarios/rotas'
-import { rotasCronogramaMontagem } from './modulos/cronograma-montagem/rotas'
+import { rotasAdmVisaoGeral } from './modulos/adm/visao-geral/rotas'
+import { rotasAdmCronogramas, rotasCronogramaMontagem } from './modulos/cronograma-montagem/rotas'
 import { TelaConectar } from './modulos/conectar/TelaConectar'
 import { PaginaNaoEncontrada } from './modulos/erro/PaginaNaoEncontrada'
 import { PaginaFila } from './modulos/fila/PaginaFila'
@@ -51,7 +55,19 @@ export const rotas: RouteObject[] = [
   {
     element: <GuardaRota papeis={['ADM']} />,
     children: [
-      { element: <LayoutAdm />, children: [...rotasAdmDesbravadores, ...rotasAdmUnidades, ...rotasAdmUsuarios] },
+      {
+        element: <LayoutAdm />,
+        children: [
+          ...rotasAdmVisaoGeral,
+          ...rotasAdmDesbravadores,
+          ...rotasAdmUnidades,
+          ...rotasAdmUsuarios,
+          ...rotasAdmClasses,
+          ...rotasAdmCalendario,
+          ...rotasAdmCronogramas,
+          ...rotasAdmConfiguracoes,
+        ],
+      },
     ],
   },
   {

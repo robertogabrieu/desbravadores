@@ -1,4 +1,4 @@
-import { CalendarDays, ClipboardList, FileText, Flag, GraduationCap, LayoutDashboard, Trophy, UserRound, Users } from 'lucide-react'
+import { CalendarDays, ClipboardList, FileText, Flag, GraduationCap, LayoutDashboard, Settings, Trophy, UserRound, Users } from 'lucide-react'
 import { Outlet } from 'react-router-dom'
 import { SinoNotificacoes } from '../modulos/notificacoes/SinoNotificacoes'
 import { FaixaAviso } from '../ui/FaixaAviso'
@@ -10,13 +10,14 @@ import { MenuUsuario } from './MenuUsuario'
 import { useLarguraMenorQue } from './useLarguraMenorQue'
 
 const ITENS_ADM: ItemDeNavegacao[] = [
-  { rotulo: 'Visão geral', icone: LayoutDashboard },
+  { rotulo: 'Visão geral', icone: LayoutDashboard, para: '/adm' },
   { rotulo: 'Desbravadores', icone: UserRound, para: '/adm/desbravadores' },
   { rotulo: 'Usuários', icone: Users, para: '/adm/usuarios' },
   { rotulo: 'Unidades', icone: Flag, para: '/adm/unidades' },
-  { rotulo: 'Classes e especialidades', icone: GraduationCap },
-  { rotulo: 'Calendário do clube', icone: CalendarDays },
-  { rotulo: 'Cronogramas', icone: ClipboardList },
+  { rotulo: 'Classes e especialidades', icone: GraduationCap, para: '/adm/classes' },
+  { rotulo: 'Calendário do clube', icone: CalendarDays, para: '/adm/calendario' },
+  { rotulo: 'Cronogramas', icone: ClipboardList, para: '/adm/cronogramas' },
+  { rotulo: 'Configurações do clube', icone: Settings, para: '/adm/configuracoes' },
   { rotulo: 'Ranking', icone: Trophy, para: '/ranking' },
   { rotulo: 'Relatórios', icone: FileText },
 ]

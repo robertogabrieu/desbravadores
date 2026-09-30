@@ -18,7 +18,10 @@ import type {
   Clube,
   ConfiguracaoClube,
   CriterioRanking,
+  ClasseClube,
   Desbravador,
+  Especialidade,
+  RequisitoAjuste,
   Foto,
   GatilhoCriterio,
   LancamentoPontos,
@@ -594,5 +597,60 @@ export async function criarNotificacao(dados: {
       criadaEm,
       lidaEm: dados.lida ? criadaEm : null,
     },
+  })
+}
+
+// Fase 3 (Adm): prefixo `adm` para não colidir com o que a Fase 2 acrescentar.
+
+/** DBV com entrada e saída controladas — a visão geral compara ativos de hoje com os de 3 meses atrás. */
+export async function admCriarDbvComDatas(dados: {
+  clubeId: string
+  entradaEm: string
+  saidaEm?: string | null
+  tipo?: TipoPessoa
+}): Promise<Desbravador> {
+  const dbv = await criarDbv({ clubeId: dados.clubeId, tipo: dados.tipo, ativo: !dados.saidaEm })
+  return prismaDeTeste().desbravador.update({
+    where: { id: dbv.id },
+    data: {
+      entradaEm: new Date(`${dados.entradaEm}T00:00:00Z`),
+      saidaEm: dados.saidaEm ? new Date(`${dados.saidaEm}T00:00:00Z`) : null,
+    },
+  })
+}
+
+/** Ajusta a ClasseClube que o `criarClube` já criou (ativa, quem monta). */
+export async function admDefinirClasseClube(dados: {
+  clubeId: string
+  classeId: string
+  ativa?: boolean
+  quemMontaCronograma?: 'ADM' | 'INSTRUTOR'
+}): Promise<ClasseClube> {
+  return prismaDeTeste().classeClube.update({
+    where: { clubeId_classeId: { clubeId: dados.clubeId, classeId: dados.classeId } },
+    data: { ativa: dados.ativa, quemMontaCronograma: dados.quemMontaCronograma },
+  })
+}
+
+export async function admCriarRequisitoAjuste(dados: {
+  clubeId: string
+  requisitoId: string
+  ativo?: boolean | null
+  campo?: boolean | null
+}): Promise<RequisitoAjuste> {
+  return prismaDeTeste().requisitoAjuste.create({
+    data: { clubeId: dados.clubeId, requisitoId: dados.requisitoId, ativo: dados.ativo ?? null, campo: dados.campo ?? null },
+  })
+}
+
+/** Especialidade do clube (`origem=CLUBE`) na área indicada, ou na primeira área oficial. */
+export async function admCriarEspecialidadeClube(dados: {
+  clubeId: string
+  nome?: string
+  areaId?: string
+}): Promise<Especialidade> {
+  const areaId = dados.areaId ?? (await prismaDeTeste().areaEspecialidade.findFirstOrThrow({ select: { id: true } })).id
+  return prismaDeTeste().especialidade.create({
+    data: { clubeId: dados.clubeId, origem: 'CLUBE', areaId, nome: dados.nome ?? `Especialidade ${unico()}` },
   })
 }
