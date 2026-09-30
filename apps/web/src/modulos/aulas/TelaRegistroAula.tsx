@@ -108,7 +108,7 @@ function AulaDaData(props: PropriedadesDaData) {
 
 function AulaComBaseDoPacote({ pacote, baixadoEm, classe, data }: PropriedadesDaData) {
   const existente = classe.registrosRecentes.find((r) => r.data === data)
-  return <FormularioAula pacote={pacote} baixadoEm={baixadoEm} classe={classe} data={data} base={existente ? baseDoPacote(existente) : null} />
+  return <FormularioAula pacote={pacote} baixadoEm={baixadoEm} classe={classe} data={data} base={existente ? baseDoPacote(existente, classe) : null} />
 }
 
 function AulaComBaseDoServidor(props: PropriedadesDaData) {
@@ -137,7 +137,7 @@ function EdicaoGuardada({ id, pacote, classes, baixadoEm }: PropriedadesEdicao) 
   const classe = classes.find((c) => c.registrosRecentes.some((r) => r.id === id))
   const registro = classe?.registrosRecentes.find((r) => r.id === id)
   if (!classe || !registro) return <AulaVazia titulo="Esta aula não está neste aparelho" descricao="Abra-a de novo quando houver internet." />
-  return <FormularioAula key={registro.id} pacote={pacote} baixadoEm={baixadoEm} classe={classe} data={registro.data} base={baseDoPacote(registro)} />
+  return <FormularioAula key={registro.id} pacote={pacote} baixadoEm={baixadoEm} classe={classe} data={registro.data} base={baseDoPacote(registro, classe)} />
 }
 
 function EdicaoDoServidor({ id, pacote, classes, baixadoEm }: PropriedadesEdicao) {

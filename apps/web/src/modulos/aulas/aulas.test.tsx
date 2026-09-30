@@ -53,8 +53,9 @@ const PLANEJADA = uuid(50)
 const HOJE = '2030-03-15'
 const DATA = '2030-03-10'
 
-const membro = (dbvId: string, nome: string, tipo: 'DBV' | 'LIDER' = 'DBV', concluidos: string[] = []) => ({
+const membro = (dbvId: string, nome: string, tipo: 'DBV' | 'LIDER' = 'DBV', concluidos: string[] = [], conclusoes?: { requisitoId: string; concluidoEm: string; registroAulaId: string | null }[]) => ({
   dbvId, nome, nomePublico: nome, sexo: 'F' as const, idade: 11, classeAtual: null, autorizacaoImagem: true, tipo, concluidos,
+  conclusoes: conclusoes ?? concluidos.map((requisitoId) => ({ requisitoId, concluidoEm: '2030-02-20', registroAulaId: null })),
 })
 const requisito = (id: string, codigo: string) => ({ id, codigo, texto: `Texto de ${codigo}`, campo: false, secaoCodigo: 'DE' })
 
@@ -183,6 +184,31 @@ describe('Registro de aula nova', () => {
     expect(enviado().payload.corpo.aulaPlanejadaId).toBe(PASSADA)
   })
 
+  it('aberta sem rede numa data passada, quando a conexão volta lê o cronograma e envia a aula planejada', async () => {
+    const PASSADA = uuid(51)
+    let pedidos = 0
+    servidor.use(
+      http.get('/api/classes/:id/cronograma', () => {
+        pedidos += 1
+        return HttpResponse.json(
+          criarCronograma({ aulas: [criarAulaDoCronograma({ id: PASSADA, data: DATA, situacao: 'NAO_REGISTRADA', requisitos: [requisito(R1, 'R1'), requisito(R3, 'R3')] })] }),
+        )
+      }),
+    )
+    estado.modo = 'SEM_CONEXAO'
+    montar(NOVA)
+    await screen.findByText('Ana Clara')
+    expect(pedidos).toBe(0)
+    expect(screen.queryByText('Texto de R3')).not.toBeInTheDocument()
+    estado.modo = 'ONLINE'
+    await userEvent.click(presenca('Ana Clara'))
+    await userEvent.click(presenca('Ana Clara'))
+    expect(await screen.findByText('Texto de R3')).toBeInTheDocument()
+    await userEvent.click(botaoSalvar())
+    await waitFor(() => expect(estado.enfileirar).toHaveBeenCalledOnce())
+    expect(enviado().payload.corpo.aulaPlanejadaId).toBe(PASSADA)
+  })
+
   it('enquanto o cronograma da data carrega, Salvar aula fica desabilitado', async () => {
     servidor.use(http.get('/api/classes/:id/cronograma', () => new Promise<Response>(() => undefined)))
     montar(NOVA)
@@ -209,7 +235,8 @@ describe('Registro de aula nova', () => {
     const travada = celula('Bruno Lima', 'R2')
     expect(travada).toBeDisabled()
     expect(travada).toHaveAttribute('aria-pressed', 'true')
-    expect(travada).toHaveAccessibleName('R2 · Bruno Lima · concluído antes')
+    expect(travada).toHaveAccessibleName('R2 · Bruno Lima · concluído antes · feito em 20/02')
+    expect(travada).toHaveTextContent('20/02')
     const faltas = screen.getByRole('region', { name: 'O que falta fazer' })
     expect(within(faltas).getByText(/Ana, Bruno/)).toBeInTheDocument()
     expect(within(faltas).getByText(/Ana, Lia/)).toBeInTheDocument()
@@ -346,6 +373,30 @@ describe('Edição de aula', () => {
     expect(await screen.findByText('Ana Clara')).toBeInTheDocument()
     expect(linha('Bruno Lima').getByText('Faltou')).toBeInTheDocument()
     expect(screen.getByText(/Companheiro · .* 10\/03/)).toBeInTheDocument()
+  })
+
+  it('sem conexão, aula só do pacote: o concluído nesta aula fica marcado e desmarcável; o de outra aula segue travado com a data', async () => {
+    estado.modo = 'SEM_CONEXAO'
+    servidor.use(http.all('/api/*', () => HttpResponse.error()))
+    guardar([
+      classe({
+        membros: [
+          membro(ANA, 'Ana Clara', 'DBV', [R1], [{ requisitoId: R1, concluidoEm: DATA, registroAulaId: uuid(700) }]),
+          membro(BRUNO, 'Bruno Lima', 'DBV', [R2], [{ requisitoId: R2, concluidoEm: '2030-02-20', registroAulaId: uuid(701) }]),
+        ],
+        registrosRecentes: [{ id: uuid(700), data: DATA, aulaPlanejadaId: null, presencas: presencas.map((p) => ({ dbvId: p.dbvId, presente: true, versao: p.versao })) }],
+      }),
+    ])
+    montar(`/aulas/${uuid(700)}/editar`)
+    await screen.findByText('Ana Clara')
+    const daAula = celula('Ana Clara', 'R1')
+    expect(daAula).toBeEnabled()
+    expect(daAula).toHaveAttribute('aria-pressed', 'true')
+    expect(daAula).not.toHaveAccessibleName(/concluído antes/)
+    await userEvent.click(daAula)
+    await userEvent.click(botaoSalvar())
+    await waitFor(() => expect(estado.enfileirar).toHaveBeenCalledOnce())
+    expect(enviado().payload.corpo.requisitosDesmarcados).toEqual([{ dbvId: ANA, requisitoId: R1 }])
   })
 
   it('sem conexão e sem a aula no aparelho, avisa que precisa de internet', async () => {

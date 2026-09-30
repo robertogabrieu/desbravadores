@@ -87,6 +87,17 @@ describe('Materiais', () => {
     expect(screen.getByText('Os 10 Mandamentos – cartões')).toBeInTheDocument()
   })
 
+  it('cada seção e "Sem seção" mostram a contagem de itens no cabeçalho', async () => {
+    const outroGeral = criarMaterial({ id: uuid(1104), secao: SECAO_GERAIS, titulo: 'Guia de estudo', tipo: 'DOCUMENTO', bytes: 120_000 })
+    servidor.use(handlerMateriais([pdf, link, outroGeral, solto]))
+    abrir()
+    await screen.findByText('Guia de estudo')
+    const contagemDe = (titulo: string) => screen.getByRole('heading', { level: 2, name: titulo }).parentElement?.textContent
+    expect(contagemDe('Descoberta espiritual')).toBe('Descoberta espiritual1 item')
+    expect(contagemDe('Gerais')).toBe('Gerais2 itens')
+    expect(contagemDe('Sem seção')).toBe('Sem seção1 item')
+  })
+
   it('sem materiais mostra o vazio com os botões de envio', async () => {
     servidor.use(handlerMateriais([]))
     abrir()

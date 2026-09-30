@@ -18,6 +18,8 @@ export interface Membro {
   nome: string
   tipo: string
   concluidos: string[]
+  /** Quando e em que aula cada requisito foi concluído (`registroAulaId` `null` = fora de aula). */
+  conclusoes: { requisitoId: string; concluidoEm: string; registroAulaId: string | null }[]
 }
 
 /** A aula como o servidor a tem (online ou no pacote), com as versões que o aparelho viu. */
@@ -160,6 +162,10 @@ export const acrescentarRequisito = (estado: EstadoAula, requisitoId: string): E
 /** Concluído em outra aula: fica feito e travado (nem o servidor nem esta aula o desfazem). */
 export const concluidoAntes = (membro: Membro, base: Set<string>, requisitoId: string): boolean =>
   membro.concluidos.includes(requisitoId) && !base.has(chavePar(membro.dbvId, requisitoId))
+
+/** Data (aaaa-mm-dd) em que o membro concluiu o requisito, ou `null` se não consta. */
+export const concluidoEm = (membro: Membro, requisitoId: string): string | null =>
+  membro.conclusoes.find((conclusao) => conclusao.requisitoId === requisitoId)?.concluidoEm ?? null
 
 interface Visiveis {
   daClasse: Requisito[]

@@ -10,9 +10,9 @@ const R1 = uuid(11)
 const R2 = uuid(12)
 
 const membros: Membro[] = [
-  { dbvId: ANA, nome: 'Ana', tipo: 'DBV', concluidos: [] },
-  { dbvId: BRUNO, nome: 'Bruno', tipo: 'DBV', concluidos: [R2] },
-  { dbvId: LIDER, nome: 'Lia', tipo: 'LIDER', concluidos: [] },
+  { dbvId: ANA, nome: 'Ana', tipo: 'DBV', concluidos: [], conclusoes: [] },
+  { dbvId: BRUNO, nome: 'Bruno', tipo: 'DBV', concluidos: [R2], conclusoes: [{ requisitoId: R2, concluidoEm: '2030-02-20', registroAulaId: null }] },
+  { dbvId: LIDER, nome: 'Lia', tipo: 'LIDER', concluidos: [], conclusoes: [] },
 ]
 const requisito = (id: string, codigo: string): Requisito => ({ id, codigo, texto: `texto ${codigo}`, campo: false, secaoCodigo: 'DE' })
 const requisitos = [requisito(R1, 'R1'), requisito(R2, 'R2')]

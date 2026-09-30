@@ -85,7 +85,7 @@ export class PacoteInstrutorService {
             requisitosConcluidos: {
               where: { clubeId, removidoEm: null, requisito: { secao: { classeId } } },
               orderBy: { requisitoId: 'asc' },
-              select: { requisitoId: true },
+              select: { requisitoId: true, concluidoEm: true, registroAulaId: true },
             },
           },
         },
@@ -106,6 +106,11 @@ export class PacoteInstrutorService {
           autorizacaoImagem: dbv.autorizacaoImagem,
           tipo: dbv.tipo,
           concluidos: dbv.requisitosConcluidos.map((conclusao) => conclusao.requisitoId),
+          conclusoes: dbv.requisitosConcluidos.map((conclusao) => ({
+            requisitoId: conclusao.requisitoId,
+            concluidoEm: paraDataCivil(conclusao.concluidoEm),
+            registroAulaId: conclusao.registroAulaId,
+          })),
         }
       })
   }

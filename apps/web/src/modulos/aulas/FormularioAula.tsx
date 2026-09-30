@@ -18,6 +18,7 @@ import {
   alternarRequisito,
   comporEstado,
   concluidoAntes,
+  concluidoEm,
   concluidosComFila,
   concluidosDoServidor,
   efetivamenteConcluido,
@@ -107,8 +108,11 @@ function CorpoAula({ pacote, baixadoEm, classe, data, base, chave, registroAulaI
   const [estado, setEstado] = useState(inicial)
 
   const membros: Membro[] = classe.membros
-  // A fonte se fixa na abertura: se o sinal cair no meio, o cronograma já lido continua valendo.
-  const [lerCronograma] = useState(modo !== 'SEM_CONEXAO')
+  // Liga uma vez e nunca desliga: se o sinal cair no meio, o cronograma já lido continua valendo; se a tela abriu sem rede, passa a ler quando ela voltar.
+  const [lerCronograma, definirLerCronograma] = useState(modo !== 'SEM_CONEXAO')
+  useEffect(() => {
+    if (modo !== 'SEM_CONEXAO') definirLerCronograma(true)
+  }, [modo])
   const cronograma = useCronograma(lerCronograma ? classe.classe.id : undefined)
   const planejada = aulaPlanejadaDaData({ cronograma: cronograma.data, aulasProximas: classe.aulasProximas, base, data })
   const requisitos = requisitosVisiveis({ daClasse: classe.requisitos, base, planejados: planejada?.requisitoIds ?? [], estado })
@@ -267,7 +271,8 @@ function LinhaDbv({ membro, presente, situacao, requisitos, estado, comFila, aoA
       {requisitos.map((requisito) => {
         const antes = concluidoAntes(membro, comFila, requisito.id)
         const feito = antes || efetivamenteConcluido(estado, comFila, membro.dbvId, requisito.id)
-        const rotulo = `${requisito.codigo} · ${membro.nome}${antes ? ' · concluído antes' : ''}`
+        const dataAntes = antes ? concluidoEm(membro, requisito.id) : null
+        const rotulo = `${requisito.codigo} · ${membro.nome}${antes ? ' · concluído antes' : ''}${dataAntes ? ` · feito em ${dataCurta(dataAntes)}` : ''}`
         return (
           <button
             key={requisito.id}
@@ -284,7 +289,14 @@ function LinhaDbv({ membro, presente, situacao, requisitos, estado, comFila, aoA
               antes && 'opacity-60',
             )}
           >
-            <span aria-hidden>{feito ? '✓' : ''}</span>
+            {dataAntes ? (
+              <span aria-hidden className="flex flex-col items-center text-xs leading-tight">
+                <span>✓</span>
+                <span>{dataCurta(dataAntes)}</span>
+              </span>
+            ) : (
+              <span aria-hidden>{feito ? '✓' : ''}</span>
+            )}
           </button>
         )
       })}

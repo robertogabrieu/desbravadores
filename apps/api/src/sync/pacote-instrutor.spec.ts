@@ -88,9 +88,11 @@ describe('GET /api/sync/pacote do instrutor (F11)', () => {
     // aula colocada no vivo depois da publicacao nao entra
     await prismaDeTeste().aulaPlanejada.create({ data: { clubeId: c.clube.id, cronogramaId: cronograma.id, data: new Date(`${dia(5)}T00:00:00Z`) } })
 
-    await criarRequisitoConcluido({ clubeId: c.clube.id, dbvId: c.ana.id, requisitoId: r2 ?? '' })
-    await criarRequisitoConcluido({ clubeId: c.clube.id, dbvId: c.ana.id, requisitoId: r1 ?? '' })
     const recente = await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-1), presencas: [{ dbvId: c.ana.id, presente: false }] })
+    await criarRequisitoConcluido({ clubeId: c.clube.id, dbvId: c.ana.id, requisitoId: r2 ?? '', concluidoEm: '2026-02-10' })
+    await criarRequisitoConcluido({ clubeId: c.clube.id, dbvId: c.ana.id, requisitoId: r1 ?? '', concluidoEm: dia(-1), registroAulaId: recente.id })
+    const removida = await criarRequisitoConcluido({ clubeId: c.clube.id, dbvId: c.bia.id, requisitoId: r2 ?? '' })
+    await prismaDeTeste().requisitoConcluido.update({ where: { id: removida.id }, data: { removidoEm: new Date() } })
     await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-31), presencas: [{ dbvId: c.ana.id }] })
 
     const pacote = await baixar(c.instrutor.autorizacao)
@@ -101,6 +103,15 @@ describe('GET /api/sync/pacote do instrutor (F11)', () => {
     expect(classe?.membros.map((m) => [m.nome, m.tipo])).toEqual([['Ana Souza', 'DBV'], ['Bia Lima', 'DBV'], ['Carla Lider', 'LIDER']])
     expect(classe?.membros[0]?.concluidos.sort()).toEqual([r1, r2].sort())
     expect(classe?.membros[1]?.concluidos).toEqual([])
+    const ordenadas = [...(classe?.membros[0]?.conclusoes ?? [])].sort((a, b) => a.requisitoId.localeCompare(b.requisitoId))
+    expect(classe?.membros[0]?.conclusoes).toEqual(ordenadas)
+    expect(ordenadas).toEqual(
+      [
+        { requisitoId: r2, concluidoEm: '2026-02-10', registroAulaId: null },
+        { requisitoId: r1, concluidoEm: dia(-1), registroAulaId: recente.id },
+      ].sort((a, b) => (a.requisitoId ?? '').localeCompare(b.requisitoId ?? '')),
+    )
+    expect(classe?.membros[1]?.conclusoes).toEqual([])
     const ids = classe?.requisitos.map((r) => r.id) ?? []
     expect(ids).toContain(r1)
     expect(ids).not.toContain(r3)

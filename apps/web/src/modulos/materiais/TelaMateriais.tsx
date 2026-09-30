@@ -216,7 +216,10 @@ function Conteudo({ classeId, secoes }: { classeId: string; secoes: Secao[] }) {
     <>
       {agruparPorSecao(materiais.data).map((grupo) => (
         <section key={grupo.chave} className="flex flex-col gap-2">
-          <h2 className="font-titulo text-lg font-bold text-texto">{grupo.titulo}</h2>
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 className="font-titulo text-lg font-bold text-texto">{grupo.titulo}</h2>
+            <span className="text-sm text-texto-2">{`${grupo.itens.length} ${grupo.itens.length === 1 ? 'item' : 'itens'}`}</span>
+          </div>
           <ul className="flex flex-col gap-2">
             {grupo.itens.map((material) => (
               <LinhaDoMaterial key={material.id} material={material} aoEscolher={(tipo) => definirAcao({ tipo, material })} />
