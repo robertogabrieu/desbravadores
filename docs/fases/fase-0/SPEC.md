@@ -205,7 +205,7 @@ duas vezes: a segunda imprime zero criados, zero atualizados, zero desativados.
 
 > **Correção posterior:** as Agrupadas são para 16 anos ou mais, sem divisão por idade. A carga
 > passou a ter uma regular agrupada (123) e uma avançada agrupada (63), tiradas da coluna ≥15:
-> **14 classes, 399 requisitos**. As 8 agrupadas por idade ficam desativadas (`Classe.ativa`).
+> **14 classes, 399 requisitos**. As 10 agrupadas antigas (todas as idades, inclusive a de 15 anos ou mais, que mudou de nome) ficam desativadas (`Classe.ativa`).
 
 ### 5.4 Critérios padrão do ranking (criados pelo `clube:criar`)
 
