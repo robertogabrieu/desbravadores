@@ -11,7 +11,15 @@ import { Esqueleto } from '../../../ui/Esqueleto'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/EstadosDeCarga'
 import { lerErroDaApi } from '../desbravadores/erros'
 
-const DIAS_DA_SEMANA = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
+const DIAS_DA_SEMANA = [
+  'Domingo',
+  'Segunda-feira',
+  'Terça-feira',
+  'Quarta-feira',
+  'Quinta-feira',
+  'Sexta-feira',
+  'Sábado',
+]
 
 const MENSAGENS_DE_CAMPO: Record<string, string> = {
   diaReuniao: 'Escolha o dia da reunião',
@@ -32,7 +40,10 @@ export function AdmConfiguracoes() {
   let corpo
   if (configuracao.data) corpo = <FormularioConfiguracao atual={configuracao.data} />
   else if (modo === 'SEM_CONEXAO') corpo = <DisponivelComInternet />
-  else if (configuracao.isError) corpo = <ErroDeCarga erro={configuracao.error} aoTentarDeNovo={() => void configuracao.refetch()} />
+  else if (configuracao.isError)
+    corpo = (
+      <ErroDeCarga erro={configuracao.error} aoTentarDeNovo={() => void configuracao.refetch()} />
+    )
   else
     corpo = (
       <Carregando rotulo="Carregando as configurações">
@@ -59,7 +70,8 @@ function FormularioConfiguracao({ atual }: { atual: ConfiguracaoClube }) {
   const [local, setLocal] = useState(atual.localReuniaoPadrao ?? '')
   const [limiarFrequencia, setLimiarFrequencia] = useState(String(atual.limiarFrequenciaAlerta))
   const [limiarProgresso, setLimiarProgresso] = useState(String(atual.limiarProgressoAlerta))
-  const [meta, setMeta] = useState(String(atual.metaFrequencia))
+  // Sem campo na tela (nenhuma tela usa a meta ainda): o valor gravado volta como veio.
+  const meta = String(atual.metaFrequencia)
   const [erros, setErros] = useState<Record<string, string>>({})
   const [erroGeral, setErroGeral] = useState<string | null>(null)
   const [salvo, setSalvo] = useState(false)
@@ -74,7 +86,8 @@ function FormularioConfiguracao({ atual }: { atual: ConfiguracaoClube }) {
       diaReuniao: Number(diaReuniao),
       horaReuniao,
       localReuniaoPadrao: local.trim() || null,
-      limiarFrequenciaAlerta: limiarFrequencia.trim() === '' ? Number.NaN : Number(limiarFrequencia),
+      limiarFrequenciaAlerta:
+        limiarFrequencia.trim() === '' ? Number.NaN : Number(limiarFrequencia),
       limiarProgressoAlerta: limiarProgresso.trim() === '' ? Number.NaN : Number(limiarProgresso),
       metaFrequencia: meta.trim() === '' ? Number.NaN : Number(meta),
     }
@@ -83,7 +96,8 @@ function FormularioConfiguracao({ atual }: { atual: ConfiguracaoClube }) {
       const achados: Record<string, string> = {}
       for (const problema of validacao.error.issues) {
         const campo = String(problema.path[0] ?? '')
-        if (campo && !(campo in achados)) achados[campo] = MENSAGENS_DE_CAMPO[campo] ?? 'Confira este campo'
+        if (campo && !(campo in achados))
+          achados[campo] = MENSAGENS_DE_CAMPO[campo] ?? 'Confira este campo'
       }
       setErros(achados)
       return
@@ -100,77 +114,101 @@ function FormularioConfiguracao({ atual }: { atual: ConfiguracaoClube }) {
 
   return (
     <form noValidate onSubmit={(evento) => void enviar(evento)} className="flex flex-col gap-6">
-      <Secao id="secao-reuniao" titulo="Reunião semanal" descricao="O dia define as datas de reunião no calendário e nos cronogramas.">
-        <Selecao rotulo="Dia da reunião" value={diaReuniao} erro={erros['diaReuniao']} onChange={(e) => setDiaReuniao(e.target.value)}>
-          {DIAS_DA_SEMANA.map((nome, indice) => (
-            <option key={nome} value={indice}>
-              {nome}
-            </option>
-          ))}
-        </Selecao>
-        <Campo rotulo="Hora da reunião" type="time" value={horaReuniao} erro={erros['horaReuniao']} onChange={(e) => setHoraReuniao(e.target.value)} />
-        <div className="sm:col-span-2">
-          <Campo rotulo="Local padrão" value={local} erro={erros['localReuniaoPadrao']} onChange={(e) => setLocal(e.target.value)} />
-        </div>
-      </Secao>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Secao id="secao-reuniao" titulo="Reunião semanal">
+          <div className="flex flex-wrap items-start gap-4">
+            <div className="w-56">
+              <Selecao
+                rotulo="Dia da reunião"
+                ajuda="Define as datas de reunião no calendário e nos cronogramas."
+                value={diaReuniao}
+                erro={erros['diaReuniao']}
+                onChange={(e) => setDiaReuniao(e.target.value)}
+              >
+                {DIAS_DA_SEMANA.map((nome, indice) => (
+                  <option key={nome} value={indice}>
+                    {nome}
+                  </option>
+                ))}
+              </Selecao>
+            </div>
+            <div className="w-40">
+              <Campo
+                rotulo="Hora"
+                type="time"
+                value={horaReuniao}
+                erro={erros['horaReuniao']}
+                onChange={(e) => setHoraReuniao(e.target.value)}
+              />
+            </div>
+          </div>
+          <Campo
+            rotulo="Local padrão"
+            ajuda="Hora e local já vêm preenchidos na chamada e aparecem no início do conselheiro."
+            value={local}
+            erro={erros['localReuniaoPadrao']}
+            onChange={(e) => setLocal(e.target.value)}
+          />
+        </Secao>
 
-      <Secao id="secao-alertas" titulo="Alertas e meta" descricao="Abaixo dos alertas, o desbravador ou a classe aparecem destacados.">
-        <Campo
-          rotulo="Alerta de frequência (%)"
-          ajuda="Abaixo disto o desbravador aparece com alerta."
-          type="number"
-          inputMode="numeric"
-          value={limiarFrequencia}
-          erro={erros['limiarFrequenciaAlerta']}
-          onChange={(e) => setLimiarFrequencia(e.target.value)}
-        />
-        <Campo
-          rotulo="Alerta de progresso (%)"
-          ajuda="Abaixo disto o progresso da classe aparece com alerta."
-          type="number"
-          inputMode="numeric"
-          value={limiarProgresso}
-          erro={erros['limiarProgressoAlerta']}
-          onChange={(e) => setLimiarProgresso(e.target.value)}
-        />
-        <Campo rotulo="Meta de frequência (%)" type="number" inputMode="numeric" value={meta} erro={erros['metaFrequencia']} onChange={(e) => setMeta(e.target.value)} />
-      </Secao>
+        <Secao id="secao-alertas" titulo="Alertas">
+          <Campo
+            rotulo="Alerta de frequência"
+            ajuda="Abaixo desta porcentagem de presença, o desbravador aparece com alerta."
+            type="number"
+            inputMode="numeric"
+            sufixo="%"
+            value={limiarFrequencia}
+            erro={erros['limiarFrequenciaAlerta']}
+            onChange={(e) => setLimiarFrequencia(e.target.value)}
+            className="w-24"
+          />
+          <Campo
+            rotulo="Alerta de progresso"
+            ajuda="Abaixo desta porcentagem de requisitos cumpridos na classe, o desbravador aparece com alerta."
+            type="number"
+            inputMode="numeric"
+            sufixo="%"
+            value={limiarProgresso}
+            erro={erros['limiarProgressoAlerta']}
+            onChange={(e) => setLimiarProgresso(e.target.value)}
+            className="w-24"
+          />
+        </Secao>
+      </div>
 
-      <Secao id="secao-fixas" titulo="Definidas na implantação" descricao="Vêm da instalação do clube.">
-        <Campo rotulo="Fuso horário" value={atual.fuso} readOnly disabled ajuda="Não pode ser alterado aqui." />
-        <Campo rotulo="Início do ano do clube" value={diaEMesDoAno(atual.inicioAnoClube)} readOnly disabled ajuda="Não pode ser alterado aqui." />
-      </Secao>
+      <p className="text-sm text-texto-2">
+        Fuso horário {atual.fuso} e início do ano do clube em {diaEMesDoAno(atual.inicioAnoClube)}:
+        vêm da instalação e não mudam aqui.
+      </p>
 
       {erroGeral && (
         <p role="alert" className="text-base font-medium text-perigo">
           {erroGeral}
         </p>
       )}
-      {salvo && (
-        <p role="status" className="text-base font-semibold text-sucesso">
-          Configurações salvas.
-        </p>
-      )}
-      <div className="flex justify-end border-t border-divisor pt-4">
+      <div className="flex flex-wrap items-center justify-end gap-4 border-t border-divisor pt-4">
+        {salvo && (
+          <p role="status" className="text-base font-semibold text-sucesso">
+            Configurações salvas.
+          </p>
+        )}
         <Botao type="submit" carregando={salvar.isPending}>
-          Salvar
+          Salvar configurações
         </Botao>
       </div>
     </form>
   )
 }
 
-/** No computador, título e explicação à esquerda e campos em duas colunas à direita; no celular, empilhado. */
-function Secao({ id, titulo, descricao, children }: { id: string; titulo: string; descricao: string; children: ReactNode }) {
+/** Grupo de campos com título; a distância entre grupos é maior que a entre campos. */
+function Secao({ id, titulo, children }: { id: string; titulo: string; children: ReactNode }) {
   return (
-    <section aria-labelledby={id} className="grid gap-4 rounded-folha bg-superficie p-5 lg:grid-cols-[16rem_1fr] lg:gap-8 lg:p-6">
-      <div>
-        <h2 id={id} className="text-lg font-extrabold text-texto">
-          {titulo}
-        </h2>
-        <p className="mt-1 text-sm text-texto-2">{descricao}</p>
-      </div>
-      <div className="grid content-start gap-4 sm:grid-cols-2">{children}</div>
+    <section aria-labelledby={id} className="flex flex-col gap-4 rounded-folha bg-superficie p-6">
+      <h2 id={id} className="text-lg font-extrabold text-texto">
+        {titulo}
+      </h2>
+      {children}
     </section>
   )
 }
