@@ -7,6 +7,7 @@ import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { daDataCivil, paraDataCivil } from '../desbravadores/apoio'
 import { ServicoEscopo } from '../desbravadores/escopo.service'
+import { PacoteInstrutorService } from './pacote-instrutor.service'
 
 type Pacote = z.infer<typeof PacoteSaida>
 type PacoteSemVersao = Omit<Pacote, 'versao' | 'geradoEm'>
@@ -29,6 +30,7 @@ export class SyncService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly escopo: ServicoEscopo,
+    private readonly instrutor: PacoteInstrutorService,
   ) {}
 
   /** Pacote do domingo (SPEC Fase 1, 4.2). So o conselheiro recebe unidades; ADM e instrutor, lista vazia. */
@@ -65,7 +67,7 @@ export class SyncService {
       unidades: await this.unidades(clubeId, unidadeIds, hoje, anoClube(hoje, configuracao.inicioAnoClube)),
       reunioesRecentes: await this.reunioes(clubeId, unidadeIds, somarDias(hoje, -DIAS_DE_REUNIOES)),
       albunsRecentes: await this.albuns(clubeId, unidadeIds, somarDias(hoje, -DIAS_DE_ALBUNS)),
-      instrutor: null,
+      instrutor: sessao.papel === 'INSTRUTOR' ? await this.instrutor.montar(sessao, configuracao, hoje) : null,
     }
     const versao = createHash('sha256').update(JSON.stringify(conteudo)).digest('hex')
     return { versao, geradoEm: agora.toISOString(), ...conteudo }

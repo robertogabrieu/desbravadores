@@ -17,7 +17,14 @@ export const MembroPacote = z.object({
 export const PacoteInstrutor = z.object({
   classes: z.array(z.object({
     classe: RefClasse,
-    membros: z.array(MembroPacote.extend({ tipo: TipoPessoa, concluidos: z.array(Uuid) })), // matrícula CURSANDO no ano
+    membros: z.array(MembroPacote.extend({                 // matrícula CURSANDO no ano
+      tipo: TipoPessoa,
+      concluidos: z.array(Uuid),
+      /** Data e aula de cada conclusão ativa: o registro offline mostra a data e desmarca a desta aula. */
+      conclusoes: z.array(z.object({
+        requisitoId: Uuid, concluidoEm: DataCivil, registroAulaId: Uuid.nullable(),
+      })).default([]),
+    })),
     requisitos: z.array(RequisitoResumo),                  // ativos, com ajuste do clube
     aulasProximas: z.array(z.object({                      // publicadas, próximos 14 dias
       aulaPlanejadaId: Uuid, data: DataCivil, horario: Horario.nullable(), titulo: z.string().nullable(), requisitoIds: z.array(Uuid),

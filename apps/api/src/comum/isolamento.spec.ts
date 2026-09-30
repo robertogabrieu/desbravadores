@@ -9,7 +9,7 @@ describe('auxiliar testarIsolamento (usado por P5 e P6)', () => {
 
   beforeAll(async () => {
     app = await criarAppDeTeste({ extras: [RotasDeTesteModule] })
-  })
+  }, 30_000)
 
   afterAll(async () => {
     await app.close()

@@ -41,6 +41,6 @@ o mínimo de dados e consentimento de um responsável para o que não for estrit
 | T4 | **Caderno oficial muda** (a DSA revisa requisitos periodicamente) | média | média | Requisitos com `ativo` e versionamento por ano do clube; progresso guardado por requisito, não por posição; script de carga que acrescenta sem apagar o que tem histórico |
 | T5 | **VPS compartilhado com o Finance**: um problema derruba os dois | baixa | média | Containers e bancos separados, limites de memória por container; alerta de disco; plano B de VPS próprio documentado |
 | T6 | **Mudança de regra do ranking bagunça a pontuação** | média | média | Valor copiado no lançamento; lançamentos com origem para estorno; nenhuma pontuação é "recalculada do zero" |
-| T7 | Disco enche com vídeos de materiais | baixa | média | Limite de 50 MB por arquivo; incentivo a link do YouTube; alerta de disco em 80% |
+| T7 | Disco enche com materiais das classes | baixa | média | Só PDF, PPTX, ODP, DOCX e ODT (sem vídeo), até 20 MB por arquivo; alternativa por link `https`; cota de 1 GB de materiais por clube; alerta de disco em 80% |
 | T8 | E-mail de convite cai no spam | média | baixa | Provedor com SPF/DKIM configurados no domínio; Adm pode copiar o link do convite e mandar por WhatsApp |
 | T9 | Direitos sobre o conteúdo dos cadernos (material da DSA/CPB) | baixa | média | Carregar só o enunciado dos requisitos (já público nos sites oficiais), sem ilustrações nem textos de apoio; app de uso interno do clube |

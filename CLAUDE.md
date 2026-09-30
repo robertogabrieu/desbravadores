@@ -27,3 +27,6 @@ Planejamento em `docs/planejamento/`; decisões de cada fase em `docs/fases/<fas
 - **Conflito de chamada é por `versao`**, nunca pelo relógio do aparelho.
 - **Tela de celular trata quatro estados**: carregando, vazio, erro e sem conexão.
 - **Modo de conexão só por `useConexao`**, nunca `navigator.onLine` sozinho.
+- **Upload novo acima do limite padrão do nginx** exige um `location` próprio em
+  `apps/web/nginx.conf` com `client_max_body_size` e aviso de deploy para o nginx do host
+  (fora do repo): sem isso o envio morre em 413 só em produção.
