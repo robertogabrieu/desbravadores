@@ -202,6 +202,49 @@ em HTTPS (`COOKIE_SECURE=true`).
 
 Os arquivos enviados moram no volume Docker `arquivos`, montado em `/app/arquivos` na API (`ARQUIVOS_DIR`). A URL de imagem é assinada e vale 10 minutos (`GET /api/arquivos/:id`); link vencido ou adulterado responde "Link inválido ou vencido". O limite de memória da API subiu de 256 MB para 384 MB.
 
+## Deploy automático
+
+Cada push na `main` que passa na verificação do CI vai sozinho para o servidor (job `deploy` em
+`.github/workflows/ci.yml`). O GitHub entra na rede privada do Tailscale, envia
+`scripts/deploy-ci.sh` para o servidor e o executa na pasta do app. A primeira instalação continua
+sendo o `instalar.sh`.
+
+O roteiro, em ordem:
+
+1. Busca a `main`. Se só mudou documentação (`docs/` ou `.md` na raiz), atualiza o código sem
+   reconstruir. `docs/planejamento/dados` não conta como documentação, porque entra na imagem da API.
+2. Faz uma cópia do banco em `backups/pre-deploy-*.sql.gz` e mantém as 10 últimas. A pasta é
+   legível só pelo usuário de deploy, porque tem dados de menores.
+3. Reconstrói e sobe a stack com `VERSAO_APP=<commit>`. A API migra o banco ao iniciar.
+4. Espera `GET /api/saude` responder na porta `WEB_PORTA` com a versão igual ao commit novo.
+5. Grava o commit em `.deployed-commit`. O último passo do CI confere esse arquivo contra o commit do
+   push: um roteiro interrompido no meio não passa por deploy feito.
+
+Se a construção falhar, ou a API não responder na versão nova em 240 s, o código volta para o commit
+anterior e a stack é reconstruída. O job fica vermelho. Uma migration já aplicada não é desfeita.
+Para ver o banco como estava antes do deploy, restaure a cópia num banco novo e aponte a API para ele:
+
+```bash
+C="docker compose -f docker-compose.prod.yml --env-file .env"
+$C exec -T postgres createdb -U postgres -O desbravador antes_do_deploy
+gunzip -c backups/pre-deploy-<data>.sql.gz | $C exec -T postgres psql -U postgres -d antes_do_deploy -v ON_ERROR_STOP=1
+```
+
+A carga oficial nunca roda no deploy. Quando `docs/planejamento/dados` muda, o log avisa para rodar
+`scripts/carga.sh` à mão. Alterações feitas à mão no servidor, em arquivos versionados, são
+descartadas, e o log as lista.
+
+| Onde | O que precisa existir |
+|---|---|
+| Servidor | Usuário de deploy no grupo `docker` e dono da pasta do app (senão o git recusa a pasta), com a stack já instalada pelo `instalar.sh` |
+| Tailscale | Servidor na rede, e a ACL deixando `tag:deploy-ci` abrir SSH nele como o usuário de deploy |
+| GitHub, segredos | `TS_OAUTH_CLIENT_ID` e `TS_OAUTH_SECRET`: cliente OAuth do Tailscale com a tag `tag:deploy-ci` |
+| GitHub, variáveis | `DEPLOY_HOST` (nome do servidor no Tailscale), `DEPLOY_USER` e `DEPLOY_PATH` (pasta do app, ex.: `/var/www/html/desbravadores`) |
+
+O primeiro passo do job confere essas variáveis e para com a lista do que falta, antes de abrir a
+conexão. Para rodar o mesmo deploy à mão no servidor, como o usuário de deploy:
+`cd <pasta do app> && bash scripts/deploy-ci.sh`.
+
 ## Backup e restauração
 
 - `scripts/backup.sh`: `pg_dump` cifrado com `age` (para `BACKUP_AGE_DESTINATARIO`) e enviado com `rclone` para `RCLONE_REMOTO`. O dump nunca fica em claro no disco. Depois do dump, os arquivos do volume `arquivos` saem em `desbravadores-*.arquivos.tar.age` (também cifrado, lido por um container descartável: não depende da API estar de pé). Se só o backup dos arquivos falhar, o dump já enviado permanece e o script termina com erro. Apaga do destino o que tem mais de 30 dias.
