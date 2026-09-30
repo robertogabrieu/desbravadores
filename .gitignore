@@ -7,3 +7,5 @@ dist
 test-results
 playwright-report
 .arquivos/
+.deployed-commit
+backups/
