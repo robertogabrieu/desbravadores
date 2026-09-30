@@ -47,8 +47,6 @@ describe('rotas do instrutor', () => {
   it.each([
     ['/classes', 'Minhas classes'],
     ['/cronograma', 'Cronograma'],
-    ['/aulas/nova', 'Registro de aula'],
-    ['/aulas/x/editar', 'Registro de aula'],
     ['/classes/x/progresso', 'Progresso da classe'],
     ['/especialidades', 'Especialidades'],
     ['/observacoes', 'Observações'],
@@ -57,6 +55,12 @@ describe('rotas do instrutor', () => {
     entrar('INSTRUTOR')
     renderizarRotas(rotas, rota)
     expect(await screen.findByRole('heading', { name: titulo })).toBeInTheDocument()
+  })
+
+  it.each(['/aulas/nova', '/aulas/x/editar'])('%s abre o registro de aula para INSTRUTOR (sem pacote baixado)', async (rota) => {
+    entrar('INSTRUTOR')
+    renderizarRotas(rotas, rota)
+    expect(await screen.findByRole('heading', { name: 'A lista de desbravadores ainda não foi baixada' })).toBeInTheDocument()
   })
 
   it('conselheiro não entra nas telas do instrutor', async () => {

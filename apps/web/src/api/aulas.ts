@@ -1,10 +1,12 @@
 import { AulaDetalhe, AulaResumo } from '@desbravadores/shared'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
-import { enfileirar, useConexao } from '../offline'
+import { useNavigate } from 'react-router-dom'
+import { apagarRascunho, enfileirar, useConexao } from '../offline'
 import type { PayloadAulaFila } from '../offline/tipos/aula'
-import { montarConsulta, requisitar } from './cliente'
 import { toast } from 'sonner'
+import { useSessao } from '../sessao/useSessao'
+import { montarConsulta, requisitar } from './cliente'
 
 /** Raízes que o `aoEnviar` do tipo AULA invalida (com `progresso`). */
 export const chavesAulas = {
@@ -37,10 +39,14 @@ export interface EntradaSalvarAula {
   presencas: PayloadAulaFila['corpo']['presencas']
   requisitosMarcados: PayloadAulaFila['corpo']['requisitosMarcados']
   requisitosDesmarcados: PayloadAulaFila['corpo']['requisitosDesmarcados']
+  nomes: PayloadAulaFila['nomes']
+  codigos: PayloadAulaFila['codigos']
 }
 
-/** Não chama a API: guarda a aula na fila (que a envia, com ou sem internet). Quem chama decide para onde voltar. */
+/** Não chama a API: guarda a aula na fila (que a envia, com ou sem internet) e volta ao Início. */
 export function useSalvarAula() {
+  const navegar = useNavigate()
+  const { eu } = useSessao()
   const { modo } = useConexao()
   return useMutation({
     // Sem isto o react-query pausa a mutação com o navegador offline e a aula nunca chega à fila.
@@ -50,6 +56,8 @@ export function useSalvarAula() {
         registroAulaId: entrada.registroAulaId,
         correcao: entrada.correcao,
         classeNome: entrada.classeNome,
+        nomes: entrada.nomes,
+        codigos: entrada.codigos,
         corpo: {
           versaoPayload: 1,
           envioId: crypto.randomUUID(),
@@ -62,12 +70,15 @@ export function useSalvarAula() {
           requisitosDesmarcados: entrada.requisitosDesmarcados,
         },
       }
-      await enfileirar({ tipo: 'AULA', chave: `aula:${entrada.classeId}:${entrada.data}`, payload })
+      const chave = `aula:${entrada.classeId}:${entrada.data}`
+      await enfileirar({ tipo: 'AULA', chave, payload })
+      if (eu) await apagarRascunho(eu.usuario.id, chave)
     },
     onSuccess: () => {
       toast.success('Aula salva', {
         description: modo === 'SEM_CONEXAO' ? 'Vai ser enviada quando houver internet.' : 'Enviando agora.',
       })
+      void navegar('/inicio')
     },
   })
 }
