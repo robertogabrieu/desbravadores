@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -206,6 +206,41 @@ describe('LayoutAdm', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Fechar o menu' }))
     expect(screen.queryByRole('dialog', { name: 'Menu do Adm' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Abrir o menu' })).toHaveFocus()
+  })
+
+  it('abaixo de 900 px, com a gaveta aberta, o Tab não sai dela e a página de trás não rola', async () => {
+    simularLargura(390)
+    servidor.use(...handlersSessao([criarVinculo('ADM')]))
+    renderizarRotas(rotasAdm, '/adm/desbravadores')
+    await screen.findByText('lista')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Abrir o menu' }))
+    const gaveta = screen.getByRole('dialog', { name: 'Menu do Adm' })
+    expect(document.body.style.overflow).toBe('hidden')
+
+    within(gaveta).getByText('Ranking').closest('a')?.focus()
+    await userEvent.tab()
+    expect(gaveta).toContainElement(document.activeElement as HTMLElement)
+    await userEvent.tab({ shift: true })
+    await userEvent.tab({ shift: true })
+    expect(gaveta).toContainElement(document.activeElement as HTMLElement)
+
+    await userEvent.keyboard('{Escape}')
+    expect(document.body.style.overflow).toBe('')
+  })
+
+  it('gaveta aberta e a tela passa de 900 px: ao voltar para o celular, ela não reabre sozinha', async () => {
+    simularLargura(390)
+    servidor.use(...handlersSessao([criarVinculo('ADM')]))
+    renderizarRotas(rotasAdm, '/adm/desbravadores')
+    await screen.findByText('lista')
+    await userEvent.click(screen.getByRole('button', { name: 'Abrir o menu' }))
+
+    act(() => simularLargura(1280))
+    expect(screen.queryByRole('dialog', { name: 'Menu do Adm' })).not.toBeInTheDocument()
+    act(() => simularLargura(390))
+    expect(screen.queryByRole('dialog', { name: 'Menu do Adm' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Abrir o menu' })).toBeInTheDocument()
   })
 
   it('abaixo de 900 px mostra a faixa e não bloqueia o conteúdo', async () => {

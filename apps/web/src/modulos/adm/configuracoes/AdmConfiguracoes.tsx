@@ -114,7 +114,7 @@ function FormularioConfiguracao({ atual }: { atual: ConfiguracaoClube }) {
         </div>
       </Secao>
 
-      <Secao id="secao-alertas" titulo="Alertas e meta" descricao="Percentuais que marcam quem precisa de atenção.">
+      <Secao id="secao-alertas" titulo="Alertas e meta" descricao="Abaixo dos alertas, o desbravador ou a classe aparecem destacados.">
         <Campo
           rotulo="Alerta de frequência (%)"
           ajuda="Abaixo disto o desbravador aparece com alerta."
@@ -136,9 +136,9 @@ function FormularioConfiguracao({ atual }: { atual: ConfiguracaoClube }) {
         <Campo rotulo="Meta de frequência (%)" type="number" inputMode="numeric" value={meta} erro={erros['metaFrequencia']} onChange={(e) => setMeta(e.target.value)} />
       </Secao>
 
-      <Secao id="secao-fixas" titulo="Definidas na implantação" descricao="Não podem ser alteradas aqui.">
-        <Campo rotulo="Fuso horário" value={atual.fuso} readOnly disabled />
-        <Campo rotulo="Início do ano do clube" value={diaEMesDoAno(atual.inicioAnoClube)} readOnly disabled />
+      <Secao id="secao-fixas" titulo="Definidas na implantação" descricao="Vêm da instalação do clube.">
+        <Campo rotulo="Fuso horário" value={atual.fuso} readOnly disabled ajuda="Não pode ser alterado aqui." />
+        <Campo rotulo="Início do ano do clube" value={diaEMesDoAno(atual.inicioAnoClube)} readOnly disabled ajuda="Não pode ser alterado aqui." />
       </Secao>
 
       {erroGeral && (
