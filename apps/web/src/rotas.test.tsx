@@ -50,7 +50,7 @@ describe('rotas do instrutor', () => {
     ['/classes/x/progresso', 'Progresso da classe'],
     ['/especialidades', 'Especialidades'],
     ['/observacoes', 'Observações'],
-    ['/classes/x/materiais', 'Materiais'],
+    ['/classes/x/materiais', 'Materiais de apoio'],
   ])('%s abre a tela para INSTRUTOR', async (rota, titulo) => {
     entrar('INSTRUTOR')
     renderizarRotas(rotas, rota)

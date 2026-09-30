@@ -1,6 +1,9 @@
 import { ProgressoClasseSaida, ProgressoDbvSaida } from '@desbravadores/shared'
 import { useQuery } from '@tanstack/react-query'
+import type { z } from 'zod'
 import { requisitar } from './cliente'
+
+export type ProgressoClasse = z.infer<typeof ProgressoClasseSaida>
 
 /** A raiz `progresso` é invalidada pelo envio de aulas e pela marcação de requisitos. */
 export const chavesProgresso = {
@@ -8,10 +11,12 @@ export const chavesProgresso = {
   dbv: (dbvId: string) => ['progresso', 'dbv', dbvId] as const,
 }
 
-export function useProgressoClasse(classeId: string) {
+/** `habilitada: false` (sem conexão, ou sem classe escolhida) não consulta. */
+export function useProgressoClasse(classeId: string, habilitada = true) {
   return useQuery({
     queryKey: chavesProgresso.classe(classeId),
     queryFn: () => requisitar(`/api/classes/${classeId}/progresso`, ProgressoClasseSaida),
+    enabled: habilitada && classeId !== '',
   })
 }
 
