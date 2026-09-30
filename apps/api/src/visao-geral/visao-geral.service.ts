@@ -165,24 +165,25 @@ export class VisaoGeralService {
     const ativas = todas.filter((classe) => classe.clubes[0]?.ativa ?? true)
     const classeIds = ativas.map((classe) => classe.id)
 
-    const [instrutoresPorClasse, matriculas, requisitos, desligados] = await Promise.all([
+    const [instrutoresPorClasse, matriculas, requisitos, ajustes] = await Promise.all([
       Promise.all(classeIds.map((classeId) => this.cronogramas.instrutoresDaClasse(clubeId, classeId))),
       this.prisma.matriculaClasse.findMany({
         where: { clubeId, anoClube: ano, status: 'CURSANDO', classeId: { in: classeIds }, dbv: { tipo: 'DBV', ativo: true } },
         select: { dbvId: true, classeId: true },
       }),
       this.prisma.requisito.findMany({
-        where: { ativo: true, secao: { classeId: { in: classeIds } } },
-        select: { id: true, secao: { select: { classeId: true } } },
+        where: { secao: { classeId: { in: classeIds } } },
+        select: { id: true, ativo: true, secao: { select: { classeId: true } } },
       }),
-      this.prisma.requisitoAjuste.findMany({ where: { clubeId, ativo: false }, select: { requisitoId: true } }),
+      this.prisma.requisitoAjuste.findMany({ where: { clubeId, ativo: false }, select: { requisitoId: true, ativo: true } }),
     ])
 
-    const idsDesligados = new Set(desligados.map((ajuste) => ajuste.requisitoId))
+    // Mesma regra de GET /classes/:id: conta se ativo no oficial e o clube não desligou (ajuste null ou ausente usa o oficial).
+    const desligadoNoClube = new Set(ajustes.filter((ajuste) => ajuste.ativo === false).map((ajuste) => ajuste.requisitoId))
     const classeDoRequisito = new Map<string, string>()
     const totalPorClasse = new Map<string, number>()
     for (const requisito of requisitos) {
-      if (idsDesligados.has(requisito.id)) continue
+      if (!requisito.ativo || desligadoNoClube.has(requisito.id)) continue
       const classeId = requisito.secao.classeId
       classeDoRequisito.set(requisito.id, classeId)
       totalPorClasse.set(classeId, (totalPorClasse.get(classeId) ?? 0) + 1)

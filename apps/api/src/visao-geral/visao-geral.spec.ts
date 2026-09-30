@@ -179,6 +179,51 @@ describe('visao geral (GET /visao-geral)', () => {
     ])
   })
 
+  it('progresso por classe: oficial inativo não volta por ajuste, ajuste false desliga, null usa o oficial', async () => {
+    const clube = await criarClube()
+    const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+    const amigo = await classeOficial('Amigo')
+    const dbv = await admCriarDbvComDatas({ clubeId: clube.id, entradaEm: '2026-01-10' })
+    await criarMatricula({ clubeId: clube.id, dbvId: dbv.id, classeId: amigo.id, anoClube: 2026 })
+    const secao = await prismaDeTeste().secaoRequisito.findFirstOrThrow({ where: { classeId: amigo.id } })
+    const [ativo1, ativo2] = await prismaDeTeste().requisito.findMany({ where: { secao: { classeId: amigo.id }, ativo: true }, take: 2, select: { id: true } })
+    await criarRequisitoConcluido({ clubeId: clube.id, dbvId: dbv.id, requisitoId: ativo1.id })
+    const inativo = await prismaDeTeste().requisito.create({ data: { secaoId: secao.id, codigo: `inativo-${clube.id}`, texto: 'Inativo no oficial', ordem: 999, ativo: false } })
+
+    const totalDoDetalhe = async (): Promise<number> =>
+      corpo<{ totalRequisitos: number }>(await api.get(`/api/classes/${amigo.id}`, adm.autorizacao).expect(200)).totalRequisitos
+    const mediaDaClasse = async (): Promise<number | null | undefined> =>
+      corpo<Visao>(await api.get('/api/visao-geral', adm.autorizacao).expect(200)).progressoClasses.find((c) => c.classe.id === amigo.id)?.media
+    const conferir = async (): Promise<void> => {
+      expect(await mediaDaClasse()).toBe(mediaTurma([percentualClasse(1, await totalDoDetalhe())]))
+    }
+    const ajustar = (requisitoId: string, ativo: boolean | null) =>
+      prismaDeTeste().requisitoAjuste.upsert({
+        where: { clubeId_requisitoId: { clubeId: clube.id, requisitoId } },
+        create: { clubeId: clube.id, requisitoId, ativo },
+        update: { ativo },
+      })
+
+    try {
+      const base = await totalDoDetalhe()
+      await conferir()
+      await ajustar(inativo.id, true)
+      expect(await totalDoDetalhe()).toBe(base)
+      await conferir()
+      await ajustar(ativo2.id, false)
+      expect(await totalDoDetalhe()).toBe(base - 1)
+      await conferir()
+      // "voltar ao oficial" gravado como linha com ativo null: usa o oficial nos dois.
+      await ajustar(inativo.id, null)
+      await ajustar(ativo2.id, null)
+      expect(await totalDoDetalhe()).toBe(base)
+      await conferir()
+    } finally {
+      await prismaDeTeste().requisitoAjuste.deleteMany({ where: { requisitoId: inativo.id } })
+      await prismaDeTeste().requisito.delete({ where: { id: inativo.id } })
+    }
+  })
+
   it('atividade recente: so os tipos do feed, os 10 mais novos, do clube', async () => {
     const clube = await criarClube()
     const outro = await criarClube()
