@@ -114,6 +114,20 @@ describe('guarda de rota', () => {
     expect(logout).toBe(1)
   })
 
+  it('sair limpa o cache de consultas (celular compartilhado)', async () => {
+    servidor.use(
+      http.post('/api/auth/logout', () => new HttpResponse(null, { status: 204 })),
+      ...handlersSessao([criarVinculo('ADM')]),
+    )
+    const { roteador, clienteConsultas } = renderizarRotas(rotas, '/privada')
+    clienteConsultas.setQueryData(['observacoes', 'x'], { texto: 'sigiloso' })
+
+    await userEvent.click(await screen.findByRole('button', { name: /^sair/ }))
+
+    await waitFor(() => expect(roteador.state.location.pathname).toBe('/login'))
+    expect(clienteConsultas.getQueryData(['observacoes', 'x'])).toBeUndefined()
+  })
+
   it('refresh com 200 fora do contrato conta como rede: sem identidade guardada vai a /conectar', async () => {
     tempos.novaTentativaAberturaMs = 1
     servidor.use(http.post('/api/auth/refresh', () => HttpResponse.json({ lixo: true })))
