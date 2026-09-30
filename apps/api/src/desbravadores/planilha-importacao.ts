@@ -95,22 +95,20 @@ export function textoDaCelula(celula: Celula): string {
   return String(celula).trim()
 }
 
-const DIA_EM_MS = 86_400_000
-const BASE_DO_EXCEL = Date.UTC(1899, 11, 30)
-
 function dataCivilValida(ano: number, mes: number, dia: number): string | null {
   const data = new Date(Date.UTC(ano, mes - 1, dia))
   if (data.getUTCFullYear() !== ano || data.getUTCMonth() !== mes - 1 || data.getUTCDate() !== dia) return null
   return data.toISOString().slice(0, 10)
 }
 
-/** `dd/mm/aaaa`, `aaaa-mm-dd`, célula de data ou número serial do Excel → "AAAA-MM-DD"; `null` se ilegível. */
+/**
+ * `dd/mm/aaaa`, `aaaa-mm-dd` ou célula formatada como data → "AAAA-MM-DD"; `null` se ilegível.
+ * Número solto não é data: lido como dia serial, "2015" viraria 07/07/1905. O exceljs monta a célula
+ * de data em UTC, e por isso ela é lida em UTC — o fuso do servidor não tira um dia.
+ */
 export function converterData(celula: Celula): string | null {
   if (celula instanceof Date) return Number.isNaN(celula.getTime()) ? null : celula.toISOString().slice(0, 10)
-  if (typeof celula === 'number') {
-    if (!Number.isFinite(celula) || celula < 1) return null
-    return new Date(BASE_DO_EXCEL + Math.floor(celula) * DIA_EM_MS).toISOString().slice(0, 10)
-  }
+  if (typeof celula === 'number') return null
   const texto = textoDaCelula(celula)
   const brasileira = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(texto)
   if (brasileira) return dataCivilValida(Number(brasileira[3]), Number(brasileira[2]), Number(brasileira[1]))
@@ -327,6 +325,21 @@ function montarZipSemCompressao(entradas: EntradaConferida[]): Buffer {
   return Buffer.concat([...locais, ...diretorio, fim])
 }
 
+const LIVRO = 'xl/workbook.xml'
+
+/**
+ * O exceljs só reconhece a pasta em datas de 1904 (Mac) quando o `workbook.xml` grava `date1904="1"`;
+ * gravado como `true`, que o formato também admite, as datas sairiam 4 anos e 1 dia antes.
+ */
+function comDatasDe1904Reconhecidas(entradas: EntradaConferida[]): EntradaConferida[] {
+  return entradas.map((entrada) => {
+    if (entrada.nome.toString('utf8') !== LIVRO) return entrada
+    const livro = entrada.conteudo.toString('utf8')
+    const normalizado = livro.replace(/(<(?:\w+:)?workbookPr\b[^>]*\bdate1904=)(["'])true\2/, (_, inicio: string, aspas: string) => `${inicio}${aspas}1${aspas}`)
+    return normalizado === livro ? entrada : { ...entrada, conteudo: Buffer.from(normalizado, 'utf8') }
+  })
+}
+
 function celulasDaLinhaDoExcel(linha: ExcelJS.Row): Celula[] {
   const celulas: Celula[] = []
   const ultima = Math.min(linha.cellCount, MAXIMO_DE_COLUNAS)
@@ -336,7 +349,7 @@ function celulasDaLinhaDoExcel(linha: ExcelJS.Row): Celula[] {
 
 /** Lê a primeira aba em fluxo, sem montar a pasta inteira na memória. */
 async function lerXlsx(conteudo: Buffer): Promise<PlanilhaLida> {
-  const conferido = montarZipSemCompressao(descompactarConferindo(conteudo))
+  const conferido = montarZipSemCompressao(comDatasDe1904Reconhecidas(descompactarConferindo(conteudo)))
   const coletor = coletorDeLinhas()
   const leitor = new ExcelJS.stream.xlsx.WorkbookReader(Readable.from(conferido), {
     worksheets: 'emit',

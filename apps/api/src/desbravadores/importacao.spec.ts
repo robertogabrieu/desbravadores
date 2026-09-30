@@ -1,6 +1,6 @@
 import type { Server } from 'node:http'
 import type { INestApplication } from '@nestjs/common'
-import type { ImportacaoRecusada, LinhaImportada, PreviaImportacao } from '@desbravadores/shared'
+import type { ImportacaoRecusada, LinhaConfirmada, PreviaImportacao } from '@desbravadores/shared'
 import ExcelJS from 'exceljs'
 import { performance } from 'node:perf_hooks'
 import { deflateRawSync, inflateRawSync } from 'node:zlib'
@@ -18,10 +18,11 @@ import {
   prismaDeTeste,
 } from '../../test/fabricas'
 import { anoCorrente, corpo, criarClasseDoClube, hoje, nascimentoComIdade } from '../../test/p6'
+import * as planilha from './planilha-importacao'
 import { gerarModelo } from './planilha-importacao'
 
 type Previa = z.infer<typeof PreviaImportacao>
-type Linha = z.infer<typeof LinhaImportada>
+type Linha = z.infer<typeof LinhaConfirmada>
 type Recusa = z.infer<typeof ImportacaoRecusada>
 type Celula = string | number | Date | null
 
@@ -144,6 +145,21 @@ function serialDoExcel(data: string): number {
   return (Date.parse(`${data}T00:00:00Z`) - Date.UTC(1899, 11, 30)) / 86_400_000
 }
 
+/** .xlsx com a pasta em datas de 1904 (planilha de Mac); `atributo` é como o `workbook.xml` grava a marca. */
+async function xlsxDe1904(linhas: Celula[][], atributo: '1' | 'true'): Promise<Buffer> {
+  const pasta = new ExcelJS.Workbook()
+  pasta.properties.date1904 = true
+  const aba = pasta.addWorksheet('Desbravadores')
+  for (const linha of linhas) aba.addRow(linha)
+  const conteudos = entradasDoZip(Buffer.from(await pasta.xlsx.writeBuffer()))
+  const livro = conteudos.get('xl/workbook.xml')?.toString('utf8') ?? ''
+  expect(livro).toContain('date1904="1"')
+  conteudos.set('xl/workbook.xml', Buffer.from(livro.replace('date1904="1"', `date1904="${atributo}"`)))
+  return montarZip(entradasHonestas(conteudos))
+}
+
+const mensagens = (erros: { mensagem: string }[] | undefined): string[] => (erros ?? []).map((erro) => erro.mensagem)
+
 function linhaPronta(parcial: Partial<Linha> = {}): Linha {
   return {
     linha: 2,
@@ -156,6 +172,7 @@ function linhaPronta(parcial: Partial<Linha> = {}): Linha {
     responsavelTelefone: null,
     responsavelEmail: null,
     entradaEm: '2026-02-01',
+    importarMesmoRepetido: false,
     ...parcial,
   }
 }
@@ -213,13 +230,12 @@ describe('importacao de desbravadores por planilha', () => {
       })
     })
 
-    it('converte as datas em dd/mm/aaaa, aaaa-mm-dd e data do Excel, e o sexo por extenso', async () => {
+    it('converte as datas em dd/mm/aaaa, aaaa-mm-dd e celula formatada como data, e o sexo por extenso', async () => {
       const { adm } = await admDeClubeNovo()
       const arquivo = await xlsx([
         ['Nome', 'Data de nascimento', 'Sexo'],
         ['Um Barra', '10/03/2015', 'Masculino'],
         ['Dois Traco', '2015-03-11', 'Feminino'],
-        ['Tres Serial', serialDoExcel('2015-03-12'), 'M'],
         ['Quatro Data', new Date('2015-03-13T00:00:00Z'), 'F'],
         ['Cinco Ruim', '31/02/2015', 'X'],
       ])
@@ -227,12 +243,60 @@ describe('importacao de desbravadores por planilha', () => {
       expect(linhas.map((l) => [l.nascimento, l.sexo])).toEqual([
         ['2015-03-10', 'M'],
         ['2015-03-11', 'F'],
-        ['2015-03-12', 'M'],
         ['2015-03-13', 'F'],
         ['', ''],
       ])
-      expect(linhas.slice(0, 4).every((l) => l.erros.length === 0)).toBe(true)
-      expect(linhas[4]?.erros).toEqual(expect.arrayContaining(['Data de nascimento inválida: 31/02/2015', 'Sexo inválido: X']))
+      expect(linhas.slice(0, 3).every((l) => l.erros.length === 0)).toBe(true)
+      expect(linhas[3]?.erros).toEqual(
+        expect.arrayContaining([
+          { campo: 'nascimento', mensagem: 'Data de nascimento inválida: 31/02/2015' },
+          { campo: 'sexo', mensagem: 'Sexo inválido: X' },
+        ]),
+      )
+    })
+
+    it('numero solto na coluna de data e erro, no nascimento e na entrada; nao vira data de 1905', async () => {
+      const { adm } = await admDeClubeNovo()
+      const arquivo = await xlsx([
+        ['Nome', 'Data de nascimento', 'Sexo', 'Entrada no clube'],
+        ['Ana Ano', 2015, 'F', '01/02/2026'],
+        ['Bia Serial', serialDoExcel('2015-03-12'), 'F', 2026],
+      ])
+      const { linhas } = corpo<Previa>(await previa(adm.autorizacao, arquivo).expect(200))
+      expect(linhas[0]).toMatchObject({ nascimento: '', entradaEm: '2026-02-01' })
+      expect(linhas[0]?.erros).toContainEqual({ campo: 'nascimento', mensagem: 'Data de nascimento inválida: 2015' })
+      expect(linhas[1]?.nascimento).toBe('')
+      expect(mensagens(linhas[1]?.erros)).toContain(`Data de nascimento inválida: ${serialDoExcel('2015-03-12')}`)
+      expect(linhas[1]).toMatchObject({ entradaEm: '' })
+      expect(linhas[1]?.erros).toContainEqual({ campo: 'entradaEm', mensagem: 'Data de entrada inválida: 2026' })
+    })
+
+    it('celula de data nao volta um dia com o servidor em fuso negativo', async () => {
+      const { adm } = await admDeClubeNovo()
+      const fusoOriginal = process.env.TZ
+      process.env.TZ = 'America/Sao_Paulo'
+      try {
+        const arquivo = await xlsx([
+          ['Nome', 'Data de nascimento', 'Sexo', 'Entrada no clube'],
+          ['Ana Fuso', new Date('2015-03-13T00:00:00Z'), 'F', new Date('2026-02-01T00:00:00Z')],
+        ])
+        const { linhas } = corpo<Previa>(await previa(adm.autorizacao, arquivo).expect(200))
+        expect(linhas[0]).toMatchObject({ nascimento: '2015-03-13', entradaEm: '2026-02-01', erros: [] })
+      } finally {
+        process.env.TZ = fusoOriginal
+      }
+    })
+
+    it('planilha de Mac (datas de 1904) le a data certa, com a marca gravada como 1 ou como true', async () => {
+      const { adm } = await admDeClubeNovo()
+      const linhas: Celula[][] = [
+        ['Nome', 'Data de nascimento', 'Sexo'],
+        ['Ana Mac', new Date('2015-03-13T00:00:00Z'), 'F'],
+      ]
+      for (const atributo of ['1', 'true'] as const) {
+        const resposta = corpo<Previa>(await previa(adm.autorizacao, await xlsxDe1904(linhas, atributo)).expect(200))
+        expect(resposta.linhas[0]).toMatchObject({ nascimento: '2015-03-13', erros: [] })
+      }
     })
 
     it('le .csv com ; ou , e aspas', async () => {
@@ -321,7 +385,7 @@ describe('importacao de desbravadores por planilha', () => {
         ['A', '10/03/2015', 'F', 'nao-e-email', null],
       ])
       const { linhas } = corpo<Previa>(await previa(adm.autorizacao, arquivo).expect(200))
-      expect(linhas[0]?.erros).toEqual(expect.arrayContaining(['O nome precisa ter de 2 a 120 letras.', 'E-mail inválido: nao-e-email']))
+      expect(mensagens(linhas[0]?.erros)).toEqual(expect.arrayContaining(['O nome precisa ter de 2 a 120 letras.', 'E-mail inválido: nao-e-email']))
       expect(linhas[0]?.entradaEm).toBe(hoje())
     })
 
@@ -433,6 +497,43 @@ describe('importacao de desbravadores por planilha', () => {
       const { adm } = await admDeClubeNovo()
       await previa(adm.autorizacao, Buffer.from('oi'), 'foto.png').expect(422)
     })
+
+    it('no maximo duas previas ao mesmo tempo: a terceira e recusada sem ler o arquivo', async () => {
+      const { adm } = await admDeClubeNovo()
+      const arquivo = await xlsx([['Nome', 'Data de nascimento', 'Sexo'], ['Ana Clara', '10/03/2015', 'F']])
+      const lerDeVerdade = planilha.lerPlanilha
+      let liberar = (): void => undefined
+      const portao = new Promise<void>((resolver) => {
+        liberar = resolver
+      })
+      const leitura = jest.spyOn(planilha, 'lerPlanilha').mockImplementation(async (conteudo, nome) => {
+        await portao
+        return lerDeVerdade(conteudo, nome)
+      })
+      try {
+        const emAndamento = [previa(adm.autorizacao, arquivo).then((r) => r), previa(adm.autorizacao, arquivo).then((r) => r)]
+        for (let volta = 0; volta < 500 && leitura.mock.calls.length < 2; volta++) await new Promise((r) => setTimeout(r, 10))
+        expect(leitura).toHaveBeenCalledTimes(2)
+
+        const terceira = await previa(adm.autorizacao, arquivo).expect(422)
+        expect(terceira.body).toMatchObject({ codigo: 'REGRA', mensagem: 'Outra importação está em andamento; tente de novo em instantes.' })
+        expect(leitura).toHaveBeenCalledTimes(2)
+
+        liberar()
+        expect((await Promise.all(emAndamento)).map((r) => r.status)).toEqual([200, 200])
+        await previa(adm.autorizacao, arquivo).expect(200)
+      } finally {
+        liberar()
+        leitura.mockRestore()
+      }
+    })
+
+    it('previa que falha libera a vaga', async () => {
+      const { adm } = await admDeClubeNovo()
+      for (let i = 0; i < 3; i++) await previa(adm.autorizacao, Buffer.from('oi'), 'foto.png').expect(422)
+      const arquivo = await xlsx([['Nome', 'Data de nascimento', 'Sexo'], ['Ana Clara', '10/03/2015', 'F']])
+      await previa(adm.autorizacao, arquivo).expect(200)
+    })
   })
 
   describe('POST /desbravadores/importacao', () => {
@@ -468,7 +569,12 @@ describe('importacao de desbravadores por planilha', () => {
       const recusa = corpo<Recusa>(resposta)
       expect(recusa.codigo).toBe('REGRA')
       expect(recusa.erros.map((erro) => erro.linha)).toEqual([7])
-      expect(recusa.erros[0]?.mensagens).toEqual(expect.arrayContaining(['O nome precisa ter de 2 a 120 letras.', 'E-mail inválido: ruim']))
+      expect(recusa.erros[0]?.mensagens).toEqual(
+        expect.arrayContaining([
+          { campo: 'nome', mensagem: 'O nome precisa ter de 2 a 120 letras.' },
+          { campo: 'responsavelEmail', mensagem: 'E-mail inválido: ruim' },
+        ]),
+      )
       expect(await prismaDeTeste().desbravador.count({ where: { clubeId: clube.id } })).toBe(0)
     })
 
@@ -500,10 +606,50 @@ describe('importacao de desbravadores por planilha', () => {
       expect(resposta.body).toEqual({ codigo: 'REGRA', mensagem: 'O envio passou do tamanho permitido.' })
     })
 
-    it('duplicado marcado pelo Adm e importado mesmo assim', async () => {
+    it('duplicado marcado pelo Adm (com a marca de repetido) e importado mesmo assim', async () => {
+      const { clube, adm } = await admDeClubeNovo()
+      await criarDbv({ clubeId: clube.id, nome: 'Maria da Silva', nascimento: nascimentoComIdade(10), ativo: false })
+      await confirmar(adm.autorizacao, [linhaPronta({ nome: 'MARIA  da silva', importarMesmoRepetido: true })]).expect(201)
+      expect(await prismaDeTeste().desbravador.count({ where: { clubeId: clube.id } })).toBe(2)
+    })
+
+    it('confirmar a mesma lista duas vezes: a segunda e 422 com o erro na linha inteira e nada e gravado', async () => {
+      const { clube, adm } = await admDeClubeNovo()
+      const linhas = [linhaPronta(), linhaPronta({ linha: 3, nome: 'Rui Barbosa', sexo: 'M' })]
+      await confirmar(adm.autorizacao, linhas).expect(201)
+      const recusa = corpo<Recusa>(await confirmar(adm.autorizacao, linhas).expect(422))
+      expect(recusa.erros).toEqual([
+        { linha: 2, mensagens: [{ campo: null, mensagem: 'Já existe no clube um desbravador com este nome e nascimento.' }] },
+        { linha: 3, mensagens: [{ campo: null, mensagem: 'Já existe no clube um desbravador com este nome e nascimento.' }] },
+      ])
+      expect(await prismaDeTeste().desbravador.count({ where: { clubeId: clube.id } })).toBe(2)
+    })
+
+    it('uma so repetida sem a marca recusa a confirmacao inteira, e as outras linhas tambem nao entram', async () => {
       const { clube, adm } = await admDeClubeNovo()
       await criarDbv({ clubeId: clube.id, nome: 'Maria da Silva', nascimento: nascimentoComIdade(10) })
-      await confirmar(adm.autorizacao, [linhaPronta()]).expect(201)
+      const recusa = corpo<Recusa>(
+        await confirmar(adm.autorizacao, [linhaPronta({ linha: 3, nome: 'Rui Barbosa', sexo: 'M' }), linhaPronta({ linha: 4 })]).expect(422),
+      )
+      expect(recusa.erros.map((erro) => erro.linha)).toEqual([4])
+      expect(await prismaDeTeste().desbravador.count({ where: { clubeId: clube.id } })).toBe(1)
+    })
+
+    it('a mesma pessoa duas vezes entre as linhas enviadas: a segunda sem a marca e recusada; com a marca, grava', async () => {
+      const { clube, adm } = await admDeClubeNovo()
+      const recusa = corpo<Recusa>(await confirmar(adm.autorizacao, [linhaPronta(), linhaPronta({ linha: 5, nome: 'maria da  SILVA' })]).expect(422))
+      expect(recusa.erros).toEqual([{ linha: 5, mensagens: [{ campo: null, mensagem: 'Esta pessoa já aparece na linha 2 da planilha.' }] }])
+      expect(await prismaDeTeste().desbravador.count({ where: { clubeId: clube.id } })).toBe(0)
+
+      await confirmar(adm.autorizacao, [linhaPronta(), linhaPronta({ linha: 5, importarMesmoRepetido: true })]).expect(201)
+      expect(await prismaDeTeste().desbravador.count({ where: { clubeId: clube.id } })).toBe(2)
+    })
+
+    it('duas confirmacoes simultaneas da mesma lista: so uma grava', async () => {
+      const { clube, adm } = await admDeClubeNovo()
+      const linhas = [linhaPronta(), linhaPronta({ linha: 3, nome: 'Rui Barbosa', sexo: 'M' })]
+      const respostas = await Promise.all([confirmar(adm.autorizacao, linhas).then((r) => r), confirmar(adm.autorizacao, linhas).then((r) => r)])
+      expect(respostas.map((r) => r.status).sort()).toEqual([201, 422])
       expect(await prismaDeTeste().desbravador.count({ where: { clubeId: clube.id } })).toBe(2)
     })
   })
@@ -525,7 +671,10 @@ describe('importacao de desbravadores por planilha', () => {
       const recusa = corpo<Recusa>(
         await confirmar(adm.autorizacao, [linhaPronta({ unidadeId: unidadeDeFora.id, classeId: classeDeFora.id })]).expect(422),
       )
-      expect(recusa.erros[0]?.mensagens).toEqual(['A unidade escolhida não existe no clube.', 'A classe escolhida não existe.'])
+      expect(recusa.erros[0]?.mensagens).toEqual([
+        { campo: 'unidadeId', mensagem: 'A unidade escolhida não existe no clube.' },
+        { campo: 'classeId', mensagem: 'A classe escolhida não existe.' },
+      ])
       expect(await prismaDeTeste().desbravador.count({ where: { clubeId: clube.id } })).toBe(0)
     })
 

@@ -1,4 +1,14 @@
-import { ImportacaoEntrada, ImportacaoRecusada, ImportacaoSaida, LinhaDaPrevia, LinhaImportada, PreviaImportacao } from '@desbravadores/shared'
+import {
+  ErroDeCampo,
+  ImportacaoEntrada,
+  ImportacaoRecusada,
+  ImportacaoSaida,
+  LinhaConfirmada,
+  LinhaDaPrevia,
+  LinhaImportada,
+  MENSAGEM_PLANILHA_GRANDE,
+  PreviaImportacao,
+} from '@desbravadores/shared'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { z } from 'zod'
 import { ErroDaApi, erroDeResposta, lerTokenAcesso, renovarSessao, requisitar } from './cliente'
@@ -7,6 +17,8 @@ import { invalidarUnidades } from './unidades'
 
 export type LinhaDaPreviaImportacao = z.infer<typeof LinhaDaPrevia>
 export type LinhaParaImportar = z.infer<typeof LinhaImportada>
+export type LinhaParaConfirmar = z.infer<typeof LinhaConfirmada>
+export type ErroDaLinha = z.infer<typeof ErroDeCampo>
 export type Previa = z.infer<typeof PreviaImportacao>
 export type ErrosPorLinha = z.infer<typeof ImportacaoRecusada>['erros']
 
@@ -52,6 +64,8 @@ async function enviarPlanilha(arquivo: File): Promise<Previa> {
     resposta = await enviarUmaVez(arquivo)
   }
   if (resposta.status === 0) throw new ErroDaApi(0, { codigo: 'ERRO_INTERNO', mensagem: SEM_CONEXAO }, 'REDE')
+  // Acima do limite, o nginx de produção recusa antes da API, com uma página HTML em vez do erro do app.
+  if (resposta.status === 413) throw new ErroDaApi(413, { codigo: 'REGRA', mensagem: MENSAGEM_PLANILHA_GRANDE })
   if (resposta.status < 200 || resposta.status >= 300) throw erroDeResposta(resposta.status, resposta.corpo)
   const lido = PreviaImportacao.safeParse(resposta.corpo)
   if (!lido.success) throw erroDeResposta(resposta.status, null)
@@ -66,7 +80,7 @@ export function useConfirmarImportacao() {
   const cliente = useQueryClient()
   return useMutation({
     networkMode: 'always',
-    mutationFn: (linhas: LinhaParaImportar[]) =>
+    mutationFn: (linhas: LinhaParaConfirmar[]) =>
       requisitar('/api/desbravadores/importacao', ImportacaoSaida, {
         metodo: 'POST',
         corpo: ImportacaoEntrada.parse({ linhas }),

@@ -4,10 +4,16 @@ import {
   avisoDeSexoDaUnidade,
   DesbravadorCriarEntrada,
   LIMITE_LINHAS_IMPORTACAO,
+  MENSAGEM_JA_EXISTE_NO_CLUBE,
+  mensagemRepetidaNaPlanilha,
   errosDaLinhaImportada,
+  errosEmLista,
   idade,
+  type CampoDaLinhaImportada,
+  type ErroDeCampo,
   type Aviso,
   type ImportacaoEntrada,
+  type LinhaConfirmada,
   type LinhaDaPrevia,
   type LinhaImportada,
   type PreviaImportacao,
@@ -60,10 +66,33 @@ interface ContextoDaPrevia {
 
 const MAXIMO_DA_TRANSACAO_MS = 120_000
 
+/** Ler planilha pesa na memória e na CPU: acima disto, a prévia seguinte espera a vez do Adm. */
+const MAXIMO_DE_PREVIAS_SIMULTANEAS = 2
+
 const textoOuNulo = (texto: string | null): string | null => texto?.trim() || null
 
 /** Classe desligada pelo clube (`ClasseClube.ativa = false`) não existe para a importação. */
 const ativaNoClube = (clubeId: string) => ({ clubes: { none: { clubeId, ativa: false } } })
+
+/**
+ * Mensagem de cada linha repetida — no clube (inclusive inativo) ou numa linha anterior da mesma
+ * confirmação — que chegou sem `importarMesmoRepetido`.
+ */
+function repeticoesSemAMarca(linhas: z.infer<typeof LinhaConfirmada>[], pessoasDoClube: Set<string>): Map<number, string> {
+  const repetidas = new Map<number, string>()
+  const vistas = new Map<string, number>()
+  for (const linha of linhas) {
+    if (!linha.nascimento) continue
+    const chave = chaveDePessoa(linha.nome, linha.nascimento)
+    const anterior = vistas.get(chave)
+    if (!linha.importarMesmoRepetido) {
+      if (pessoasDoClube.has(chave)) repetidas.set(linha.linha, MENSAGEM_JA_EXISTE_NO_CLUBE)
+      else if (anterior !== undefined) repetidas.set(linha.linha, mensagemRepetidaNaPlanilha(anterior))
+    }
+    if (anterior === undefined) vistas.set(chave, linha.linha)
+  }
+  return repetidas
+}
 
 @Injectable()
 export class ImportacaoService {
@@ -73,8 +102,23 @@ export class ImportacaoService {
     private readonly desbravadores: DesbravadoresService,
   ) {}
 
+  /** Prévias lendo planilha agora, neste processo. */
+  private previasEmAndamento = 0
+
   async previa(sessao: SessaoLogada, arquivo: { buffer: Buffer; originalname: string } | undefined): Promise<z.infer<typeof PreviaImportacao>> {
     if (!arquivo) throw new ErroApp('REGRA', 'Escolha a planilha para enviar.')
+    if (this.previasEmAndamento >= MAXIMO_DE_PREVIAS_SIMULTANEAS) {
+      throw new ErroApp('REGRA', 'Outra importação está em andamento; tente de novo em instantes.')
+    }
+    this.previasEmAndamento++
+    try {
+      return await this.lerPrevia(sessao, arquivo)
+    } finally {
+      this.previasEmAndamento--
+    }
+  }
+
+  private async lerPrevia(sessao: SessaoLogada, arquivo: { buffer: Buffer; originalname: string }): Promise<z.infer<typeof PreviaImportacao>> {
     const {
       linhas: [cabecalho, ...dados],
       totalDeDados,
@@ -95,10 +139,10 @@ export class ImportacaoService {
       const repetidaNaLinha = chave ? vistasNaPlanilha.get(chave) : undefined
       if (chave && contexto.pessoasDoClube.has(chave)) {
         linha.duplicado = true
-        linha.avisos.push({ codigo: AVISOS_IMPORTACAO.duplicado, mensagem: 'Já existe no clube um desbravador com este nome e nascimento.' })
+        linha.avisos.push({ codigo: AVISOS_IMPORTACAO.duplicado, mensagem: MENSAGEM_JA_EXISTE_NO_CLUBE })
       } else if (repetidaNaLinha !== undefined) {
         linha.duplicado = true
-        linha.avisos.push({ codigo: AVISOS_IMPORTACAO.duplicado, mensagem: `Esta pessoa já aparece na linha ${repetidaNaLinha} da planilha.` })
+        linha.avisos.push({ codigo: AVISOS_IMPORTACAO.duplicado, mensagem: mensagemRepetidaNaPlanilha(repetidaNaLinha) })
       }
       if (chave && repetidaNaLinha === undefined) vistasNaPlanilha.set(chave, lida.numero)
       linhas.push(linha)
@@ -106,7 +150,11 @@ export class ImportacaoService {
     return { colunasFaltando: [], linhas }
   }
 
-  /** Tudo ou nada: revalida as linhas marcadas e só grava se nenhuma tiver erro. */
+  /**
+   * Tudo ou nada: revalida as linhas marcadas e só grava se nenhuma tiver erro. A pessoa repetida é
+   * conferida dentro da transação, sob a trava do clube: confirmar a mesma lista em duas abas, ou
+   * reenviar depois de uma queda de rede, encontra a primeira gravação e é recusado.
+   */
   async confirmar(sessao: SessaoLogada, entrada: z.infer<typeof ImportacaoEntrada>): Promise<{ importados: number }> {
     const { clubeId } = sessao
     const relogio = await this.escopo.relogio(clubeId)
@@ -114,16 +162,22 @@ export class ImportacaoService {
     const unidadeIds = new Set(unidades.map((unidade) => unidade.id))
     const classesPorId = new Map(classes.map((classe) => [classe.id, classe]))
 
-    const erros = entrada.linhas.flatMap((linha) => {
-      const mensagens = Object.values(errosDaLinhaImportada(linha))
-      if (linha.unidadeId && !unidadeIds.has(linha.unidadeId)) mensagens.push('A unidade escolhida não existe no clube.')
-      if (linha.classeId && !classesPorId.has(linha.classeId)) mensagens.push('A classe escolhida não existe.')
-      return mensagens.length > 0 ? [{ linha: linha.linha, mensagens }] : []
-    })
-    if (erros.length > 0) throw new ErroLinhasDaImportacao(erros)
-
     await this.prisma.$transaction(
       async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`importacao-desbravadores:${clubeId}`}, 0))`
+        const pessoas = await tx.desbravador.findMany({ where: { clubeId }, select: { nome: true, nascimento: true } })
+        const pessoasDoClube = new Set(pessoas.map((pessoa) => chaveDePessoa(pessoa.nome, paraDataCivil(pessoa.nascimento))))
+        const repetidas = repeticoesSemAMarca(entrada.linhas, pessoasDoClube)
+        const erros = entrada.linhas.flatMap((linha) => {
+          const mensagens: z.infer<typeof ErroDeCampo>[] = errosEmLista(errosDaLinhaImportada(linha))
+          if (linha.unidadeId && !unidadeIds.has(linha.unidadeId)) mensagens.push({ campo: 'unidadeId', mensagem: 'A unidade escolhida não existe no clube.' })
+          if (linha.classeId && !classesPorId.has(linha.classeId)) mensagens.push({ campo: 'classeId', mensagem: 'A classe escolhida não existe.' })
+          const repetida = repetidas.get(linha.linha)
+          if (repetida) mensagens.push({ campo: null, mensagem: repetida })
+          return mensagens.length > 0 ? [{ linha: linha.linha, mensagens }] : []
+        })
+        if (erros.length > 0) throw new ErroLinhasDaImportacao(erros)
+
         for (const linha of entrada.linhas) {
           await this.desbravadores.gravarNovo(tx, {
             clubeId,
@@ -186,7 +240,7 @@ export class ImportacaoService {
       return coluna === undefined ? null : (lida.celulas[coluna] ?? null)
     }
     const texto = (campo: CampoDaPlanilha): string => textoDaCelula(celula(campo))
-    const errosDeLeitura: Partial<Record<keyof Linha, string>> = {}
+    const errosDeLeitura: Partial<Record<z.infer<typeof CampoDaLinhaImportada>, string>> = {}
 
     const nascimento = converterData(celula('nascimento'))
     if (!nascimento && texto('nascimento')) errosDeLeitura.nascimento = `Data de nascimento inválida: ${texto('nascimento')}`
@@ -223,7 +277,7 @@ export class ImportacaoService {
       responsavelEmail: texto('responsavelEmail') || null,
       entradaEm: entradaEm ?? '',
     } satisfies Partial<Linha>
-    const erros = Object.values({ ...errosDaLinhaImportada(campos), ...errosDeLeitura })
+    const erros = errosEmLista({ ...errosDaLinhaImportada(campos), ...errosDeLeitura })
     return {
       linha: lida.numero,
       ...campos,

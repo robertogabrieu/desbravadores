@@ -4,6 +4,24 @@ import { Aviso, DataCivil, Email } from './comum'
 
 export const LIMITE_LINHAS_IMPORTACAO = 500
 export const LIMITE_BYTES_IMPORTACAO = 3 * 1024 * 1024
+export const MENSAGEM_PLANILHA_GRANDE = 'A planilha precisa ter até 3 MB.'
+export const MENSAGEM_JA_EXISTE_NO_CLUBE = 'Já existe no clube um desbravador com este nome e nascimento.'
+export const mensagemRepetidaNaPlanilha = (linha: number): string => `Esta pessoa já aparece na linha ${linha} da planilha.`
+
+export const CampoDaLinhaImportada = z.enum([
+  'nome',
+  'nascimento',
+  'sexo',
+  'unidadeId',
+  'classeId',
+  'responsavelNome',
+  'responsavelTelefone',
+  'responsavelEmail',
+  'entradaEm',
+])
+
+/** Erro de uma linha, preso ao campo que o causa; `campo` nulo quando é da linha inteira (a pessoa repetida). */
+export const ErroDeCampo = z.object({ campo: CampoDaLinhaImportada.nullable(), mensagem: z.string() })
 
 /**
  * Uma pessoa da planilha, já convertida. Os campos que a tela edita chegam soltos (texto) de
@@ -23,7 +41,7 @@ export const LinhaImportada = z.object({
 })
 
 export const LinhaDaPrevia = LinhaImportada.extend({
-  erros: z.array(z.string()),
+  erros: z.array(ErroDeCampo),
   avisos: z.array(Aviso),
   duplicado: z.boolean(),
 })
@@ -33,13 +51,19 @@ export const PreviaImportacao = z.object({
   linhas: z.array(LinhaDaPrevia),
 })
 
+/**
+ * Linha enviada na confirmação. `importarMesmoRepetido` é o Adm dizendo que viu o aviso de pessoa
+ * repetida e quer importar assim mesmo; sem ele, a repetida recusa a confirmação inteira.
+ */
+export const LinhaConfirmada = LinhaImportada.extend({ importarMesmoRepetido: z.boolean() })
+
 export const ImportacaoEntrada = z.object({
-  linhas: z.array(LinhaImportada).min(1).max(LIMITE_LINHAS_IMPORTACAO),
+  linhas: z.array(LinhaConfirmada).min(1).max(LIMITE_LINHAS_IMPORTACAO),
 })
 
 export const ImportacaoSaida = z.object({ importados: z.number().int() })
 
-export const ErroDeLinha = z.object({ linha: z.number().int(), mensagens: z.array(z.string()) })
+export const ErroDeLinha = z.object({ linha: z.number().int(), mensagens: z.array(ErroDeCampo) })
 
 /** Corpo do 422 da confirmação: nada foi gravado, e cada linha diz o que corrigir. */
 export const ImportacaoRecusada = z.object({
@@ -57,6 +81,7 @@ export const AVISOS_IMPORTACAO = {
 } as const
 
 type CamposDaLinha = Omit<z.infer<typeof LinhaImportada>, 'linha' | 'unidadeId' | 'classeId'>
+type CampoDaLinha = z.infer<typeof CampoDaLinhaImportada>
 
 /**
  * Erros de forma de uma linha, por campo — a mesma regra na prévia, na confirmação e na tela que
@@ -88,4 +113,12 @@ export function avisoDeSexoDaUnidade(
     return { codigo: AVISOS_IMPORTACAO.sexoUnidade, mensagem: `A unidade ${unidade.nome} é feminina.` }
   }
   return undefined
+}
+
+/** Erros por campo em lista, na ordem das colunas. */
+export function errosEmLista(erros: Partial<Record<CampoDaLinha, string>>): z.infer<typeof ErroDeCampo>[] {
+  return CampoDaLinhaImportada.options.flatMap((campo) => {
+    const mensagem = erros[campo]
+    return mensagem === undefined ? [] : [{ campo, mensagem }]
+  })
 }

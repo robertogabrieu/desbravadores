@@ -12,7 +12,7 @@ Visão, arquitetura e decisões: `docs/planejamento`. Fase 0 (fundação): `docs
 
 ## Pré-requisitos
 
-- Node 22 (`.nvmrc`)
+- Node 22.2 ou mais novo (`.nvmrc`; a leitura de planilha usa `zlib.crc32`)
 - Docker com Compose
 - `age` e `rclone`, só para backup
 

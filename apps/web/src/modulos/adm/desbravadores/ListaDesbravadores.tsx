@@ -1,5 +1,5 @@
 import { FileSpreadsheet, Plus } from 'lucide-react'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { POR_PAGINA, useDesbravadores, useReativarDesbravador } from '../../../api/desbravadores'
 import type { Aviso, Desbravador, SituacaoDesbravador } from '../../../api/desbravadores'
@@ -36,8 +36,14 @@ export function ListaDesbravadores() {
   const [avisos, setAvisos] = useState<Aviso[]>([])
   const [erroAcao, setErroAcao] = useState<string | null>(null)
   const navegar = useNavigate()
-  const estadoDaRota: unknown = useLocation().state
-  const importados = ehResultadoDaImportacao(estadoDaRota) ? estadoDaRota.importados : null
+  const local = useLocation()
+  const estadoDaRota: unknown = local.state
+  const [importados] = useState(() => (ehResultadoDaImportacao(estadoDaRota) ? estadoDaRota.importados : null))
+
+  // O resultado chega no estado da navegação, que sobrevive ao recarregar: lido uma vez, sai do histórico.
+  useEffect(() => {
+    if (ehResultadoDaImportacao(estadoDaRota)) void navegar({ pathname: local.pathname, search: local.search }, { replace: true, state: null })
+  }, [estadoDaRota, local.pathname, local.search, navegar])
 
   const unidades = useUnidades({ todas: true })
   const classes = useClasses({ tipo: 'REGULAR' })

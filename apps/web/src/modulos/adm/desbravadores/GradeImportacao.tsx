@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import type { LinhaParaImportar } from '../../../api/importacao'
 import { estiloControle } from '../../../ui/Campo'
 import { cn } from '../../../ui/cn'
+import { CAMPO_DO_AVISO, bloqueada, todosOsErros } from './revisao-importacao'
 import type { CampoEditavel, LinhaEmRevisao } from './revisao-importacao'
 
 interface Opcao {
@@ -26,6 +27,27 @@ function Celula({ children }: { children: ReactNode }) {
   return <td className="px-2 py-2 align-top">{children}</td>
 }
 
+/** Erro ou aviso mostrado abaixo da linha, com o id que o liga à célula do campo (ou à caixa, se é da linha inteira). */
+interface Mensagem {
+  id: string
+  tipo: 'Erro' | 'Aviso'
+  texto: string
+  campo: CampoEditavel | null
+}
+
+function mensagensDaLinha(linha: LinhaEmRevisao): Mensagem[] {
+  const n = linha.linha
+  const erros = todosOsErros(linha).map(
+    (erro, i): Mensagem => ({ id: `importacao-${n}-erro-${i}`, tipo: 'Erro', texto: erro.mensagem, campo: erro.campo }),
+  )
+  const avisos = linha.avisos.map(
+    (aviso, i): Mensagem => ({ id: `importacao-${n}-aviso-${i}`, tipo: 'Aviso', texto: aviso.mensagem, campo: CAMPO_DO_AVISO[aviso.codigo] ?? null }),
+  )
+  return [...erros, ...avisos]
+}
+
+const idsDe = (mensagens: Mensagem[]): string | undefined => mensagens.map((mensagem) => mensagem.id).join(' ') || undefined
+
 /** Uma linha por pessoa; os erros e avisos dela vêm logo abaixo. A grade rola dentro de si no celular. */
 export function GradeImportacao({ linhas, unidades, classes, aoEditar, aoMarcar }: Propriedades) {
   return (
@@ -43,7 +65,17 @@ export function GradeImportacao({ linhas, unidades, classes, aoEditar, aoMarcar 
         <tbody>
           {linhas.map((linha) => {
             const n = linha.linha
-            const temErro = linha.erros.length > 0
+            const mensagens = mensagensDaLinha(linha)
+            const desabilitada = bloqueada(linha)
+            const idDoBloqueio = `importacao-${n}-bloqueio`
+            const daLinhaInteira = idsDe(mensagens.filter((mensagem) => mensagem.campo === null))
+            const daCelula = (campo: CampoEditavel) => {
+              const doCampo = mensagens.filter((mensagem) => mensagem.campo === campo)
+              return {
+                'aria-invalid': doCampo.some((mensagem) => mensagem.tipo === 'Erro') || undefined,
+                'aria-describedby': idsDe(doCampo),
+              }
+            }
             return (
               <Fragment key={n}>
                 <tr className="border-t border-divisor">
@@ -54,16 +86,22 @@ export function GradeImportacao({ linhas, unidades, classes, aoEditar, aoMarcar 
                         aria-label={`Importar linha ${n}`}
                         className="size-5 shrink-0 accent-marca"
                         checked={linha.marcada}
-                        disabled={temErro}
+                        disabled={desabilitada}
+                        aria-describedby={[desabilitada ? idDoBloqueio : undefined, daLinhaInteira].filter(Boolean).join(' ') || undefined}
                         onChange={(e) => aoMarcar(n, e.target.checked)}
                       />
                       <span aria-hidden>{n}</span>
                     </label>
+                    {desabilitada && (
+                      <span id={idDoBloqueio} className="sr-only">
+                        Corrija os erros desta linha para importar.
+                      </span>
+                    )}
                   </Celula>
                   <Celula>
                     <input
                       aria-label={`Nome, linha ${n}`}
-                      aria-invalid={temErro || undefined}
+                      {...daCelula('nome')}
                       className={cn(estiloControle, 'min-w-56')}
                       value={linha.nome}
                       onChange={(e) => aoEditar(n, 'nome', e.target.value)}
@@ -73,6 +111,7 @@ export function GradeImportacao({ linhas, unidades, classes, aoEditar, aoMarcar 
                     <input
                       type="date"
                       aria-label={`Nascimento, linha ${n}`}
+                      {...daCelula('nascimento')}
                       className={cn(estiloControle, 'min-w-40')}
                       value={linha.nascimento}
                       onChange={(e) => aoEditar(n, 'nascimento', e.target.value)}
@@ -81,6 +120,7 @@ export function GradeImportacao({ linhas, unidades, classes, aoEditar, aoMarcar 
                   <Celula>
                     <select
                       aria-label={`Sexo, linha ${n}`}
+                      {...daCelula('sexo')}
                       className={cn(estiloControle, 'min-w-32')}
                       value={linha.sexo}
                       onChange={(e) => aoEditar(n, 'sexo', e.target.value === 'F' ? 'F' : e.target.value === 'M' ? 'M' : '')}
@@ -93,6 +133,7 @@ export function GradeImportacao({ linhas, unidades, classes, aoEditar, aoMarcar 
                   <Celula>
                     <select
                       aria-label={`Unidade, linha ${n}`}
+                      {...daCelula('unidadeId')}
                       className={cn(estiloControle, 'min-w-40')}
                       value={linha.unidadeId ?? ''}
                       onChange={(e) => aoEditar(n, 'unidadeId', e.target.value || null)}
@@ -108,6 +149,7 @@ export function GradeImportacao({ linhas, unidades, classes, aoEditar, aoMarcar 
                   <Celula>
                     <select
                       aria-label={`Classe, linha ${n}`}
+                      {...daCelula('classeId')}
                       className={cn(estiloControle, 'min-w-40')}
                       value={linha.classeId ?? ''}
                       onChange={(e) => aoEditar(n, 'classeId', e.target.value || null)}
@@ -123,6 +165,7 @@ export function GradeImportacao({ linhas, unidades, classes, aoEditar, aoMarcar 
                   <Celula>
                     <input
                       aria-label={`Responsável, linha ${n}`}
+                      {...daCelula('responsavelNome')}
                       className={cn(estiloControle, 'min-w-48')}
                       value={linha.responsavelNome ?? ''}
                       onChange={(e) => aoEditar(n, 'responsavelNome', textoOuNulo(e.target.value))}
@@ -132,6 +175,7 @@ export function GradeImportacao({ linhas, unidades, classes, aoEditar, aoMarcar 
                     <input
                       type="tel"
                       aria-label={`Telefone, linha ${n}`}
+                      {...daCelula('responsavelTelefone')}
                       className={cn(estiloControle, 'min-w-40')}
                       value={linha.responsavelTelefone ?? ''}
                       onChange={(e) => aoEditar(n, 'responsavelTelefone', textoOuNulo(e.target.value))}
@@ -141,6 +185,7 @@ export function GradeImportacao({ linhas, unidades, classes, aoEditar, aoMarcar 
                     <input
                       type="email"
                       aria-label={`E-mail, linha ${n}`}
+                      {...daCelula('responsavelEmail')}
                       className={cn(estiloControle, 'min-w-56')}
                       value={linha.responsavelEmail ?? ''}
                       onChange={(e) => aoEditar(n, 'responsavelEmail', textoOuNulo(e.target.value))}
@@ -150,24 +195,20 @@ export function GradeImportacao({ linhas, unidades, classes, aoEditar, aoMarcar 
                     <input
                       type="date"
                       aria-label={`Entrada no clube, linha ${n}`}
+                      {...daCelula('entradaEm')}
                       className={cn(estiloControle, 'min-w-40')}
                       value={linha.entradaEm}
                       onChange={(e) => aoEditar(n, 'entradaEm', e.target.value)}
                     />
                   </Celula>
                 </tr>
-                {(temErro || linha.avisos.length > 0) && (
+                {mensagens.length > 0 && (
                   <tr>
                     <td colSpan={COLUNAS.length} className="px-2 pb-3">
                       <ul className="sticky left-2 flex max-w-72 flex-col gap-1 text-sm font-medium">
-                        {linha.erros.map((erro) => (
-                          <li key={erro} className="text-perigo">
-                            <span className="font-bold">Erro:</span> <span>{erro}</span>
-                          </li>
-                        ))}
-                        {linha.avisos.map((aviso) => (
-                          <li key={`${aviso.codigo}-${aviso.mensagem}`} className="text-texto-2">
-                            <span className="font-bold">Aviso:</span> <span>{aviso.mensagem}</span>
+                        {mensagens.map((mensagem) => (
+                          <li key={mensagem.id} id={mensagem.id} className={mensagem.tipo === 'Erro' ? 'text-perigo' : 'text-texto-2'}>
+                            <span className="font-bold">{mensagem.tipo}:</span> <span>{mensagem.texto}</span>
                           </li>
                         ))}
                       </ul>

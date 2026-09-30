@@ -1,10 +1,9 @@
 import { Catch, HttpException, PayloadTooLargeException, type ArgumentsHost, type ExceptionFilter } from '@nestjs/common'
 import type { Response } from 'express'
-import type { ErroApi, ErroDeLinha, ImportacaoRecusada } from '@desbravadores/shared'
+import { MENSAGEM_PLANILHA_GRANDE, type ErroApi, type ErroDeLinha, type ImportacaoRecusada } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { STATUS_POR_CODIGO } from '../comum/erros'
 
-export const MENSAGEM_PLANILHA_GRANDE = 'A planilha precisa ter até 3 MB.'
 export const MENSAGEM_LINHAS_COM_ERRO = 'Há linhas com erro. Nada foi importado: corrija e confirme de novo.'
 
 /** Confirmação recusada inteira: carrega o que corrigir em cada linha. */

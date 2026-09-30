@@ -1,3 +1,4 @@
+import { LIMITE_BYTES_IMPORTACAO, MENSAGEM_PLANILHA_GRANDE } from '@desbravadores/shared'
 import { ArrowLeft, Download } from 'lucide-react'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
@@ -13,7 +14,7 @@ import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { Carregando, DisponivelComInternet } from '../../../ui/EstadosDeCarga'
 import { MENSAGEM_GENERICA, lerErroDaApi } from './erros'
 import { GradeImportacao } from './GradeImportacao'
-import { aplicarRecusa, contar, editarCelula, paraEnvio, paraRevisao } from './revisao-importacao'
+import { aplicarRecusa, contar, editarCelula, marcarLinha, paraEnvio, paraRevisao } from './revisao-importacao'
 import type { CampoEditavel, LinhaEmRevisao } from './revisao-importacao'
 
 export const ROTA_LISTA = '/adm/desbravadores'
@@ -40,6 +41,10 @@ function EtapaEnviar({ aoLer }: { aoLer: (linhas: LinhaEmRevisao[]) => void }) {
     setSemLinhas(false)
     if (!arquivo) {
       setErro('Escolha a planilha no seu computador.')
+      return
+    }
+    if (arquivo.size > LIMITE_BYTES_IMPORTACAO) {
+      setErro(MENSAGEM_PLANILHA_GRANDE)
       return
     }
     try {
@@ -127,7 +132,7 @@ function EtapaRevisar({ linhasIniciais, aoRecomecar }: { linhasIniciais: LinhaEm
   }
 
   function aoMarcar(numero: number, marcada: boolean) {
-    setLinhas((atuais) => atuais.map((linha) => (linha.linha === numero ? { ...linha, marcada } : linha)))
+    setLinhas((atuais) => atuais.map((linha) => (linha.linha === numero ? marcarLinha(linha, marcada) : linha)))
   }
 
   async function aoConfirmar() {

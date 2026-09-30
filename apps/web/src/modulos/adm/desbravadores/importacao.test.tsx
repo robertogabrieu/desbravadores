@@ -1,8 +1,9 @@
+import { LinhaImportada } from '@desbravadores/shared'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ModoConexao } from '../../../offline'
-import type { Previa } from '../../../api/importacao'
+import type { LinhaDaPreviaImportacao, Previa } from '../../../api/importacao'
 import { criarClasse, criarUnidade, handlerClasses, handlerUnidades } from '../../../testes/handlers/leitura'
 import {
   criarLinhaDaPrevia,
@@ -12,7 +13,6 @@ import {
 import { uuid } from '../../../testes/handlers/sessao'
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
-import { paraEnvio } from './revisao-importacao'
 import { rotasAdmDesbravadores } from './rotas'
 
 const offline = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao }))
@@ -66,7 +66,7 @@ const duplicada = criarLinhaDaPrevia({
   duplicado: true,
   avisos: [{ codigo: 'AVISO_DUPLICADO', mensagem: 'Já existe no clube um desbravador com este nome e nascimento.' }],
 })
-const comErro = criarLinhaDaPrevia({ linha: 5, nome: 'D', erros: ['O nome precisa ter de 2 a 120 letras.'] })
+const comErro = criarLinhaDaPrevia({ linha: 5, nome: 'D', erros: [{ campo: 'nome', mensagem: 'O nome precisa ter de 2 a 120 letras.' }] })
 const previaCompleta: Previa = { colunasFaltando: [], linhas: [pronta, outraPronta, duplicada, comErro] }
 
 function abrir() {
@@ -74,10 +74,18 @@ function abrir() {
   return renderizarRotas(rotasAdmDesbravadores, '/adm/desbravadores/importar')
 }
 
-async function enviar() {
-  await userEvent.upload(await screen.findByLabelText('Planilha'), planilha())
+async function enviar(arquivo = planilha()) {
+  await userEvent.upload(await screen.findByLabelText('Planilha'), arquivo)
   await userEvent.click(screen.getByRole('button', { name: 'Enviar planilha' }))
 }
+
+/** O que a confirmação deve receber de uma linha da prévia. */
+function enviada(linha: LinhaDaPreviaImportacao) {
+  return { ...LinhaImportada.parse(linha), importarMesmoRepetido: linha.duplicado }
+}
+
+const RECUSA = 'Há linhas com erro. Nada foi importado: corrija e confirme de novo.'
+const JA_EXISTE = 'Já existe no clube um desbravador com este nome e nascimento.'
 
 describe('importar planilha · enviar', () => {
   it('estado inicial: diz as colunas obrigatórias e oferece o modelo', async () => {
@@ -101,6 +109,21 @@ describe('importar planilha · enviar', () => {
     await enviar()
     expect(await screen.findByRole('alert')).toHaveTextContent('A planilha tem 600 linhas; o limite é 500. Divida a planilha.')
     expect(screen.getByRole('button', { name: 'Enviar planilha' })).toBeEnabled()
+  })
+
+  it('planilha acima de 3 MB: avisa sem enviar', async () => {
+    const { enviados } = simularPrevia(previaCompleta)
+    abrir()
+    await enviar(new File([new Uint8Array(3 * 1024 * 1024 + 1)], 'grande.xlsx'))
+    expect(await screen.findByRole('alert')).toHaveTextContent('A planilha precisa ter até 3 MB.')
+    expect(enviados).toEqual([])
+  })
+
+  it('413 da prévia (o servidor barrou pelo tamanho): mesma mensagem de 3 MB', async () => {
+    simularPrevia('<html><body>413 Request Entity Too Large</body></html>', 413)
+    abrir()
+    await enviar()
+    expect(await screen.findByRole('alert')).toHaveTextContent('A planilha precisa ter até 3 MB.')
   })
 
   it('sem conexão: a tela avisa que depende da internet', async () => {
@@ -154,6 +177,33 @@ describe('importar planilha · revisar', () => {
     expect(screen.getByRole('button', { name: 'Importar 3 desbravadores' })).toBeInTheDocument()
   })
 
+  it('acessibilidade: cada célula com erro é inválida e descrita pela mensagem; a caixa bloqueada diz por quê', async () => {
+    const variosErros = criarLinhaDaPrevia({
+      linha: 6,
+      nome: 'Eva Erros',
+      nascimento: '',
+      responsavelEmail: 'ruim',
+      erros: [
+        { campo: 'nascimento', mensagem: 'Data de nascimento inválida: 2015' },
+        { campo: 'responsavelEmail', mensagem: 'E-mail inválido: ruim' },
+      ],
+      avisos: [{ codigo: 'AVISO_UNIDADE_INEXISTENTE', mensagem: 'A unidade Falcões não existe no clube' }],
+    })
+    simularPrevia({ colunasFaltando: [], linhas: [variosErros, duplicada] })
+    abrir()
+    await enviar()
+    const nascimento = await screen.findByLabelText('Nascimento, linha 6')
+    expect(nascimento).toHaveAttribute('aria-invalid', 'true')
+    expect(nascimento).toHaveAccessibleDescription('Erro: Data de nascimento inválida: 2015')
+    const email = screen.getByRole('textbox', { name: 'E-mail, linha 6' })
+    expect(email).toBeInvalid()
+    expect(email).toHaveAccessibleDescription('Erro: E-mail inválido: ruim')
+    expect(screen.getByRole('textbox', { name: 'Nome, linha 6' })).not.toBeInvalid()
+    expect(screen.getByRole('combobox', { name: 'Unidade, linha 6' })).toHaveAccessibleDescription('Aviso: A unidade Falcões não existe no clube')
+    expect(screen.getByRole('checkbox', { name: 'Importar linha 6' })).toHaveAccessibleDescription('Corrija os erros desta linha para importar.')
+    expect(screen.getByRole('checkbox', { name: 'Importar linha 4' })).toHaveAccessibleDescription(`Aviso: ${JA_EXISTE}`)
+  })
+
   it('editar a célula refaz a validação daquela linha', async () => {
     simularPrevia(previaCompleta)
     abrir()
@@ -194,8 +244,33 @@ describe('importar planilha · confirmar', () => {
     await enviar()
     await userEvent.click(await screen.findByRole('button', { name: 'Importar 2 desbravadores' }))
     await waitFor(() => expect(roteador.state.location.pathname).toBe('/adm/desbravadores'))
-    expect(recebidos).toEqual([{ linhas: [pronta, outraPronta].map((linha) => paraEnvio({ ...linha, marcada: true })) }])
+    expect(recebidos).toEqual([{ linhas: [pronta, outraPronta].map(enviada) }])
     expect(await screen.findByText('2 desbravadores importados.')).toBeInTheDocument()
+  })
+
+  it('a mensagem de importados aparece uma vez: o state da navegação é limpo ao exibir', async () => {
+    simularPrevia(previaCompleta)
+    servidor.use(handlerConfirmarImportacao({ importados: 2 }, 201))
+    const { roteador } = abrir()
+    await enviar()
+    await userEvent.click(await screen.findByRole('button', { name: 'Importar 2 desbravadores' }))
+    expect(await screen.findByText('2 desbravadores importados.')).toBeInTheDocument()
+    await waitFor(() => expect(roteador.state.location.state).toBeNull())
+    expect(roteador.state.location.pathname).toBe('/adm/desbravadores')
+    expect(screen.getByText('2 desbravadores importados.')).toBeInTheDocument()
+  })
+
+  it('duplicada marcada pelo Adm vai com a marca de repetida', async () => {
+    const recebidos: unknown[] = []
+    simularPrevia({ colunasFaltando: [], linhas: [pronta, duplicada] })
+    servidor.use(handlerConfirmarImportacao({ importados: 2 }, 201, (c) => recebidos.push(c)))
+    abrir()
+    await enviar()
+    await userEvent.click(await screen.findByRole('checkbox', { name: 'Importar linha 4' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Importar 2 desbravadores' }))
+    await waitFor(() => expect(recebidos).toHaveLength(1))
+    expect(recebidos[0]).toEqual({ linhas: [enviada(pronta), enviada(duplicada)] })
+    expect(recebidos[0]).toMatchObject({ linhas: [{ importarMesmoRepetido: false }, { importarMesmoRepetido: true }] })
   })
 
   it('422: mostra os erros em cada linha, desmarca e não sai da tela', async () => {
@@ -204,8 +279,8 @@ describe('importar planilha · confirmar', () => {
       handlerConfirmarImportacao(
         {
           codigo: 'REGRA',
-          mensagem: 'Há linhas com erro. Nada foi importado: corrija e confirme de novo.',
-          erros: [{ linha: 3, mensagens: ['A unidade escolhida não existe no clube.'] }],
+          mensagem: RECUSA,
+          erros: [{ linha: 3, mensagens: [{ campo: 'unidadeId', mensagem: 'A unidade escolhida não existe no clube.' }] }],
         },
         422,
       ),
@@ -217,6 +292,92 @@ describe('importar planilha · confirmar', () => {
     expect(screen.getByText('Há linhas com erro. Nada foi importado: corrija e confirme de novo.')).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Importar linha 3' })).toBeDisabled()
     expect(roteador.state.location.pathname).toBe('/adm/desbravadores/importar')
+  })
+
+  it('422: editar outra célula mantém o erro do servidor; editar o campo dele apaga só aquele', async () => {
+    simularPrevia({ colunasFaltando: [], linhas: [pronta, outraPronta] })
+    servidor.use(
+      handlerConfirmarImportacao(
+        {
+          codigo: 'REGRA',
+          mensagem: RECUSA,
+          erros: [
+            {
+              linha: 3,
+              mensagens: [
+                { campo: 'unidadeId', mensagem: 'A unidade escolhida não existe no clube.' },
+                { campo: 'classeId', mensagem: 'A classe escolhida não existe.' },
+              ],
+            },
+          ],
+        },
+        422,
+      ),
+    )
+    abrir()
+    await enviar()
+    await userEvent.click(await screen.findByRole('button', { name: 'Importar 2 desbravadores' }))
+    await screen.findByText('A unidade escolhida não existe no clube.')
+
+    await userEvent.type(screen.getByLabelText('Telefone, linha 3'), '11 9999-0000')
+    expect(screen.getByText('A unidade escolhida não existe no clube.')).toBeInTheDocument()
+    expect(screen.getByText('A classe escolhida não existe.')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Importar linha 3' })).toBeDisabled()
+    expect(screen.getByLabelText('Unidade, linha 3')).toBeInvalid()
+
+    await userEvent.selectOptions(screen.getByLabelText('Unidade, linha 3'), 'Águias')
+    expect(screen.queryByText('A unidade escolhida não existe no clube.')).not.toBeInTheDocument()
+    expect(screen.getByText('A classe escolhida não existe.')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Importar linha 3' })).toBeDisabled()
+
+    await userEvent.selectOptions(screen.getByLabelText('Classe, linha 3'), 'Amigo')
+    expect(screen.queryByText('A classe escolhida não existe.')).not.toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Importar linha 3' })).toBeChecked()
+  })
+
+  it('422 de pessoa repetida: erro da linha inteira; some ao marcar, e o reenvio leva a marca de repetida', async () => {
+    const recebidos: unknown[] = []
+    simularPrevia({ colunasFaltando: [], linhas: [pronta, outraPronta] })
+    servidor.use(
+      handlerConfirmarImportacao(
+        { codigo: 'REGRA', mensagem: RECUSA, erros: [{ linha: 2, mensagens: [{ campo: null, mensagem: JA_EXISTE }] }] },
+        422,
+        (c) => recebidos.push(c),
+      ),
+    )
+    abrir()
+    await enviar()
+    await userEvent.click(await screen.findByRole('button', { name: 'Importar 2 desbravadores' }))
+    await screen.findByText(JA_EXISTE)
+    const caixa = screen.getByRole('checkbox', { name: 'Importar linha 2' })
+    expect(caixa).toBeEnabled()
+    expect(caixa).not.toBeChecked()
+    expect(caixa).toHaveAccessibleDescription(`Erro: ${JA_EXISTE}`)
+
+    await userEvent.type(screen.getByLabelText('Telefone, linha 2'), '1')
+    expect(screen.getByText(JA_EXISTE)).toBeInTheDocument()
+
+    await userEvent.click(caixa)
+    expect(screen.queryByText(JA_EXISTE)).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Importar 2 desbravadores' }))
+    await waitFor(() => expect(recebidos).toHaveLength(2))
+    expect(recebidos[1]).toMatchObject({ linhas: [{ linha: 2, importarMesmoRepetido: true }, { linha: 3, importarMesmoRepetido: false }] })
+  })
+
+  it('422 de pessoa repetida: editar o nome também apaga o erro da linha inteira', async () => {
+    simularPrevia({ colunasFaltando: [], linhas: [pronta] })
+    servidor.use(
+      handlerConfirmarImportacao(
+        { codigo: 'REGRA', mensagem: RECUSA, erros: [{ linha: 2, mensagens: [{ campo: null, mensagem: JA_EXISTE }] }] },
+        422,
+      ),
+    )
+    abrir()
+    await enviar()
+    await userEvent.click(await screen.findByRole('button', { name: 'Importar 1 desbravador' }))
+    await screen.findByText(JA_EXISTE)
+    await userEvent.type(screen.getByLabelText('Nome, linha 2'), ' Neto')
+    expect(screen.queryByText(JA_EXISTE)).not.toBeInTheDocument()
   })
 })
 
