@@ -40,34 +40,39 @@ describe('Configurações do clube · estados', () => {
     expect(await screen.findByText('Disponível quando houver internet')).toBeInTheDocument()
   })
 
-  it('vazio não existe: local nulo abre um campo em branco; fuso e início do ano só leitura', async () => {
+  it('vazio não existe: local nulo abre um campo em branco; fuso e início do ano são só texto', async () => {
     abrir(handlerConfiguracao(criarConfiguracao({ localReuniaoPadrao: null })))
     expect(await screen.findByLabelText('Local padrão')).toHaveValue('')
     expect(screen.getByLabelText('Dia da reunião')).toHaveValue('6')
-    expect(screen.getByLabelText('Fuso horário')).toBeDisabled()
-    expect(screen.getByLabelText('Início do ano do clube')).toHaveValue('01/02')
-    expect(screen.getByLabelText('Início do ano do clube')).toBeDisabled()
+    expect(screen.getByText(/America\/Sao_Paulo/)).toHaveTextContent('01/02')
+    expect(screen.queryByLabelText('Fuso horário')).not.toBeInTheDocument()
+  })
+
+  it('a meta de frequência não aparece: nenhuma tela a usa ainda', async () => {
+    abrir(handlerConfiguracao())
+    await screen.findByLabelText('Dia da reunião')
+    expect(screen.queryByLabelText(/Meta de frequência/)).not.toBeInTheDocument()
   })
 })
 
 describe('Configurações do clube · salvar', () => {
-  it('envia só os campos editáveis e confirma', async () => {
+  it('envia os campos editáveis, mantém a meta gravada e confirma', async () => {
     let corpo: Record<string, unknown> = {}
     abrir(handlerConfiguracao(), handlerSalvarConfiguracao(criarConfiguracao(), (c) => (corpo = c as Record<string, unknown>)))
     await userEvent.selectOptions(await screen.findByLabelText('Dia da reunião'), '0')
-    await userEvent.clear(screen.getByLabelText('Meta de frequência (%)'))
-    await userEvent.type(screen.getByLabelText('Meta de frequência (%)'), '90')
+    await userEvent.clear(screen.getByLabelText('Alerta de frequência'))
+    await userEvent.type(screen.getByLabelText('Alerta de frequência'), '70')
     await userEvent.clear(screen.getByLabelText('Local padrão'))
-    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar configurações' }))
 
     expect(await screen.findByText('Configurações salvas.')).toBeInTheDocument()
     expect(corpo).toEqual({
       diaReuniao: 0,
       horaReuniao: '15:00',
       localReuniaoPadrao: null,
-      limiarFrequenciaAlerta: 60,
+      limiarFrequenciaAlerta: 70,
       limiarProgressoAlerta: 40,
-      metaFrequencia: 90,
+      metaFrequencia: criarConfiguracao().metaFrequencia,
     })
   })
 
@@ -75,7 +80,7 @@ describe('Configurações do clube · salvar', () => {
     const mensagem = 'Há aulas marcadas no dia atual de reunião: Amigo. Mova-as antes.'
     abrir(handlerConfiguracao(), handlerErroSalvarConfiguracao(422, { codigo: 'REGRA', mensagem }))
     await userEvent.selectOptions(await screen.findByLabelText('Dia da reunião'), '2')
-    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar configurações' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(mensagem)
     expect(screen.queryByText('Configurações salvas.')).not.toBeInTheDocument()
@@ -84,9 +89,9 @@ describe('Configurações do clube · salvar', () => {
   it('número fora de 0–100 é barrado antes de enviar', async () => {
     let chamadas = 0
     abrir(handlerConfiguracao(), handlerSalvarConfiguracao(criarConfiguracao(), () => chamadas++))
-    await userEvent.clear(await screen.findByLabelText('Meta de frequência (%)'))
-    await userEvent.type(screen.getByLabelText('Meta de frequência (%)'), '150')
-    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    await userEvent.clear(await screen.findByLabelText('Alerta de frequência'))
+    await userEvent.type(screen.getByLabelText('Alerta de frequência'), '150')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar configurações' }))
 
     expect(await screen.findByText('Informe um número de 0 a 100')).toBeInTheDocument()
     await waitFor(() => expect(chamadas).toBe(0))

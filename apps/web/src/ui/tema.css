@@ -58,6 +58,23 @@
   h1, h2, h3 {
     font-family: var(--font-display);
   }
+  /* O Tailwind 4 deixou o botão com o cursor de seta: sem a mãozinha, o clicável não parece clicável. */
+  button,
+  [role="button"],
+  select,
+  summary,
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="file"],
+  label:has(> input[type="checkbox"]),
+  label:has(> input[type="radio"]) {
+    cursor: pointer;
+  }
+  :disabled,
+  [aria-disabled="true"],
+  label:has(> input:disabled) {
+    cursor: not-allowed;
+  }
   /* 16 px evita o zoom automático do iOS ao focar um campo. */
   input, select, textarea {
     font-size: 16px;

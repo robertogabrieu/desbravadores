@@ -42,20 +42,34 @@ interface Propriedades extends InputHTMLAttributes<HTMLInputElement> {
   rotulo: string
   ajuda?: string
   erro?: string
+  /** Unidade escrita ao lado do campo ("%", "km"): o campo curto não precisa repeti-la no valor. */
+  sufixo?: string
 }
 
-export function Campo({ rotulo, ajuda, erro, className, id, ...resto }: Propriedades) {
+export function Campo({ rotulo, ajuda, erro, sufixo, className, id, ...resto }: Propriedades) {
   const gerado = useId()
   const idCampo = id ?? gerado
+  const controle = (
+    <input
+      id={idCampo}
+      aria-invalid={erro ? true : undefined}
+      aria-describedby={descreverCampo(idCampo, ajuda, erro)}
+      className={cn(estiloControle, className)}
+      {...resto}
+    />
+  )
   return (
     <CampoRotulado rotulo={rotulo} ajuda={ajuda} erro={erro} idCampo={idCampo}>
-      <input
-        id={idCampo}
-        aria-invalid={erro ? true : undefined}
-        aria-describedby={descreverCampo(idCampo, ajuda, erro)}
-        className={cn(estiloControle, className)}
-        {...resto}
-      />
+      {sufixo ? (
+        <div className="flex items-center gap-2">
+          {controle}
+          <span aria-hidden className="text-base font-semibold text-texto-2">
+            {sufixo}
+          </span>
+        </div>
+      ) : (
+        controle
+      )}
     </CampoRotulado>
   )
 }

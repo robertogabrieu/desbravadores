@@ -43,7 +43,8 @@ export function MenuCabecalho({ rotulo, itens }: Propriedades) {
         onClick={() => definirAberto(!aberto)}
         className="flex min-h-[var(--touch-min)] items-center gap-1.5 rounded-botao px-3 text-base font-semibold hover:bg-black/5"
       >
-        {rotulo}
+        {/* Nome comprido não quebra o cabeçalho do celular em duas linhas. */}
+        <span className="max-w-[40vw] truncate sm:max-w-xs">{rotulo}</span>
         <ChevronDown aria-hidden className="size-4" />
       </button>
       {aberto && (

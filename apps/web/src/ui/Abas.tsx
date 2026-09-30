@@ -25,7 +25,11 @@ export function Abas({ rotulo, abas, ativa, aoMudar }: Propriedades) {
   }
 
   return (
-    <div role="tablist" aria-label={rotulo} className="flex gap-1 rounded-botao bg-trilho p-1">
+    <div
+      role="tablist"
+      aria-label={rotulo}
+      className="flex max-w-full gap-1 overflow-x-auto rounded-botao bg-trilho p-1"
+    >
       {abas.map((aba, indice) => {
         const selecionada = aba.id === ativa
         return (
@@ -40,7 +44,9 @@ export function Abas({ rotulo, abas, ativa, aoMudar }: Propriedades) {
             onKeyDown={(evento) => aoTeclar(evento, indice)}
             className={cn(
               'min-h-[var(--touch-min)] flex-1 rounded-controle px-3 text-base font-semibold focus-visible:outline-2 focus-visible:outline-marca',
-              selecionada ? 'bg-superficie text-marca shadow-[var(--shadow-segment)]' : 'text-texto-2',
+              selecionada
+                ? 'bg-superficie text-marca shadow-[var(--shadow-segment)]'
+                : 'text-texto-2',
             )}
           >
             {aba.rotulo}

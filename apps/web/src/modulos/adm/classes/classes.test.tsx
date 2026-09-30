@@ -35,6 +35,7 @@ afterEach(() => {
 const amigo = criarClasse({ id: uuid(101), nome: 'Amigo', idade: 10, ordem: 1 })
 const companheiro = criarClasse({ id: uuid(102), nome: 'Companheiro', idade: 11, ordem: 2, ativa: false })
 const avancada = criarClasse({ id: uuid(103), nome: 'Amigo da Natureza', idade: null, tipo: 'AVANCADA', ordem: 7 })
+const agrupada = criarClasse({ id: uuid(104), nome: 'Agrupadas (Amigo a Guia)', idade: 16, trilha: 'AGRUPADAS', ordem: 13 })
 
 const oficialLigado = { ativo: true, campo: false }
 const ajustado = criarRequisito({ id: uuid(601), codigo: 'G.2', texto: 'Ler um livro', ativo: false, campo: true, oficial: oficialLigado, ajustado: true })
@@ -50,11 +51,16 @@ const detalheDeAmigo = criarDetalhe({
 })
 
 function abrirClasses(rota = '/adm/classes') {
-  servidor.use(handlerClasses([amigo, companheiro, avancada]), handlerDetalheDaClasse(detalheDeAmigo))
+  servidor.use(handlerClasses([amigo, companheiro, avancada, agrupada]), handlerDetalheDaClasse(detalheDeAmigo))
   return renderizarRotas(rotasAdmClasses, rota)
 }
 
 const requisito = (codigo: string) => within(screen.getByRole('listitem', { name: `Requisito ${codigo}` }))
+
+/** As seções chegam fechadas: abre a pedida pelo botão do cabeçalho. */
+async function abrirSecao(nome: RegExp) {
+  await userEvent.click(await screen.findByRole('button', { name: nome }))
+}
 
 describe('A5 · classes · quatro estados', () => {
   it('carregando', () => {
@@ -85,14 +91,31 @@ describe('A5 · classes · quatro estados', () => {
 })
 
 describe('A5 · classes · lista e detalhe', () => {
-  it('lista na ordem, separa regulares de avançadas e abre a primeira; contagens são as reais', async () => {
+  it('lista na ordem em três grupos, regulares, avançadas e agrupadas, e abre a primeira; contagens são as reais', async () => {
     abrirClasses()
     const nav = within(await screen.findByRole('navigation', { name: 'Classes' }))
-    expect(nav.getAllByRole('button').map((b) => b.textContent)).toEqual(['Amigo10 anos', 'CompanheiroInativa11 anos', 'Amigo da Natureza'])
+    expect(nav.getAllByRole('heading').map((h) => h.textContent)).toEqual(['Regulares', 'Avançadas', 'Agrupadas'])
+    expect(nav.getAllByRole('button').map((b) => b.textContent)).toEqual([
+      'Amigo10 anos',
+      'CompanheiroInativa11 anos',
+      'Amigo da Natureza',
+      'Agrupadas (Amigo a Guia)16 anos',
+    ])
     expect(await screen.findByRole('heading', { name: 'Amigo', level: 2 })).toBeInTheDocument()
-    expect(screen.getByText('2 requisitos ativos')).toBeInTheDocument()
-    expect(within(screen.getByRole('region', { name: 'Gerais' })).getByText('1 requisito')).toBeInTheDocument()
+    expect(screen.getByText('2 requisitos ativos · 1 ajustado pelo clube')).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Gerais' })).getByText('1 requisito · 1 ajustado')).toBeInTheDocument()
     expect(within(screen.getByRole('region', { name: 'Descoberta espiritual' })).getByText('1 requisito')).toBeInTheDocument()
+  })
+
+  it('as seções chegam fechadas e abrem pelo cabeçalho', async () => {
+    abrirClasses()
+    const cabecalho = await screen.findByRole('button', { name: /Gerais/ })
+    expect(cabecalho).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('listitem', { name: 'Requisito G.1' })).not.toBeInTheDocument()
+    await userEvent.click(cabecalho)
+    expect(cabecalho).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('listitem', { name: 'Requisito G.1' })).toBeInTheDocument()
+    expect(screen.queryByRole('listitem', { name: 'Requisito DE.1' })).not.toBeInTheDocument()
   })
 
   it('?classe= abre a classe pedida e clicar em outra troca o parâmetro', async () => {
@@ -109,10 +132,9 @@ describe('A5 · classes · lista e detalhe', () => {
     const corpos: unknown[] = []
     abrirClasses()
     servidor.use(handlerEditarClasse((id, corpo) => corpos.push({ id, corpo })))
-    const seletor = await screen.findByLabelText('Quem monta o cronograma')
-    expect(seletor).toHaveValue('ADM')
-    expect(within(seletor).getByRole('option', { name: 'Instrutores da classe' })).toBeInTheDocument()
-    await userEvent.selectOptions(seletor, 'Instrutores da classe')
+    const grupo = within(await screen.findByRole('radiogroup', { name: 'Quem monta o cronograma' }))
+    expect(grupo.getByRole('radio', { name: 'Adm' })).toBeChecked()
+    await userEvent.click(grupo.getByRole('radio', { name: 'Instrutores da classe' }))
     await userEvent.click(screen.getByRole('checkbox', { name: 'Ativa' }))
     await waitFor(() => expect(corpos).toHaveLength(2))
     expect(corpos[0]).toEqual({ id: amigo.id, corpo: { quemMontaCronograma: 'INSTRUTOR' } })
@@ -129,10 +151,12 @@ describe('A5 · classes · lista e detalhe', () => {
 })
 
 describe('A5 · classes · ajuste de requisito', () => {
-  it('mostra o valor oficial ao lado; só o ajustado oferece "Voltar ao oficial"', async () => {
+  it('só o ajustado se destaca e oferece "Voltar ao oficial"; o igual ao oficial não repete o oficial', async () => {
     abrirClasses()
-    await screen.findByRole('listitem', { name: 'Requisito G.2' })
-    expect(requisito('G.2').getAllByText(/^Oficial:/).map((e) => e.textContent)).toEqual(['Oficial: sim', 'Oficial: não'])
+    await abrirSecao(/Gerais/)
+    expect(requisito('G.2').getByText('Ajustado pelo clube')).toBeInTheDocument()
+    expect(requisito('G.1').queryByText('Ajustado pelo clube')).not.toBeInTheDocument()
+    expect(screen.queryByText(/^Oficial:/)).not.toBeInTheDocument()
     expect(requisito('G.2').getByRole('checkbox', { name: 'Ativo' })).not.toBeChecked()
     expect(requisito('G.2').getByRole('checkbox', { name: 'Campo' })).toBeChecked()
     expect(requisito('G.2').getByRole('button', { name: 'Voltar ao oficial' })).toBeInTheDocument()
@@ -143,7 +167,7 @@ describe('A5 · classes · ajuste de requisito', () => {
     const chamadas: Array<{ id: string; corpo: unknown }> = []
     abrirClasses()
     servidor.use(handlerAjusteDoRequisito((id, corpo) => chamadas.push({ id, corpo })))
-    await screen.findByRole('listitem', { name: 'Requisito G.1' })
+    await abrirSecao(/Gerais/)
     await userEvent.click(requisito('G.1').getByRole('checkbox', { name: 'Campo' }))
     await waitFor(() => expect(chamadas).toHaveLength(1))
     await userEvent.click(requisito('G.2').getByRole('checkbox', { name: 'Ativo' }))
@@ -167,7 +191,7 @@ describe('A5 · classes · ajuste de requisito', () => {
       }),
       handlerAjusteDoRequisito(),
     )
-    await screen.findByRole('listitem', { name: 'Requisito G.1' })
+    await abrirSecao(/Gerais/)
     const antes = leituras
     await userEvent.click(requisito('G.1').getByRole('checkbox', { name: 'Campo' }))
     await waitFor(() => expect(leituras).toBeGreaterThan(antes))
@@ -217,14 +241,26 @@ describe('A5 · especialidades', () => {
     expect(await screen.findByText('Disponível quando houver internet')).toBeInTheDocument()
   })
 
-  it('lista por área com contagem e marca as do clube; a busca ignora acento e caixa', async () => {
+  it('áreas chegam fechadas com contagem, quantas são do clube e exemplos; abrem pelo cabeçalho', async () => {
     await abrirEspecialidades()
     const aventura = within(await screen.findByRole('region', { name: 'Aventura' }))
-    expect(aventura.getByText('2 esp.')).toBeInTheDocument()
-    expect(aventura.getByText('Do clube')).toBeInTheDocument()
+    const cabecalho = aventura.getByRole('button', { name: /Aventura/ })
+    expect(cabecalho).toHaveAttribute('aria-expanded', 'false')
+    expect(aventura.getByText('2 especialidades · 1 do clube')).toBeInTheDocument()
+    expect(aventura.getByText('Acampamento, Orientação')).toBeInTheDocument()
+    expect(aventura.queryByRole('listitem')).not.toBeInTheDocument()
+    await userEvent.click(cabecalho)
+    expect(cabecalho).toHaveAttribute('aria-expanded', 'true')
+    expect(aventura.getAllByRole('listitem').map((item) => item.textContent)).toEqual(['Acampamento', 'OrientaçãoDo clube'])
+  })
+
+  it('a busca ignora acento e caixa, abre as áreas com resultado e esconde as outras', async () => {
+    await abrirEspecialidades()
+    await screen.findByRole('region', { name: 'Aventura' })
     await userEvent.type(screen.getByLabelText('Buscar especialidade'), 'ORIENTACAO')
-    expect(screen.getByText('Orientação')).toBeInTheDocument()
-    expect(screen.queryByText('Acampamento')).not.toBeInTheDocument()
+    const aventura = within(screen.getByRole('region', { name: 'Aventura' }))
+    expect(aventura.getByRole('button', { name: /Aventura/ })).toHaveAttribute('aria-expanded', 'true')
+    expect(aventura.getAllByRole('listitem').map((item) => item.textContent)).toEqual(['OrientaçãoDo clube'])
     expect(screen.queryByRole('region', { name: 'Artes e habilidades manuais' })).not.toBeInTheDocument()
     await userEvent.clear(screen.getByLabelText('Buscar especialidade'))
     await userEvent.type(screen.getByLabelText('Buscar especialidade'), 'zzz')

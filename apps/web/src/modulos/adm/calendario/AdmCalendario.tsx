@@ -17,7 +17,17 @@ import { FolhaLateral } from '../../../ui/FolhaLateral'
 import { cn } from '../../../ui/cn'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/EstadosDeCarga'
 import { lerErroDaApi } from '../desbravadores/erros'
-import { DIAS_DA_SEMANA, MESES, MESES_CURTOS, chaveDoDia, dataBrasileira, diaEMes, diasDaGrade, eventosDoDia, eventosDoMes } from './datas'
+import {
+  DIAS_DA_SEMANA,
+  MESES,
+  MESES_CURTOS,
+  chaveDoDia,
+  dataBrasileira,
+  diaEMes,
+  diasDaGrade,
+  eventosDoDia,
+  eventosDoMes,
+} from './datas'
 import { FormularioEvento } from './FormularioEvento'
 import { COR_DA_REUNIAO, CORES_DO_TIPO, ROTULOS_DO_TIPO } from './tipos'
 
@@ -33,7 +43,9 @@ export function textoDasAulasAfetadas(aulas: AulaAfetada[]): string {
 }
 
 const periodo = (evento: EventoCalendario): string =>
-  evento.inicio === evento.fim ? dataBrasileira(evento.inicio) : `${dataBrasileira(evento.inicio)} a ${dataBrasileira(evento.fim)}`
+  evento.inicio === evento.fim
+    ? dataBrasileira(evento.inicio)
+    : `${dataBrasileira(evento.inicio)} a ${dataBrasileira(evento.fim)}`
 
 export function AdmCalendario() {
   const hoje = hojeDoClube()
@@ -53,6 +65,13 @@ export function AdmCalendario() {
   const diasDeReuniao = new Set(calendario.data?.diasDeReuniao ?? [])
   const eventosDesteMes = eventosDoMes(eventos, ano, mes)
   const horaDaReuniao = configuracao.data?.horaReuniao
+
+  /** Anda de mês em mês; passar de dezembro ou de janeiro vira o ano. */
+  function andarMeses(passo: number) {
+    const total = ano * 12 + mes + passo
+    setAno(Math.floor(total / 12))
+    setMes(((total % 12) + 12) % 12)
+  }
 
   function abrirPainel(novo: Painel) {
     setAulasAfetadas([])
@@ -77,10 +96,19 @@ export function AdmCalendario() {
     corpo = (
       <>
         <Cartao className="flex flex-col gap-3">
-          <ul aria-label="Legenda" className="flex flex-wrap gap-3 text-sm font-semibold text-texto-3">
+          <ul
+            aria-label="Legenda"
+            className="flex flex-wrap gap-3 text-sm font-semibold text-texto-3"
+          >
             <li className={cn('rounded-full px-2.5 py-0.5', COR_DA_REUNIAO)}>Reunião regular</li>
             {Object.entries(ROTULOS_DO_TIPO).map(([tipo, rotulo]) => (
-              <li key={tipo} className={cn('rounded-full px-2.5 py-0.5', CORES_DO_TIPO[tipo as keyof typeof CORES_DO_TIPO])}>
+              <li
+                key={tipo}
+                className={cn(
+                  'rounded-full px-2.5 py-0.5',
+                  CORES_DO_TIPO[tipo as keyof typeof CORES_DO_TIPO],
+                )}
+              >
                 {rotulo}
               </li>
             ))}
@@ -90,7 +118,11 @@ export function AdmCalendario() {
               <span key={dia}>{dia}</span>
             ))}
           </div>
-          <div role="group" aria-label={`${MESES[mes]} de ${ano}`} className="grid grid-cols-7 gap-1">
+          <div
+            role="group"
+            aria-label={`${MESES[mes]} de ${ano}`}
+            className="grid grid-cols-7 gap-1"
+          >
             {diasDaGrade(ano, mes).map((dia, posicao) => (
               <CelulaDoDia
                 key={posicao}
@@ -105,7 +137,10 @@ export function AdmCalendario() {
           </div>
         </Cartao>
         {eventosDesteMes.length === 0 ? (
-          <EstadoVazio titulo={`Nenhum evento em ${MESES[mes]}`} descricao="Cadastre feriados, acampamentos e dias sem reunião para que o cronograma das classes os respeite." />
+          <EstadoVazio
+            titulo={`Nenhum evento em ${MESES[mes]}`}
+            descricao="Cadastre feriados, acampamentos e dias sem reunião para que o cronograma das classes os respeite."
+          />
         ) : (
           <ul aria-label={`Eventos de ${MESES[mes]}`} className="flex flex-col gap-2">
             {eventosDesteMes.map((evento) => (
@@ -119,7 +154,11 @@ export function AdmCalendario() {
                       {evento.local && ` · ${evento.local}`}
                     </span>
                   </div>
-                  <Botao variante="texto" aria-label={`Editar ${evento.nome}`} onClick={() => abrirPainel({ tipo: 'editar', evento })}>
+                  <Botao
+                    variante="texto"
+                    aria-label={`Editar ${evento.nome}`}
+                    onClick={() => abrirPainel({ tipo: 'editar', evento })}
+                  >
                     Editar
                   </Botao>
                 </Cartao>
@@ -130,7 +169,8 @@ export function AdmCalendario() {
       </>
     )
   } else if (modo === 'SEM_CONEXAO') corpo = <DisponivelComInternet />
-  else if (calendario.isError) corpo = <ErroDeCarga erro={calendario.error} aoTentarDeNovo={() => void calendario.refetch()} />
+  else if (calendario.isError)
+    corpo = <ErroDeCarga erro={calendario.error} aoTentarDeNovo={() => void calendario.refetch()} />
   else
     corpo = (
       <Carregando rotulo="Carregando o calendário">
@@ -142,7 +182,9 @@ export function AdmCalendario() {
     <div className="flex flex-col gap-4 p-4">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-texto-2">Base para todos os cronogramas de classe</p>
+          <p className="text-sm font-semibold text-texto-2">
+            Base para todos os cronogramas de classe
+          </p>
           <h1 className="font-titulo text-2xl font-extrabold text-texto">Calendário do clube</h1>
         </div>
         <Botao onClick={() => abrirPainel({ tipo: 'novo' })}>
@@ -158,22 +200,36 @@ export function AdmCalendario() {
         </p>
       )}
 
-      <Abas rotulo="Mês" abas={ABAS_DE_MES} ativa={String(mes)} aoMudar={(id) => setMes(Number(id))} />
+      {/* A faixa é atalho para saltar meses no computador; no celular, as setas bastam e a faixa não cabe. */}
+      <div className="hidden sm:block">
+        <Abas
+          rotulo="Mês"
+          abas={ABAS_DE_MES}
+          ativa={String(mes)}
+          aoMudar={(id) => setMes(Number(id))}
+        />
+      </div>
       <div className="flex items-center gap-2">
-        <Botao variante="secundario" aria-label="Ano anterior" onClick={() => setAno(ano - 1)}>
+        <Botao variante="secundario" aria-label="Mês anterior" onClick={() => andarMeses(-1)}>
           <ChevronLeft aria-hidden className="size-5" />
         </Botao>
-        <h2 className="min-w-44 text-center text-lg font-extrabold text-texto">
+        <h2 className="min-w-44 flex-1 text-center text-lg font-extrabold text-texto sm:flex-none">
           {MESES[mes]} de {ano}
         </h2>
-        <Botao variante="secundario" aria-label="Próximo ano" onClick={() => setAno(ano + 1)}>
+        <Botao variante="secundario" aria-label="Próximo mês" onClick={() => andarMeses(1)}>
           <ChevronRight aria-hidden className="size-5" />
         </Botao>
       </div>
 
       {corpo}
 
-      <FolhaLateral aberta={painel !== null} titulo={painel?.tipo === 'editar' ? `Editar ${painel.evento.nome}` : 'Novo evento no calendário'} aoFechar={fecharPainel}>
+      <FolhaLateral
+        aberta={painel !== null}
+        titulo={
+          painel?.tipo === 'editar' ? `Editar ${painel.evento.nome}` : 'Novo evento no calendário'
+        }
+        aoFechar={fecharPainel}
+      >
         {painel && (
           <FormularioEvento
             key={painel.tipo === 'editar' ? painel.evento.id : 'novo'}
@@ -211,24 +267,55 @@ interface PropriedadesDaCelula {
   aoEscolher: (evento: EventoCalendario) => void
 }
 
-function CelulaDoDia({ dia, data, eventos, ehReuniao, horaDaReuniao, aoEscolher }: PropriedadesDaCelula) {
-  if (dia === null || data === null) return <div aria-hidden className="min-h-24 rounded-controle bg-superficie-suave/50" />
+function CelulaDoDia({
+  dia,
+  data,
+  eventos,
+  ehReuniao,
+  horaDaReuniao,
+  aoEscolher,
+}: PropriedadesDaCelula) {
+  if (dia === null || data === null)
+    return <div aria-hidden className="min-h-24 rounded-controle bg-superficie-suave/50" />
   const doDia = eventosDoDia(eventos, data)
+  // No celular a célula tem ~45 px: a reunião pinta o número do dia e cada evento vira uma faixa da cor
+  // do tipo; o nome completo está na lista de eventos abaixo da grade.
   return (
-    <div className="flex min-h-24 flex-col gap-1 rounded-controle border border-divisor p-1.5">
-      <span className="text-sm font-bold text-texto">{dia}</span>
-      {ehReuniao && <span className={cn('truncate rounded-controle px-1.5 py-0.5 text-sm font-semibold', COR_DA_REUNIAO)}>{horaDaReuniao ? `Reunião ${horaDaReuniao}` : 'Reunião'}</span>}
+    <div className="flex min-h-16 flex-col gap-1 rounded-controle border border-divisor p-1 sm:min-h-24 sm:p-1.5">
+      <span
+        className={cn(
+          'w-fit rounded-controle text-sm font-bold text-texto max-sm:px-1',
+          ehReuniao && 'max-sm:bg-[var(--cal-reuniao-bg)] max-sm:text-[var(--cal-reuniao-fg)]',
+        )}
+      >
+        {dia}
+      </span>
+      {ehReuniao && (
+        <span
+          className={cn(
+            'truncate rounded-controle px-1.5 py-0.5 text-sm font-semibold max-sm:sr-only',
+            COR_DA_REUNIAO,
+          )}
+        >
+          {horaDaReuniao ? `Reunião ${horaDaReuniao}` : 'Reunião'}
+        </span>
+      )}
       {doDia.slice(0, MAXIMO_POR_DIA).map((evento) => (
         <button
           key={evento.id}
           type="button"
           onClick={() => aoEscolher(evento)}
-          className={cn('truncate rounded-controle px-1.5 py-0.5 text-left text-sm font-semibold focus-visible:outline-2 focus-visible:outline-marca', CORES_DO_TIPO[evento.tipo])}
+          className={cn(
+            'truncate rounded-controle px-1.5 py-0.5 text-left text-sm font-semibold focus-visible:outline-2 focus-visible:outline-marca max-sm:h-2 max-sm:p-0',
+            CORES_DO_TIPO[evento.tipo],
+          )}
         >
-          {evento.nome}
+          <span className="max-sm:sr-only">{evento.nome}</span>
         </button>
       ))}
-      {doDia.length > MAXIMO_POR_DIA && <span className="text-sm font-semibold text-texto-2">+{doDia.length - MAXIMO_POR_DIA}</span>}
+      {doDia.length > MAXIMO_POR_DIA && (
+        <span className="text-sm font-semibold text-texto-2">+{doDia.length - MAXIMO_POR_DIA}</span>
+      )}
     </div>
   )
 }
