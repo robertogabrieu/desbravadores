@@ -19,7 +19,7 @@ export function baseDoDetalhe(detalhe: z.infer<typeof AulaDetalhe>): BaseAula {
 /** O pacote guarda as presenças e as conclusões de cada membro: o que tem `registroAulaId` desta aula já foi concluído nela. */
 export function baseDoPacote(registro: Registro, classe: ClasseDoPacote): BaseAula {
   const concluidosNaAula = classe.membros.flatMap((membro) =>
-    membro.conclusoes.filter((conclusao) => conclusao.registroAulaId === registro.id).map((conclusao) => ({ dbvId: membro.dbvId, requisitoId: conclusao.requisitoId })),
+    (membro.conclusoes ?? []).filter((conclusao) => conclusao.registroAulaId === registro.id).map((conclusao) => ({ dbvId: membro.dbvId, requisitoId: conclusao.requisitoId })),
   )
   const idsDaAula = new Set(concluidosNaAula.map((par) => par.requisitoId))
   return {

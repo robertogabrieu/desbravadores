@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { alternarPresenca, alternarRequisito, chavePar, comporEstado, concluidosComFila, concluidosDoServidor, montarEntrada, pontosProvisorios, requisitosVisiveis } from './estado'
+import { alternarPresenca, alternarRequisito, chavePar, comporEstado, concluidosComFila, concluidoEm, concluidosDoServidor, montarEntrada, pontosProvisorios, requisitosVisiveis } from './estado'
 import type { BaseAula, ItemPendente, Membro, Requisito } from './estado'
 
 const uuid = (n: number): string => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
@@ -99,5 +99,10 @@ describe('estado da aula', () => {
     const estado = { ...comporEstado(sem), extras: [R1] }
     expect(requisitosVisiveis({ daClasse: requisitos, base: null, planejados: [R2], estado }).map((r) => r.codigo)).toEqual(['R1', 'R2'])
     expect(requisitosVisiveis({ daClasse: requisitos, base: null, planejados: [], estado: comporEstado(sem) })).toEqual([])
+  })
+
+  it('membro de pacote antigo, sem `conclusoes`, não derruba a leitura da data', () => {
+    const antigo: Membro = { dbvId: ANA, nome: 'Ana', tipo: 'DBV', concluidos: [R1] }
+    expect(concluidoEm(antigo, R1)).toBeNull()
   })
 })

@@ -18,8 +18,8 @@ export interface Membro {
   nome: string
   tipo: string
   concluidos: string[]
-  /** Quando e em que aula cada requisito foi concluído (`registroAulaId` `null` = fora de aula). */
-  conclusoes: { requisitoId: string; concluidoEm: string; registroAulaId: string | null }[]
+  /** Quando e em que aula cada requisito foi concluído (`registroAulaId` `null` = fora de aula); ausente em pacote guardado antes de o servidor mandá-las. */
+  conclusoes?: { requisitoId: string; concluidoEm: string; registroAulaId: string | null }[]
 }
 
 /** A aula como o servidor a tem (online ou no pacote), com as versões que o aparelho viu. */
@@ -27,9 +27,9 @@ export interface BaseAula {
   registroAulaId: string
   aulaPlanejadaId: string | null
   presencas: { dbvId: string; presente: boolean; versao: string }[]
-  /** Só a resposta do servidor traz os requisitos da aula; o pacote não (`null`). */
+  /** Os requisitos da aula: no pacote, os que têm conclusão nesta aula; `null` só quando a origem não os traz. */
   requisitos: Requisito[] | null
-  /** Pares já concluídos NESTA aula (só o servidor sabe). */
+  /** Pares já concluídos NESTA aula (no pacote, as conclusões do membro com este `registroAulaId`). */
   concluidosNaAula: { dbvId: string; requisitoId: string }[]
 }
 
@@ -165,7 +165,7 @@ export const concluidoAntes = (membro: Membro, base: Set<string>, requisitoId: s
 
 /** Data (aaaa-mm-dd) em que o membro concluiu o requisito, ou `null` se não consta. */
 export const concluidoEm = (membro: Membro, requisitoId: string): string | null =>
-  membro.conclusoes.find((conclusao) => conclusao.requisitoId === requisitoId)?.concluidoEm ?? null
+  (membro.conclusoes ?? []).find((conclusao) => conclusao.requisitoId === requisitoId)?.concluidoEm ?? null
 
 interface Visiveis {
   daClasse: Requisito[]

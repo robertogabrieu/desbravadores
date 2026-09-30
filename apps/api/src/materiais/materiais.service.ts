@@ -21,6 +21,10 @@ type Saida = z.infer<typeof MaterialSaida>
 
 export const COTA_DE_MATERIAIS_BYTES = 1024 * 1024 * 1024
 
+/** A espera pela trava e a cópia de até 20 MB entram no prazo da transação (o padrão do Prisma é 5 s). */
+const TEMPO_DA_TRANSACAO_MS = 60_000
+const ESPERA_POR_CONEXAO_MS = 10_000
+
 /** Arquivo que o multer guardou em disco temporário. */
 export interface ArquivoEmDisco {
   path: string
@@ -166,6 +170,7 @@ export class MateriaisService {
     const { clubeId } = sessao
     const formato = FORMATOS_MATERIAL[ext]
     let caminho: string | null = null
+    const gravacoes: Promise<void>[] = []
     try {
       const criado = await this.prisma.$transaction(async (tx) => {
         // Serializa os envios do clube: quem chega depois confere a cota já com o material do primeiro.
@@ -184,7 +189,9 @@ export class MateriaisService {
         })
         const destino = caminhoDoMaterial(clubeId, linhaDoArquivo.id, ext)
         caminho = destino
-        await this.armazenamento.gravarDeArquivo(destino, arquivo.path)
+        const gravacao = this.armazenamento.gravarDeArquivo(destino, arquivo.path)
+        gravacoes.push(gravacao)
+        await gravacao
         await tx.arquivo.updateMany({ where: { clubeId, id: linhaDoArquivo.id }, data: { caminho: destino } })
         return tx.material.create({
           data: {
@@ -198,9 +205,11 @@ export class MateriaisService {
           },
           select: SELECAO,
         })
-      })
+      }, { timeout: TEMPO_DA_TRANSACAO_MS, maxWait: ESPERA_POR_CONEXAO_MS })
       return this.saida(sessao, criado)
     } catch (erro) {
+      // Se a transação estourou no meio da cópia, a cópia segue: só apaga depois que ela termina.
+      await Promise.allSettled(gravacoes)
       if (caminho) await this.apagarDoDisco(caminho)
       throw erro
     }
