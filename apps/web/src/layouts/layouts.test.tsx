@@ -88,7 +88,7 @@ describe('LayoutCelular', () => {
     const { roteador } = renderizarRotas(rotasAdm, '/adm/desbravadores')
     await screen.findByText('lista')
 
-    await userEvent.click(screen.getByText('Visão geral'))
+    await userEvent.click(screen.getByText('Relatórios'))
 
     expect(roteador.state.location.pathname).toBe('/adm/desbravadores')
   })
