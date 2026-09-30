@@ -154,7 +154,7 @@ function FormularioConfiguracao({ atual }: { atual: ConfiguracaoClube }) {
         <Secao id="secao-alertas" titulo="Alertas">
           <Campo
             rotulo="Alerta de frequência"
-            ajuda="Abaixo desta porcentagem de presença, o desbravador aparece com alerta."
+            ajuda="Na visão geral, a unidade com presença abaixo disto aparece com alerta."
             type="number"
             inputMode="numeric"
             sufixo="%"
@@ -165,7 +165,7 @@ function FormularioConfiguracao({ atual }: { atual: ConfiguracaoClube }) {
           />
           <Campo
             rotulo="Alerta de progresso"
-            ajuda="Abaixo desta porcentagem de requisitos cumpridos na classe, o desbravador aparece com alerta."
+            ajuda="No progresso da classe, conta quantos desbravadores cumpriram menos que isto dos requisitos."
             type="number"
             inputMode="numeric"
             sufixo="%"
