@@ -9,10 +9,10 @@ import { MenuUsuario } from './MenuUsuario'
 import { SeloAguardandoEnvio } from './SeloAguardandoEnvio'
 
 const INICIO: ItemDeNavegacao = { rotulo: 'Início', icone: House, para: '/inicio' }
-const RANKING: ItemDeNavegacao = { rotulo: 'Ranking', icone: Trophy }
+const RANKING: ItemDeNavegacao = { rotulo: 'Ranking', icone: Trophy, para: '/ranking' }
 
 const ITENS_POR_PAPEL = {
-  CONSELHEIRO: [INICIO, { rotulo: 'Unidade', icone: Users, para: '/unidade' }, { rotulo: 'Reuniões', icone: CalendarDays }, RANKING],
+  CONSELHEIRO: [INICIO, { rotulo: 'Unidade', icone: Users, para: '/unidade' }, { rotulo: 'Reuniões', icone: CalendarDays, para: '/reunioes' }, RANKING],
   INSTRUTOR: [INICIO, { rotulo: 'Classes', icone: GraduationCap }, { rotulo: 'Cronograma', icone: CalendarDays }, RANKING],
   ADM: [INICIO],
 } satisfies Record<string, ItemDeNavegacao[]>

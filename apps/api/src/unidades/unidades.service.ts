@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common'
 import {
+  frequencia,
   idade,
+  type GradeFrequenciaFiltro,
+  type GradeFrequenciaSaida,
   type MembroSaida,
   type UnidadeCriarEntrada,
   type UnidadeEditarEntrada,
@@ -18,6 +21,9 @@ import type { Prisma } from '../generated/prisma/client.js'
 
 type Unidade = z.infer<typeof UnidadeSaida>
 type Membro = z.infer<typeof MembroSaida>
+type Grade = z.infer<typeof GradeFrequenciaSaida>
+
+const MARCA_POR_SITUACAO = { PRESENTE: 'P', ATRASADO: 'A', FALTA: 'F', FALTA_JUSTIFICADA: 'J' } as const
 
 const INCLUIR_UNIDADE = {
   vinculos: {
@@ -94,9 +100,63 @@ export class UnidadesService {
       where: { clubeId, unidadeId, fim: null, dbv: { tipo: 'DBV', ativo: true } },
       include: { dbv: { include: INCLUIR_CLASSE_ATUAL(relogio.anoClube) } },
     })
-    return passagens
-      .map((passagem) => montarMembro(passagem.dbv, passagem.inicio, relogio))
+    const membros = passagens.map((passagem) => montarMembro(passagem.dbv, passagem.inicio, relogio))
+    const frequencias = (await this.escopo.permissoes(sessao)).includes('reuniao.ver')
+      ? await this.frequenciaDoMes(clubeId, relogio.hoje, membros.map((membro) => membro.dbvId))
+      : null
+    return membros
+      .map((membro) => (frequencias ? { ...membro, frequencia: frequencias.get(membro.dbvId) ?? null } : membro))
       .sort((a, b) => colador.compare(a.nome, b.nome))
+  }
+
+  /** Grade das ultimas reunioes da unidade (SPEC Fase 1, E13): linhas = membros DBV atuais. */
+  async grade(sessao: SessaoLogada, unidadeId: string, filtro: z.infer<typeof GradeFrequenciaFiltro>): Promise<Grade> {
+    const { clubeId } = sessao
+    await this.exigirNoEscopo(sessao, unidadeId)
+    const recentes = await this.prisma.reuniao.findMany({
+      where: { clubeId, unidadeId },
+      orderBy: { data: 'desc' },
+      take: filtro.ultimas,
+      include: { chamadas: { where: { clubeId }, select: { dbvId: true, situacao: true } } },
+    })
+    const reunioes = recentes.reverse()
+    const membros = await this.prisma.membroUnidade.findMany({
+      where: { clubeId, unidadeId, fim: null, dbv: { tipo: 'DBV', ativo: true } },
+      select: { dbv: { select: { id: true, nome: true } } },
+    })
+    const linhas = membros
+      .map((membro) => membro.dbv)
+      .sort((a, b) => colador.compare(a.nome, b.nome) || a.id.localeCompare(b.id))
+      .map((dbv) => {
+        const situacoes = reunioes.map((reuniao) => reuniao.chamadas.find((linha) => linha.dbvId === dbv.id)?.situacao ?? null)
+        const registradas = situacoes.filter((situacao) => situacao !== null)
+        const percentual = frequencia(registradas)
+        return {
+          dbvId: dbv.id,
+          nome: dbv.nome,
+          marcas: situacoes.map((situacao) => (situacao ? MARCA_POR_SITUACAO[situacao] : null)),
+          percentual: percentual === null ? null : Math.round(percentual),
+        }
+      })
+    return { reunioes: reunioes.map((reuniao) => ({ id: reuniao.id, data: paraDataCivil(reuniao.data) })), linhas }
+  }
+
+  /** Frequencia de cada DBV sobre as linhas de chamada do mes civil de `hoje`; sem linha, fora do mapa. */
+  private async frequenciaDoMes(clubeId: string, hoje: string, dbvIds: string[]): Promise<Map<string, number>> {
+    const inicio = new Date(`${hoje.slice(0, 7)}-01T00:00:00Z`)
+    const fim = new Date(Date.UTC(inicio.getUTCFullYear(), inicio.getUTCMonth() + 1, 1))
+    const linhas = await this.prisma.chamada.findMany({
+      where: { clubeId, dbvId: { in: dbvIds }, reuniao: { clubeId, data: { gte: inicio, lt: fim } } },
+      select: { dbvId: true, situacao: true },
+    })
+    const porDbv = new Map<string, typeof linhas>()
+    for (const linha of linhas) porDbv.set(linha.dbvId, [...(porDbv.get(linha.dbvId) ?? []), linha])
+    const resultado = new Map<string, number>()
+    for (const [dbvId, doDbv] of porDbv) {
+      const valor = frequencia(doDbv.map((linha) => linha.situacao))
+      if (valor !== null) resultado.set(dbvId, Math.round(valor))
+    }
+    return resultado
   }
 
   async semMembros(sessao: SessaoLogada): Promise<Membro[]> {

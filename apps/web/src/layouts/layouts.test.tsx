@@ -56,7 +56,7 @@ function itemDoMenu(nome: string): HTMLElement {
 }
 
 describe('LayoutCelular', () => {
-  it('conselheiro: Início, Unidade habilitados; Reuniões e Ranking "em breve"', async () => {
+  it('conselheiro: Início, Unidade, Reuniões e Ranking habilitados', async () => {
     servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO')]))
     renderizarRotas(rotasCelular, '/inicio')
     await screen.findByText('conteúdo')
@@ -64,32 +64,33 @@ describe('LayoutCelular', () => {
 
     expect(itemDoMenu('Início')).toHaveAttribute('href', '/inicio')
     expect(itemDoMenu('Unidade')).toHaveAttribute('href', '/unidade')
-    expect(itemDoMenu('Reuniões')).toHaveAttribute('aria-disabled', 'true')
-    expect(itemDoMenu('Ranking')).toHaveAttribute('aria-disabled', 'true')
-    expect(within(screen.getByRole('navigation')).getAllByText('em breve')).toHaveLength(2)
+    expect(itemDoMenu('Reuniões')).toHaveAttribute('href', '/reunioes')
+    expect(itemDoMenu('Ranking')).toHaveAttribute('href', '/ranking')
+    expect(within(screen.getByRole('navigation')).queryByText('em breve')).not.toBeInTheDocument()
     expect(within(screen.getByRole('navigation')).queryByText('Classes')).not.toBeInTheDocument()
   })
 
-  it('instrutor: Início habilitado; Classes, Cronograma e Ranking "em breve"', async () => {
+  it('instrutor: Início e Ranking habilitados; Classes e Cronograma "em breve"', async () => {
     servidor.use(...handlersSessao([criarVinculo('INSTRUTOR')]))
     renderizarRotas(rotasCelular, '/inicio')
     await screen.findByText('conteúdo')
     await esperarSessao()
 
     expect(itemDoMenu('Início')).toHaveAttribute('href', '/inicio')
-    for (const nome of ['Classes', 'Cronograma', 'Ranking']) {
+    expect(itemDoMenu('Ranking')).toHaveAttribute('href', '/ranking')
+    for (const nome of ['Classes', 'Cronograma']) {
       expect(itemDoMenu(nome)).toHaveAttribute('aria-disabled', 'true')
     }
     expect(within(screen.getByRole('navigation')).queryByText('Unidade')).not.toBeInTheDocument()
   })
 
   it('item desabilitado não navega ao ser tocado', async () => {
-    servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO')]))
+    servidor.use(...handlersSessao([criarVinculo('INSTRUTOR')]))
     const { roteador } = renderizarRotas(rotasCelular, '/inicio')
     await screen.findByText('conteúdo')
     await esperarSessao()
 
-    await userEvent.click(itemDoMenu('Reuniões'))
+    await userEvent.click(itemDoMenu('Classes'))
 
     expect(roteador.state.location.pathname).toBe('/inicio')
   })
@@ -135,7 +136,7 @@ describe('LayoutCelular', () => {
 })
 
 describe('LayoutAdm', () => {
-  it('habilita Desbravadores, Usuários e Unidades; o resto fica "em breve"', async () => {
+  it('habilita Desbravadores, Usuários, Unidades e Ranking; o resto fica "em breve"', async () => {
     servidor.use(...handlersSessao([criarVinculo('ADM')]))
     renderizarRotas(rotasAdm, '/adm/desbravadores')
     await screen.findByText('lista')
@@ -143,7 +144,8 @@ describe('LayoutAdm', () => {
     expect(itemDoMenu('Desbravadores')).toHaveAttribute('href', '/adm/desbravadores')
     expect(itemDoMenu('Usuários')).toHaveAttribute('href', '/adm/usuarios')
     expect(itemDoMenu('Unidades')).toHaveAttribute('href', '/adm/unidades')
-    for (const nome of ['Visão geral', 'Classes e especialidades', 'Calendário do clube', 'Cronogramas', 'Ranking', 'Relatórios']) {
+    expect(itemDoMenu('Ranking')).toHaveAttribute('href', '/ranking')
+    for (const nome of ['Visão geral', 'Classes e especialidades', 'Calendário do clube', 'Cronogramas', 'Relatórios']) {
       expect(itemDoMenu(nome)).toHaveAttribute('aria-disabled', 'true')
     }
   })

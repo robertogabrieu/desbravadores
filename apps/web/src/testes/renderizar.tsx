@@ -7,7 +7,10 @@ import { ProvedorSessao } from '../sessao/ProvedorSessao'
 
 /** Monta rotas com QueryClient limpo, sessão real (falando com o msw) e roteador em memória. */
 export function renderizarRotas(rotas: RouteObject[], rotaInicial = '/') {
-  const clienteConsultas = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const clienteConsultas = new QueryClient({
+    // Igual ao main.tsx: sem rede, consulta falha e gravação enfileira, em vez de pausar.
+    defaultOptions: { queries: { retry: false, networkMode: 'always' }, mutations: { networkMode: 'always' } },
+  })
   const roteador = createMemoryRouter(rotas, { initialEntries: [rotaInicial] })
   configurarCliente({ navegar: (caminho) => void roteador.navigate(caminho) })
   const resultado = render(

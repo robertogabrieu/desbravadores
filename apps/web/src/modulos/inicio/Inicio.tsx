@@ -1,17 +1,17 @@
 import { Hammer } from 'lucide-react'
-import { Link } from 'react-router-dom'
 import { useSessao } from '../../sessao/useSessao'
 import { Cartao } from '../../ui/Cartao'
 import { rotuloDoPapel } from '../acesso/papeis'
 import { ConviteInstalacao } from './ConviteInstalacao'
+import { InicioConselheiro } from './InicioConselheiro'
 
-/** Início provisório: saudação, papel e o aviso de que o resto está a caminho. */
-export function Inicio() {
+/** Início provisório do instrutor e do Adm: saudação, papel e o aviso de que o resto está a caminho (Fase 2). */
+function InicioProvisorio() {
   const { eu, papel, vinculoAtivo } = useSessao()
   if (!eu || !papel || !vinculoAtivo) return null
 
   const primeiroNome = eu.usuario.nome.split(' ')[0]
-  const escopo = papel === 'CONSELHEIRO' ? vinculoAtivo.unidades.map((u) => u.nome).join(', ') : vinculoAtivo.clube.nome
+  const escopo = vinculoAtivo.clube.nome
 
   return (
     <div className="flex flex-col gap-5 p-4">
@@ -28,12 +28,12 @@ export function Inicio() {
           <p className="text-base text-texto-2">Em breve você vai encontrar aqui o que precisa no dia a dia.</p>
         </div>
       </Cartao>
-      {papel === 'CONSELHEIRO' && (
-        <Link to="/unidade" className="flex min-h-[var(--touch-min)] items-center text-base font-semibold text-marca">
-          Ver minha unidade
-        </Link>
-      )}
       <ConviteInstalacao />
     </div>
   )
+}
+
+export function Inicio() {
+  const { papel } = useSessao()
+  return papel === 'CONSELHEIRO' ? <InicioConselheiro /> : <InicioProvisorio />
 }

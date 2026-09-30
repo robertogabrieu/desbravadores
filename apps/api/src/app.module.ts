@@ -7,8 +7,13 @@ import { PrismaModule } from './comum/prisma/prisma.module'
 import { DesbravadoresModule } from './desbravadores/desbravadores.module'
 import { EmailModule } from './email/email.module'
 import { EspecialidadesModule } from './especialidades/especialidades.module'
+import { FotosModule } from './fotos/fotos.module'
+import { InicioModule } from './inicio/inicio.module'
 import { PermissoesModule } from './permissoes/permissoes.module'
+import { PedidosModule } from './pedidos/pedidos.module'
 import { PontosModule } from './pontos/pontos.module'
+import { RankingModule } from './ranking/ranking.module'
+import { ReunioesModule } from './reunioes/reunioes.module'
 import { SaudeModule } from './saude/saude.module'
 import { SessaoModule } from './sessao/sessao.module'
 import { SyncModule } from './sync/sync.module'
@@ -33,6 +38,11 @@ import { UsuariosModule } from './usuarios/usuarios.module'
     PontosModule,
     ArquivosModule,
     SyncModule,
+    ReunioesModule,
+    RankingModule,
+    InicioModule,
+    FotosModule,
+    PedidosModule,
   ],
 })
 export class AppModule {}

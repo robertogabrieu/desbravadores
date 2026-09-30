@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common'
-import { UnidadeCriarEntrada, UnidadeEditarEntrada, UnidadeFiltro, Uuid } from '@desbravadores/shared'
+import { GradeFrequenciaFiltro, UnidadeCriarEntrada, UnidadeEditarEntrada, UnidadeFiltro, Uuid } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { Pode } from '../comum/decorators/pode.decorator'
 import { SessaoDoClube, type SessaoLogada } from '../comum/decorators/sessao.decorator'
@@ -29,6 +29,16 @@ export class UnidadesController {
   @Get(':id/membros')
   membros(@SessaoDoClube() sessao: SessaoLogada, @Param('id', IdDaRota) id: string) {
     return this.unidades.membros(sessao, id)
+  }
+
+  @Pode('reuniao.ver')
+  @Get(':id/frequencia')
+  frequencia(
+    @SessaoDoClube() sessao: SessaoLogada,
+    @Param('id', IdDaRota) id: string,
+    @Query(new ZodValidationPipe(GradeFrequenciaFiltro)) filtro: z.infer<typeof GradeFrequenciaFiltro>,
+  ) {
+    return this.unidades.grade(sessao, id, filtro)
   }
 
   @Pode('unidade.gerenciar')
