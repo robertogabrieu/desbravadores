@@ -445,6 +445,7 @@ model Classe {
   trilha       Trilha
   classeBaseId String?    @db.Uuid
   ordem        Int
+  ativa        Boolean    @default(true)
 
   clube      Clube?            @relation(fields: [clubeId], references: [id], onDelete: Restrict)
   classeBase Classe?           @relation("ClasseBase", fields: [classeBaseId], references: [id], onDelete: Restrict)

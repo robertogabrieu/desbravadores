@@ -44,7 +44,7 @@ describe('classes', () => {
     const ids = lista.map((c) => c.id)
     expect(ids).toContain(propria.id)
     expect(ids).not.toContain(alheia.id)
-    expect(lista.filter((c) => c.origem === 'OFICIAL')).toHaveLength(22)
+    expect(lista.filter((c) => c.origem === 'OFICIAL')).toHaveLength(14)
     expect(lista.map((c) => c.ordem)).toEqual([...lista.map((c) => c.ordem)].sort((a, b) => a - b))
 
     const porNome = (nome: string, tipo: string): Classe | undefined =>
@@ -60,10 +60,25 @@ describe('classes', () => {
     const clube = await criarClube()
     const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
     const agrupadas = corpo<Classe[]>(await api.get('/api/classes?trilha=AGRUPADAS', adm.autorizacao).expect(200))
-    expect(agrupadas).toHaveLength(10)
+    expect(agrupadas.map((c) => [c.nome, c.tipo, c.idade])).toEqual([
+      ['Agrupadas (Amigo a Guia)', 'REGULAR', 16],
+      ['Agrupadas — avançada', 'AVANCADA', 16],
+    ])
     const avancadas = corpo<Classe[]>(await api.get('/api/classes?trilha=INDIVIDUAL&tipo=AVANCADA', adm.autorizacao).expect(200))
     expect(avancadas).toHaveLength(6)
     expect(avancadas.every((c) => c.tipo === 'AVANCADA')).toBe(true)
+  })
+
+  it('classe desativada some da lista, mas continua detalhavel por quem ja tinha algo nela', async () => {
+    const clube = await criarClube()
+    const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+    const retirada = await criarClasseDoClube(clube.id, 'Classe Retirada')
+    await prismaDeTeste().classe.update({ where: { id: retirada.id }, data: { ativa: false } })
+
+    const lista = corpo<Classe[]>(await api.get('/api/classes', adm.autorizacao).expect(200))
+    expect(lista.map((c) => c.id)).not.toContain(retirada.id)
+    const detalhe = corpo<Detalhe>(await api.get(`/api/classes/${retirada.id}`, adm.autorizacao).expect(200))
+    expect(detalhe.nome).toBe('Classe Retirada')
   })
 
   it('totalRequisitos conta os ativos com o ajuste do clube (sem afetar outros clubes)', async () => {

@@ -158,7 +158,7 @@ export class VisaoGeralService {
   /** Classes ativas do clube: media do progresso de quem cursa no ano, total de DBVs e instrutores. */
   private async progressoDasClasses(clubeId: string, ano: number): Promise<Visao['progressoClasses']> {
     const todas = await this.prisma.classe.findMany({
-      where: { OR: [{ clubeId: null }, { clubeId }] },
+      where: { OR: [{ clubeId: null }, { clubeId }], ativa: true },
       select: { ...SELECAO_REF_CLASSE, ordem: true, clubes: { where: { clubeId }, select: { ativa: true } } },
       orderBy: { ordem: 'asc' },
     })

@@ -42,7 +42,7 @@ describe('PrismaService e PrismaSistema', () => {
     const visiveis = await prisma.classe.findMany({
       where: { OR: [{ clubeId: null }, { clubeId: clube.id }] },
     })
-    expect(visiveis.length).toBeGreaterThanOrEqual(22)
+    expect(visiveis.length).toBeGreaterThanOrEqual(14)
     await expect(prisma.classe.findMany({})).rejects.toBeInstanceOf(ErroEscopoClube)
   })
 

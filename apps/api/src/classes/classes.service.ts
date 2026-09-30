@@ -54,7 +54,7 @@ export class ClassesService {
 
   async listar(clubeId: string, filtro: z.infer<typeof ClasseFiltro>): Promise<Classe[]> {
     const classes = await this.prisma.classe.findMany({
-      where: { OR: [{ clubeId: null }, { clubeId }], trilha: filtro.trilha, tipo: filtro.tipo },
+      where: { OR: [{ clubeId: null }, { clubeId }], ativa: true, trilha: filtro.trilha, tipo: filtro.tipo },
       select: SELECAO_CLASSE(clubeId),
       orderBy: { ordem: 'asc' },
     })

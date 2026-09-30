@@ -392,6 +392,28 @@ describe('usuarios e vinculos', () => {
       await api.put(`/api/vinculos/${cons.vinculo.id}`, cons.autorizacao, { ativo: false }).expect(403)
     })
 
+    it('classe desativada: vinculo novo com ela → 404; quem ja estava nela continua podendo ser editado', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const alvo = await criarAcesso({ clubeId: clube.id, papel: 'CONSELHEIRO' })
+      const retirada = await criarClasseDoClube(clube.id, 'Retirada')
+      const amigo = await classeOficial('Amigo')
+      const antigo = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [retirada.id] })
+      const novo = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR' })
+      await prismaDeTeste().classe.update({ where: { id: retirada.id }, data: { ativa: false } })
+
+      const recusado = await api
+        .post(`/api/usuarios/${alvo.usuario.id}/vinculos`, adm.autorizacao, { papel: 'INSTRUTOR', classeIds: [retirada.id] })
+        .expect(404)
+      expect(recusado.body).toMatchObject({ codigo: 'NAO_ENCONTRADO' })
+      await api.put(`/api/vinculos/${novo.vinculo.id}`, adm.autorizacao, { classeIds: [retirada.id] }).expect(404)
+
+      const mantido = corpo<Usuario>(
+        await api.put(`/api/vinculos/${antigo.vinculo.id}`, adm.autorizacao, { classeIds: [retirada.id, amigo.id] }).expect(200),
+      )
+      expect(mantido.vinculos[0]?.classes.map((c) => c.id).sort()).toEqual([retirada.id, amigo.id].sort())
+    })
+
     it('a permissao ajustada vale na proxima requisicao', async () => {
       const clube = await criarClube()
       const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })

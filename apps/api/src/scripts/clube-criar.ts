@@ -36,14 +36,14 @@ const CRITERIOS_PADRAO = [
 
 const FORMATO_SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/
 
-/** Clube, configuracao, uma ClasseClube por classe oficial e os 8 criterios padrao. */
+/** Clube, configuracao, uma ClasseClube por classe oficial ativa e os 8 criterios padrao. */
 export async function criarClubeBase(
   tx: Prisma.TransactionClient,
   dados: { nome: string; slug: string },
 ): Promise<Clube> {
   const clube = await tx.clube.create({ data: { nome: dados.nome, slug: dados.slug } })
   await tx.configuracaoClube.create({ data: { clubeId: clube.id } })
-  const classes = await tx.classe.findMany({ where: { clubeId: null }, select: { id: true } })
+  const classes = await tx.classe.findMany({ where: { clubeId: null, ativa: true }, select: { id: true } })
   await tx.classeClube.createMany({ data: classes.map((c) => ({ clubeId: clube.id, classeId: c.id })) })
   await tx.criterioRanking.createMany({
     data: CRITERIOS_PADRAO.map((criterio, indice) => ({

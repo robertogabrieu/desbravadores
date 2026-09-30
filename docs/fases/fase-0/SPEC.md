@@ -203,6 +203,10 @@ Contagens depois da primeira carga (constantes do teste):
 Total: **22 classes, 834 requisitos; 9 áreas, 514 especialidades; 16 mestrados.** Rodar a carga
 duas vezes: a segunda imprime zero criados, zero atualizados, zero desativados.
 
+> **Correção posterior:** as Agrupadas são para 16 anos ou mais, sem divisão por idade. A carga
+> passou a ter uma regular agrupada (123) e uma avançada agrupada (63), tiradas da coluna ≥15:
+> **14 classes, 399 requisitos**. As 10 agrupadas antigas (todas as idades, inclusive a de 15 anos ou mais, que mudou de nome) ficam desativadas (`Classe.ativa`).
+
 ### 5.4 Critérios padrão do ranking (criados pelo `clube:criar`)
 
 | nome | pontos | ativo | gatilho | lancadoPor | ordem |
@@ -289,6 +293,8 @@ ajuste para ADM.
 `AVISO_SEXO_UNIDADE` — unidade MASCULINA/FEMININA e sexo diferente ("A unidade Águias é masculina.");
 `AVISO_IDADE_CLASSE` — classe regular individual com `idade` diferente da idade do DBV no início do
 ano do clube, ou agrupada com `idade` maior que a dele ("Pela idade, a classe esperada é Pioneiro.").
+*Correção posterior:* na agrupada o aviso passou a valer para DBV com menos de 16 anos, com a
+mensagem "As classes agrupadas são para 16 anos ou mais."
 
 **Matrícula**: matricular numa regular quando já há outra regular CURSANDO da mesma trilha no mesmo
 ano muda a anterior (e a avançada ligada a ela) para DESISTIU — só uma regular CURSANDO por trilha e

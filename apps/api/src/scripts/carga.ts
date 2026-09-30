@@ -155,6 +155,7 @@ async function sincronizarClasses(
       origem: 'OFICIAL' as const,
       classeBaseId,
       ordem: classe.ordem,
+      ativa: true,
     }
     const existente = await tx.classe.findFirst({ where: { nome: classe.nome, trilha: classe.trilha, clubeId: null } })
     if (!existente) {
@@ -170,7 +171,22 @@ async function sincronizarClasses(
       resumo.classes.atualizados++
     }
   }
+  await desativarClassesSumidas(tx, classes, resumo)
   return idsPorChave
+}
+
+/** Classe oficial que saiu dos arquivos tem historico: fica inativa, nunca e apagada. */
+async function desativarClassesSumidas(
+  tx: Prisma.TransactionClient,
+  classes: ClasseCarregada[],
+  resumo: ResumoDaCarga,
+): Promise<void> {
+  const nosArquivos = new Set(classes.map((c) => chaveClasse(c.trilha, c.nome)))
+  const ativas = await tx.classe.findMany({ where: { clubeId: null, ativa: true }, select: { id: true, nome: true, trilha: true } })
+  const sumidas = ativas.filter((c) => !nosArquivos.has(chaveClasse(c.trilha, c.nome))).map((c) => c.id)
+  if (sumidas.length === 0) return
+  await tx.classe.updateMany({ where: { id: { in: sumidas } }, data: { ativa: false } })
+  resumo.classes.desativados += sumidas.length
 }
 
 async function sincronizarSecoesERequisitos(
@@ -330,7 +346,7 @@ async function sincronizarMestrados(
 }
 
 async function completarClassesDosClubes(tx: Prisma.TransactionClient, resumo: ResumoDaCarga): Promise<void> {
-  const oficiais = await tx.classe.findMany({ where: { clubeId: null }, select: { id: true } })
+  const oficiais = await tx.classe.findMany({ where: { clubeId: null, ativa: true }, select: { id: true } })
   for (const clube of await tx.clube.findMany({ select: { id: true } })) {
     const tem = new Set((await tx.classeClube.findMany({ where: { clubeId: clube.id } })).map((c) => c.classeId))
     const faltam = oficiais.filter((c) => !tem.has(c.id))
