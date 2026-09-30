@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common'
 import {
   diasDeReuniao,
+  DataCivil,
+  Uuid,
   emConflito,
+  hojeNoFuso,
   situacaoDaData,
   type AulaAfetada as AulaAfetadaContrato,
   type CalendarioSaida,
@@ -10,15 +13,13 @@ import {
   type EventoGravadoSaida,
   type EventoSaida,
 } from '@desbravadores/shared'
-import type { z } from 'zod'
+import { z } from 'zod'
 import { ServicoAtividade } from '../atividades/servico-atividade'
 import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
-import { ServicoCronograma } from '../cronogramas/servico-cronograma'
 import { daDataCivil, paraDataCivil } from '../desbravadores/apoio'
-import { ServicoEscopo } from '../desbravadores/escopo.service'
 import type { EventoCalendario, Prisma, Trilha } from '../generated/prisma/client.js'
 import { ServicoNotificacoes } from '../notificacoes/servico-notificacoes'
 
@@ -36,6 +37,9 @@ interface AulaVista {
   data: string
   temRequisitos: boolean
 }
+
+/** O que a transação lê do retrato que `CronogramaPublicacao.conteudo` guarda. */
+const RetratoLido = z.object({ aulas: z.array(z.object({ id: Uuid, data: DataCivil, requisitoIds: z.array(Uuid) })) })
 
 const NAO_ENCONTRADO = 'Evento não encontrado.'
 
@@ -66,8 +70,6 @@ function diaMes(data: string): string {
 export class ServicoEventos {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly escopo: ServicoEscopo,
-    private readonly cronogramas: ServicoCronograma,
     private readonly notificacoes: ServicoNotificacoes,
     private readonly atividades: ServicoAtividade,
   ) {}
@@ -93,21 +95,19 @@ export class ServicoEventos {
   }
 
   async remover(sessao: SessaoLogada, id: string): Promise<void> {
-    const atual = await this.eventoDoClube(sessao.clubeId, id)
-    await this.transacao(sessao, atual, null, async (tx) => {
+    await this.transacao(sessao, id, null, async (tx) => {
       await tx.eventoCalendario.update({ where: { id, clubeId: sessao.clubeId }, data: { removidoEm: new Date() } })
     })
   }
 
   private async gravar(sessao: SessaoLogada, id: string | null, entrada: Entrada): Promise<Gravado> {
-    const atual = id ? await this.eventoDoClube(sessao.clubeId, id) : null
     const dados = { ...entrada, inicio: daDataCivil(entrada.inicio), fim: daDataCivil(entrada.fim) }
     let gravado: EventoCalendario | undefined
-    const aulasAfetadas = await this.transacao(sessao, atual, entrada, async (tx) => {
-      gravado = atual
-        ? await tx.eventoCalendario.update({ where: { id: atual.id, clubeId: sessao.clubeId }, data: dados })
+    const aulasAfetadas = await this.transacao(sessao, id, entrada, async (tx) => {
+      gravado = id
+        ? await tx.eventoCalendario.update({ where: { id, clubeId: sessao.clubeId }, data: dados })
         : await tx.eventoCalendario.create({ data: { ...dados, clubeId: sessao.clubeId, criadoPorId: sessao.usuarioId } })
-      if (!atual) {
+      if (!id) {
         await this.atividades.registrar(tx, {
           clubeId: sessao.clubeId,
           autorId: sessao.usuarioId,
@@ -121,38 +121,40 @@ export class ServicoEventos {
     return { evento: paraSaida(gravado), aulasAfetadas }
   }
 
-  private async eventoDoClube(clubeId: string, id: string): Promise<EventoCalendario> {
-    const evento = await this.prisma.eventoCalendario.findFirst({ where: { id, clubeId, removidoEm: null } })
+  private async eventoDoClube(tx: Prisma.TransactionClient, clubeId: string, id: string): Promise<EventoCalendario> {
+    const evento = await tx.eventoCalendario.findFirst({ where: { id, clubeId, removidoEm: null } })
     if (!evento) throw new ErroApp('NAO_ENCONTRADO', NAO_ENCONTRADO)
     return evento
   }
 
   /**
    * Roda `gravacao` e, na mesma transação, avisa das aulas que ENTRARAM em conflito por causa dela.
+   * `id` é o evento que já existia (null = criação); o estado anterior é lido já com o lock preso.
    * `depois` é o intervalo/marcações do evento após a gravação (null = evento removido).
    */
   private async transacao(
     sessao: SessaoLogada,
-    antes: EventoCalendario | null,
+    id: string | null,
     depois: Entrada | null,
     gravacao: (tx: Prisma.TransactionClient) => Promise<void>,
   ): Promise<AulaAfetada[]> {
     const { clubeId } = sessao
-    const datas = [antes && paraDataCivil(antes.inicio), antes && paraDataCivil(antes.fim), depois?.inicio, depois?.fim].filter(
-      (d): d is string => d != null,
-    )
-    const inicio = datas.reduce((menor, d) => (d < menor ? d : menor))
-    const fim = datas.reduce((maior, d) => (d > maior ? d : maior))
-
     // Serializa as gravações de eventos do clube: o "antes/depois" só vale lendo os vizinhos já confirmados pela gravação anterior.
     return this.prisma.$transaction(
       async (tx) => {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('eventos-do-clube'), hashtext(${clubeId}))`
-        const [relogio, aulas, registros] = await Promise.all([
-          this.escopo.relogio(clubeId),
-          this.aulasVistas(clubeId, inicio, fim),
-          this.registrosNoIntervalo(clubeId, inicio, fim),
-        ])
+        const antes = id ? await this.eventoDoClube(tx, clubeId, id) : null
+        const datas = [antes && paraDataCivil(antes.inicio), antes && paraDataCivil(antes.fim), depois?.inicio, depois?.fim].filter(
+          (d): d is string => d != null,
+        )
+        const inicio = datas.reduce((menor, d) => (d < menor ? d : menor))
+        const fim = datas.reduce((maior, d) => (d > maior ? d : maior))
+
+        // Tudo lê pela própria `tx`: com o lock preso, outra conexão do pool esgotaria o pool sob concorrência.
+        const configuracao = await tx.configuracaoClube.findUniqueOrThrow({ where: { clubeId } })
+        const hoje = hojeNoFuso(configuracao.fuso, new Date())
+        const aulas = await this.aulasVistas(tx, clubeId, inicio, fim)
+        const registros = await this.registrosNoIntervalo(tx, clubeId, inicio, fim)
         const vizinhos = await tx.eventoCalendario.findMany({
           where: { clubeId, removidoEm: null, inicio: { lte: daDataCivil(fim) }, fim: { gte: daDataCivil(inicio) }, id: { not: antes?.id } },
         })
@@ -169,7 +171,7 @@ export class ServicoEventos {
                   temRequisitos: aula.temRequisitos,
                   temRegistro: registros.has(`${aula.classeId}|${aula.data}`),
                   data: aula.data,
-                  hoje: relogio.hoje,
+                  hoje,
                   situacaoDaData: situacaoDaData(aula.data, eventos),
                 }),
               )
@@ -190,15 +192,15 @@ export class ServicoEventos {
   }
 
   /** Aulas do cronograma vivo e da última publicação no intervalo, uma linha por (aula, fonte). */
-  private async aulasVistas(clubeId: string, inicio: string, fim: string): Promise<AulaVista[]> {
-    const cronogramas = await this.prisma.cronograma.findMany({
+  private async aulasVistas(tx: Prisma.TransactionClient, clubeId: string, inicio: string, fim: string): Promise<AulaVista[]> {
+    const cronogramas = await tx.cronograma.findMany({
       where: { clubeId },
       select: { id: true, classeId: true, classe: { select: { trilha: true } } },
     })
     const trilhaDoCronograma = new Map(cronogramas.map((c) => [c.id, c]))
     const noIntervalo = (data: string): boolean => data >= inicio && data <= fim
 
-    const vivas = await this.prisma.aulaPlanejada.findMany({
+    const vivas = await tx.aulaPlanejada.findMany({
       where: { clubeId, removidaEm: null, data: { gte: daDataCivil(inicio), lte: daDataCivil(fim) } },
       select: { id: true, cronogramaId: true, data: true, _count: { select: { requisitos: true } } },
     })
@@ -217,9 +219,9 @@ export class ServicoEventos {
       ]
     })
 
-    const publicacoes = await Promise.all(cronogramas.map((c) => this.cronogramas.ultimaPublicacao(clubeId, c.id)))
+    const publicacoes = await Promise.all(cronogramas.map((c) => this.aulasDaUltimaPublicacao(tx, clubeId, c.id)))
     const doPublicado = cronogramas.flatMap((cronograma, indice): AulaVista[] =>
-      (publicacoes[indice]?.aulas ?? [])
+      publicacoes[indice]
         .filter((aula) => noIntervalo(aula.data))
         .map((aula) => ({
           aulaId: aula.id,
@@ -233,13 +235,35 @@ export class ServicoEventos {
     return [...doVivo, ...doPublicado]
   }
 
+  /** As aulas do retrato mais recente do cronograma, deduplicadas por id (o mesmo que `ServicoCronograma.ultimaPublicacao`, pela `tx`). */
+  private async aulasDaUltimaPublicacao(tx: Prisma.TransactionClient, clubeId: string, cronogramaId: string) {
+    const publicacao = await tx.cronogramaPublicacao.findFirst({
+      where: { clubeId, cronogramaId },
+      orderBy: [{ publicadoEm: 'desc' }, { id: 'desc' }],
+      select: { conteudo: true },
+    })
+    if (!publicacao) return []
+    const porId = new Map(RetratoLido.parse(publicacao.conteudo).aulas.map((aula) => [aula.id, aula]))
+    return [...porId.values()]
+  }
+
   /** Chaves "classe|data" de quem já tem RegistroAula (B6: por clube, classe e data). */
-  private async registrosNoIntervalo(clubeId: string, inicio: string, fim: string): Promise<Set<string>> {
-    const registros = await this.prisma.registroAula.findMany({
+  private async registrosNoIntervalo(tx: Prisma.TransactionClient, clubeId: string, inicio: string, fim: string): Promise<Set<string>> {
+    const registros = await tx.registroAula.findMany({
       where: { clubeId, data: { gte: daDataCivil(inicio), lte: daDataCivil(fim) } },
       select: { classeId: true, data: true },
     })
     return new Set(registros.map((r) => `${r.classeId}|${paraDataCivil(r.data)}`))
+  }
+
+  /** Instrutores ativos DO CLUBE ligados à classe (a mesma regra de `ServicoCronograma.instrutoresDaClasse`, pela `tx`). */
+  private async instrutoresDaClasse(tx: Prisma.TransactionClient, clubeId: string, classeId: string): Promise<{ usuarioId: string }[]> {
+    const vinculos = await tx.vinculo.findMany({
+      where: { clubeId, papel: 'INSTRUTOR', ativo: true, classes: { some: { classeId } } },
+      select: { usuario: { select: { id: true, nome: true } } },
+      orderBy: { usuario: { nome: 'asc' } },
+    })
+    return vinculos.map((vinculo) => ({ usuarioId: vinculo.usuario.id }))
   }
 
   /** Uma notificação por (pessoa, classe); devolve as aulas afetadas ordenadas por data. */
@@ -258,7 +282,7 @@ export class ServicoEventos {
     for (const classeId of classeIds) {
       const datas = [...new Set(entraram.filter((a) => a.classeId === classeId).map((a) => a.data))].sort()
       const classe = classePorId.get(classeId)
-      const instrutores = await this.cronogramas.instrutoresDaClasse(clubeId, classeId)
+      const instrutores = await this.instrutoresDaClasse(tx, clubeId, classeId)
       const admMonta = (quemMonta.get(classeId) ?? 'ADM') === 'ADM'
       const linkQuemMonta = `/cronograma/montar?classe=${classeId}`
       const linkQuemNaoMonta = `/cronograma?classe=${classeId}`

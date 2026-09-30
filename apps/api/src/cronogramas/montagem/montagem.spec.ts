@@ -115,6 +115,32 @@ describe('Montagem do cronograma', () => {
       expect(requisitoNaSaida(saida, requisitos[1])?.campo).toBe(true)
     })
 
+    it('requisito que saiu do caderno oficial não volta por ajuste do clube: some da leitura e não se coloca', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const guia = await classeOficial('Guia')
+      const cronograma = await criarCronograma({ clubeId: clube.id, classeId: guia.id })
+      const [requisitoId] = await requisitosDa(guia.id, 1)
+      // O catálogo oficial é compartilhado: desliga um requisito da classe Guia (que nenhum outro teste conta) e religa no finally.
+      await prismaDeTeste().requisito.update({ where: { id: requisitoId }, data: { ativo: false } })
+      try {
+        await admCriarRequisitoAjuste({ clubeId: clube.id, requisitoId, ativo: true })
+        const saida = corpo<Saida>(await http.get(`/api/classes/${guia.id}/cronograma/montagem`, adm.autorizacao))
+        expect(requisitoNaSaida(saida, requisitoId)).toBeUndefined()
+        expect((await colocar(cronograma.id, requisitoId, DOMINGO_A, adm.autorizacao)).status).toBe(404)
+      } finally {
+        await prismaDeTeste().requisitoAjuste.deleteMany({ where: { requisitoId } })
+        await prismaDeTeste().requisito.update({ where: { id: requisitoId }, data: { ativo: true } })
+      }
+    })
+
+    it('colocar e desativar o mesmo requisito ao mesmo tempo nunca deixa requisito desativado colocado', async () => {
+      const { adm, requisitos, cronograma } = await cenario()
+      const desativar = () => http.patch(`/api/requisitos/${requisitos[0]}/ajuste`, adm.autorizacao, { ativo: false })
+      await Promise.all([colocar(cronograma.id, requisitos[0], DOMINGO_A, adm.autorizacao), desativar()])
+      expect(await prismaDeTeste().aulaRequisito.count({ where: { cronogramaId: cronograma.id, requisitoId: requisitos[0] } })).toBe(0)
+    })
+
     it('marca aula dada na data com registro, mesmo sem aula planejada', async () => {
       const { clube, amigo, adm } = await cenario()
       await criarRegistroAula({ clubeId: clube.id, classeId: amigo.id, data: DOMINGO_B })

@@ -160,7 +160,7 @@ export class ServicoMontagemLeitura {
     }
   }
 
-  /** Requisitos ativos para o clube (o ajuste vence o oficial), com o `campo` ajustado, na ordem do caderno. */
+  /** Requisitos ativos para o clube (oficial ativo e não desligado pelo ajuste), com o `campo` ajustado, na ordem do caderno. */
   async requisitosDaClasse(clubeId: string, classeId: string) {
     const requisitos = await this.prisma.requisito.findMany({
       where: { secao: { classeId } },
@@ -173,7 +173,8 @@ export class ServicoMontagemLeitura {
     })
     const ajustePorRequisito = new Map(ajustes.map((ajuste) => [ajuste.requisitoId, ajuste]))
     return requisitos
-      .filter((requisito) => (ajustePorRequisito.get(requisito.id)?.ativo ?? requisito.ativo) === true)
+      // Quem saiu do caderno oficial não volta por ajuste do clube; o ajuste só desliga (a mesma regra de GET /classes/:id).
+      .filter((requisito) => requisito.ativo && ajustePorRequisito.get(requisito.id)?.ativo !== false)
       .map((requisito) => ({
         id: requisito.id,
         codigo: requisito.codigo,

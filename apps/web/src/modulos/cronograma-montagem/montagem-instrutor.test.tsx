@@ -207,7 +207,7 @@ describe('I3b · montar', () => {
     const registro = abrir()
     const usuario = userEvent.setup()
     await screen.findByText('3 de 5 requisitos com data')
-    await usuario.click(screen.getAllByRole('button', { name: /^Tirar R3/ })[0])
+    await usuario.click(screen.getAllByRole('button', { name: /^remover R3/ })[0])
     await waitFor(() => expect(registro.chamadas).toHaveLength(1))
     expect(registro.chamadas[0]).toMatchObject({ metodo: 'DELETE' })
   })

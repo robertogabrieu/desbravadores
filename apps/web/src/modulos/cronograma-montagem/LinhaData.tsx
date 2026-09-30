@@ -76,7 +76,7 @@ export function LinhaData({ dado, requisitos, destaqueCampo = false, desabilitad
             {!dado.aulaDada && (
               <button
                 type="button"
-                aria-label={`Tirar ${requisito.codigo} desta data`}
+                aria-label={`remover ${requisito.codigo} desta data`}
                 disabled={desabilitada}
                 onClick={() => aoTirar(requisito)}
                 className="flex min-h-[var(--touch-min)] shrink-0 items-center justify-center gap-1 rounded-controle px-2 hover:bg-superficie disabled:opacity-50"

@@ -182,10 +182,17 @@ export class ServicoMontagem {
    * dada mantém o vínculo. Roda na transação de quem chama; cada cronograma afetado é travado e renovado.
    */
   async retirarRequisitoDoClube(tx: Tx, clubeId: string, requisitoId: string): Promise<void> {
+    // Trava antes de listar: todo cronograma do clube na classe do requisito, em ordem de id (sem deadlock). Uma
+    // colocação em curso termina antes; a seguinte espera este commit e relê o ajuste já desligado.
+    const candidatos = await tx.cronograma.findMany({
+      where: { clubeId, classe: { secoes: { some: { requisitos: { some: { id: requisitoId } } } } } },
+      select: { id: true },
+      orderBy: { id: 'asc' },
+    })
+    for (const { id } of candidatos) await this.travarCronograma(tx, clubeId, id)
     const ligacoes = await tx.aulaRequisito.findMany({ where: { clubeId, requisitoId }, select: { cronogramaId: true } })
     const cronogramaIds = [...new Set(ligacoes.map((ligacao) => ligacao.cronogramaId))].sort()
     for (const cronogramaId of cronogramaIds) {
-      await this.travarCronograma(tx, clubeId, cronogramaId)
       const cronograma = await tx.cronograma.findFirstOrThrow({ where: { clubeId, id: cronogramaId }, include: { classe: { select: { trilha: true } } } })
       const aulasDoRequisito = await tx.aulaRequisito.findMany({ where: { clubeId, cronogramaId, requisitoId }, select: { aulaPlanejadaId: true } })
       let retirou = false

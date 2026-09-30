@@ -195,6 +195,18 @@ describe('calendário do clube — eventos', () => {
       expect(await notificacoesDe(adm.usuario.id)).toHaveLength(1)
     })
 
+    it('dois PATCH ao mesmo tempo levando o mesmo evento à mesma data avisam uma vez só por pessoa e classe', async () => {
+      const { clube, amigo, adm, instrutor, requisitos } = await cenario()
+      const outroAdm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      await criarCronograma({ clubeId: clube.id, classeId: amigo.id, aulas: [{ data: dia(10), requisitoIds: requisitos }] })
+      const { evento: criado } = corpo<Gravado>(await http.post('/api/calendario/eventos', adm.autorizacao, evento({ inicio: dia(40), fim: dia(40) })))
+      const levar = (auth: string, nome: string) =>
+        http.patch(`/api/calendario/eventos/${criado.id}`, auth, evento({ nome, bomParaCampo: false }))
+      await Promise.all([levar(adm.autorizacao, 'A'), levar(outroAdm.autorizacao, 'B')])
+      expect(await notificacoesDe(instrutor.usuario.id)).toHaveLength(1)
+      expect(await notificacoesDe(adm.usuario.id)).toHaveLength(1)
+    })
+
     it('uma notificação por pessoa e classe mesmo com várias aulas afetadas', async () => {
       const { clube, amigo, adm, instrutor, requisitos } = await cenario()
       await criarCronograma({
