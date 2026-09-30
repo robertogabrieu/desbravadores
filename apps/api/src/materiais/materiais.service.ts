@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto'
 import { rm } from 'node:fs/promises'
 import { extname } from 'node:path'
 import { Inject, Injectable, Logger } from '@nestjs/common'
@@ -165,23 +164,28 @@ export class MateriaisService {
       throw new ErroApp('REGRA', FORMATO_INVALIDO)
     }
     const { clubeId } = sessao
-    const usado = await this.prisma.arquivo.aggregate({
-      where: { clubeId, material: { is: { removidoEm: null } } },
-      _sum: { bytes: true },
-    })
-    if ((usado._sum.bytes ?? 0) + arquivo.size > COTA_DE_MATERIAIS_BYTES) {
-      throw new ErroApp('REGRA', 'O espaço de materiais do clube acabou.')
-    }
-
     const formato = FORMATOS_MATERIAL[ext]
-    const arquivoId = randomUUID()
-    const caminho = caminhoDoMaterial(clubeId, arquivoId, ext)
-    await this.armazenamento.gravarDeArquivo(caminho, arquivo.path)
+    let caminho: string | null = null
     try {
       const criado = await this.prisma.$transaction(async (tx) => {
-        await tx.arquivo.create({
-          data: { id: arquivoId, clubeId, caminho, mime: formato.mime, bytes: arquivo.size, criadoPorId: sessao.usuarioId },
+        // Serializa os envios do clube: quem chega depois confere a cota já com o material do primeiro.
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`materiais:${clubeId}`}, 0))`
+        const usado = await tx.arquivo.aggregate({
+          where: { clubeId, material: { is: { removidoEm: null } } },
+          _sum: { bytes: true },
         })
+        if ((usado._sum.bytes ?? 0) + arquivo.size > COTA_DE_MATERIAIS_BYTES) {
+          throw new ErroApp('REGRA', 'O espaço de materiais do clube acabou.')
+        }
+        // O id vem do Prisma Client; o caminho, que leva o id, é gravado logo depois de criado.
+        const linhaDoArquivo = await tx.arquivo.create({
+          data: { clubeId, caminho: '', mime: formato.mime, bytes: arquivo.size, criadoPorId: sessao.usuarioId },
+          select: { id: true },
+        })
+        const destino = caminhoDoMaterial(clubeId, linhaDoArquivo.id, ext)
+        caminho = destino
+        await this.armazenamento.gravarDeArquivo(destino, arquivo.path)
+        await tx.arquivo.updateMany({ where: { clubeId, id: linhaDoArquivo.id }, data: { caminho: destino } })
         return tx.material.create({
           data: {
             clubeId,
@@ -189,7 +193,7 @@ export class MateriaisService {
             secaoId: dados.secaoId,
             titulo: dados.titulo,
             tipo: formato.tipo,
-            arquivoId,
+            arquivoId: linhaDoArquivo.id,
             enviadoPorId: sessao.usuarioId,
           },
           select: SELECAO,
@@ -197,7 +201,7 @@ export class MateriaisService {
       })
       return this.saida(sessao, criado)
     } catch (erro) {
-      await this.apagarDoDisco(caminho)
+      if (caminho) await this.apagarDoDisco(caminho)
       throw erro
     }
   }

@@ -148,6 +148,16 @@ describe('instrutor: inicio e pedido de liberacao', () => {
     }
     const pedidos = (clubeId: string) => prismaDeTeste().notificacao.findMany({ where: { clubeId, tipo: 'PEDIDO_LIBERAR_CRONOGRAMA' } })
 
+    it('duas chamadas simultaneas em 24 h notificam so uma vez', async () => {
+      const { clube, amigo, instrutor } = await cenario()
+      const chamadas = await Promise.all([
+        api.post(`/api/classes/${amigo.id}/pedir-liberacao`, instrutor.autorizacao),
+        api.post(`/api/classes/${amigo.id}/pedir-liberacao`, instrutor.autorizacao),
+      ])
+      expect(chamadas.map((c) => c.status)).toEqual([204, 204])
+      expect(await pedidos(clube.id)).toHaveLength(1)
+    })
+
     it('notifica so os Adms ativos do clube, com o link da classe; repeticao em 24 h e 204 sem notificar', async () => {
       const { clube, amigo, instrutor, adm } = await cenario()
       const inativo = await criarVinculo({ usuarioId: (await criarUsuario()).id, clubeId: clube.id, papel: 'ADM', ativo: false })

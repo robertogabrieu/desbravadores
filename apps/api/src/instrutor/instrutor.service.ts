@@ -86,6 +86,8 @@ export class InstrutorService {
     const link = `/adm/classes?classe=${classeId}`
     const tipo = 'PEDIDO_LIBERAR_CRONOGRAMA'
     await this.prisma.$transaction(async (tx) => {
+      // Serializa pedidos da mesma classe no clube: o segundo já enxerga a notificação do primeiro.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`pedido-liberacao:${clubeId}:${classeId}`}, 0))`
       const recente = await tx.notificacao.findFirst({
         where: { clubeId, tipo, link, criadaEm: { gte: new Date(Date.now() - VINTE_E_QUATRO_HORAS) } },
         select: { id: true },

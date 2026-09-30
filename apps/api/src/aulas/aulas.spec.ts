@@ -403,6 +403,13 @@ describe('PUT /api/sync/aulas/:uuid', () => {
       expect((await c.enviar({ classeId: outra.id, autorizacao: c.adm.autorizacao, presencas: [] })).status).toBe(200)
     })
 
+    it('uuid de registro de outra classe do mesmo clube responde 404, nao 422', async () => {
+      const c = await cenario()
+      const outra = await classeOficial('Companheiro')
+      const alheio = await criarRegistroAula({ clubeId: c.clube.id, classeId: outra.id, data: diasAtras(2) })
+      expect((await c.enviar({ uuid: alheio.id, data: diasAtras(2) })).status).toBe(404)
+    })
+
     it('o registro de um clube nao aparece para o instrutor de outro, mesmo com o id', async () => {
       const a = await cenario()
       const b = await cenario()

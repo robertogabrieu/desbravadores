@@ -169,6 +169,46 @@ describe('materiais (F9)', () => {
     await enviar(autor, classe.id, PDF, 'a.pdf').expect(201)
   })
 
+  it('dois envios simultaneos que juntos passam da cota: um aceito, o outro 422', async () => {
+    const { clube, classe, autor } = await cenario()
+    const cheio = await criarArquivo({ clubeId: clube.id, criadoPorId: autor.usuario.id, mime: 'application/pdf', bytes: COTA_DE_MATERIAIS_BYTES - PDF.length - 5, miniaturaCaminho: null })
+    await criarMaterial({ clubeId: clube.id, classeId: classe.id, autorId: autor.usuario.id, titulo: 'Grande', arquivo: cheio.id })
+    const respostas = await Promise.all([enviar(autor, classe.id, PDF, 'a.pdf'), enviar(autor, classe.id, PDF, 'b.pdf')])
+    expect(respostas.map((r) => r.status).sort()).toEqual([201, 422])
+    const recusada = respostas.find((r) => r.status === 422)
+    expect(corpo<{ mensagem: string }>(recusada as request.Response).mensagem).toBe('O espaço de materiais do clube acabou.')
+    expect(await prismaDeTeste().material.count({ where: { clubeId: clube.id } })).toBe(2)
+  })
+
+  it('o id do arquivo e UUID v7 e o arquivo em disco usa esse id', async () => {
+    const { classe, autor } = await cenario()
+    const material = corpo<Saida>(await enviar(autor, classe.id, PDF, 'v7.pdf').expect(201))
+    const linha = await prismaDeTeste().material.findUniqueOrThrow({ where: { id: material.id }, include: { arquivo: true } })
+    expect(linha.arquivoId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
+    expect(linha.arquivo?.caminho.endsWith(`/${linha.arquivoId}.pdf`)).toBe(true)
+    expect(existeNoDisco(linha.arquivo?.caminho ?? '')).toBe(true)
+  })
+
+  it('falha depois de gravar o arquivo nao deixa linha nem arquivo no disco', async () => {
+    const { clube, classe, autor } = await cenario()
+    const original = armazenamento.gravarDeArquivo.bind(armazenamento)
+    let caminhoGravado = ''
+    const gravar = jest.spyOn(armazenamento, 'gravarDeArquivo').mockImplementationOnce(async (caminho, origem) => {
+      await original(caminho, origem)
+      caminhoGravado = caminho
+      throw new Error('falha depois de gravar')
+    })
+    try {
+      await enviar(autor, classe.id, PDF, 'falha.pdf').expect(500)
+    } finally {
+      gravar.mockRestore()
+    }
+    expect(caminhoGravado).not.toBe('')
+    expect(existeNoDisco(caminhoGravado)).toBe(false)
+    expect(await prismaDeTeste().arquivo.count({ where: { clubeId: clube.id } })).toBe(0)
+    expect(await prismaDeTeste().material.count({ where: { clubeId: clube.id } })).toBe(0)
+  })
+
   it('link so https; http recusado (400)', async () => {
     const { classe, autor } = await cenario()
     const ok = corpo<Saida>(await api.post('/api/materiais/link', autor.autorizacao, { classeId: classe.id, secaoId: null, titulo: 'Video', url: 'https://exemplo.test/v' }).expect(201))

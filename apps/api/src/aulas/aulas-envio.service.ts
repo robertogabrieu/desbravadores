@@ -179,7 +179,7 @@ export class AulasEnvioService {
 
   private conferirDoUuid(registro: RegistroAula, envio: Envio): RegistroAula {
     if (paraDataCivil(registro.data) !== envio.data) throw regra('A data de uma aula registrada não muda.')
-    if (registro.classeId !== envio.classeId) throw regra('Esta aula pertence a outra classe.')
+    if (registro.classeId !== envio.classeId) throw new ErroApp('NAO_ENCONTRADO', 'Aula não encontrada.')
     return registro
   }
 
