@@ -165,11 +165,34 @@ npm run clube:criar -w api -- --nome "Clube Exemplo" --slug clube-exemplo --adm-
 
 ## Produção
 
-Stack em `docker-compose.prod.yml`, operada pelos scripts em `scripts/`:
+Stack em `docker-compose.prod.yml`, operada pelos scripts em `scripts/`.
+
+**Instalação num comando** (servidor com Docker, e Nginx + certbot se for usar `--nginx`):
+
+```bash
+scripts/instalar.sh --nginx desbravadores.exemplo.org --email-certbot voce@exemplo.org \
+  --clube-nome "Clube Exemplo" --clube-slug clube-exemplo --adm-nome "Fulano" --adm-email fulano@exemplo.org
+```
+
+Nessa ordem, e parando no primeiro problema: confere as ferramentas e, com `--nginx`, que o domínio já
+aponta no DNS para este servidor; escolhe uma porta livre do host entre 8090 e 8190 (a VPS é
+compartilhada; outro processo ou container na porta é pulado) e a grava em `WEB_PORTA`; cria o
+`.env` com segredos novos (ou mantém o existente); sobe a stack e espera a API; roda a carga oficial
+só na primeira instalação (ou com `--carga`); cria o clube e o Adm se os quatro dados vierem; e, com
+`--nginx`, grava o site no Nginx do servidor a partir de `scripts/nginx-host.conf` (upload até
+21 MB, log sem a query dos links assinados, rotação de 30 dias em `scripts/nginx-host-logrotate`),
+confere com `nginx -t` (desfaz se falhar), recarrega e pede o certificado ao certbot com
+redirecionamento para HTTPS. Sem `--email-certbot`, o certbot pergunta o e-mail.
+
+Rodar de novo é seguro: mantém o `.env`, a porta e o certificado (num site já certificado, só a
+porta do `proxy_pass` é atualizada, se mudou). Sem `--nginx`, o proxy HTTPS do servidor fica por sua
+conta, apontando para `127.0.0.1:<WEB_PORTA>` com `client_max_body_size 21m`; o login só se mantém
+em HTTPS (`COOKIE_SECURE=true`).
 
 | Comando | O que faz |
 |---|---|
-| `scripts/deploy.sh [APP_URL]` | Primeira subida: cria o `.env` com segredos novos (`ARQUIVOS_SEGREDO` incluído; se o `.env` já existe, só acrescenta o `ARQUIVOS_SEGREDO` que faltar), sobe a stack e espera a API ficar saudável. A API migra o banco ao iniciar. Depois, preencha `SMTP_*`, `BACKUP_AGE_DESTINATARIO` e `RCLONE_REMOTO` no `.env` |
+| `scripts/instalar.sh [--nginx dominio] [--email-certbot email] [--carga] [--clube-nome ... --clube-slug ... --adm-nome ... --adm-email ...]` | Instalação completa, descrita acima |
+| `scripts/deploy.sh [APP_URL]` | Subida mínima, sem porta automática, carga, clube nem Nginx (o `instalar.sh` faz tudo isso). Primeira subida: cria o `.env` com segredos novos (`ARQUIVOS_SEGREDO` incluído; se o `.env` já existe, só acrescenta o `ARQUIVOS_SEGREDO` que faltar), sobe a stack e espera a API ficar saudável. A API migra o banco ao iniciar. Depois, preencha `SMTP_*`, `BACKUP_AGE_DESTINATARIO` e `RCLONE_REMOTO` no `.env` |
 | `scripts/atualizar.sh` | Recusa árvore com alterações não commitadas, faz `git pull --ff-only`, acrescenta `ARQUIVOS_SEGREDO` ao `.env` se faltar (nunca troca um existente; precisa de `openssl`), reconstrói e sobe. Não roda a carga |
 | `scripts/carga.sh [--forcar]` | Carga oficial dentro do container da API |
 | `docker compose -f docker-compose.prod.yml --env-file .env exec api node dist/scripts/clube-criar.js --nome ... --slug ... --adm-nome ... --adm-email ...` | Cria um clube em produção |
