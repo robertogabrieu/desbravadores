@@ -122,8 +122,8 @@ Instrutor que não monta vê só o cronograma **publicado**.
 
 | Método e rota | O que faz | Permissão |
 |---|---|---|
-| `GET /classes/{id}/aulas?de=&ate=` | Aulas registradas ("N aulas dadas") | escopo |
-| `GET /registros-aula/{id}` | Detalhe: presença e requisitos marcados | escopo |
+| `GET /classes/{id}/aulas?anoClube=` | Aulas registradas ("N aulas dadas"), data decrescente | `aula.registrar` + escopo |
+| `GET /aulas/{id}` | Detalhe: presença e requisitos marcados | `aula.registrar` + escopo |
 | `PUT /sync/aulas/{clienteUuid}` | Grava presença + requisitos cumpridos (idempotente) → pontos | `aula.registrar` + escopo |
 
 ## Sincronização offline
@@ -156,7 +156,8 @@ Instrutor que não monta vê só o cronograma **publicado**.
 | `GET /unidades/{id}/sem-autorizacao-imagem` | Nomes públicos dos DBVs da unidade sem autorização (aviso do envio) | `foto.enviar` + escopo |
 | `GET /arquivos/{id}?miniatura=1` | Entrega por URL assinada de curta duração | conforme o dono |
 | `DELETE /fotos/{id}` | Remove (autor ou Adm) | `foto.enviar` |
-| `GET /classes/{id}/materiais` · `POST` · `DELETE /materiais/{id}` | Materiais por seção | `material.enviar` + escopo |
+| `GET /classes/{id}/materiais` | Materiais por seção | logado + escopo (conselheiro: 403) |
+| `POST /materiais/link` · `POST /materiais/arquivo` (multipart: `dados`, `arquivo`; até 20 MB) · `PATCH` · `DELETE /materiais/{id}` | Cria, edita título/seção, remove | `material.enviar` + escopo |
 
 ## Observações
 
