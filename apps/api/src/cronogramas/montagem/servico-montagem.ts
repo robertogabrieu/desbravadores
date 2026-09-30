@@ -5,12 +5,10 @@ import type { SessaoLogada } from '../../comum/decorators/sessao.decorator'
 import { ErroApp } from '../../comum/erros'
 import { PrismaService } from '../../comum/prisma/prisma.service'
 import { ServicoAtividade } from '../../atividades/servico-atividade'
-import { ServicoCalendario } from '../../calendario/servico-calendario'
 import { daDataCivil, paraDataCivil } from '../../desbravadores/apoio'
 import { Prisma, type Cronograma } from '../../generated/prisma/client.js'
 import { ServicoNotificacoes } from '../../notificacoes/servico-notificacoes'
-import { ServicoCronograma } from '../servico-cronograma'
-import { eventosDasSituacoes, ServicoMontagemLeitura } from './servico-montagem-leitura'
+import { ServicoMontagemLeitura } from './servico-montagem-leitura'
 
 type Saida = z.infer<typeof MontagemSaida>
 type Tx = Prisma.TransactionClient
@@ -47,8 +45,6 @@ export class ServicoMontagem {
   constructor(
     private readonly prisma: PrismaService,
     private readonly leitura: ServicoMontagemLeitura,
-    private readonly cronogramas: ServicoCronograma,
-    private readonly calendario: ServicoCalendario,
     private readonly notificacoes: ServicoNotificacoes,
     private readonly atividades: ServicoAtividade,
   ) {}
@@ -90,7 +86,7 @@ export class ServicoMontagem {
     return this.executar(sessao, cronogramaId, 'MONTAR', async (contexto) => {
       const { tx, cronograma, trilha } = contexto
       const { clubeId, classeId } = cronograma
-      const requisitos = await this.leitura.requisitosDaClasse(clubeId, classeId)
+      const requisitos = await this.leitura.requisitosDaClasse(clubeId, classeId, tx)
       if (!requisitos.some((requisito) => requisito.id === requisitoId)) {
         throw new ErroApp('NAO_ENCONTRADO', 'Requisito não encontrado nesta classe.')
       }
@@ -100,7 +96,7 @@ export class ServicoMontagem {
 
       let destino = await tx.aulaPlanejada.findFirst({ where: { clubeId, cronogramaId: cronograma.id, data: daDataCivil(data), removidaEm: null } })
       if (trilha === 'INDIVIDUAL') {
-        await this.exigirDataDeAula(cronograma, data)
+        await this.exigirDataDeAula(tx, cronograma, data)
         destino ??= await tx.aulaPlanejada.create({ data: { clubeId, cronogramaId: cronograma.id, data: daDataCivil(data) } })
       } else if (!destino) {
         throw regra('Crie a aula desta data antes de colocar o requisito.')
@@ -252,7 +248,7 @@ export class ServicoMontagem {
         data: { clubeId, cronogramaId: cronograma.id, conteudo: await this.retrato(tx, cronograma), publicadoPorId: contexto.sessao.usuarioId },
       })
 
-      const instrutores = await this.cronogramas.instrutoresDaClasse(clubeId, cronograma.classeId)
+      const instrutores = await this.instrutoresDaClasse(tx, clubeId, cronograma.classeId)
       const quemMonta = await tx.classeClube.findUnique({
         where: { clubeId_classeId: { clubeId, classeId: cronograma.classeId } },
         select: { quemMontaCronograma: true },
@@ -358,13 +354,16 @@ export class ServicoMontagem {
   }
 
   /** B5: só dia de reunião mantida ou data boa para campo, sem bloqueio, aceita aula das individuais. */
-  private async exigirDataDeAula(cronograma: Cronograma, data: string): Promise<void> {
+  private async exigirDataDeAula(tx: Tx, cronograma: Cronograma, data: string): Promise<void> {
     this.exigirNoPeriodo(cronograma, data)
-    const [configuracao, situacoes] = await Promise.all([
-      this.prisma.configuracaoClube.findUniqueOrThrow({ where: { clubeId: cronograma.clubeId } }),
-      this.calendario.situacoes(cronograma.clubeId, data, data),
-    ])
-    if (datasDeAula(data, data, configuracao.diaReuniao, eventosDasSituacoes(situacoes)).length === 0) {
+    const { clubeId } = cronograma
+    const configuracao = await tx.configuracaoClube.findUniqueOrThrow({ where: { clubeId } })
+    const eventos = await tx.eventoCalendario.findMany({
+      where: { clubeId, removidoEm: null, inicio: { lte: daDataCivil(data) }, fim: { gte: daDataCivil(data) } },
+      select: { nome: true, inicio: true, fim: true, cancelaReuniao: true, bloqueiaAula: true, bomParaCampo: true },
+    })
+    const doCalendario = eventos.map((evento) => ({ ...evento, inicio: paraDataCivil(evento.inicio), fim: paraDataCivil(evento.fim) }))
+    if (datasDeAula(data, data, configuracao.diaReuniao, doCalendario).length === 0) {
       throw regra('Esta data não é dia de aula.')
     }
   }
@@ -385,6 +384,16 @@ export class ServicoMontagem {
     })
     if (!ligacao) return null
     return tx.aulaPlanejada.findFirstOrThrow({ where: { clubeId: cronograma.clubeId, id: ligacao.aulaPlanejadaId } })
+  }
+
+  /** Instrutores ativos do clube ligados à classe (a mesma regra de `ServicoCronograma.instrutoresDaClasse`, pela `tx`). */
+  private async instrutoresDaClasse(tx: Tx, clubeId: string, classeId: string): Promise<{ usuarioId: string }[]> {
+    const vinculos = await tx.vinculo.findMany({
+      where: { clubeId, papel: 'INSTRUTOR', ativo: true, classes: { some: { classeId } } },
+      select: { usuario: { select: { id: true } } },
+      orderBy: { usuario: { nome: 'asc' } },
+    })
+    return vinculos.map((vinculo) => ({ usuarioId: vinculo.usuario.id }))
   }
 
   /** Aula das individuais que ficou sem requisito deixa de existir; nas agrupadas só se remove de propósito. */

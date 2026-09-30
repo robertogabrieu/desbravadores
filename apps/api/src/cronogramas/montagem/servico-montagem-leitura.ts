@@ -14,6 +14,7 @@ import { PrismaService } from '../../comum/prisma/prisma.service'
 import { ServicoCalendario } from '../../calendario/servico-calendario'
 import { daDataCivil, paraDataCivil } from '../../desbravadores/apoio'
 import { ServicoEscopo } from '../../desbravadores/escopo.service'
+import type { Prisma } from '../../generated/prisma/client.js'
 
 type Saida = z.infer<typeof MontagemSaida>
 
@@ -160,14 +161,17 @@ export class ServicoMontagemLeitura {
     }
   }
 
-  /** Requisitos ativos para o clube (oficial ativo e não desligado pelo ajuste), com o `campo` ajustado, na ordem do caderno. */
-  async requisitosDaClasse(clubeId: string, classeId: string) {
-    const requisitos = await this.prisma.requisito.findMany({
+  /**
+   * Requisitos ativos para o clube (oficial ativo e não desligado pelo ajuste), com o `campo` ajustado, na ordem do caderno.
+   * Com o cronograma travado, quem chama passa a `tx` para a leitura não disputar outra conexão com a trava.
+   */
+  async requisitosDaClasse(clubeId: string, classeId: string, db: Pick<Prisma.TransactionClient, 'requisito' | 'requisitoAjuste'> = this.prisma) {
+    const requisitos = await db.requisito.findMany({
       where: { secao: { classeId } },
       orderBy: [{ secao: { ordem: 'asc' } }, { ordem: 'asc' }],
       select: { id: true, codigo: true, texto: true, campo: true, ativo: true, secao: { select: { codigo: true } } },
     })
-    const ajustes = await this.prisma.requisitoAjuste.findMany({
+    const ajustes = await db.requisitoAjuste.findMany({
       where: { clubeId, requisitoId: { in: requisitos.map((requisito) => requisito.id) } },
       select: { requisitoId: true, ativo: true, campo: true },
     })

@@ -1,6 +1,7 @@
 import type { Server } from 'node:http'
 import type { INestApplication } from '@nestjs/common'
 import type { CronogramaLeitura, MontagemSaida } from '@desbravadores/shared'
+import { Client } from 'pg'
 import request from 'supertest'
 import type { z } from 'zod'
 import { criarAppDeTeste } from '../../../test/app'
@@ -36,6 +37,39 @@ function congelarRelogio(instante: string): void {
       'setTimeout', 'clearTimeout',
     ],
   })
+}
+
+interface ConsultaVista {
+  conexao: number
+  texto: string
+}
+
+/**
+ * Registra cada consulta que qualquer conexão pg faz enquanto `acao` roda. A conexão é identificada pelo `processID`
+ * do Postgres; a chamada original segue intacta.
+ */
+async function consultasDuranteA(acao: () => Promise<unknown>): Promise<ConsultaVista[]> {
+  const espiao = jest.spyOn(Client.prototype, 'query')
+  try {
+    await acao()
+    return espiao.mock.calls.map((argumentos, indice) => {
+      const primeiro = argumentos[0] as unknown
+      const texto = typeof primeiro === 'string' ? primeiro : ((primeiro as { text?: string } | undefined)?.text ?? '')
+      return { conexao: (espiao.mock.contexts[indice] as unknown as { processID: number }).processID, texto }
+    })
+  } finally {
+    espiao.mockRestore()
+  }
+}
+
+/** O que outras conexões consultaram entre a trava do cronograma (FOR UPDATE) e o fim da transação que a segura. */
+function consultasDeOutrasConexoesComATrava(vistas: ConsultaVista[]): ConsultaVista[] {
+  const inicio = vistas.findIndex((vista) => /FOR UPDATE/i.test(vista.texto))
+  expect(inicio).toBeGreaterThanOrEqual(0)
+  const dona = vistas[inicio].conexao
+  const fim = vistas.findIndex((vista, indice) => indice > inicio && vista.conexao === dona && /^\s*(COMMIT|ROLLBACK)/i.test(vista.texto))
+  expect(fim).toBeGreaterThan(inicio)
+  return vistas.slice(inicio, fim).filter((vista) => vista.conexao !== dona)
 }
 
 async function requisitosDa(classeId: string, quantos: number): Promise<string[]> {
@@ -307,6 +341,18 @@ describe('Montagem do cronograma', () => {
       await prismaDeTeste().cronograma.update({ where: { id: cronograma.id }, data: { status: 'PUBLICADO' } })
       const terceira = corpo<Saida>(await tirar(cronograma.id, requisitos[1], adm.autorizacao))
       expect(terceira.cronograma?.status).toBe('RASCUNHO')
+    })
+
+    it('enquanto trava o cronograma, colocar e publicar leem só pela própria transação (nenhuma outra conexão)', async () => {
+      const { adm, requisitos, cronograma } = await cenario()
+      const versao = async () => (await prismaDeTeste().cronograma.findUniqueOrThrow({ where: { id: cronograma.id } })).atualizadoEm.toISOString()
+
+      const colocando = await consultasDuranteA(() => colocar(cronograma.id, requisitos[0], DOMINGO_A, adm.autorizacao))
+      expect(consultasDeOutrasConexoesComATrava(colocando)).toEqual([])
+
+      const visto = await versao()
+      const publicando = await consultasDuranteA(() => http.post(`/api/cronogramas/${cronograma.id}/publicar`, adm.autorizacao, { atualizadoEmVisto: visto }))
+      expect(consultasDeOutrasConexoesComATrava(publicando)).toEqual([])
     })
 
     it('editar horário, local e título da aula', async () => {
