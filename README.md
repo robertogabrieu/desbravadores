@@ -8,7 +8,7 @@ Monorepo do aplicativo de gestão de clubes de Desbravadores.
 | `apps/web` | Front (React + Vite, PWA) |
 | `packages/shared` | Código compartilhado entre API e front |
 
-Visão, arquitetura e decisões: `docs/planejamento`. Fase 0 (fundação): `docs/fases/fase-0`. Convenções para agentes: `CLAUDE.md`.
+Visão, arquitetura e decisões: `docs/planejamento`. Fase 0 (fundação): `docs/fases/fase-0`. Fase 1: `docs/fases/`. Convenções para agentes: `CLAUDE.md`.
 
 ## Pré-requisitos
 
@@ -35,9 +35,32 @@ O app do conselheiro e do instrutor abre sem internet. Na abertura ele tenta ren
 
 - **Pacote:** `GET /api/sync/pacote` (exige login). Traz clube, critérios da chamada, e, para o conselheiro, as unidades com membros, reuniões dos últimos 30 dias e álbuns dos últimos 60; ADM e instrutor recebem as listas de unidades vazias. Só é regravado no aparelho quando a `versao` muda. Baixa na abertura se o guardado tem mais de 15 min, e sempre ao voltar a conexão.
 - **Fila de envio (`/fila`, "Aguardando envio"):** o que foi registrado sem conexão fica guardado no aparelho e sobe sozinho, em ordem, quando há internet. Falha de rede ou servidor tenta de novo após 5 s, 15 s, 60 s e 5 min; item em erro mostra a mensagem e oferece "Tentar de novo" e "Descartar" (o descarte avisa quais envios dependem dele e passam a dar erro). "Tentar enviar agora" força uma passada mesmo em modo sem conexão. O selo "N aguardando envio" (pendentes mais erros) leva à fila. Só envia com o app aberto.
+- **Tipos de envio:** a fila conhece `REUNIAO` (chamada e correção) e `FOTO`. Cada tipo se registra com `registrarTipo` em seu arquivo em `apps/web/src/offline/tipos/` e é importado em `apps/web/src/offline/tipos/todos.ts`, que o `main.tsx` carrega uma vez; tipo novo entra por essa lista. Dois envios da mesma chave viram um só (`fundir`): na chamada a linha mais nova de cada desbravador vence; na foto a chave é única, então nada se funde. Depois de cada envio, o tipo invalida as consultas afetadas; a chamada também renova as versões dos itens seguintes da mesma chave e baixa o pacote de novo.
+- **Ler o pacote e rascunhos:** `usePacote()` devolve o pacote guardado no aparelho e reemite a cada gravação no banco local; as telas leem dele quando estão sem conexão. `lerRascunho`, `gravarRascunho` e `apagarRascunho` guardam estado de formulário por usuário e chave; sair do app apaga os rascunhos.
+- **Consultas e mutações com `networkMode: 'always'`:** o padrão do cliente de consultas (`main.tsx`) é não esperar o navegador se dizer online. Sem isso, com a rede fora a consulta ficaria pausada e a tela em "carregando" para sempre em vez de falhar e levar o app ao modo sem conexão; e a mutação de salvar a chamada ficaria pausada e nunca chegaria à fila. Mutações que precisam da API (como remover foto) falham nesse caso e a tela avisa.
 - **Avisos na fila:** "Entre de novo para enviar" (sessão expirada), "Pouco espaço" (mais de 100 MB de arquivos esperando), envios antigos de outra pessoa descartados (mais de 30 dias) e "Instale o app na tela inicial" (só no iPhone fora da tela inicial). Itens já enviados somem do aparelho após 24 h.
 - **Sair com itens na fila:** "Sair" e "Sair de todos os aparelhos" pedem confirmação ("Sair mesmo assim?"). Sair apaga pacote, identidade e rascunhos do aparelho, mas a fila fica e só sobe quando a pessoa entrar de novo.
 - **Sessão expirada durante o uso:** a faixa "Sua sessão expirou — salve e entre de novo" (com "Entrar de novo") aparece sem tirar a pessoa da tela; o que já foi guardado na fila continua lá.
+
+## O domingo do conselheiro
+
+Telas do conselheiro (o instrutor tem só um Início provisório e a fila), em `apps/web/src/modulos`:
+
+| Rota | O que é |
+|---|---|
+| `/inicio` | Início do conselheiro (`GET /api/inicio/conselheiro`) |
+| `/unidade` | Minha unidade: membros e grade de frequência (`GET /api/unidades/:id/membros` e `/frequencia`). Unidade sem membros oferece "Avisar o Adm" (`POST /api/pedidos-ao-adm`) |
+| `/reunioes`, `/reunioes/:id` | Histórico e detalhe da reunião (`GET /api/reunioes`, `/api/reunioes/:id`) |
+| `/reunioes/nova`, `/reunioes/:id/editar` | Chamada nova e correção de chamada já feita |
+| `/galeria`, `/galeria/:albumId`, `/galeria/enviar` | Álbuns, fotos do álbum e envio de fotos (`GET /api/albuns`, `/api/albuns/:id`, `DELETE /api/fotos/:id`) |
+| `/dbv/:id` | Perfil do desbravador, visível também ao Adm e ao instrutor (`GET /api/desbravadores/:id/perfil`) |
+| `/ranking` | Ranking do mês, também para Adm e instrutor (`GET /api/ranking?mes=AAAA-MM`; sem `mes`, o mês corrente; `GET /api/ranking/unidades`) |
+
+Permissões: registrar chamada e avisar o Adm exigem `reuniao.registrar`; ver reuniões e frequência, `reuniao.ver`; enviar foto, `foto.enviar`; ver álbuns e remover foto, `foto.ver`; perfil e membros, `dbv.ver`.
+
+**Chamada.** Salvar não chama a API: grava a chamada na fila e volta ao histórico, com ou sem internet. O envio é `PUT /api/sync/reunioes/:uuid`. O UUID da reunião nasce no primeiro toque, então a correção de uma chamada ainda na fila cai no mesmo item. Cada linha e o cabeçalho (horário e observações) carregam a versão vista quando a chamada foi aberta; se outra pessoa mudou aquilo antes, a versão de quem enviou vale, a anterior fica registrada e a tela avisa quem foi afetado. Desbravador que não era da unidade na data fica fora e também é avisado. Enquanto a chamada não é salva, o que foi marcado fica como rascunho no aparelho, por usuário e por `unidade:data`.
+
+**Fotos.** As fotos são reduzidas no aparelho antes de entrar na fila (lado maior de 1600 px; o texto da tela promete no máximo 2 MB cada) e sobem por `PUT /api/sync/fotos/:uuid` (multipart: `dados` em JSON e `arquivo`). A tela de envio lista quem, na unidade, não tem autorização de imagem (`GET /api/unidades/:id/sem-autorizacao-imagem`; sem conexão usa o que está no pacote).
 
 ## Testar
 
