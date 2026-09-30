@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
 import { HttpResponse, http } from 'msw'
 import { RouterProvider, createMemoryRouter } from 'react-router-dom'
@@ -21,13 +22,22 @@ const estado = vi.hoisted(() => ({
   itens: [] as ItemFila[],
   instalar: false,
   rascunhos: new Map<string, unknown>(),
+  ouvintes: new Set<() => void>(),
   enfileirar: vi.fn<(entrada: unknown) => Promise<string>>(() => Promise.resolve('id')),
   aviso: { success: vi.fn(), warning: vi.fn() },
 }))
 
 vi.mock('sonner', () => ({ toast: estado.aviso }))
 vi.mock('../../../offline', () => ({
-  useConexao: () => ({ modo: estado.modo }),
+  useConexao: () => ({
+    modo: useSyncExternalStore(
+      (ouvinte) => {
+        estado.ouvintes.add(ouvinte)
+        return () => estado.ouvintes.delete(ouvinte)
+      },
+      () => estado.modo,
+    ),
+  }),
   usePacote: () => estado.pacote,
   useFila: () => ({ avisos: { instalarNaTelaInicial: estado.instalar } }),
   itensDaChave: () => Promise.resolve(estado.itens),
@@ -328,6 +338,35 @@ describe('Edição', () => {
     expect(linha('Bruno Lima').getByRole('button', { name: /Bruno Lima/ })).toHaveAttribute('aria-pressed', 'true')
     expect(botaoSalvar()).toBeDisabled()
     await userEvent.click(linha('Bruno Lima').getByRole('button', { name: 'Uniforme' }))
+    await userEvent.click(botaoSalvar())
+    await waitFor(() => expect(estado.enfileirar).toHaveBeenCalledOnce())
+    const { payload } = estado.enfileirar.mock.calls[0]?.[0] as { payload: { reuniaoId: string; correcao: boolean; corpo: { linhas: unknown[] } } }
+    expect(payload).toMatchObject({ reuniaoId: doServidor.id, correcao: true })
+    expect(payload.corpo.linhas).toEqual([
+      { dbvId: BRUNO, situacao: 'PRESENTE', uniforme: true, biblia: false, licao: false, versaoVista: '2030-03-15T12:01:00.000Z' },
+    ])
+  })
+
+  it('a base fica fixa: a conexão cair no meio não vira chamada nova nem apaga a marcação', async () => {
+    const doServidor = criarDetalheReuniao({
+      id: uuid(720),
+      data: HOJE,
+      chamada: [ANA, BRUNO, CARLA].map((dbvId, i) => ({
+        dbvId, nome: ['Ana Clara', 'Bruno Lima', 'Carla Dias'][i] ?? '', nomePublico: 'x',
+        situacao: 'PRESENTE' as const, uniforme: false, biblia: false, licao: false,
+        versao: `2030-03-15T12:0${i}:00.000Z`, pontos: 15,
+      })),
+    })
+    servidor.use(http.get('/api/reunioes', () => HttpResponse.json([criarResumo({ id: doServidor.id, data: HOJE })])), handlerReuniao(doServidor))
+    montar('/reunioes/nova')
+    await screen.findByText('Ana Clara')
+    await userEvent.click(linha('Bruno Lima').getByRole('button', { name: 'Uniforme' }))
+    act(() => {
+      estado.modo = 'SEM_CONEXAO'
+      estado.ouvintes.forEach((ouvinte) => ouvinte())
+    })
+    expect(linha('Bruno Lima').getByRole('button', { name: 'Uniforme' })).toHaveAttribute('aria-pressed', 'true')
+    expect(linha('Ana Clara').getByRole('button', { name: /Ana Clara/ })).toHaveAttribute('aria-pressed', 'true')
     await userEvent.click(botaoSalvar())
     await waitFor(() => expect(estado.enfileirar).toHaveBeenCalledOnce())
     const { payload } = estado.enfileirar.mock.calls[0]?.[0] as { payload: { reuniaoId: string; correcao: boolean; corpo: { linhas: unknown[] } } }

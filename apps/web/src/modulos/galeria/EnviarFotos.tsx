@@ -186,11 +186,13 @@ function FormularioDeEnvio({ unidades, unidadeId, aoTrocarUnidade, reuniaoDoLink
       const album: Album = opcaoAtual.album ?? { tipo: 'NOVO', id: crypto.randomUUID(), unidadeId, titulo: nomeNovo.trim(), data: dataNovo }
       const tituloNaFila = opcaoAtual.album ? opcaoAtual.tituloNaFila : nomeNovo.trim()
       const legendaDoLote = legenda.trim() === '' ? null : legenda.trim()
+      const chaveDaReuniao = album.tipo === 'REUNIAO' ? chaveDaChamada(album.unidadeId, album.data) : null
+      const chamadaPendente = chaveDaReuniao !== null && (await itensDaChave(chaveDaReuniao)).some((item) => item.estado !== 'ENVIADO')
       const ids: string[] = []
       for (const { foto, blob } of reduzidas) {
         const fotoId = crypto.randomUUID()
         const payload: PayloadFoto = { fotoId, albumTitulo: tituloNaFila, nomeArquivo: `${fotoId}.jpg`, dados: { versaoPayload: 1, album, legenda: legendaDoLote } }
-        await enfileirar({ tipo: 'FOTO', chave: `foto:${fotoId}`, ...(album.tipo === 'REUNIAO' ? { dependeDe: chaveDaChamada(album.unidadeId, album.data) } : {}), payload, blob })
+        await enfileirar({ tipo: 'FOTO', chave: `foto:${fotoId}`, ...(chamadaPendente && chaveDaReuniao ? { dependeDe: chaveDaReuniao } : {}), payload, blob })
         ids.push(fotoId)
         URL.revokeObjectURL(foto.previa)
       }

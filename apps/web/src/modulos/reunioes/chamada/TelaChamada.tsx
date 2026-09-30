@@ -94,10 +94,14 @@ interface PropriedadesDaData extends PropriedadesModo {
   data: string
 }
 
-/** A base é o servidor (com internet) ou o pacote (sem conexão); o que está na fila entra por cima, dentro do formulário. */
+/**
+ * A base é o servidor (com internet) ou o pacote (sem conexão); o que está na fila entra por cima, dentro do formulário.
+ * O modo é lido uma vez, ao abrir: se a conexão cair no meio, a base não troca e a tela não remonta.
+ */
 function ChamadaDaData(props: PropriedadesDaData) {
   const { modo } = useConexao()
-  return modo === 'SEM_CONEXAO' ? <ChamadaComBaseDoPacote {...props} /> : <ChamadaComBaseDoServidor {...props} />
+  const [modoAoAbrir] = useState(modo)
+  return modoAoAbrir === 'SEM_CONEXAO' ? <ChamadaComBaseDoPacote {...props} /> : <ChamadaComBaseDoServidor {...props} />
 }
 
 function ChamadaComBaseDoPacote({ pacote, baixadoEm, unidade, data }: PropriedadesDaData) {
@@ -110,7 +114,7 @@ function ChamadaComBaseDoServidor(props: PropriedadesDaData) {
   const lista = useReunioes(unidade.id, data.slice(0, 7))
   if (lista.isPending) return <EsqueletoChamada />
   // Sem resposta do servidor a lista não diz nada: cai para o que o aparelho guardou.
-  if (lista.isError) return <ChamadaComBaseDoPacote {...props} />
+  if (!lista.data) return <ChamadaComBaseDoPacote {...props} />
   const existente = lista.data.find((r) => r.data === data)
   return existente ? <ChamadaComReuniaoDoServidor {...props} reuniaoId={existente.id} /> : <ChamadaComBaseDoPacote {...props} />
 }
@@ -118,7 +122,8 @@ function ChamadaComBaseDoServidor(props: PropriedadesDaData) {
 function ChamadaComReuniaoDoServidor({ reuniaoId, ...props }: PropriedadesDaData & { reuniaoId: string }) {
   const detalhe = useReuniao(reuniaoId)
   if (detalhe.isPending) return <EsqueletoChamada />
-  if (detalhe.isError) return <ChamadaComBaseDoPacote {...props} />
+  // Uma releitura que falha depois não tira a reunião que já chegou.
+  if (!detalhe.data) return <ChamadaComBaseDoPacote {...props} />
   return <FormularioChamada pacote={props.pacote} baixadoEm={props.baixadoEm} unidade={props.unidade} data={props.data} base={baseDoDetalhe(detalhe.data)} />
 }
 
