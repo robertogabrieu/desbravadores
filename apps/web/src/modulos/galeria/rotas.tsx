@@ -1,8 +1,10 @@
 import type { RouteObject } from 'react-router-dom'
+import { Album } from './Album'
+import { EnviarFotos } from './EnviarFotos'
+import { Galeria } from './Galeria'
 
-// Provisório da onda 0 da 1b; o pacote B7 põe as telas.
 export const rotasGaleria: RouteObject[] = [
-  { path: '/galeria', element: null },
-  { path: '/galeria/enviar', element: null },
-  { path: '/galeria/:albumId', element: null },
+  { path: '/galeria', element: <Galeria /> },
+  { path: '/galeria/enviar', element: <EnviarFotos /> },
+  { path: '/galeria/:albumId', element: <Album /> },
 ]
