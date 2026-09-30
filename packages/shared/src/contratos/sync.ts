@@ -1,8 +1,9 @@
 import { z } from 'zod'
-import { Horario, Sexo } from '../enums'
+import { Horario, Sexo, TipoPessoa } from '../enums'
 import { DataCivil, InstanteIso, Uuid } from './comum'
 import { RefClasse } from './auth'
 import { MarcacaoChamadaServidor } from './reunioes'
+import { RequisitoResumo } from './cronograma'
 
 export const MembroPacote = z.object({
   dbvId: Uuid,
@@ -13,6 +14,22 @@ export const MembroPacote = z.object({
   classeAtual: RefClasse.nullable(),
   autorizacaoImagem: z.boolean(),
 })
+export const PacoteInstrutor = z.object({
+  classes: z.array(z.object({
+    classe: RefClasse,
+    membros: z.array(MembroPacote.extend({ tipo: TipoPessoa, concluidos: z.array(Uuid) })), // matrícula CURSANDO no ano
+    requisitos: z.array(RequisitoResumo),                  // ativos, com ajuste do clube
+    aulasProximas: z.array(z.object({                      // publicadas, próximos 14 dias
+      aulaPlanejadaId: Uuid, data: DataCivil, horario: Horario.nullable(), titulo: z.string().nullable(), requisitoIds: z.array(Uuid),
+    })),
+    registrosRecentes: z.array(z.object({                  // últimos 30 dias
+      id: Uuid, data: DataCivil, aulaPlanejadaId: Uuid.nullable(),
+      presencas: z.array(z.object({ dbvId: Uuid, presente: z.boolean(), versao: InstanteIso })),
+    })),
+  })),
+  pontosRequisito: z.object({ pontos: z.number().int(), ativo: z.boolean() }),
+})
+
 export const PacoteSaida = z.object({
   /** SHA-256 do JSON canônico do conteúdo (sem geradoEm; unidades e membros por nome, reuniões por data). */
   versao: z.string(),
@@ -40,5 +57,7 @@ export const PacoteSaida = z.object({
   albunsRecentes: z.array(z.object({
     id: Uuid, unidadeId: Uuid, titulo: z.string(), data: DataCivil, reuniaoId: Uuid.nullable(),
   })),
+  /** Preenchido só para INSTRUTOR. O default mantém válidos pacotes e mocks que ainda não têm o campo. */
+  instrutor: PacoteInstrutor.nullable().default(null),
 })
 // GET /api/sync/pacote → PacoteSaida (CONSELHEIRO; ADM e INSTRUTOR recebem unidades: [] nesta fase)

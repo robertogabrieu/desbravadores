@@ -1,5 +1,6 @@
 import { CalendarDays, GraduationCap, House, Trophy, Users } from 'lucide-react'
 import { Outlet } from 'react-router-dom'
+import { SinoNotificacoes } from '../modulos/notificacoes/SinoNotificacoes'
 import { useSessao } from '../sessao/useSessao'
 import { FaixaSemConexao } from './FaixaSemConexao'
 import { FaixaSessaoExpirada } from './FaixaSessaoExpirada'
@@ -30,6 +31,7 @@ export function LayoutCelular() {
         <span className="font-titulo text-lg font-bold">Desbravadores</span>
         <div className="flex items-center gap-1">
           <SeloAguardandoEnvio />
+          {papel === 'INSTRUTOR' && <SinoNotificacoes />}
           <MenuUsuario />
         </div>
       </header>

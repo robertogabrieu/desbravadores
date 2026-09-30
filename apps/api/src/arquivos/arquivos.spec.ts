@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Server } from 'node:http'
@@ -8,17 +8,26 @@ import type { Response } from 'express'
 import request from 'supertest'
 import { criarAppDeTeste } from '../../test/app'
 import {
+  classeOficial,
   criarAlbum,
   criarArquivo,
   criarClube,
   criarFoto,
   criarUnidade,
+  criarUsuario,
   desconectarPrismaDeTeste,
+  prismaDeTeste,
 } from '../../test/fabricas'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { ArquivosController } from './arquivos.controller'
 import { ARMAZENAMENTO, ArmazenamentoDisco, type Armazenamento } from './armazenamento'
-import { ServicoArquivos } from './servico-arquivos'
+import { ServicoArquivos, caminhoDoMaterial } from './servico-arquivos'
+
+// Embrulha rename/readFile para espiar as chamadas; sem `mockImplementation`, valem as reais.
+jest.mock('node:fs/promises', () => {
+  const real = jest.requireActual<typeof import('node:fs/promises')>('node:fs/promises')
+  return { ...real, rename: jest.fn(real.rename), readFile: jest.fn(real.readFile) }
+})
 
 const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0xff, 0xd9])
 const MINIATURA = Buffer.from([0xff, 0xd8, 0xff, 0xd9])
@@ -39,6 +48,40 @@ describe('arquivos: armazenamento em disco', () => {
     await disco.remover('clube/x/fotos/2026/a.jpg')
     expect(() => disco.abrir('clube/x/fotos/2026/a.jpg')).toThrow()
     await expect(disco.remover('clube/x/fotos/2026/a.jpg')).resolves.toBeUndefined()
+  })
+
+  describe('gravarDeArquivo', () => {
+    beforeEach(() => jest.mocked(readFile).mockClear())
+
+    it('move o temporario para o destino (o temporario deixa de existir) sem ler o conteudo para a memoria', async () => {
+      const disco = new ArmazenamentoDisco(raiz)
+      const temporario = join(raiz, 'upload.tmp')
+      await writeFile(temporario, JPEG)
+      await disco.gravarDeArquivo('clube/x/materiais/2026/a.pdf', temporario)
+      expect(readFile).not.toHaveBeenCalled()
+      expect(await readFile(join(raiz, 'clube/x/materiais/2026/a.pdf'))).toEqual(JPEG)
+      await expect(readFile(temporario)).rejects.toMatchObject({ code: 'ENOENT' })
+    })
+
+    it('em outro volume (EXDEV) copia em stream e apaga o temporario', async () => {
+      const disco = new ArmazenamentoDisco(raiz)
+      const temporario = join(raiz, 'upload.tmp')
+      await writeFile(temporario, JPEG)
+      jest.mocked(rename).mockRejectedValueOnce(Object.assign(new Error('cross-device'), { code: 'EXDEV' }))
+      await disco.gravarDeArquivo('clube/x/materiais/2026/b.pdf', temporario)
+      expect(readFile).not.toHaveBeenCalled()
+      expect(await readFile(join(raiz, 'clube/x/materiais/2026/b.pdf'))).toEqual(JPEG)
+      await expect(readFile(temporario)).rejects.toMatchObject({ code: 'ENOENT' })
+    })
+
+    it('outro erro do rename nao e engolido, e o destino nao pode escapar da raiz', async () => {
+      const disco = new ArmazenamentoDisco(raiz)
+      const temporario = join(raiz, 'upload.tmp')
+      await writeFile(temporario, JPEG)
+      jest.mocked(rename).mockRejectedValueOnce(Object.assign(new Error('sem permissao'), { code: 'EACCES' }))
+      await expect(disco.gravarDeArquivo('clube/x/c.pdf', temporario)).rejects.toThrow('sem permissao')
+      await expect(disco.gravarDeArquivo('../fora.pdf', temporario)).rejects.toThrow()
+    })
   })
 
   it('recusa caminho que escapa da raiz', async () => {
@@ -156,5 +199,111 @@ describe('GET /api/arquivos/:id (URL assinada)', () => {
     const clube = await criarClube()
     const arquivo = await criarArquivo({ clubeId: clube.id })
     expect((await pedir(servico.urlAssinada(clube.id, arquivo.id, 'original'))).status).toBe(404)
+  })
+})
+
+describe('caminhoDoMaterial', () => {
+  it('monta clube/<clube>/materiais/<ano>/<arquivo>.<ext>', () => {
+    expect(caminhoDoMaterial('c1', 'a1', 'pdf', 2026)).toBe('clube/c1/materiais/2026/a1.pdf')
+    expect(caminhoDoMaterial('c1', 'a1', 'docx')).toBe(`clube/c1/materiais/${new Date().getUTCFullYear()}/a1.docx`)
+  })
+})
+
+describe('GET /api/arquivos/:id (documentos de material)', () => {
+  let app: INestApplication
+  let armazenamento: Armazenamento
+  let servico: ServicoArquivos
+  const prisma = new PrismaService()
+
+  beforeAll(async () => {
+    app = await criarAppDeTeste()
+    armazenamento = app.get<Armazenamento>(ARMAZENAMENTO)
+    servico = app.get(ServicoArquivos)
+  })
+  afterAll(async () => {
+    await app.close()
+    await prisma.$disconnect()
+    await desconectarPrismaDeTeste()
+  })
+
+  const PDF = Buffer.from('%PDF-1.4 fake')
+  const DOCX = Buffer.from('PK fake docx')
+  const MIME_PDF = 'application/pdf'
+  const MIME_DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+
+  async function material(dados: { titulo: string; ext: 'pdf' | 'docx'; removido?: boolean }) {
+    const clube = await criarClube()
+    const enviadoPorId = (await criarUsuario()).id
+    const classe = await classeOficial('Amigo')
+    const arquivoId = randomUUID()
+    const caminho = caminhoDoMaterial(clube.id, arquivoId, dados.ext)
+    const arquivo = await prismaDeTeste().arquivo.create({
+      data: {
+        id: arquivoId, clubeId: clube.id, caminho, miniaturaCaminho: null, bytes: 10, criadoPorId: enviadoPorId,
+        mime: dados.ext === 'pdf' ? MIME_PDF : MIME_DOCX,
+      },
+    })
+    await armazenamento.gravar(caminho, dados.ext === 'pdf' ? PDF : DOCX)
+    await prismaDeTeste().material.create({
+      data: {
+        clubeId: clube.id, classeId: classe.id, titulo: dados.titulo, tipo: dados.ext === 'pdf' ? 'PDF' : 'DOCUMENTO',
+        arquivoId: arquivo.id, enviadoPorId, removidoEm: dados.removido ? new Date() : null,
+      },
+    })
+    return servico.urlAssinada(clube.id, arquivo.id, 'original')
+  }
+  const pedir = (url: string): request.Test => request(app.getHttpServer() as Server).get(url).buffer(true)
+
+  it('PDF: mime do banco, inline, nosniff e sem CSP sandbox', async () => {
+    const resposta = await pedir(await material({ titulo: 'Guia', ext: 'pdf' }))
+    expect(resposta.status).toBe(200)
+    expect(resposta.headers['content-type']).toContain(MIME_PDF)
+    expect(resposta.headers['content-disposition']).toMatch(/^inline; filename="Guia\.pdf"; filename\*=UTF-8''Guia\.pdf$/)
+    expect(resposta.headers['x-content-type-options']).toBe('nosniff')
+    expect(resposta.headers['content-security-policy']).toBeUndefined()
+    expect(resposta.body).toEqual(PDF)
+  })
+
+  it('DOCX: attachment, nosniff e CSP sandbox', async () => {
+    const resposta = await pedir(await material({ titulo: 'Plano', ext: 'docx' }))
+    expect(resposta.status).toBe(200)
+    expect(resposta.headers['content-type']).toContain(MIME_DOCX)
+    expect(resposta.headers['content-disposition']).toMatch(/^attachment; filename="Plano\.docx"/)
+    expect(resposta.headers['x-content-type-options']).toBe('nosniff')
+    expect(resposta.headers['content-security-policy']).toBe('sandbox')
+  })
+
+  it('titulo com acento e travessao ("Lição — 1") nao derruba a resposta e sai em filename*', async () => {
+    const resposta = await pedir(await material({ titulo: 'Lição — 1', ext: 'pdf' }))
+    expect(resposta.status).toBe(200)
+    const cabecalho = String(resposta.headers['content-disposition'])
+    expect(cabecalho).toContain('filename="Licao 1.pdf"')
+    expect(cabecalho).toContain("filename*=UTF-8''Li%C3%A7%C3%A3o%20%E2%80%94%201.pdf")
+  })
+
+  it('aspas, barras e caracteres de controle do titulo nao chegam ao cabecalho', async () => {
+    const resposta = await pedir(await material({ titulo: 'A "b"/c\\d\te', ext: 'docx' }))
+    expect(resposta.status).toBe(200)
+    const cabecalho = String(resposta.headers['content-disposition'])
+    expect(cabecalho).toContain('filename="A bcde.docx"')
+    expect(cabecalho).not.toMatch(/%22|%2F|%5C|%09/)
+  })
+
+  it('material removido: 404', async () => {
+    expect((await pedir(await material({ titulo: 'Velho', ext: 'pdf', removido: true }))).status).toBe(404)
+  })
+
+  it('foto continua image/jpeg, inline, com nosniff e sob sandbox', async () => {
+    const clube = await criarClube()
+    const unidade = await criarUnidade({ clubeId: clube.id })
+    const album = await criarAlbum({ unidadeId: unidade.id, data: '2026-09-20' })
+    const foto = await criarFoto({ albumId: album.id })
+    const arquivo = await prisma.arquivo.findFirstOrThrow({ where: { clubeId: clube.id, id: foto.arquivoId } })
+    await armazenamento.gravar(arquivo.caminho, JPEG)
+    const resposta = await pedir(servico.urlAssinada(clube.id, arquivo.id, 'original'))
+    expect(resposta.headers['content-type']).toContain('image/jpeg')
+    expect(resposta.headers['x-content-type-options']).toBe('nosniff')
+    expect(resposta.headers['content-disposition']).toBeUndefined()
+    expect(resposta.headers['content-security-policy']).toBe('sandbox')
   })
 })

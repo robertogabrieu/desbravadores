@@ -20,6 +20,20 @@ export const MODELOS_DE_CLUBE = [
   'Foto',
   'PedidoAoAdm',
   'EnvioProcessado',
+  'EventoCalendario',
+  'Cronograma',
+  'CronogramaPublicacao',
+  'AulaPlanejada',
+  'AulaRequisito',
+  'RegistroAula',
+  'PresencaAula',
+  'EnvioAulaProcessado',
+  'RequisitoConcluido',
+  'EspecialidadeConcluida',
+  'Observacao',
+  'Material',
+  'Notificacao',
+  'Atividade',
 ] as const
 
 /** Modelos que podem ser oficiais (`clubeId` nulo) ou de um clube. */

@@ -5,11 +5,13 @@ import { rotasAcessoPapel, rotasAcessoPublicas } from './modulos/acesso/rotas'
 import { rotasAdmDesbravadores } from './modulos/adm/desbravadores/rotas'
 import { rotasAdmUnidades } from './modulos/adm/unidades/rotas'
 import { rotasAdmUsuarios } from './modulos/adm/usuarios/rotas'
+import { rotasCronogramaMontagem } from './modulos/cronograma-montagem/rotas'
 import { TelaConectar } from './modulos/conectar/TelaConectar'
 import { PaginaNaoEncontrada } from './modulos/erro/PaginaNaoEncontrada'
 import { PaginaFila } from './modulos/fila/PaginaFila'
 import { rotasGaleria } from './modulos/galeria/rotas'
 import { rotasInicio } from './modulos/inicio/rotas'
+import { rotasNotificacoes } from './modulos/notificacoes/rotas'
 import { rotasPerfil } from './modulos/perfil/rotas'
 import { rotasRanking } from './modulos/ranking/rotas'
 import { rotasReunioes } from './modulos/reunioes/rotas'
@@ -55,6 +57,10 @@ export const rotas: RouteObject[] = [
   {
     element: <GuardaRota papeis={['CONSELHEIRO', 'INSTRUTOR', 'ADM']} />,
     children: [{ element: <LayoutDoPapel />, children: [...rotasRanking, ...rotasPerfil] }],
+  },
+  {
+    element: <GuardaRota papeis={['INSTRUTOR', 'ADM']} />,
+    children: [{ element: <LayoutDoPapel />, children: [...rotasNotificacoes, ...rotasCronogramaMontagem] }],
   },
   { path: '*', element: <PaginaNaoEncontrada /> },
 ]

@@ -65,6 +65,7 @@ export class SyncService {
       unidades: await this.unidades(clubeId, unidadeIds, hoje, anoClube(hoje, configuracao.inicioAnoClube)),
       reunioesRecentes: await this.reunioes(clubeId, unidadeIds, somarDias(hoje, -DIAS_DE_REUNIOES)),
       albunsRecentes: await this.albuns(clubeId, unidadeIds, somarDias(hoje, -DIAS_DE_ALBUNS)),
+      instrutor: null,
     }
     const versao = createHash('sha256').update(JSON.stringify(conteudo)).digest('hex')
     return { versao, geradoEm: agora.toISOString(), ...conteudo }

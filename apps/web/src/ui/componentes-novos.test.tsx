@@ -2,6 +2,8 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { Abas } from './Abas'
+import { AreaTexto } from './AreaTexto'
+import { CampoData } from './CampoData'
 import { Avatar } from './Avatar'
 import { BarraProgresso } from './BarraProgresso'
 import { Chip } from './Chip'
@@ -121,5 +123,35 @@ describe('Esqueleto', () => {
   it('é decorativo, escondido de leitor de tela', () => {
     render(<Esqueleto data-testid="e" className="h-4" />)
     expect(screen.getByTestId('e')).toHaveAttribute('aria-hidden', 'true')
+  })
+})
+
+describe('AreaTexto', () => {
+  it('liga o rótulo ao campo, aceita digitação e mostra o erro', async () => {
+    const aoMudar = vi.fn()
+    render(<AreaTexto rotulo="Observação" erro="Escreva algo" onChange={aoMudar} />)
+
+    const campo = screen.getByRole('textbox', { name: 'Observação' })
+    expect(campo.tagName).toBe('TEXTAREA')
+    expect(campo).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByRole('alert')).toHaveTextContent('Escreva algo')
+
+    await userEvent.type(campo, 'oi')
+    expect(aoMudar).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('CampoData', () => {
+  it('é um campo de data com rótulo e devolve o valor escolhido', async () => {
+    const aoMudar = vi.fn()
+    render(<CampoData rotulo="Data" ajuda="Dia da reunião" onChange={aoMudar} />)
+
+    const campo = screen.getByLabelText('Data')
+    expect(campo).toHaveAttribute('type', 'date')
+    expect(screen.getByText('Dia da reunião')).toBeInTheDocument()
+
+    await userEvent.type(campo, '2030-09-14')
+    expect(campo).toHaveValue('2030-09-14')
+    expect(aoMudar).toHaveBeenCalled()
   })
 })

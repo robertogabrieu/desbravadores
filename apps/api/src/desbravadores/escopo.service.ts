@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { anoClube, hojeNoFuso, permissoesEfetivas, type ChavePermissao } from '@desbravadores/shared'
-import type { Prisma } from '../generated/prisma/client.js'
+import type { Prisma, StatusMatricula } from '../generated/prisma/client.js'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { PrismaService } from '../comum/prisma/prisma.service'
 
@@ -10,6 +10,9 @@ export interface RelogioDoClube {
   anoClube: number
   inicioAnoClube: string
 }
+
+/** B11: quem desistiu da classe deixa de ser visivel ao instrutor dela. */
+const STATUS_QUE_O_INSTRUTOR_VE: StatusMatricula[] = ['CURSANDO', 'CONCLUIDA', 'INVESTIDA']
 
 /** Escopo por papel (SPEC 6.2): o que cada papel enxerga de desbravadores e unidades. */
 @Injectable()
@@ -55,7 +58,12 @@ export class ServicoEscopo {
     }
     if (sessao.papel === 'INSTRUTOR') {
       const classeIds = await this.classesDoInstrutor(sessao)
-      return { clubeId, matriculas: { some: { clubeId, classeId: { in: classeIds }, anoClube: relogio.anoClube } } }
+      return {
+        clubeId,
+        matriculas: {
+          some: { clubeId, classeId: { in: classeIds }, anoClube: relogio.anoClube, status: { in: STATUS_QUE_O_INSTRUTOR_VE } },
+        },
+      }
     }
     return { clubeId }
   }

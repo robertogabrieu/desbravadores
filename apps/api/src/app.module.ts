@@ -1,14 +1,18 @@
 import { Module } from '@nestjs/common'
 import { ArquivosModule } from './arquivos/arquivos.module'
 import { AuthModule } from './auth/auth.module'
+import { AtividadesModule } from './atividades/atividades.module'
+import { CalendarioModule } from './calendario/calendario.module'
 import { ClassesModule } from './classes/classes.module'
 import { ComumModule } from './comum/comum.module'
 import { PrismaModule } from './comum/prisma/prisma.module'
+import { CronogramasModule } from './cronogramas/cronogramas.module'
 import { DesbravadoresModule } from './desbravadores/desbravadores.module'
 import { EmailModule } from './email/email.module'
 import { EspecialidadesModule } from './especialidades/especialidades.module'
 import { FotosModule } from './fotos/fotos.module'
 import { InicioModule } from './inicio/inicio.module'
+import { NotificacoesModule } from './notificacoes/notificacoes.module'
 import { PermissoesModule } from './permissoes/permissoes.module'
 import { PedidosModule } from './pedidos/pedidos.module'
 import { PontosModule } from './pontos/pontos.module'
@@ -43,6 +47,10 @@ import { UsuariosModule } from './usuarios/usuarios.module'
     InicioModule,
     FotosModule,
     PedidosModule,
+    CalendarioModule,
+    CronogramasModule,
+    NotificacoesModule,
+    AtividadesModule,
   ],
 })
 export class AppModule {}
