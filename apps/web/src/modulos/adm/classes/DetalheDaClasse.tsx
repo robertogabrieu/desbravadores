@@ -16,7 +16,8 @@ const ajustadosEm = (requisitos: RequisitoDetalhe[]): number =>
   requisitos.filter((r) => r.ajustado).length
 
 /** Colunas da linha do requisito: texto e as duas marcações, com o título das colunas uma vez só. */
-const COLUNAS = 'grid grid-cols-[1fr_3rem_4.5rem] items-center gap-x-1 sm:grid-cols-[1fr_5rem_5rem] sm:gap-x-2'
+const COLUNAS =
+  'grid grid-cols-[1fr_3rem_4.5rem] items-center gap-x-1 sm:grid-cols-[1fr_5rem_5rem] sm:gap-x-2'
 
 function Marcacao({
   rotulo,
@@ -152,32 +153,42 @@ function QuemMonta({ detalhe }: { detalhe: ClasseDetalhe }) {
     { valor: 'INSTRUTOR', rotulo: 'Instrutores da classe' },
   ] as const
   return (
-    <div role="radiogroup" aria-label="Quem monta o cronograma" className="flex flex-col gap-1.5">
-      <span className="text-sm font-semibold text-texto">Quem monta o cronograma</span>
-      <div className="flex flex-wrap gap-2">
-        {opcoes.map((opcao) => (
-          <label
-            key={opcao.valor}
-            className={cn(
-              'flex min-h-[var(--touch-min)] cursor-pointer items-center gap-2 rounded-botao border px-4 text-base',
-              detalhe.quemMontaCronograma === opcao.valor
-                ? 'border-marca bg-marca-suave font-semibold text-texto'
-                : 'border-borda text-texto-2',
-            )}
-          >
-            <input
-              type="radio"
-              name={`quem-monta-${detalhe.id}`}
-              checked={detalhe.quemMontaCronograma === opcao.valor}
-              disabled={editar.isPending}
-              onChange={() =>
-                editar.mutate({ id: detalhe.id, entrada: { quemMontaCronograma: opcao.valor } })
-              }
-              className="size-4 accent-marca"
-            />
-            {opcao.rotulo}
-          </label>
-        ))}
+    <div className="flex flex-col gap-1.5">
+      <span id={`rotulo-quem-monta-${detalhe.id}`} className="text-sm font-semibold text-texto">
+        Quem monta o cronograma
+      </span>
+      {/* Duas opções num controle só: a marcada ganha fundo; o rádio fica para o teclado e o leitor de tela. */}
+      <div
+        role="radiogroup"
+        aria-labelledby={`rotulo-quem-monta-${detalhe.id}`}
+        className="flex w-fit rounded-botao border border-borda bg-superficie-suave p-1"
+      >
+        {opcoes.map((opcao) => {
+          const marcada = detalhe.quemMontaCronograma === opcao.valor
+          return (
+            <label
+              key={opcao.valor}
+              className={cn(
+                'flex min-h-[var(--touch-min)] cursor-pointer items-center rounded-controle px-4 text-base has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-marca',
+                marcada
+                  ? 'bg-superficie font-semibold text-texto shadow-sm'
+                  : 'text-texto-2 hover:text-texto',
+              )}
+            >
+              <input
+                type="radio"
+                name={`quem-monta-${detalhe.id}`}
+                checked={marcada}
+                disabled={editar.isPending}
+                onChange={() =>
+                  editar.mutate({ id: detalhe.id, entrada: { quemMontaCronograma: opcao.valor } })
+                }
+                className="sr-only"
+              />
+              {opcao.rotulo}
+            </label>
+          )
+        })}
       </div>
       {editar.isError && (
         <p role="alert" className="text-sm font-medium text-perigo">
@@ -201,35 +212,39 @@ function Corpo({ detalhe }: { detalhe: ClasseDetalhe }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <Cartao className="flex flex-col gap-5">
-        <div>
-          <p className="text-sm font-semibold text-texto-2">
-            {tipo}
-            {idade}
-          </p>
-          <h2 className="font-titulo text-2xl font-bold text-texto">{detalhe.nome}</h2>
-          <p className="text-base text-texto-2">
-            {plural(ativos, 'requisito ativo', 'requisitos ativos')}
-            {ajustados > 0 && ` · ${plural(ajustados, 'ajustado', 'ajustados')} pelo clube`}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-start gap-x-10 gap-y-4">
-          <div className="flex flex-col gap-1">
-            <CaixaMarcacao
-              rotulo="Ativa"
-              checked={detalhe.ativa}
-              disabled={editar.isPending}
-              onChange={(e) =>
-                editar.mutate({ id: detalhe.id, entrada: { ativa: e.target.checked } })
-              }
-            />
-            {editar.isError && (
-              <p role="alert" className="text-sm font-medium text-perigo">
-                {lerErroDaApi(editar.error).geral}
-              </p>
-            )}
+      {/* Identificação à esquerda e o que o Adm decide à direita, numa linha quando o cartão comporta. */}
+      <Cartao className="@container">
+        <div className="flex flex-col gap-5 @2xl:flex-row @2xl:items-center @2xl:justify-between @2xl:gap-8">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-texto-2">
+              {tipo}
+              {idade}
+            </p>
+            <h2 className="font-titulo text-2xl font-bold text-texto">{detalhe.nome}</h2>
+            <p className="text-base text-texto-2">
+              {plural(ativos, 'requisito ativo', 'requisitos ativos')}
+              {ajustados > 0 && ` · ${plural(ajustados, 'ajustado', 'ajustados')} pelo clube`}
+            </p>
           </div>
-          <QuemMonta detalhe={detalhe} />
+          <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
+            <div className="flex flex-col gap-1.5">
+              <span className="text-sm font-semibold text-texto">No clube</span>
+              <CaixaMarcacao
+                rotulo="Ativa"
+                checked={detalhe.ativa}
+                disabled={editar.isPending}
+                onChange={(e) =>
+                  editar.mutate({ id: detalhe.id, entrada: { ativa: e.target.checked } })
+                }
+              />
+              {editar.isError && (
+                <p role="alert" className="text-sm font-medium text-perigo">
+                  {lerErroDaApi(editar.error).geral}
+                </p>
+              )}
+            </div>
+            <QuemMonta detalhe={detalhe} />
+          </div>
         </div>
       </Cartao>
 
