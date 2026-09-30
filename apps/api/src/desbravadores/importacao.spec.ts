@@ -3,6 +3,7 @@ import type { INestApplication } from '@nestjs/common'
 import type { ImportacaoRecusada, LinhaImportada, PreviaImportacao } from '@desbravadores/shared'
 import ExcelJS from 'exceljs'
 import { performance } from 'node:perf_hooks'
+import { deflateRawSync, inflateRawSync } from 'node:zlib'
 import request from 'supertest'
 import type { z } from 'zod'
 import { criarAppDeTeste } from '../../test/app'
@@ -17,6 +18,7 @@ import {
   prismaDeTeste,
 } from '../../test/fabricas'
 import { anoCorrente, corpo, criarClasseDoClube, hoje, nascimentoComIdade } from '../../test/p6'
+import { gerarModelo } from './planilha-importacao'
 
 type Previa = z.infer<typeof PreviaImportacao>
 type Linha = z.infer<typeof LinhaImportada>
@@ -49,6 +51,93 @@ function mentirNoTamanhoDescompactado(zip: Buffer, tamanho: number): Buffer {
   for (let i = copia.indexOf(assinatura); i !== -1; i = copia.indexOf(assinatura, i + 4)) copia.writeUInt32LE(tamanho, i + 24)
   return copia
 }
+
+/** Nome e conteúdo descompactado de cada entrada de um zip, lidos pelo diretório central. */
+function entradasDoZip(zip: Buffer): Map<string, Buffer> {
+  const entradas = new Map<string, Buffer>()
+  const fim = zip.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]))
+  let posicao = zip.readUInt32LE(fim + 16)
+  for (let i = 0; i < zip.readUInt16LE(fim + 10); i++) {
+    const tamanhoDoNome = zip.readUInt16LE(posicao + 28)
+    const nome = zip.subarray(posicao + 46, posicao + 46 + tamanhoDoNome).toString('utf8')
+    const local = zip.readUInt32LE(posicao + 42)
+    const inicioDosDados = local + 30 + zip.readUInt16LE(local + 26) + zip.readUInt16LE(local + 28)
+    const dados = zip.subarray(inicioDosDados, inicioDosDados + zip.readUInt32LE(posicao + 20))
+    entradas.set(nome, zip.readUInt16LE(posicao + 10) === 8 ? inflateRawSync(dados) : Buffer.from(dados))
+    posicao += 46 + tamanhoDoNome + zip.readUInt16LE(posicao + 30) + zip.readUInt16LE(posicao + 32)
+  }
+  return entradas
+}
+
+/** Entrada de um zip montado à mão: o cabeçalho local pode dizer outra coisa que o diretório central. */
+interface EntradaForjada {
+  nome: string
+  /** Bytes gravados depois do cabeçalho local; o diretório central diz que a entrada ocupa todos eles. */
+  dados: Buffer
+  metodoNoIndice: number
+  descompactadoNoIndice: number
+  nomeLocal?: string
+  metodoLocal?: number
+  compactadoLocal?: number
+  descompactadoLocal?: number
+}
+
+function cabecalhoLocal(nome: string, metodo: number, compactado: number, descompactado: number): Buffer {
+  const nomeEmBytes = Buffer.from(nome, 'utf8')
+  const cabecalho = Buffer.alloc(30)
+  cabecalho.writeUInt32LE(0x04034b50, 0)
+  cabecalho.writeUInt16LE(20, 4)
+  cabecalho.writeUInt16LE(metodo, 8)
+  cabecalho.writeUInt32LE(compactado, 18)
+  cabecalho.writeUInt32LE(descompactado, 22)
+  cabecalho.writeUInt16LE(nomeEmBytes.length, 26)
+  return Buffer.concat([cabecalho, nomeEmBytes])
+}
+
+function montarZip(entradas: EntradaForjada[]): Buffer {
+  const locais: Buffer[] = []
+  const indice: Buffer[] = []
+  let deslocamento = 0
+  for (const entrada of entradas) {
+    const local = Buffer.concat([
+      cabecalhoLocal(
+        entrada.nomeLocal ?? entrada.nome,
+        entrada.metodoLocal ?? entrada.metodoNoIndice,
+        entrada.compactadoLocal ?? entrada.dados.length,
+        entrada.descompactadoLocal ?? entrada.descompactadoNoIndice,
+      ),
+      entrada.dados,
+    ])
+    const nome = Buffer.from(entrada.nome, 'utf8')
+    const central = Buffer.alloc(46)
+    central.writeUInt32LE(0x02014b50, 0)
+    central.writeUInt16LE(20, 4)
+    central.writeUInt16LE(20, 6)
+    central.writeUInt16LE(entrada.metodoNoIndice, 10)
+    central.writeUInt32LE(entrada.dados.length, 20)
+    central.writeUInt32LE(entrada.descompactadoNoIndice, 24)
+    central.writeUInt16LE(nome.length, 28)
+    central.writeUInt32LE(deslocamento, 42)
+    locais.push(local)
+    indice.push(central, nome)
+    deslocamento += local.length
+  }
+  const diretorio = Buffer.concat(indice)
+  const fim = Buffer.alloc(22)
+  fim.writeUInt32LE(0x06054b50, 0)
+  fim.writeUInt16LE(entradas.length, 8)
+  fim.writeUInt16LE(entradas.length, 10)
+  fim.writeUInt32LE(diretorio.length, 12)
+  fim.writeUInt32LE(deslocamento, 16)
+  return Buffer.concat([...locais, diretorio, fim])
+}
+
+/** Entradas de um .xlsx de verdade, gravadas sem compressão e sem nenhuma divergência. */
+function entradasHonestas(conteudos: Map<string, Buffer>): EntradaForjada[] {
+  return [...conteudos].map(([nome, dados]) => ({ nome, dados, metodoNoIndice: 0, descompactadoNoIndice: dados.length }))
+}
+
+const ABA = 'xl/worksheets/sheet1.xml'
 
 /** Dia serial do Excel (base 1899-12-30) de uma data civil. */
 function serialDoExcel(data: string): number {
@@ -275,6 +364,70 @@ describe('importacao de desbravadores por planilha', () => {
         expect(performance.now() - inicio).toBeLessThan(5_000)
       }
     }, 60_000)
+
+    it('le o que o diretorio central diz, mesmo se o cabecalho local declarar compressao que esconde uma bomba', async () => {
+      const { adm } = await admDeClubeNovo()
+      const conteudos = entradasDoZip(await xlsx([['Nome', 'Data de nascimento', 'Sexo'], ['Ana Clara', '10/03/2015', 'F']]))
+      const aba = conteudos.get(ABA)?.toString('utf8') ?? ''
+      const bomba = deflateRawSync(Buffer.from(aba.replace('</sheetData>', `<row r="3"><c r="A3" t="inlineStr"><is><t>${'A'.repeat(40_000_000)}</t></is></c></row></sheetData>`)))
+      expect(bomba.length).toBeLessThan(1024 * 1024)
+      const entradas = entradasHonestas(conteudos).map((entrada) =>
+        entrada.nome === ABA
+          ? { ...entrada, dados: bomba, descompactadoNoIndice: bomba.length, metodoLocal: 8, descompactadoLocal: 40_000_000 }
+          : entrada,
+      )
+      const inicio = performance.now()
+      const resposta = await previa(adm.autorizacao, montarZip(entradas)).expect(422)
+      expect(performance.now() - inicio).toBeLessThan(5_000)
+      expect(resposta.body).toMatchObject({ codigo: 'REGRA', mensagem: 'Não foi possível ler a planilha. Salve como .xlsx e envie de novo.' })
+    }, 60_000)
+
+    it('nao le a aba escondida dentro de uma entrada cujo cabecalho local declara tamanho menor', async () => {
+      const { adm } = await admDeClubeNovo()
+      const conteudos = entradasDoZip(await xlsx([['Nome', 'Data de nascimento', 'Sexo'], ['Ana Clara', '10/03/2015', 'F']]))
+      const linhas: string[][] = [['Nome', 'Data de nascimento', 'Sexo']]
+      for (let i = 0; i < 3000; i++) linhas.push([nomeDaPessoa(i), '10/03/2015', 'F'])
+      const escondida = entradasDoZip(await xlsx(linhas))
+      const abaEscondida = escondida.get(ABA) ?? Buffer.alloc(0)
+      const textosEscondidos = escondida.get('xl/sharedStrings.xml') ?? Buffer.alloc(0)
+      const isca = Buffer.from('lixo')
+      const esconderijo = Buffer.concat([
+        isca,
+        cabecalhoLocal('xl/sharedStrings.xml', 0, textosEscondidos.length, textosEscondidos.length),
+        textosEscondidos,
+        cabecalhoLocal(ABA, 0, abaEscondida.length, abaEscondida.length),
+        abaEscondida,
+      ])
+      const textos = conteudos.get('xl/sharedStrings.xml') ?? Buffer.alloc(0)
+      const aba = conteudos.get(ABA) ?? Buffer.alloc(0)
+      conteudos.delete('xl/sharedStrings.xml')
+      conteudos.delete(ABA)
+      const entradas: EntradaForjada[] = [
+        ...entradasHonestas(conteudos),
+        {
+          nome: 'xl/media/imagem.bin',
+          dados: esconderijo,
+          metodoNoIndice: 0,
+          descompactadoNoIndice: esconderijo.length,
+          compactadoLocal: isca.length,
+          descompactadoLocal: isca.length,
+        },
+        ...entradasHonestas(new Map([['xl/sharedStrings.xml', textos], [ABA, aba]])),
+      ]
+      const resposta = await previa(adm.autorizacao, montarZip(entradas)).expect(200)
+      expect(corpo<Previa>(resposta).linhas.map((linha) => linha.nome)).toEqual(['Ana Clara'])
+    })
+
+    it('um .xlsx remontado sem compressao, sem nenhuma divergencia, le igual ao original', async () => {
+      const { adm } = await admDeClubeNovo()
+      const original = await xlsx([['Nome', 'Data de nascimento', 'Sexo'], ['Ana Clara', '10/03/2015', 'F']])
+      const remontado = montarZip(entradasHonestas(entradasDoZip(original)))
+      const deOriginal = corpo<Previa>(await previa(adm.autorizacao, original).expect(200))
+      expect(corpo<Previa>(await previa(adm.autorizacao, remontado).expect(200))).toEqual(deOriginal)
+      expect(deOriginal.linhas.map((linha) => linha.nome)).toEqual(['Ana Clara'])
+      const doModelo = corpo<Previa>(await previa(adm.autorizacao, await gerarModelo()).expect(200))
+      expect(doModelo.linhas.map((linha) => linha.nome)).toEqual(['Maria da Silva'])
+    })
 
     it('recusa arquivo que nao e .xlsx nem .csv', async () => {
       const { adm } = await admDeClubeNovo()

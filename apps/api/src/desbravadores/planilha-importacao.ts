@@ -1,5 +1,5 @@
 import { Readable } from 'node:stream'
-import { inflateRawSync } from 'node:zlib'
+import { crc32, inflateRawSync } from 'node:zlib'
 import { LIMITE_LINHAS_IMPORTACAO } from '@desbravadores/shared'
 import ExcelJS from 'exceljs'
 import { ErroApp } from '../comum/erros'
@@ -171,12 +171,29 @@ const TAMANHO_ZIP64 = 0xffffffff
 const COMPRESSAO_NENHUMA = 0
 const COMPRESSAO_DEFLATE = 8
 const FLAG_DESCRITOR_DEPOIS_DOS_DADOS = 0x08
+const FLAG_NOME_EM_UTF8 = 0x800
+const VERSAO_DO_ZIP = 20
+
+/**
+ * Entradas que o exceljs precisa ter lido antes de chegar às abas. No .xlsx que o próprio exceljs grava,
+ * `xl/workbook.xml` vem por último; remontado sem compressão, a leitura em fluxo às vezes chega ao fim
+ * sem ter montado a pasta e falha em "reading 'sheets'". Na frente, as abas já são lidas com tudo pronto.
+ */
+const LIDAS_ANTES_DAS_ABAS = ['xl/workbook.xml', 'xl/_rels/workbook.xml.rels', 'xl/sharedStrings.xml', 'xl/styles.xml']
 
 interface EntradaDoZip {
   flags: number
   metodo: number
   compactado: number
   inicioLocal: number
+  nome: Buffer
+}
+
+/** Entrada já descompactada e contada, pronta para entrar no .xlsx remontado. */
+interface EntradaConferida {
+  nome: Buffer
+  flags: number
+  conteudo: Buffer
 }
 
 /** Entradas do diretório central; recusa assim que o tamanho descompactado declarado passa do teto. */
@@ -198,8 +215,15 @@ function entradasDoDiretorio(zip: Buffer): { entradas: EntradaDoZip[]; inicioDoD
     if (compactado === TAMANHO_ZIP64 || descompactado === TAMANHO_ZIP64 || declarado > TETO_DESCOMPACTADO_EM_BYTES) {
       throw new ErroApp('REGRA', MENSAGEM_GRANDE_DEMAIS)
     }
-    entradas.push({ flags: zip.readUInt16LE(posicao + 8), metodo: zip.readUInt16LE(posicao + 10), compactado, inicioLocal: zip.readUInt32LE(posicao + 42) })
-    posicao += 46 + zip.readUInt16LE(posicao + 28) + zip.readUInt16LE(posicao + 30) + zip.readUInt16LE(posicao + 32)
+    const tamanhoDoNome = zip.readUInt16LE(posicao + 28)
+    entradas.push({
+      flags: zip.readUInt16LE(posicao + 8),
+      metodo: zip.readUInt16LE(posicao + 10),
+      compactado,
+      inicioLocal: zip.readUInt32LE(posicao + 42),
+      nome: zip.subarray(posicao + 46, posicao + 46 + tamanhoDoNome),
+    })
+    posicao += 46 + tamanhoDoNome + zip.readUInt16LE(posicao + 30) + zip.readUInt16LE(posicao + 32)
   }
   return { entradas, inicioDoDiretorio }
 }
@@ -211,15 +235,16 @@ function passouDoLimiteDeSaida(erro: unknown): boolean {
 
 /**
  * Recusa o .xlsx que descompactado passa do teto, antes de o exceljs abrir: 3 MB bem comprimidos viram
- * gigabytes. O tamanho declarado pode mentir, então cada entrada é de fato descomprimida com o que
- * resta do teto como limite de saída; e as entradas têm de ser contíguas desde o início do arquivo,
- * porque o exceljs lê o zip em sequência e acharia uma entrada escondida fora do diretório.
+ * gigabytes. O tamanho declarado pode mentir, então cada entrada é de fato descomprimida, guiada pelo
+ * diretório central, com o que resta do teto como limite de saída. O que volta é o conteúdo contado,
+ * e só ele chega ao exceljs (ver `montarZipSemCompressao`).
  */
-function conferirTamanhoDescompactado(zip: Buffer): void {
+function descompactarConferindo(zip: Buffer): EntradaConferida[] {
   const { entradas, inicioDoDiretorio } = entradasDoDiretorio(zip)
+  const conferidas: EntradaConferida[] = []
   let esperado = 0
   let descompactado = 0
-  for (const { flags, metodo, compactado, inicioLocal } of [...entradas].sort((a, b) => a.inicioLocal - b.inicioLocal)) {
+  for (const { flags, metodo, compactado, inicioLocal, nome } of [...entradas].sort((a, b) => a.inicioLocal - b.inicioLocal)) {
     if (inicioLocal !== esperado || inicioLocal + 30 > zip.length || zip.readUInt32LE(inicioLocal) !== ASSINATURA_DO_CABECALHO_LOCAL) {
       throw new ErroApp('REGRA', MENSAGEM_ILEGIVEL)
     }
@@ -227,23 +252,79 @@ function conferirTamanhoDescompactado(zip: Buffer): void {
     const fimDosDados = inicioDosDados + compactado
     if (fimDosDados > zip.length) throw new ErroApp('REGRA', MENSAGEM_ILEGIVEL)
     const dados = zip.subarray(inicioDosDados, fimDosDados)
+    let conteudo: Buffer
     if (metodo === COMPRESSAO_NENHUMA) {
-      descompactado += dados.length
+      conteudo = dados
     } else if (metodo === COMPRESSAO_DEFLATE) {
       try {
-        descompactado += inflateRawSync(dados, { maxOutputLength: TETO_DESCOMPACTADO_EM_BYTES - descompactado + 1 }).length
+        conteudo = inflateRawSync(dados, { maxOutputLength: TETO_DESCOMPACTADO_EM_BYTES - descompactado + 1 })
       } catch (erro) {
         throw new ErroApp('REGRA', passouDoLimiteDeSaida(erro) ? MENSAGEM_GRANDE_DEMAIS : MENSAGEM_ILEGIVEL)
       }
     } else {
       throw new ErroApp('REGRA', MENSAGEM_ILEGIVEL)
     }
+    descompactado += conteudo.length
     if (descompactado > TETO_DESCOMPACTADO_EM_BYTES) throw new ErroApp('REGRA', MENSAGEM_GRANDE_DEMAIS)
+    conferidas.push({ nome, flags, conteudo })
     const temDescritor = (flags & FLAG_DESCRITOR_DEPOIS_DOS_DADOS) !== 0
     const descritorAssinado = temDescritor && fimDosDados + 4 <= zip.length && zip.readUInt32LE(fimDosDados) === ASSINATURA_DO_DESCRITOR
     esperado = fimDosDados + (temDescritor ? (descritorAssinado ? 16 : 12) : 0)
   }
   if (esperado !== inicioDoDiretorio) throw new ErroApp('REGRA', MENSAGEM_ILEGIVEL)
+  return conferidas
+}
+
+/**
+ * Zip novo, sem compressão, com exatamente as entradas e os bytes conferidos. O exceljs lê o zip em
+ * sequência pelos cabeçalhos locais, que no arquivo enviado podem contradizer o diretório central
+ * (outro método, outro tamanho, entrada escondida); aqui eles são escritos a partir do que foi contado.
+ * `sort` é estável: fora as de `LIDAS_ANTES_DAS_ABAS`, as entradas mantêm a ordem do arquivo.
+ */
+function montarZipSemCompressao(entradas: EntradaConferida[]): Buffer {
+  const posicaoNaLeitura = ({ nome }: EntradaConferida): number => {
+    const posicao = LIDAS_ANTES_DAS_ABAS.indexOf(nome.toString('utf8'))
+    return posicao === -1 ? LIDAS_ANTES_DAS_ABAS.length : posicao
+  }
+  const naOrdemDeLeitura = [...entradas].sort((a, b) => posicaoNaLeitura(a) - posicaoNaLeitura(b))
+  const locais: Buffer[] = []
+  const diretorio: Buffer[] = []
+  let deslocamento = 0
+  for (const { nome, flags, conteudo } of naOrdemDeLeitura) {
+    const crc = crc32(conteudo)
+    const flagsDoNome = flags & FLAG_NOME_EM_UTF8
+    const local = Buffer.alloc(30)
+    local.writeUInt32LE(ASSINATURA_DO_CABECALHO_LOCAL, 0)
+    local.writeUInt16LE(VERSAO_DO_ZIP, 4)
+    local.writeUInt16LE(flagsDoNome, 6)
+    local.writeUInt16LE(COMPRESSAO_NENHUMA, 8)
+    local.writeUInt32LE(crc, 14)
+    local.writeUInt32LE(conteudo.length, 18)
+    local.writeUInt32LE(conteudo.length, 22)
+    local.writeUInt16LE(nome.length, 26)
+    const central = Buffer.alloc(46)
+    central.writeUInt32LE(ASSINATURA_DA_ENTRADA_DO_DIRETORIO, 0)
+    central.writeUInt16LE(VERSAO_DO_ZIP, 4)
+    central.writeUInt16LE(VERSAO_DO_ZIP, 6)
+    central.writeUInt16LE(flagsDoNome, 8)
+    central.writeUInt16LE(COMPRESSAO_NENHUMA, 10)
+    central.writeUInt32LE(crc, 16)
+    central.writeUInt32LE(conteudo.length, 20)
+    central.writeUInt32LE(conteudo.length, 24)
+    central.writeUInt16LE(nome.length, 28)
+    central.writeUInt32LE(deslocamento, 42)
+    locais.push(local, nome, conteudo)
+    diretorio.push(central, nome)
+    deslocamento += local.length + nome.length + conteudo.length
+  }
+  const tamanhoDoDiretorio = diretorio.reduce((soma, parte) => soma + parte.length, 0)
+  const fim = Buffer.alloc(22)
+  ASSINATURA_DO_FIM_DO_DIRETORIO.copy(fim, 0)
+  fim.writeUInt16LE(entradas.length, 8)
+  fim.writeUInt16LE(entradas.length, 10)
+  fim.writeUInt32LE(tamanhoDoDiretorio, 12)
+  fim.writeUInt32LE(deslocamento, 16)
+  return Buffer.concat([...locais, ...diretorio, fim])
 }
 
 function celulasDaLinhaDoExcel(linha: ExcelJS.Row): Celula[] {
@@ -255,9 +336,9 @@ function celulasDaLinhaDoExcel(linha: ExcelJS.Row): Celula[] {
 
 /** Lê a primeira aba em fluxo, sem montar a pasta inteira na memória. */
 async function lerXlsx(conteudo: Buffer): Promise<PlanilhaLida> {
-  conferirTamanhoDescompactado(conteudo)
+  const conferido = montarZipSemCompressao(descompactarConferindo(conteudo))
   const coletor = coletorDeLinhas()
-  const leitor = new ExcelJS.stream.xlsx.WorkbookReader(Readable.from(conteudo), {
+  const leitor = new ExcelJS.stream.xlsx.WorkbookReader(Readable.from(conferido), {
     worksheets: 'emit',
     sharedStrings: 'cache',
     styles: 'cache',
