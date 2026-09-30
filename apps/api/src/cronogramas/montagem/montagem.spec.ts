@@ -377,15 +377,18 @@ describe('Montagem do cronograma', () => {
       const [aula] = (await colocarComoAdmDoClube(cronograma.id, requisitos[0])) ?? []
       const vistoAgora = new Date().toISOString()
       const auth = intruso.autorizacao
-      const respostas = await Promise.all([
-        colocar(cronograma.id, requisitos[1], DOMINGO_A, auth),
-        tirar(cronograma.id, requisitos[0], auth),
-        http.patch(`/api/cronogramas/${cronograma.id}`, auth, { inicio: '2026-02-01', fim: '2026-12-31' }),
-        http.post(`/api/cronogramas/${cronograma.id}/aulas`, auth, { data: DOMINGO_B, horario: null, local: null, titulo: null }),
-        http.patch(`/api/aulas-planejadas/${aula.id}`, auth, { horario: '10:00' }),
-        http.post(`/api/cronogramas/${cronograma.id}/enviar`, auth, { atualizadoEmVisto: vistoAgora }),
-        http.post(`/api/cronogramas/${cronograma.id}/publicar`, auth, { atualizadoEmVisto: vistoAgora }),
-      ])
+      // Uma requisição por vez: em rajada o servidor de teste derruba a conexão (ECONNRESET).
+      const chamadas = [
+        () => colocar(cronograma.id, requisitos[1], DOMINGO_A, auth),
+        () => tirar(cronograma.id, requisitos[0], auth),
+        () => http.patch(`/api/cronogramas/${cronograma.id}`, auth, { inicio: '2026-02-01', fim: '2026-12-31' }),
+        () => http.post(`/api/cronogramas/${cronograma.id}/aulas`, auth, { data: DOMINGO_B, horario: null, local: null, titulo: null }),
+        () => http.patch(`/api/aulas-planejadas/${aula.id}`, auth, { horario: '10:00' }),
+        () => http.post(`/api/cronogramas/${cronograma.id}/enviar`, auth, { atualizadoEmVisto: vistoAgora }),
+        () => http.post(`/api/cronogramas/${cronograma.id}/publicar`, auth, { atualizadoEmVisto: vistoAgora }),
+      ]
+      const respostas = []
+      for (const chamada of chamadas) respostas.push(await chamada())
       expect(respostas.map((resposta) => resposta.status)).toEqual([404, 404, 404, 404, 404, 404, 404])
       expect(await aulasAtivas(cronograma.id)).toHaveLength(1)
 

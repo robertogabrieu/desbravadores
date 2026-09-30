@@ -133,8 +133,11 @@ test('adm: evento em conflito avisa o instrutor, ele monta e envia, o Adm public
 
   // O Adm abre o cronograma da classe em A7 e publica.
   await paginaAdm.goto(`/adm/cronogramas?classe=${amigo.id}`)
+  const publicacaoConcluida = paginaAdm.waitForResponse(
+    (resposta) => /\/api\/cronogramas\/[^/]+\/publicar$/.test(resposta.url()) && resposta.request().method() === 'POST',
+  )
   await paginaAdm.getByRole('button', { name: 'Publicar' }).click()
-  await expect(paginaAdm.getByRole('button', { name: 'Publicar' })).toBeDisabled()
+  expect((await publicacaoConcluida).ok()).toBe(true)
 
   // Com a classe devolvida ao Adm, o outro instrutor lê o que foi publicado.
   await admDefinirClasseClube({ clubeId: clube.id, classeId: amigo.id, quemMontaCronograma: 'ADM' })
