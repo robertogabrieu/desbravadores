@@ -75,12 +75,15 @@ export class ImportacaoService {
 
   async previa(sessao: SessaoLogada, arquivo: { buffer: Buffer; originalname: string } | undefined): Promise<z.infer<typeof PreviaImportacao>> {
     if (!arquivo) throw new ErroApp('REGRA', 'Escolha a planilha para enviar.')
-    const [cabecalho, ...dados] = await lerPlanilha(arquivo.buffer, arquivo.originalname)
+    const {
+      linhas: [cabecalho, ...dados],
+      totalDeDados,
+    } = await lerPlanilha(arquivo.buffer, arquivo.originalname)
     const colunas = mapearCabecalho(cabecalho?.celulas ?? [])
     const colunasFaltando = COLUNAS_OBRIGATORIAS.filter(({ campo }) => !colunas.has(campo)).map(({ titulo }) => titulo)
     if (colunasFaltando.length > 0) return { colunasFaltando, linhas: [] }
-    if (dados.length > LIMITE_LINHAS_IMPORTACAO) {
-      throw new ErroApp('REGRA', `A planilha tem ${dados.length} linhas; o limite é ${LIMITE_LINHAS_IMPORTACAO}. Divida a planilha.`)
+    if (totalDeDados > LIMITE_LINHAS_IMPORTACAO) {
+      throw new ErroApp('REGRA', `A planilha tem ${totalDeDados} linhas; o limite é ${LIMITE_LINHAS_IMPORTACAO}. Divida a planilha.`)
     }
 
     const contexto = await this.contextoDaPrevia(sessao.clubeId)

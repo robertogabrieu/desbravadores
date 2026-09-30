@@ -1,3 +1,6 @@
+import { Readable } from 'node:stream'
+import { inflateRawSync } from 'node:zlib'
+import { LIMITE_LINHAS_IMPORTACAO } from '@desbravadores/shared'
 import ExcelJS from 'exceljs'
 import { ErroApp } from '../comum/erros'
 import { semAcento } from './apoio'
@@ -21,6 +24,22 @@ export interface LinhaLida {
   numero: number
   celulas: Celula[]
 }
+
+export interface PlanilhaLida {
+  /** Cabeçalho e até `LIMITE_LINHAS_IMPORTACAO` linhas de dados; as seguintes só entram na contagem. */
+  linhas: LinhaLida[]
+  /** Linhas não vazias depois do cabeçalho, contadas até o fim da planilha. */
+  totalDeDados: number
+}
+
+/** Colunas além desta não são lidas: o modelo tem 9, e uma célula perdida na coluna 16384 viraria 16 mil por linha. */
+const MAXIMO_DE_COLUNAS = 50
+
+/** Um .xlsx de 500 linhas reais descompactado fica muito abaixo disto. */
+const TETO_DESCOMPACTADO_EM_BYTES = 30 * 1024 * 1024
+
+const MENSAGEM_GRANDE_DEMAIS = 'A planilha é grande demais para importar.'
+const MENSAGEM_ILEGIVEL = 'Não foi possível ler a planilha. Salve como .xlsx e envie de novo.'
 
 export const CABECALHO_DO_MODELO = [
   'Nome',
@@ -130,22 +149,135 @@ function valorDaCelulaDoExcel(valor: ExcelJS.CellValue): Celula {
   return null
 }
 
-async function lerXlsx(conteudo: Buffer): Promise<LinhaLida[]> {
-  const pasta = new ExcelJS.Workbook()
-  try {
-    await pasta.xlsx.load(new Uint8Array(conteudo).buffer)
-  } catch {
-    throw new ErroApp('REGRA', 'Não foi possível ler a planilha. Salve como .xlsx e envie de novo.')
-  }
-  const planilha = pasta.worksheets[0]
-  if (!planilha) return []
+/** Guarda o cabeçalho e as linhas até o limite, e só conta as que passam dele. */
+function coletorDeLinhas() {
   const linhas: LinhaLida[] = []
-  planilha.eachRow({ includeEmpty: false }, (linha, numero) => {
-    const celulas: Celula[] = []
-    for (let coluna = 1; coluna <= linha.cellCount; coluna++) celulas.push(valorDaCelulaDoExcel(linha.getCell(coluna).value))
-    linhas.push({ numero, celulas })
+  let naoVazias = 0
+  return {
+    adicionar(numero: number, celulas: Celula[]): void {
+      if (!celulas.some((celula) => textoDaCelula(celula) !== '')) return
+      naoVazias++
+      if (linhas.length <= LIMITE_LINHAS_IMPORTACAO) linhas.push({ numero, celulas })
+    },
+    resultado: (): PlanilhaLida => ({ linhas, totalDeDados: Math.max(naoVazias - 1, 0) }),
+  }
+}
+
+const ASSINATURA_DO_FIM_DO_DIRETORIO = Buffer.from([0x50, 0x4b, 0x05, 0x06])
+const ASSINATURA_DA_ENTRADA_DO_DIRETORIO = 0x02014b50
+const ASSINATURA_DO_CABECALHO_LOCAL = 0x04034b50
+const ASSINATURA_DO_DESCRITOR = 0x08074b50
+const TAMANHO_ZIP64 = 0xffffffff
+const COMPRESSAO_NENHUMA = 0
+const COMPRESSAO_DEFLATE = 8
+const FLAG_DESCRITOR_DEPOIS_DOS_DADOS = 0x08
+
+interface EntradaDoZip {
+  flags: number
+  metodo: number
+  compactado: number
+  inicioLocal: number
+}
+
+/** Entradas do diretório central; recusa assim que o tamanho descompactado declarado passa do teto. */
+function entradasDoDiretorio(zip: Buffer): { entradas: EntradaDoZip[]; inicioDoDiretorio: number } {
+  const fim = zip.lastIndexOf(ASSINATURA_DO_FIM_DO_DIRETORIO)
+  if (fim === -1 || fim + 22 > zip.length) throw new ErroApp('REGRA', MENSAGEM_ILEGIVEL)
+  const quantidade = zip.readUInt16LE(fim + 10)
+  const inicioDoDiretorio = zip.readUInt32LE(fim + 16)
+  const entradas: EntradaDoZip[] = []
+  let declarado = 0
+  let posicao = inicioDoDiretorio
+  for (let i = 0; i < quantidade; i++) {
+    if (posicao + 46 > zip.length || zip.readUInt32LE(posicao) !== ASSINATURA_DA_ENTRADA_DO_DIRETORIO) {
+      throw new ErroApp('REGRA', MENSAGEM_ILEGIVEL)
+    }
+    const compactado = zip.readUInt32LE(posicao + 20)
+    const descompactado = zip.readUInt32LE(posicao + 24)
+    declarado += descompactado
+    if (compactado === TAMANHO_ZIP64 || descompactado === TAMANHO_ZIP64 || declarado > TETO_DESCOMPACTADO_EM_BYTES) {
+      throw new ErroApp('REGRA', MENSAGEM_GRANDE_DEMAIS)
+    }
+    entradas.push({ flags: zip.readUInt16LE(posicao + 8), metodo: zip.readUInt16LE(posicao + 10), compactado, inicioLocal: zip.readUInt32LE(posicao + 42) })
+    posicao += 46 + zip.readUInt16LE(posicao + 28) + zip.readUInt16LE(posicao + 30) + zip.readUInt16LE(posicao + 32)
+  }
+  return { entradas, inicioDoDiretorio }
+}
+
+/** Pelo `code`, não por `instanceof RangeError`: o erro do zlib nasce em outro realm quando roda no jest. */
+function passouDoLimiteDeSaida(erro: unknown): boolean {
+  return typeof erro === 'object' && erro !== null && 'code' in erro && erro.code === 'ERR_BUFFER_TOO_LARGE'
+}
+
+/**
+ * Recusa o .xlsx que descompactado passa do teto, antes de o exceljs abrir: 3 MB bem comprimidos viram
+ * gigabytes. O tamanho declarado pode mentir, então cada entrada é de fato descomprimida com o que
+ * resta do teto como limite de saída; e as entradas têm de ser contíguas desde o início do arquivo,
+ * porque o exceljs lê o zip em sequência e acharia uma entrada escondida fora do diretório.
+ */
+function conferirTamanhoDescompactado(zip: Buffer): void {
+  const { entradas, inicioDoDiretorio } = entradasDoDiretorio(zip)
+  let esperado = 0
+  let descompactado = 0
+  for (const { flags, metodo, compactado, inicioLocal } of [...entradas].sort((a, b) => a.inicioLocal - b.inicioLocal)) {
+    if (inicioLocal !== esperado || inicioLocal + 30 > zip.length || zip.readUInt32LE(inicioLocal) !== ASSINATURA_DO_CABECALHO_LOCAL) {
+      throw new ErroApp('REGRA', MENSAGEM_ILEGIVEL)
+    }
+    const inicioDosDados = inicioLocal + 30 + zip.readUInt16LE(inicioLocal + 26) + zip.readUInt16LE(inicioLocal + 28)
+    const fimDosDados = inicioDosDados + compactado
+    if (fimDosDados > zip.length) throw new ErroApp('REGRA', MENSAGEM_ILEGIVEL)
+    const dados = zip.subarray(inicioDosDados, fimDosDados)
+    if (metodo === COMPRESSAO_NENHUMA) {
+      descompactado += dados.length
+    } else if (metodo === COMPRESSAO_DEFLATE) {
+      try {
+        descompactado += inflateRawSync(dados, { maxOutputLength: TETO_DESCOMPACTADO_EM_BYTES - descompactado + 1 }).length
+      } catch (erro) {
+        throw new ErroApp('REGRA', passouDoLimiteDeSaida(erro) ? MENSAGEM_GRANDE_DEMAIS : MENSAGEM_ILEGIVEL)
+      }
+    } else {
+      throw new ErroApp('REGRA', MENSAGEM_ILEGIVEL)
+    }
+    if (descompactado > TETO_DESCOMPACTADO_EM_BYTES) throw new ErroApp('REGRA', MENSAGEM_GRANDE_DEMAIS)
+    const temDescritor = (flags & FLAG_DESCRITOR_DEPOIS_DOS_DADOS) !== 0
+    const descritorAssinado = temDescritor && fimDosDados + 4 <= zip.length && zip.readUInt32LE(fimDosDados) === ASSINATURA_DO_DESCRITOR
+    esperado = fimDosDados + (temDescritor ? (descritorAssinado ? 16 : 12) : 0)
+  }
+  if (esperado !== inicioDoDiretorio) throw new ErroApp('REGRA', MENSAGEM_ILEGIVEL)
+}
+
+function celulasDaLinhaDoExcel(linha: ExcelJS.Row): Celula[] {
+  const celulas: Celula[] = []
+  const ultima = Math.min(linha.cellCount, MAXIMO_DE_COLUNAS)
+  for (let coluna = 1; coluna <= ultima; coluna++) celulas.push(valorDaCelulaDoExcel(linha.getCell(coluna).value))
+  return celulas
+}
+
+/** Lê a primeira aba em fluxo, sem montar a pasta inteira na memória. */
+async function lerXlsx(conteudo: Buffer): Promise<PlanilhaLida> {
+  conferirTamanhoDescompactado(conteudo)
+  const coletor = coletorDeLinhas()
+  const leitor = new ExcelJS.stream.xlsx.WorkbookReader(Readable.from(conteudo), {
+    worksheets: 'emit',
+    sharedStrings: 'cache',
+    styles: 'cache',
+    hyperlinks: 'ignore',
+    entries: 'ignore',
   })
-  return linhas
+  let primeiraAba = true
+  try {
+    for await (const aba of leitor) {
+      // Das abas seguintes, começar e parar a leitura fecha o arquivo temporário que o exceljs abriu para elas.
+      for await (const linha of aba) {
+        if (!primeiraAba) break
+        coletor.adicionar(linha.number, celulasDaLinhaDoExcel(linha))
+      }
+      primeiraAba = false
+    }
+  } catch {
+    throw new ErroApp('REGRA', MENSAGEM_ILEGIVEL)
+  }
+  return coletor.resultado()
 }
 
 /** Uma linha de CSV com aspas (`""` dentro de aspas é uma aspa). */
@@ -168,6 +300,7 @@ function separarLinhaCsv(linha: string, separador: string): string[] {
       entreAspas = true
     } else if (caractere === separador) {
       celulas.push(atual)
+      if (celulas.length === MAXIMO_DE_COLUNAS) return celulas
       atual = ''
     } else {
       atual += caractere
@@ -177,22 +310,24 @@ function separarLinhaCsv(linha: string, separador: string): string[] {
   return celulas
 }
 
-function lerCsv(conteudo: Buffer): LinhaLida[] {
+function lerCsv(conteudo: Buffer): PlanilhaLida {
   const texto = conteudo.toString('utf8').replace(/^\uFEFF/, '')
   const brutas = texto.split(/\r?\n/)
   const primeira = brutas.find((linha) => linha.trim() !== '') ?? ''
   const separador = primeira.split(';').length >= primeira.split(',').length ? ';' : ','
-  return brutas.flatMap((linha, indice) =>
-    linha.trim() === '' ? [] : [{ numero: indice + 1, celulas: separarLinhaCsv(linha, separador).map((c) => c.trim() || null) }],
-  )
+  const coletor = coletorDeLinhas()
+  brutas.forEach((linha, indice) => {
+    if (linha.trim() !== '') coletor.adicionar(indice + 1, separarLinhaCsv(linha, separador).map((c) => c.trim() || null))
+  })
+  return coletor.resultado()
 }
 
 /** Linhas não vazias da primeira aba (ou do CSV), com o número que têm na planilha. */
-export async function lerPlanilha(conteudo: Buffer, nomeDoArquivo: string): Promise<LinhaLida[]> {
+export async function lerPlanilha(conteudo: Buffer, nomeDoArquivo: string): Promise<PlanilhaLida> {
   const extensao = nomeDoArquivo.toLowerCase().split('.').pop()
-  const linhas = extensao === 'xlsx' ? await lerXlsx(conteudo) : extensao === 'csv' ? lerCsv(conteudo) : null
-  if (!linhas) throw new ErroApp('REGRA', 'Envie a planilha em .xlsx ou .csv.')
-  return linhas.filter((linha) => linha.celulas.some((celula) => textoDaCelula(celula) !== ''))
+  if (extensao === 'xlsx') return lerXlsx(conteudo)
+  if (extensao === 'csv') return lerCsv(conteudo)
+  throw new ErroApp('REGRA', 'Envie a planilha em .xlsx ou .csv.')
 }
 
 /** `.xlsx` do modelo: o cabeçalho que a importação reconhece e uma linha de exemplo. */

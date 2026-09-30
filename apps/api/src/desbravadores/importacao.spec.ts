@@ -2,6 +2,7 @@ import type { Server } from 'node:http'
 import type { INestApplication } from '@nestjs/common'
 import type { ImportacaoRecusada, LinhaImportada, PreviaImportacao } from '@desbravadores/shared'
 import ExcelJS from 'exceljs'
+import { performance } from 'node:perf_hooks'
 import request from 'supertest'
 import type { z } from 'zod'
 import { criarAppDeTeste } from '../../test/app'
@@ -33,6 +34,20 @@ async function xlsx(linhas: Celula[][]): Promise<Buffer> {
 
 function csv(linhas: string[][], separador = ';'): Buffer {
   return Buffer.from(linhas.map((linha) => linha.map((c) => (c.includes(separador) ? `"${c}"` : c)).join(separador)).join('\n'), 'utf8')
+}
+
+/** Nome só de letras, diferente para cada `i`: a validação do nome não aceita dígitos. */
+function nomeDaPessoa(i: number): string {
+  const letra = (n: number) => String.fromCharCode(97 + (n % 26))
+  return `Pessoa ${letra(i)}${letra(Math.floor(i / 26))} da Silva Albuquerque de Oliveira`
+}
+
+/** Troca, no diretório central do zip, o tamanho descompactado declarado de cada entrada. */
+function mentirNoTamanhoDescompactado(zip: Buffer, tamanho: number): Buffer {
+  const copia = Buffer.from(zip)
+  const assinatura = Buffer.from([0x50, 0x4b, 0x01, 0x02])
+  for (let i = copia.indexOf(assinatura); i !== -1; i = copia.indexOf(assinatura, i + 4)) copia.writeUInt32LE(tamanho, i + 24)
+  return copia
 }
 
 /** Dia serial do Excel (base 1899-12-30) de uma data civil. */
@@ -229,6 +244,38 @@ describe('importacao de desbravadores por planilha', () => {
       expect(resposta.body).toMatchObject({ codigo: 'REGRA', mensagem: 'A planilha tem 501 linhas; o limite é 500. Divida a planilha.' })
     })
 
+    it('recusa planilha de 600 linhas dizendo quantas ela tem, em .xlsx e em .csv', async () => {
+      const { adm } = await admDeClubeNovo()
+      const linhas: string[][] = [['Nome', 'Data de nascimento', 'Sexo']]
+      for (let i = 0; i < 600; i++) linhas.push([nomeDaPessoa(i), '10/03/2015', 'F'])
+      const mensagem = 'A planilha tem 600 linhas; o limite é 500. Divida a planilha.'
+      expect((await previa(adm.autorizacao, await xlsx(linhas)).expect(422)).body).toMatchObject({ codigo: 'REGRA', mensagem })
+      expect((await previa(adm.autorizacao, csv(linhas), 'planilha.csv').expect(422)).body).toMatchObject({ codigo: 'REGRA', mensagem })
+    })
+
+    it('ignora colunas alem da 50a, no .xlsx e no .csv', async () => {
+      const { adm } = await admDeClubeNovo()
+      const vazias = Array.from({ length: 48 }, () => '')
+      const linhas = [
+        ['Data de nascimento', 'Sexo', ...vazias, 'Nome'],
+        ['10/03/2015', 'F', ...vazias, 'Ana Clara'],
+      ]
+      expect(corpo<Previa>(await previa(adm.autorizacao, await xlsx(linhas)).expect(200)).colunasFaltando).toEqual(['Nome'])
+      expect(corpo<Previa>(await previa(adm.autorizacao, csv(linhas), 'planilha.csv').expect(200)).colunasFaltando).toEqual(['Nome'])
+    })
+
+    it('recusa rapido o .xlsx que descompactado passa do teto, mesmo se o zip mentir o tamanho', async () => {
+      const { adm } = await admDeClubeNovo()
+      const bomba = await xlsx([['Nome', 'Data de nascimento', 'Sexo'], ['A'.repeat(40_000_000), '10/03/2015', 'F']])
+      expect(bomba.length).toBeLessThan(1024 * 1024)
+      const mensagem = 'A planilha é grande demais para importar.'
+      for (const arquivo of [bomba, mentirNoTamanhoDescompactado(bomba, 100)]) {
+        const inicio = performance.now()
+        expect((await previa(adm.autorizacao, arquivo).expect(422)).body).toMatchObject({ codigo: 'REGRA', mensagem })
+        expect(performance.now() - inicio).toBeLessThan(5_000)
+      }
+    }, 60_000)
+
     it('recusa arquivo que nao e .xlsx nem .csv', async () => {
       const { adm } = await admDeClubeNovo()
       await previa(adm.autorizacao, Buffer.from('oi'), 'foto.png').expect(422)
@@ -270,6 +317,34 @@ describe('importacao de desbravadores por planilha', () => {
       expect(recusa.erros.map((erro) => erro.linha)).toEqual([7])
       expect(recusa.erros[0]?.mensagens).toEqual(expect.arrayContaining(['O nome precisa ter de 2 a 120 letras.', 'E-mail inválido: ruim']))
       expect(await prismaDeTeste().desbravador.count({ where: { clubeId: clube.id } })).toBe(0)
+    })
+
+    it('500 linhas com todos os campos preenchidos: grava as 500', async () => {
+      const { clube, adm } = await admDeClubeNovo()
+      const unidade = await criarUnidade({ clubeId: clube.id, tipo: 'FEMININA' })
+      const amigo = await classeOficial('Amigo')
+      const linhas = Array.from({ length: 500 }, (_, i) =>
+        linhaPronta({
+          linha: i + 2,
+          nome: nomeDaPessoa(i),
+          unidadeId: unidade.id,
+          classeId: amigo.id,
+          responsavelNome: 'Joana Maria da Silva Albuquerque de Oliveira',
+          responsavelTelefone: '(11) 99999-0000',
+          responsavelEmail: 'joana.maria.albuquerque.oliveira@exemplo.com.br',
+        }),
+      )
+      expect(Buffer.byteLength(JSON.stringify({ linhas }))).toBeGreaterThan(100 * 1024)
+      expect((await confirmar(adm.autorizacao, linhas).expect(201)).body).toEqual({ importados: 500 })
+      expect(await prismaDeTeste().desbravador.count({ where: { clubeId: clube.id } })).toBe(500)
+    }, 180_000)
+
+    it('corpo acima do limite responde no formato de erro do app, nao em HTML', async () => {
+      const { adm } = await admDeClubeNovo()
+      const resposta = await confirmar(adm.autorizacao, [linhaPronta({ responsavelNome: 'x'.repeat(3 * 1024 * 1024) })])
+      expect(resposta.status).toBe(422)
+      expect(resposta.headers['content-type']).toContain('application/json')
+      expect(resposta.body).toEqual({ codigo: 'REGRA', mensagem: 'O envio passou do tamanho permitido.' })
     })
 
     it('duplicado marcado pelo Adm e importado mesmo assim', async () => {
