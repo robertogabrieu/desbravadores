@@ -83,15 +83,27 @@ describe('A6 · grade', () => {
     expect(grade.getByText('+1')).toBeInTheDocument()
   })
 
-  it('trocar de mês mostra os eventos daquele mês; trocar de ano pede o outro ano', async () => {
-    const consultas: string[] = []
-    abrir(handlerCalendario({ eventos: [carnaval] }, (c) => consultas.push(c)))
+  it('trocar de mês pela faixa mostra os eventos daquele mês', async () => {
+    abrir(handlerCalendario({ eventos: [carnaval] }))
     await screen.findByRole('list', { name: 'Eventos de Outubro' })
 
     await userEvent.click(screen.getByRole('tab', { name: 'Nov' }))
     expect(screen.getByText('Nenhum evento em Novembro')).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Próximo ano' }))
+  })
+
+  it('as setas andam de mês em mês e viram o ano, pedindo o ano novo', async () => {
+    const consultas: string[] = []
+    abrir(handlerCalendario({ eventos: [carnaval] }, (c) => consultas.push(c)))
+    await screen.findByRole('list', { name: 'Eventos de Outubro' })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Próximo mês' }))
+    expect(screen.getByRole('heading', { name: 'Novembro de 2026' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Próximo mês' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Próximo mês' }))
+    expect(screen.getByRole('heading', { name: 'Janeiro de 2027' })).toBeInTheDocument()
     await waitFor(() => expect(consultas).toContain('?ano=2027'))
+    await userEvent.click(screen.getByRole('button', { name: 'Mês anterior' }))
+    expect(screen.getByRole('heading', { name: 'Dezembro de 2026' })).toBeInTheDocument()
   })
 })
 
