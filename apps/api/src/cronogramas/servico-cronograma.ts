@@ -78,7 +78,11 @@ export class ServicoCronograma {
     })
     const base = { classe: refClasse(classe), anoClube: ano, podeMontar }
     const vazio: Leitura = { ...base, cronogramaId: cronograma?.id ?? null, status: null, fonte: null, publicadoEm: null, aulas: [] }
-    if (!cronograma) return vazio
+    if (!cronograma) {
+      if (!podeMontar) return vazio
+      const aulas = await this.montarAulas({ clubeId, classeId, trilha: classe.trilha, planejadas: [], ano, relogio })
+      return { ...vazio, aulas }
+    }
 
     const publicacao = await this.ultimaPublicacao(clubeId, cronograma.id)
     if (!podeMontar && !publicacao) return vazio

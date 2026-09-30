@@ -62,16 +62,16 @@ export class ArquivosController {
     const mime = dados.data.v === 'miniatura' ? 'image/jpeg' : arquivo.mime
     resposta.setHeader('Cache-Control', 'no-store')
     resposta.setHeader('X-Content-Type-Options', 'nosniff')
-    // O helmet global poe uma CSP em toda resposta; imagem e PDF a dispensam (o visualizador de PDF nao abre sob `sandbox`).
+    // O helmet global poe uma CSP em toda resposta; so o PDF a dispensa (o visualizador dele nao abre sob `sandbox`).
     resposta.removeHeader('Content-Security-Policy')
+    if (mime !== 'application/pdf') resposta.setHeader('Content-Security-Policy', 'sandbox')
     if (!mime.startsWith('image/')) this.protegerDocumento(resposta, mime, arquivo.material?.titulo ?? 'arquivo', extname(caminho).slice(1))
     return new StreamableFile(this.armazenamento.abrir(caminho), { type: mime })
   }
 
-  /** PDF abre no navegador (e o visualizador dele nao abre sob `sandbox`); o resto baixa e nunca executa aqui. */
+  /** PDF abre no navegador; o resto baixa e nunca executa aqui (o `sandbox` de todo nao-PDF vem de quem chama). */
   private protegerDocumento(resposta: Response, mime: string, titulo: string, ext: string): void {
     const ehPdf = mime === 'application/pdf'
     resposta.setHeader('Content-Disposition', cabecalhoDeDisposicao(ehPdf ? 'inline' : 'attachment', titulo, ext))
-    if (!ehPdf) resposta.setHeader('Content-Security-Policy', 'sandbox')
   }
 }

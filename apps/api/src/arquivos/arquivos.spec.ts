@@ -293,7 +293,7 @@ describe('GET /api/arquivos/:id (documentos de material)', () => {
     expect((await pedir(await material({ titulo: 'Velho', ext: 'pdf', removido: true }))).status).toBe(404)
   })
 
-  it('foto continua image/jpeg, inline, com nosniff e sem sandbox', async () => {
+  it('foto continua image/jpeg, inline, com nosniff e sob sandbox', async () => {
     const clube = await criarClube()
     const unidade = await criarUnidade({ clubeId: clube.id })
     const album = await criarAlbum({ unidadeId: unidade.id, data: '2026-09-20' })
@@ -304,6 +304,6 @@ describe('GET /api/arquivos/:id (documentos de material)', () => {
     expect(resposta.headers['content-type']).toContain('image/jpeg')
     expect(resposta.headers['x-content-type-options']).toBe('nosniff')
     expect(resposta.headers['content-disposition']).toBeUndefined()
-    expect(resposta.headers['content-security-policy']).toBeUndefined()
+    expect(resposta.headers['content-security-policy']).toBe('sandbox')
   })
 })

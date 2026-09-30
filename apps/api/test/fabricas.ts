@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { JwtService } from '@nestjs/jwt'
 import argon2 from 'argon2'
 import { PrismaSistema } from '../src/comum/prisma/prisma-sistema'
-import { MARCACOES_PADRAO } from '@desbravadores/shared'
+import { MARCACOES_PADRAO, anoClube as anoDoClube, hojeNoFuso } from '@desbravadores/shared'
 import type {
   Album,
   Arquivo,
@@ -423,7 +423,12 @@ export async function criarEvento(dados: {
   })
 }
 
-/** Cronograma vivo com as aulas dadas (cada uma com seus requisitos). Periodo: o ano do clube inteiro. */
+/** Ano do clube de hoje, calculado como a API calcula (fuso e inicio padrao). */
+export function anoCorrente(): number {
+  return anoDoClube(hojeNoFuso('America/Sao_Paulo', new Date()), '02-01')
+}
+
+/** Cronograma vivo com as aulas dadas (cada uma com seus requisitos). Periodo: o ano do clube inteiro (padrao: o de hoje). */
 export async function criarCronograma(dados: {
   clubeId: string
   classeId: string
@@ -432,7 +437,7 @@ export async function criarCronograma(dados: {
   aulas?: { data: string; requisitoIds: string[] }[]
 }): Promise<Cronograma & { aulas: AulaPlanejada[] }> {
   const prisma = prismaDeTeste()
-  const anoClube = dados.anoClube ?? 2026
+  const anoClube = dados.anoClube ?? anoCorrente()
   const cronograma = await prisma.cronograma.create({
     data: {
       clubeId: dados.clubeId,

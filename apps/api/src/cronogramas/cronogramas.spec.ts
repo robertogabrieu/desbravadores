@@ -20,6 +20,18 @@ import { ServicoCronograma } from './servico-cronograma'
 
 type Leitura = z.infer<typeof CronogramaLeitura>
 
+/** Congela so o `Date` (o resto do tempo segue real, para o banco e o HTTP). */
+function congelarRelogio(instante: string): void {
+  jest.useFakeTimers({
+    now: new Date(instante),
+    doNotFake: [
+      'hrtime', 'nextTick', 'performance', 'queueMicrotask', 'requestAnimationFrame', 'cancelAnimationFrame',
+      'requestIdleCallback', 'cancelIdleCallback', 'setImmediate', 'clearImmediate', 'setInterval', 'clearInterval',
+      'setTimeout', 'clearTimeout',
+    ],
+  })
+}
+
 function dia(deslocamento: number): string {
   const data = new Date(`${hoje()}T00:00:00Z`)
   data.setUTCDate(data.getUTCDate() + deslocamento)
@@ -47,6 +59,9 @@ describe('GET /api/classes/:id/cronograma', () => {
     await app.close()
     await desconectarPrismaDeTeste()
   })
+  // Meio do ano do clube: os dias relativos (-10 a +30) nunca cruzam a virada de 01/02 nem o fim do ano.
+  beforeEach(() => congelarRelogio('2026-06-15T15:00:00Z'))
+  afterEach(() => jest.useRealTimers())
 
   const rota = (classeId: string, ano?: number): string => `/api/classes/${classeId}/cronograma${ano ? `?anoClube=${ano}` : ''}`
 
@@ -135,6 +150,35 @@ describe('GET /api/classes/:id/cronograma', () => {
     const campo = new Map(leitura.aulas[0]?.requisitos.map((r) => [r.id, r.campo]))
     expect(campo.get(requisitos[0])).toBe(true)
     expect(campo.get(requisitos[1])).toBe(false)
+  })
+
+  it('na virada do ano do clube: 31/01 ainda le o ano anterior, 01/02 ja le o novo', async () => {
+    // O token de acesso vale poucos minutos: cada dia emite o seu, com o relogio ja no dia.
+    congelarRelogio('2027-01-31T15:00:00Z')
+    const { clube, amigo, adm } = await cenario()
+    await criarCronograma({ clubeId: clube.id, classeId: amigo.id })
+    expect(corpo<Leitura>(await http.get(rota(amigo.id), adm.autorizacao))).toMatchObject({ anoClube: 2026, aulas: [] })
+    expect(corpo<Leitura>(await http.get(rota(amigo.id), adm.autorizacao)).cronogramaId).not.toBeNull()
+
+    congelarRelogio('2027-02-01T15:00:00Z')
+    const admDoDia = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+    expect(anoCorrente()).toBe(2027)
+    expect(corpo<Leitura>(await http.get(rota(amigo.id), admDoDia.autorizacao))).toMatchObject({ anoClube: 2027, cronogramaId: null, aulas: [] })
+  })
+
+  it('sem cronograma: quem monta ve os registros do ano como EXTRA; quem nao monta, nada', async () => {
+    const { clube, amigo, adm, instrutor } = await cenario()
+    const registro = await criarRegistroAula({ clubeId: clube.id, classeId: amigo.id, data: dia(-4) })
+    const doAdm = corpo<Leitura>(await http.get(rota(amigo.id), adm.autorizacao))
+    expect(doAdm).toMatchObject({ cronogramaId: null, status: null, fonte: null, podeMontar: true })
+    expect(doAdm.aulas).toMatchObject([{ origem: 'EXTRA', data: dia(-4), situacao: 'DADA', registroAulaId: registro.id }])
+    const doInstrutor = corpo<Leitura>(await http.get(rota(amigo.id), instrutor.autorizacao))
+    expect(doInstrutor).toMatchObject({ cronogramaId: null, podeMontar: false, aulas: [] })
+
+    await prismaDeTeste().classeClube.update({ where: { clubeId_classeId: { clubeId: clube.id, classeId: amigo.id } }, data: { quemMontaCronograma: 'INSTRUTOR' } })
+    const liberado = corpo<Leitura>(await http.get(rota(amigo.id), instrutor.autorizacao))
+    expect(liberado).toMatchObject({ podeMontar: true })
+    expect(liberado.aulas.map((aula) => aula.registroAulaId)).toEqual([registro.id])
   })
 
   it('conselheiro: 403', async () => {
