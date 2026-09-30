@@ -35,25 +35,18 @@ na ordem do caderno, com `classeBase` apontando para a regular.
 | excursionista | Excursionista na Mata | avançada | 8 ⚠ | 3 |
 | guia | Guia (15) | regular | 29 | 4 |
 | guia | Guia de Exploração | avançada | 8 | 2 |
-| agrupadas | Agrupadas 11 anos (Amigo e Companheiro) | regular · agrupadas | 46 | 10 |
-| agrupadas | Agrupadas 11 anos — avançada | avançada · agrupadas | 21 | |
-| agrupadas | Agrupadas 12 anos (Amigo a Pesquisador) | regular · agrupadas | 63 | 13 |
-| agrupadas | Agrupadas 12 anos — avançada | avançada · agrupadas | 32 | |
-| agrupadas | Agrupadas 13 anos (Amigo a Pioneiro) | regular · agrupadas | 80 | 14 |
-| agrupadas | Agrupadas 13 anos — avançada | avançada · agrupadas | 42 | |
-| agrupadas | Agrupadas 14 anos (Amigo a Excursionista) | regular · agrupadas | 98 | 15 |
-| agrupadas | Agrupadas 14 anos — avançada | avançada · agrupadas | 53 | |
-| agrupadas | Agrupadas 15 anos ou mais (Amigo a Guia) | regular · agrupadas | 123 | 18 |
-| agrupadas | Agrupadas 15 anos ou mais — avançada | avançada · agrupadas | 63 | |
+| agrupadas | Agrupadas (Amigo a Guia) (16+) | regular · agrupadas | 123 | 18 |
+| agrupadas | Agrupadas — avançada (16+) | avançada · agrupadas | 63 | |
 
-**Agrupadas** são um supletivo, em geral cursado por líderes: para cada idade de entrada, o
-caderno junta uma versão reduzida dos requisitos das classes anteriores (marcados por caixas de
-idade). Os requisitos são próprios da trilha — o progresso não se mistura com o das classes
-individuais — e o mesmo requisito aparece em várias agrupadas, cada uma com código próprio.
+**Agrupadas** são um supletivo para quem tem **16 anos ou mais**, em geral cursado por líderes:
+uma turma só, que junta numa classe os requisitos de Amigo a Guia. O caderno marca cada requisito
+com caixas de idade (11, 12, 13, 14 e ≥15); valem as da coluna ≥15, e as colunas 11 a 14 foram
+descartadas. Os requisitos são próprios da trilha — o progresso não se mistura com o das classes
+individuais.
 
-O caderno traz também as 6 avançadas numa versão própria do supletivo. Pela mesma caixa de
-idade, elas foram reunidas em uma **avançada agrupada por idade**, que acumula as das idades
-anteriores; cada avançada individual vira uma seção (AN, CE, PC, PN, EM, GE).
+O caderno traz também as 6 avançadas numa versão própria do supletivo. Elas foram reunidas numa
+única **avançada agrupada** (a coluna ≥15 é toda branca, então entram as seis); cada avançada
+individual vira uma seção (AN, CE, PC, PN, EM, GE).
 
 ## Revisão antes do lançamento público
 
@@ -71,6 +64,6 @@ pela tela do Adm, porque é o mesmo para todos os clubes.
 4. **CAMPO** — inferido pelo assunto; os duvidosos estão em `avisos`. Um instrutor revisa cada
    classe.
 5. **Agrupadas** — as caixas de idade foram lidas pela cor na imagem; conferir uma amostra
-   (principalmente DE e SO). Confirmar também que a avançada agrupada acumula as anteriores
-   (15+ faz as seis).
+   (principalmente DE e SO) da coluna ≥15. Confirmar também que a avançada agrupada exige as
+   seis avançadas.
 6. Leia os `avisos` de cada arquivo: são 8 a 21 por caderno.

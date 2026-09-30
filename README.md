@@ -155,6 +155,10 @@ npm run carga -w api -- --forcar
 
 A carga recusa aplicar se desativaria mais de 10% dos itens existentes de um tipo, ou se mudaria o texto de um requisito que já tem histórico. `--forcar` ignora as duas travas. Nunca roda no deploy automático: em produção é sempre um passo manual (`scripts/carga.sh`).
 
+Classe oficial que some dos arquivos não é apagada: fica desativada, deixa de aparecer para matrícula, vínculo de instrutor e visão geral, e continua legível para quem já tinha algo nela. Classe que volta aos arquivos é reativada.
+
+**Uma vez, depois do deploy que trocou as Agrupadas por idade por uma turma só de 16 anos ou mais:** rode `scripts/carga.sh --forcar` no servidor. As 8 agrupadas antigas saem da carga e passam do freio de 10%, então sem `--forcar` a carga recusa.
+
 ## Criar um clube
 
 ```bash

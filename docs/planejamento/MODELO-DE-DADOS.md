@@ -84,8 +84,10 @@ Mestrado(id, nome)                               # catálogo carregado; marcar c
 ```
 
 **Trilhas.** A trilha individual tem 6 regulares (Amigo a Guia), cada uma com sua avançada. A
-trilha **Agrupadas** é um supletivo: 5 regulares por idade de entrada (11 a 15+), cada uma com uma
-avançada que acumula as avançadas das idades anteriores (seções AN, CE, PC, PN, EM, GE). Os
+trilha **Agrupadas** é um supletivo para quem tem **16 anos ou mais**: uma turma só, com uma
+regular ("Agrupadas (Amigo a Guia)") e uma avançada que reúne as seis avançadas do caderno (seções
+AN, CE, PC, PN, EM, GE). Classe oficial que sai da carga não é apagada: fica `ativa = false`, some
+das listas de escolha e continua legível para quem já tinha matrícula ou vínculo nela. Os
 requisitos das duas trilhas são **registros diferentes**, mesmo quando o texto coincide: o
 progresso de uma nunca conta na outra.
 

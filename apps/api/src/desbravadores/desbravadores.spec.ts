@@ -279,20 +279,31 @@ describe('desbravadores: escopo, contato, cadastro, matricula', () => {
       expect(avisos).toHaveLength(2)
     })
 
-    it('classe agrupada com idade maior que a do DBV avisa', async () => {
+    it('classe agrupada: DBV com menos de 16 anos avisa, com 16 nao', async () => {
       const clube = await criarClube()
       const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
-      const agrupada = await prismaDeTeste().classe.findFirstOrThrow({
-        where: { clubeId: null, trilha: 'AGRUPADAS', tipo: 'REGULAR', idade: 14 }, select: { id: true },
-      })
-      const { avisos } = corpo<ComAvisos>(
-        await api
-          .post('/api/desbravadores', adm.autorizacao, {
-            ...base, nascimento: nascimentoComIdade(12), classeId: agrupada.id,
-          })
-          .expect(201),
-      )
-      expect(avisos.map((a) => a.codigo)).toEqual(['AVISO_IDADE_CLASSE'])
+      const agrupada = await classeOficial('Agrupadas (Amigo a Guia)', 'AGRUPADAS')
+      const cadastrar = async (idadeDoDbv: number) =>
+        corpo<ComAvisos>(
+          await api
+            .post('/api/desbravadores', adm.autorizacao, {
+              ...base, nascimento: nascimentoComIdade(idadeDoDbv), classeId: agrupada.id,
+            })
+            .expect(201),
+        ).avisos
+      expect(await cadastrar(15)).toEqual([
+        { codigo: 'AVISO_IDADE_CLASSE', mensagem: 'As classes agrupadas são para 16 anos ou mais.' },
+      ])
+      expect(await cadastrar(16)).toEqual([])
+    })
+
+    it('classe desativada: cadastro com ela responde 404 e nada e criado', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const retirada = await criarClasseDoClube(clube.id, 'Retirada')
+      await prismaDeTeste().classe.update({ where: { id: retirada.id }, data: { ativa: false } })
+      await api.post('/api/desbravadores', adm.autorizacao, { ...base, nascimento: nascimentoComIdade(12), classeId: retirada.id }).expect(404)
+      expect(await prismaDeTeste().desbravador.count({ where: { clubeId: clube.id } })).toBe(0)
     })
 
     it('LIDER com usuario do clube; unidade em LIDER e usuario em DBV sao recusados (422)', async () => {
@@ -552,9 +563,26 @@ describe('desbravadores: escopo, contato, cadastro, matricula', () => {
       expect(desistiu).toHaveLength(2)
       expect(desistiu.map((m) => m.classe.tipo).sort()).toEqual(['AVANCADA', 'REGULAR'])
       // Trilha diferente nao e afetada.
-      const agrupada = await prismaDeTeste().classe.findFirstOrThrow({ where: { clubeId: null, trilha: 'AGRUPADAS', tipo: 'REGULAR', idade: 11 }, select: { id: true } })
+      const agrupada = await classeOficial('Agrupadas (Amigo a Guia)', 'AGRUPADAS')
       await api.post(`/api/desbravadores/${dbv.id}/matriculas`, adm.autorizacao, { classeId: agrupada.id, anoClube: ano, incluirAvancada: false }).expect(201)
       expect(await prismaDeTeste().matriculaClasse.count({ where: { clubeId: clube.id, dbvId: dbv.id, status: 'CURSANDO' } })).toBe(3)
+    })
+
+    it('classe desativada: matricula nova → 404; a matricula que ja existia continua legivel', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const retirada = await criarClasseDoClube(clube.id, 'Retirada')
+      await prismaDeTeste().classe.update({ where: { id: retirada.id }, data: { ativa: false } })
+      const novo = await criarDbv({ clubeId: clube.id })
+      await api
+        .post(`/api/desbravadores/${novo.id}/matriculas`, adm.autorizacao, { classeId: retirada.id, anoClube: anoCorrente() })
+        .expect(404)
+      expect(await prismaDeTeste().matriculaClasse.count({ where: { clubeId: clube.id, dbvId: novo.id } })).toBe(0)
+
+      const antigo = await criarDbv({ clubeId: clube.id })
+      await criarMatricula({ clubeId: clube.id, dbvId: antigo.id, classeId: retirada.id, anoClube: anoCorrente() })
+      const dados = corpo<Dbv>(await api.get(`/api/desbravadores/${antigo.id}`, adm.autorizacao).expect(200))
+      expect(dados.classeAtual).toMatchObject({ id: retirada.id, nome: 'Retirada' })
     })
 
     it('classe de outro clube → 404; DBV de outro clube → 404; conselheiro → 403', async () => {

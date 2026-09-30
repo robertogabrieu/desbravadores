@@ -22,7 +22,7 @@ describe('clube:criar (SPEC 5.2 e 5.4)', () => {
   beforeEach(() => email.limpar())
   afterAll(async () => desconectarPrismaDeTeste())
 
-  it('cria clube, configuracao, 22 ClasseClube, 8 criterios e o Adm com vinculo ADM', async () => {
+  it('cria clube, configuracao, 14 ClasseClube, 8 criterios e o Adm com vinculo ADM', async () => {
     const s = sufixo()
     const resultado = await executarClubeCriar(
       prisma,
@@ -33,7 +33,7 @@ describe('clube:criar (SPEC 5.2 e 5.4)', () => {
     const clube = await prisma.clube.findUniqueOrThrow({ where: { id: resultado.clubeId }, include: { configuracao: true } })
     expect(clube.nome).toBe('Clube Águias')
     expect(clube.configuracao).toMatchObject({ fuso: 'America/Sao_Paulo', metaFrequencia: 80 })
-    expect(await prisma.classeClube.count({ where: { clubeId: clube.id } })).toBe(22)
+    expect(await prisma.classeClube.count({ where: { clubeId: clube.id } })).toBe(14)
 
     const criterios = await prisma.criterioRanking.findMany({ where: { clubeId: clube.id }, orderBy: { ordem: 'asc' } })
     expect(criterios.map((c) => [c.nome, c.pontos, c.ativo, c.gatilho, c.lancadoPor, c.ordem])).toEqual(CRITERIOS_ESPERADOS)

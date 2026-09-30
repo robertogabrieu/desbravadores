@@ -21,7 +21,7 @@ import {
   desconectarPrismaDeTeste,
   prismaDeTeste,
 } from '../../test/fabricas'
-import { clienteHttp, corpo } from '../../test/p6'
+import { clienteHttp, corpo, criarClasseDoClube } from '../../test/p6'
 
 type Visao = z.infer<typeof VisaoGeralSaida>
 
@@ -177,6 +177,19 @@ describe('visao geral (GET /visao-geral)', () => {
     expect(saida.cronogramasEnviados).toEqual([
       { cronogramaId: enviado.id, classe: expect.objectContaining({ id: amigo.id }) as unknown, enviadoPor: 'Ana Instrutora', enviadoEm: '2026-06-10T12:00:00.000Z' },
     ])
+  })
+
+  it('progresso por classe: classe desativada não aparece, nem com matrícula de quem já estava nela', async () => {
+    const clube = await criarClube()
+    const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+    const retirada = await criarClasseDoClube(clube.id, 'Retirada')
+    const dbv = await admCriarDbvComDatas({ clubeId: clube.id, entradaEm: '2026-01-10' })
+    await criarMatricula({ clubeId: clube.id, dbvId: dbv.id, classeId: retirada.id, anoClube: 2026 })
+    const idsNaVisao = async (): Promise<string[]> =>
+      corpo<Visao>(await api.get('/api/visao-geral', adm.autorizacao).expect(200)).progressoClasses.map((c) => c.classe.id)
+    expect(await idsNaVisao()).toContain(retirada.id)
+    await prismaDeTeste().classe.update({ where: { id: retirada.id }, data: { ativa: false } })
+    expect(await idsNaVisao()).not.toContain(retirada.id)
   })
 
   it('progresso por classe: oficial inativo não volta por ajuste, ajuste false desliga, null usa o oficial', async () => {

@@ -71,7 +71,7 @@ Cada uma com a decisão tomada — discorde de qualquer uma e eu ajusto os docum
 | 15 | Chamada e pontos: qual é a fonte? | `LancamentoPontos`; a chamada não guarda pontos |
 | 16 | A avançada precisa de matrícula própria? | Sim; matricular na regular cria a da avançada junto, e o Adm pode remover |
 | 17 | Líder cursando Agrupadas: onde fica? | Cadastro de desbravador com tipo "líder": sem unidade, chamada, frequência nem ranking |
-| 18 | Avançada agrupada de 15+ exige as seis avançadas? | Sim, pela caixa de idade do caderno (todas brancas para 15+). Conferir com quem conhece o supletivo |
+| 18 | A avançada agrupada exige as seis avançadas? | Sim: o caderno é para 16 anos ou mais, e a coluna ≥15 das caixas, a que vale para essa idade, é toda branca. Conferir com quem conhece o supletivo |
 
 ## 3b. Segunda rodada de telas — onde divergiam do plano
 
@@ -103,7 +103,7 @@ O mantenedor revisa e corrige antes do lançamento público (decidido em 29/09).
 |---|---|---|
 | 1 | As **classes avançadas não têm seções** no caderno — vêm numeradas de 1 a N | Padronizadas numa seção única "Classe avançada" (código `AV`), na ordem do caderno. **[decidir]** se prefere distribuí-las nas seções da regular |
 | 2 | **Excursionista**: faltam as páginas impressas 44 e 45 no PDF — some o requisito 1 da avançada e o nome dela ("Excursionista na Mata" foi deduzido). A versão do caderno de Agrupadas sugere o texto que falta | Conferir no caderno de papel e completar |
-| 2b | O caderno de **Agrupadas** traz as 6 avançadas numa versão diferente da dos cadernos regulares | **Resolvido:** Agrupadas é supletivo com requisitos próprios. As avançadas dele viraram 5 "avançadas agrupadas" (uma por idade, acumulando as anteriores pela caixa de idade), todas na carga |
+| 2b | O caderno de **Agrupadas** traz as 6 avançadas numa versão diferente da dos cadernos regulares | **Resolvido:** Agrupadas é supletivo com requisitos próprios. O caderno é para 16 anos ou mais: há uma regular agrupada e uma "avançada agrupada", que reúne as 6 avançadas dele pela coluna ≥15 das caixas; as colunas 11 a 14 foram descartadas |
 | 3 | **Amigo da Natureza, AV8**: enunciado ausente no PDF; o texto no arquivo foi **reconstruído** e marcado nos avisos | Conferir no caderno de papel |
 | 4 | Requisitos "Completar a especialidade X": só o enunciado entrou, não o conteúdo da especialidade | Nada — é o esperado |
 | 5 | Etiqueta **CAMPO** foi inferida pelo assunto; os duvidosos ficaram sem e estão nos avisos | Um instrutor experiente revisar (15 min por classe) |

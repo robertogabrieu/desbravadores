@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { criarBancoIsolado, type BancoIsolado } from '../../test/banco-isolado'
 import { executarCarga, temHistorico, type ResumoDaCarga } from './carga'
+import { criarClubeBase } from './clube-criar'
 
 const DADOS = resolve(__dirname, '../../../../docs/planejamento/dados')
 
@@ -19,16 +20,8 @@ const REQUISITOS_POR_CLASSE: [string, string, number][] = [
   ['Excursionista na Mata', 'INDIVIDUAL', 8],
   ['Guia', 'INDIVIDUAL', 29],
   ['Guia de Exploração', 'INDIVIDUAL', 8],
-  ['Agrupadas 11 anos (Amigo e Companheiro)', 'AGRUPADAS', 46],
-  ['Agrupadas 12 anos (Amigo a Pesquisador)', 'AGRUPADAS', 63],
-  ['Agrupadas 13 anos (Amigo a Pioneiro)', 'AGRUPADAS', 80],
-  ['Agrupadas 14 anos (Amigo a Excursionista)', 'AGRUPADAS', 98],
-  ['Agrupadas 15 anos ou mais (Amigo a Guia)', 'AGRUPADAS', 123],
-  ['Agrupadas 11 anos — avançada', 'AGRUPADAS', 21],
-  ['Agrupadas 12 anos — avançada', 'AGRUPADAS', 32],
-  ['Agrupadas 13 anos — avançada', 'AGRUPADAS', 42],
-  ['Agrupadas 14 anos — avançada', 'AGRUPADAS', 53],
-  ['Agrupadas 15 anos ou mais — avançada', 'AGRUPADAS', 63],
+  ['Agrupadas (Amigo a Guia)', 'AGRUPADAS', 123],
+  ['Agrupadas — avançada', 'AGRUPADAS', 63],
 ]
 
 interface Caderno {
@@ -85,14 +78,14 @@ describe('carga oficial (SPEC 5.3)', () => {
 
   let primeira: ResumoDaCarga
 
-  it('primeira carga cria 22 classes, 834 requisitos, 9 areas, 514 especialidades e 16 mestrados', async () => {
+  it('primeira carga cria 14 classes, 399 requisitos, 9 areas, 514 especialidades e 16 mestrados', async () => {
     primeira = await executarCarga(banco.prisma, { dir })
-    expect(primeira.classes.criados).toBe(22)
-    expect(primeira.requisitos.criados).toBe(834)
+    expect(primeira.classes.criados).toBe(14)
+    expect(primeira.requisitos.criados).toBe(399)
     expect(primeira.areas.criados).toBe(9)
     expect(primeira.especialidades.criados).toBe(514)
     expect(primeira.mestrados.criados).toBe(16)
-    expect(await contagens()).toEqual({ classes: 22, requisitos: 834, areas: 9, especialidades: 514, mestrados: 16 })
+    expect(await contagens()).toEqual({ classes: 14, requisitos: 399, areas: 9, especialidades: 514, mestrados: 16 })
   })
 
   it.each(REQUISITOS_POR_CLASSE)('%s (%s) tem %i requisitos', async (nome, trilha, total) => {
@@ -111,11 +104,12 @@ describe('carga oficial (SPEC 5.3)', () => {
     const companheiro = await banco.prisma.classe.findFirstOrThrow({ where: { nome: 'Companheiro', clubeId: null } })
     expect(companheiro.ordem).toBe(amigo.ordem + 100)
     const agrupada = await banco.prisma.classe.findFirstOrThrow({
-      where: { nome: 'Agrupadas 12 anos — avançada', clubeId: null },
+      where: { nome: 'Agrupadas — avançada', clubeId: null },
       include: { classeBase: true },
     })
-    expect(agrupada.classeBase?.nome).toBe('Agrupadas 12 anos (Amigo a Pesquisador)')
-    expect(agrupada.classeBase?.trilha).toBe('AGRUPADAS')
+    expect(agrupada).toMatchObject({ idade: 16, tipo: 'AVANCADA', trilha: 'AGRUPADAS', ativa: true })
+    expect(agrupada.classeBase).toMatchObject({ nome: 'Agrupadas (Amigo a Guia)', idade: 16, trilha: 'AGRUPADAS' })
+    expect(await banco.prisma.classe.count({ where: { trilha: 'AGRUPADAS', clubeId: null } })).toBe(2)
   })
 
   it('segunda execucao: zero criados, zero atualizados, zero desativados', async () => {
@@ -128,8 +122,8 @@ describe('carga oficial (SPEC 5.3)', () => {
   it('cria ClasseClube que faltar para cada clube existente', async () => {
     const clube = await banco.prisma.clube.create({ data: { nome: 'C', slug: `c-${Date.now()}` } })
     const resumo = await executarCarga(banco.prisma, { dir })
-    expect(resumo.classesClube.criados).toBe(22)
-    expect(await banco.prisma.classeClube.count({ where: { clubeId: clube.id } })).toBe(22)
+    expect(resumo.classesClube.criados).toBe(14)
+    expect(await banco.prisma.classeClube.count({ where: { clubeId: clube.id } })).toBe(14)
     expect((await executarCarga(banco.prisma, { dir })).classesClube.criados).toBe(0)
   })
 
@@ -154,12 +148,44 @@ describe('carga oficial (SPEC 5.3)', () => {
     expect(resumo.requisitos.desativados).toBe(1)
     const inativos = await banco.prisma.requisito.count({ where: { ativo: false } })
     expect(inativos).toBe(1)
-    expect(await banco.prisma.requisito.count()).toBe(834)
+    expect(await banco.prisma.requisito.count()).toBe(399)
 
     cpSync(join(DADOS, 'cadernos', 'amigo.json'), join(dir, 'cadernos', 'amigo.json'))
     const volta = await executarCarga(banco.prisma, { dir })
     expect(volta.requisitos.atualizados).toBeGreaterThanOrEqual(1)
     expect(await banco.prisma.requisito.count({ where: { ativo: false } })).toBe(0)
+  })
+
+  it('classe oficial que sai dos arquivos fica inativa, fora dos clubes novos, e volta ativa se reaparecer', async () => {
+    const naturezaAtiva = { nome: 'Amigo da Natureza', trilha: 'INDIVIDUAL', clubeId: null } as const
+    editarJson<Caderno>('cadernos/amigo.json', (json) => {
+      json.classes = json.classes.slice(0, 1)
+    })
+    const resumo = await executarCarga(banco.prisma, { dir })
+    expect(resumo.classes.desativados).toBe(1)
+    expect(resumo.requisitos.desativados).toBe(9)
+    const natureza = await banco.prisma.classe.findFirstOrThrow({ where: naturezaAtiva })
+    expect(natureza.ativa).toBe(false)
+    expect(await banco.prisma.classe.count({ where: { clubeId: null, ativa: true } })).toBe(13)
+    expect((await executarCarga(banco.prisma, { dir })).classes).toEqual(ZERADO)
+
+    const novo = await banco.prisma.$transaction((tx) => criarClubeBase(tx, { nome: 'Novo', slug: `novo-${Date.now()}` }))
+    const doNovo = await banco.prisma.classeClube.findMany({ where: { clubeId: novo.id }, select: { classeId: true } })
+    expect(doNovo).toHaveLength(13)
+    expect(doNovo.map((c) => c.classeId)).not.toContain(natureza.id)
+
+    const semNada = await banco.prisma.clube.create({ data: { nome: 'Sem classes', slug: `sem-${Date.now()}` } })
+    await executarCarga(banco.prisma, { dir })
+    const completadas = await banco.prisma.classeClube.findMany({ where: { clubeId: semNada.id }, select: { classeId: true } })
+    expect(completadas).toHaveLength(13)
+    expect(completadas.map((c) => c.classeId)).not.toContain(natureza.id)
+
+    cpSync(join(DADOS, 'cadernos', 'amigo.json'), join(dir, 'cadernos', 'amigo.json'))
+    const volta = await executarCarga(banco.prisma, { dir })
+    expect(volta.classes).toEqual({ criados: 0, atualizados: 1, desativados: 0 })
+    expect((await banco.prisma.classe.findFirstOrThrow({ where: naturezaAtiva })).ativa).toBe(true)
+    expect(await banco.prisma.requisito.count({ where: { ativo: false } })).toBe(0)
+    expect(await banco.prisma.classeClube.count({ where: { clubeId: novo.id, classeId: natureza.id } })).toBe(1)
   })
 
   it('freio: recusa sem --forcar quando desativaria mais de 10% dos requisitos, e nada muda', async () => {
@@ -169,7 +195,8 @@ describe('carga oficial (SPEC 5.3)', () => {
     await expect(executarCarga(banco.prisma, { dir })).rejects.toThrow(/forcar/)
     expect(await banco.prisma.requisito.count({ where: { ativo: false } })).toBe(0)
     const forcada = await executarCarga(banco.prisma, { dir, forcar: true })
-    expect(forcada.requisitos.desativados).toBeGreaterThan(83)
+    expect(forcada.requisitos.desativados).toBe(63)
+    expect(forcada.classes.desativados).toBe(1)
     expect(await banco.prisma.requisito.count({ where: { ativo: false } })).toBe(forcada.requisitos.desativados)
   })
 

@@ -26,6 +26,9 @@ type Matricula = z.infer<typeof MatriculaSaida>
 type Aviso = z.infer<typeof AvisoContrato>
 type Cliente = Prisma.TransactionClient
 
+/** O caderno das Agrupadas e para 16 anos ou mais: uma turma so, sem divisao por idade. */
+const IDADE_MINIMA_AGRUPADAS = 16
+
 const CAMPOS_DO_CONSELHEIRO = [
   'nome',
   'nomePublico',
@@ -326,9 +329,10 @@ export class DesbravadoresService {
     if (!vinculo) throw new ErroApp('NAO_ENCONTRADO', 'Usuário não encontrado.')
   }
 
+  /** Classe para matricula nova: a desativada responde como inexistente. */
   private async exigirClasse(clubeId: string, classeId: string) {
     const classe = await this.prisma.classe.findFirst({
-      where: { id: classeId, OR: [{ clubeId: null }, { clubeId }] },
+      where: { id: classeId, OR: [{ clubeId: null }, { clubeId }], ativa: true },
       select: { id: true, tipo: true, trilha: true },
     })
     if (!classe) throw new ErroApp('NAO_ENCONTRADO', 'Classe não encontrada.')
@@ -429,10 +433,11 @@ export class DesbravadoresService {
     const classe = classeRegularAtual(dbv)
     if (dbv.tipo === 'DBV' && classe?.idade != null) {
       const idadeNoInicio = idade(paraDataCivil(dbv.nascimento), `${relogio.anoClube}-${relogio.inicioAnoClube}`)
-      const foraDaIdade =
-        classe.trilha === 'INDIVIDUAL' ? classe.idade !== idadeNoInicio : classe.idade > idadeNoInicio
-      if (foraDaIdade) {
-        const esperada = await this.classeEsperada(clubeId, classe.trilha, idadeNoInicio)
+      if (classe.trilha === 'AGRUPADAS' && idadeNoInicio < IDADE_MINIMA_AGRUPADAS) {
+        avisos.push({ codigo: 'AVISO_IDADE_CLASSE', mensagem: 'As classes agrupadas são para 16 anos ou mais.' })
+      }
+      if (classe.trilha === 'INDIVIDUAL' && classe.idade !== idadeNoInicio) {
+        const esperada = await this.classeEsperada(clubeId, idadeNoInicio)
         avisos.push({
           codigo: 'AVISO_IDADE_CLASSE',
           mensagem: esperada
@@ -444,14 +449,9 @@ export class DesbravadoresService {
     return avisos
   }
 
-  private async classeEsperada(clubeId: string, trilha: 'INDIVIDUAL' | 'AGRUPADAS', idadeNoInicio: number) {
+  private async classeEsperada(clubeId: string, idadeNoInicio: number) {
     return this.prisma.classe.findFirst({
-      where: {
-        OR: [{ clubeId: null }, { clubeId }],
-        tipo: 'REGULAR',
-        trilha,
-        idade: trilha === 'INDIVIDUAL' ? idadeNoInicio : { lte: idadeNoInicio },
-      },
+      where: { OR: [{ clubeId: null }, { clubeId }], ativa: true, tipo: 'REGULAR', trilha: 'INDIVIDUAL', idade: idadeNoInicio },
       orderBy: { idade: 'desc' },
       select: { nome: true },
     })

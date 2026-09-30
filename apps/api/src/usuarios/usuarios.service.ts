@@ -174,7 +174,8 @@ export class UsuariosService {
     if (!vinculo) throw new ErroApp('NAO_ENCONTRADO', 'Vínculo não encontrado.')
     this.exigirRelacoesDoPapel(vinculo.papel, entrada)
     if (entrada.ajustes) this.validarAjustes(vinculo.papel, entrada.ajustes)
-    await this.validarRelacoes(clubeId, entrada.unidadeIds ?? [], entrada.classeIds ?? [])
+    const classesDoVinculo = await this.prisma.vinculoClasse.findMany({ where: { vinculoId }, select: { classeId: true } })
+    await this.validarRelacoes(clubeId, entrada.unidadeIds ?? [], entrada.classeIds ?? [], classesDoVinculo.map((c) => c.classeId))
     if (entrada.ativo === false && vinculo.ativo) {
       await this.exigirOutroAdm(clubeId, [vinculo.id], vinculo.papel === 'ADM')
     }
@@ -257,8 +258,16 @@ export class UsuariosService {
     await this.validarRelacoes(clubeId, vinculo.unidadeIds, vinculo.classeIds)
   }
 
-  /** Unidade precisa ser do clube; classe, oficial ou do clube. Qualquer outra → 404. */
-  private async validarRelacoes(clubeId: string, unidadeIds: string[], classeIds: string[]): Promise<void> {
+  /**
+   * Unidade precisa ser do clube; classe, oficial ou do clube, e ativa, salvo a que o vinculo ja tinha.
+   * Qualquer outra → 404.
+   */
+  private async validarRelacoes(
+    clubeId: string,
+    unidadeIds: string[],
+    classeIds: string[],
+    classesJaVinculadas: string[] = [],
+  ): Promise<void> {
     const unidades = [...new Set(unidadeIds)]
     if (unidades.length > 0) {
       const achadas = await this.prisma.unidade.count({ where: { clubeId, id: { in: unidades } } })
@@ -266,7 +275,13 @@ export class UsuariosService {
     }
     const classes = [...new Set(classeIds)]
     if (classes.length > 0) {
-      const achadas = await this.prisma.classe.count({ where: { id: { in: classes }, OR: [{ clubeId: null }, { clubeId }] } })
+      const achadas = await this.prisma.classe.count({
+        where: {
+          id: { in: classes },
+          OR: [{ clubeId: null }, { clubeId }],
+          AND: { OR: [{ ativa: true }, { id: { in: classesJaVinculadas } }] },
+        },
+      })
       if (achadas !== classes.length) throw new ErroApp('NAO_ENCONTRADO', 'Classe não encontrada.')
     }
   }
