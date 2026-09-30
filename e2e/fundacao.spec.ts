@@ -97,7 +97,7 @@ test('do clube:criar até o conselheiro ver só a própria unidade', async ({ pa
 
   await definirSenhaDoConvite(page, await caminhoDoConvite(conselheiroEmail))
   await expect(page).toHaveURL(/\/inicio$/)
-  await page.getByRole('link', { name: 'Unidade', exact: true }).click()
+  await page.getByRole('main').getByRole('link', { name: 'Unidade', exact: true }).click()
 
   await expect(page.getByText(dbvA)).toBeVisible()
   await expect(page.getByText(dbvB)).toHaveCount(0)

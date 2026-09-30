@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { resolve } from 'node:path'
 import { expect, test } from '@playwright/test'
+import sharp from 'sharp'
 import type { Page } from '@playwright/test'
 import { caminhoDoConvite } from './mailpit'
 
@@ -9,12 +10,6 @@ test.use({ baseURL: process.env['E2E_WEB_URL'] })
 
 const RAIZ_API = resolve(__dirname, '../apps/api')
 const SENHA = 'senha-e2e-12345'
-// Um JPEG mínimo (1x1) é o bastante: o teste confere o envio, não a imagem.
-const JPEG_MINIMO = Buffer.from(
-  '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=',
-  'base64',
-)
-
 async function definirSenhaDoConvite(page: Page, caminho: string): Promise<void> {
   await page.goto(caminho)
   await page.getByLabel('Senha', { exact: true }).fill(SENHA)
@@ -90,6 +85,7 @@ test('domingo: a chamada feita sem rede chega sozinha, entra no histórico e no 
   }
   await page.getByRole('button', { name: /Salvar chamada/ }).click()
   await expect(page).toHaveURL(/\/reunioes$/)
+  await expect(page.getByText('não enviado')).toBeVisible()
   await expect(page.getByRole('link', { name: '1 aguardando envio' })).toBeVisible()
 
   // Fecha a aba com a chamada ainda na fila e abre outra, agora com a rede de volta.
@@ -100,22 +96,23 @@ test('domingo: a chamada feita sem rede chega sozinha, entra no histórico e no 
 
   await expect(outra.getByText(/aguardando envio/)).toHaveCount(0, { timeout: 30_000 })
   await expect(outra.getByText('2/2 presentes')).toBeVisible()
+  await expect(outra.getByText('não enviado')).toHaveCount(0)
 
   await outra.goto('/ranking')
   await expect(outra.getByText(dbvs[0] ?? '').first()).toBeVisible()
   await expect(outra.getByText(/\d+ pts/).first()).toBeVisible()
   await expect(outra.getByText('Ainda não há pontos neste mês.')).toHaveCount(0)
 
-  // Fotos: só rodam quando a galeria da onda 3 estiver pronta (B7).
-  test.skip(process.env['E2E_FOTOS'] !== '1', 'aguardando a galeria (B7)')
+  // Fotos: duas imagens geradas na própria página vão para o álbum da reunião de hoje.
+  const imagem = await sharp({ create: { width: 64, height: 64, channels: 3, background: '#22aa77' } }).jpeg().toBuffer()
   await outra.goto('/galeria/enviar')
-  await outra.getByLabel('Reunião de hoje').check()
-  await outra.locator('input[type="file"]').setInputFiles([
-    { name: 'foto-1.jpg', mimeType: 'image/jpeg', buffer: JPEG_MINIMO },
-    { name: 'foto-2.jpg', mimeType: 'image/jpeg', buffer: JPEG_MINIMO },
+  await outra.getByRole('radio', { name: /Reunião de hoje/ }).click()
+  await outra.getByLabel('Fotos da galeria').setInputFiles([
+    { name: 'foto-1.jpg', mimeType: 'image/jpeg', buffer: imagem },
+    { name: 'foto-2.jpg', mimeType: 'image/jpeg', buffer: imagem },
   ])
-  await outra.getByRole('button', { name: /Enviar/ }).click()
-  await outra.goto('/galeria')
-  await outra.getByRole('link', { name: /Reunião/ }).first().click()
-  await expect(outra.getByRole('img')).toHaveCount(2)
+  await outra.getByRole('button', { name: 'Enviar 2 fotos' }).click()
+  await expect(outra.getByText('2 fotos enviadas')).toBeVisible({ timeout: 30_000 })
+  await outra.getByRole('link', { name: 'Ver álbum' }).click()
+  await expect(outra.getByRole('img', { name: /^Foto \d+$/ })).toHaveCount(2)
 })
