@@ -5,10 +5,11 @@ import type { LucideIcon } from 'lucide-react'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { ErroDaApi } from '../../api/cliente'
 import type { InicioConselheiro as InicioDaApi } from '../../api/inicio'
 import { useInicioConselheiro } from '../../api/inicio'
 import { useConexao, useFila, usePacote } from '../../offline'
-import type { PacoteGuardado } from '../../offline'
+import type { ItemFilaNaTela, PacoteGuardado } from '../../offline'
 import { useSessao } from '../../sessao/useSessao'
 import { Avatar } from '../../ui/Avatar'
 import { Cartao } from '../../ui/Cartao'
@@ -59,6 +60,11 @@ function proximaReuniaoDoPacote(pacote: Pacote, unidadeId: string, chavesNaFila:
     ehHoje: data === hoje,
     chamadaFeita: chavesNaFila.has(`${unidadeId}:${data}`) || pacote.reunioesRecentes.some((reuniao) => reuniao.unidadeId === unidadeId && reuniao.data === data),
   }
+}
+
+/** Só item que ainda vai ou já foi para a API conta; o recusado (ERRO) deixa a chamada por fazer. */
+function chavesDaChamadaFeita(itens: ItemFilaNaTela[]): Set<string> {
+  return new Set(itens.filter((item) => item.estado !== 'ERRO').map((item) => item.chave))
 }
 
 function CartaoProximaReuniao({ reuniao }: { reuniao: ProximaReuniao | null }) {
@@ -174,6 +180,8 @@ function PainelDaUnidade({ unidades, papel, primeiroNome }: PropriedadesPainel) 
   const { pacote } = usePacote()
   const { itens: itensDaFila } = useFila()
 
+  const falhaDeRede = consulta.error instanceof ErroDaApi && consulta.error.classe === 'REDE'
+
   let conteudo: ReactNode
   if (consulta.data) {
     conteudo = (
@@ -184,16 +192,20 @@ function PainelDaUnidade({ unidades, papel, primeiroNome }: PropriedadesPainel) 
         <Destaques destaques={consulta.data.destaques} />
       </>
     )
-  } else if (modo === 'SEM_CONEXAO') {
-    conteudo = pacote ? (
-      <>
-        <CartaoProximaReuniao reuniao={proximaReuniaoDoPacote(pacote, unidadeId, new Set(itensDaFila.map((item) => item.chave)))} />
-        <Numeros dados={null} />
-        <Atalhos />
-      </>
-    ) : (
-      <EstadoVazio titulo="Disponível quando houver internet" descricao="Conecte-se para ver o início." />
-    )
+  } else if (modo === 'SEM_CONEXAO' || falhaDeRede) {
+    if (pacote) {
+      conteudo = (
+        <>
+          <CartaoProximaReuniao reuniao={proximaReuniaoDoPacote(pacote, unidadeId, chavesDaChamadaFeita(itensDaFila))} />
+          <Numeros dados={null} />
+          <Atalhos />
+        </>
+      )
+    } else if (modo === 'SEM_CONEXAO') {
+      conteudo = <EstadoVazio titulo="Disponível quando houver internet" descricao="Conecte-se para ver o início." />
+    } else {
+      conteudo = <ErroDeCarga erro={null} aoTentarDeNovo={() => void consulta.refetch()} />
+    }
   } else if (consulta.isError) {
     conteudo = <ErroDeCarga erro={consulta.error} aoTentarDeNovo={() => void consulta.refetch()} />
   } else {

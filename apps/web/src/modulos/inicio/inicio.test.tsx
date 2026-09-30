@@ -224,10 +224,30 @@ describe('início do conselheiro', () => {
     expect(await screen.findByText('DBVs na unidade')).toBeInTheDocument()
   })
 
-  it('resposta que foge do contrato cai no estado de rede ("Disponível quando houver internet")', async () => {
-    servidor.use(...handlersSessao([CONSELHEIRO]), http.get('/api/inicio/conselheiro', () => HttpResponse.json({ oi: 1 })))
-    renderizarRotas(rotasInicio, '/inicio')
-    expect(await screen.findByText('Disponível quando houver internet')).toBeInTheDocument()
+  describe('online, mas a falha é classificada como rede (portal de Wi-Fi, resposta fora do contrato)', () => {
+    const respostaForaDoContrato = () => http.get('/api/inicio/conselheiro', () => HttpResponse.json({ oi: 1 }))
+
+    it('com pacote: mostra a próxima reunião do pacote e traços nos números', async () => {
+      const hoje = hojeNoFuso('America/Sao_Paulo', new Date())
+      offline.pacote = criarPacote({
+        clube: { ...criarPacote().clube, diaReuniao: new Date(`${hoje}T00:00:00Z`).getUTCDay(), horaReuniao: '09:00', localReuniaoPadrao: 'Salão' },
+      })
+      servidor.use(...handlersSessao([CONSELHEIRO]), respostaForaDoContrato())
+      renderizarRotas(rotasInicio, '/inicio')
+      expect(await screen.findByText('9h · Salão')).toBeInTheDocument()
+      expect(screen.getByText('DBVs na unidade').previousSibling).toHaveTextContent('—')
+      expect(screen.queryByText('Disponível quando houver internet')).not.toBeInTheDocument()
+    })
+
+    it('sem pacote: mostra o erro com "Tentar de novo", que busca outra vez', async () => {
+      servidor.use(...handlersSessao([CONSELHEIRO]), respostaForaDoContrato())
+      renderizarRotas(rotasInicio, '/inicio')
+      expect(await screen.findByRole('button', { name: 'Tentar de novo' })).toBeInTheDocument()
+
+      servidor.use(handlerInicioConselheiro())
+      await userEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }))
+      expect(await screen.findByText('DBVs na unidade')).toBeInTheDocument()
+    })
   })
 
   describe('sem conexão', () => {
@@ -279,6 +299,25 @@ describe('início do conselheiro', () => {
       servidor.use(...handlersSessao([CONSELHEIRO]))
       renderizarRotas(rotasInicio, '/inicio')
       expect(await screen.findByRole('link', { name: 'Fazer chamada' })).toBeInTheDocument()
+    })
+
+    it('item da fila recusado pela API (ERRO) não conta como chamada feita', async () => {
+      offline.modo = 'SEM_CONEXAO'
+      offline.pacote = pacoteDeHoje()
+      offline.fila = [{ ...itemDaFila(`${UNIDADE_AGUIAS.id}:${hoje}`), estado: 'ERRO' }]
+      servidor.use(...handlersSessao([CONSELHEIRO]))
+      renderizarRotas(rotasInicio, '/inicio')
+      expect(await screen.findByRole('link', { name: 'Fazer chamada' })).toBeInTheDocument()
+      expect(screen.queryByText('Chamada feita')).not.toBeInTheDocument()
+    })
+
+    it.each(['ENVIANDO', 'ENVIADO'] as const)('item da fila em %s conta como chamada feita', async (estado) => {
+      offline.modo = 'SEM_CONEXAO'
+      offline.pacote = pacoteDeHoje()
+      offline.fila = [{ ...itemDaFila(`${UNIDADE_AGUIAS.id}:${hoje}`), estado }]
+      servidor.use(...handlersSessao([CONSELHEIRO]))
+      renderizarRotas(rotasInicio, '/inicio')
+      expect(await screen.findByText('Chamada feita')).toBeInTheDocument()
     })
 
     it('sem pacote guardado: "Disponível quando houver internet"', async () => {
