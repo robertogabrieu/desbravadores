@@ -26,6 +26,12 @@ export class UsuariosController {
   }
 
   @Pode('usuario.gerenciar')
+  @Get(':id')
+  obter(@SessaoDoClube() sessao: SessaoLogada, @Param('id', IdDaRota) id: string) {
+    return this.usuarios.obter(sessao, id)
+  }
+
+  @Pode('usuario.gerenciar')
   @Post()
   criar(@SessaoDoClube() sessao: SessaoLogada, @Body(new ZodValidationPipe(UsuarioCriarEntrada)) entrada: z.infer<typeof UsuarioCriarEntrada>) {
     return this.usuarios.criar(sessao, entrada)

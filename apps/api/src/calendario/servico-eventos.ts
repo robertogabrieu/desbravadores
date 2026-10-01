@@ -86,6 +86,12 @@ export class ServicoEventos {
     return { eventos, diasDeReuniao: diasDeReuniao(inicio, fim, configuracao.diaReuniao, eventos.map(paraCalendario)) }
   }
 
+  async obter(clubeId: string, id: string): Promise<Saida> {
+    const evento = await this.prisma.eventoCalendario.findFirst({ where: { id, clubeId, removidoEm: null } })
+    if (!evento) throw new ErroApp('NAO_ENCONTRADO', NAO_ENCONTRADO)
+    return paraSaida(evento)
+  }
+
   criar(sessao: SessaoLogada, entrada: Entrada): Promise<Gravado> {
     return this.gravar(sessao, null, entrada)
   }
@@ -113,7 +119,7 @@ export class ServicoEventos {
           autorId: sessao.usuarioId,
           tipo: 'EVENTO_CRIADO',
           descricao: `Evento criado: ${gravado.nome}`,
-          link: '/adm/calendario',
+          link: `/adm/calendario/eventos/${gravado.id}`,
         })
       }
     })

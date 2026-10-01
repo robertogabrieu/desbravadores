@@ -30,7 +30,7 @@ const INCLUIR_UNIDADE = {
     where: { vinculo: { ativo: true, papel: 'CONSELHEIRO' } },
     include: { vinculo: { select: { usuario: { select: { id: true, nome: true } } } } },
   },
-  _count: { select: { membros: { where: { fim: null } } } },
+  _count: { select: { membros: { where: { fim: null, dbv: { tipo: 'DBV', ativo: true } } } } },
 } satisfies Prisma.UnidadeInclude
 
 type UnidadeCompleta = Prisma.UnidadeGetPayload<{ include: typeof INCLUIR_UNIDADE }>
@@ -90,6 +90,17 @@ export class UnidadesService {
         : { clubeId, ativa: true, id: { in: await this.escopo.unidadesDoConselheiro(sessao) } }
     const unidades = await this.prisma.unidade.findMany({ where, include: INCLUIR_UNIDADE })
     return unidades.map(montarUnidade).sort((a, b) => colador.compare(a.nome, b.nome))
+  }
+
+  /** Unidade do clube no escopo de quem pede; inativa só para o ADM, como a lista. */
+  async obter(sessao: SessaoLogada, id: string): Promise<Unidade> {
+    await this.exigirNoEscopo(sessao, id)
+    const unidade = await this.prisma.unidade.findFirst({
+      where: { id, clubeId: sessao.clubeId, ...(sessao.papel === 'ADM' ? {} : { ativa: true }) },
+      include: INCLUIR_UNIDADE,
+    })
+    if (!unidade) throw new ErroApp('NAO_ENCONTRADO', 'Unidade não encontrada.')
+    return montarUnidade(unidade)
   }
 
   async membros(sessao: SessaoLogada, unidadeId: string): Promise<Membro[]> {

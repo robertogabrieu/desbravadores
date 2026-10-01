@@ -1,5 +1,5 @@
 import type { INestApplication } from '@nestjs/common'
-import type { CalendarioSaida, EventoGravadoSaida } from '@desbravadores/shared'
+import type { CalendarioSaida, EventoGravadoSaida, EventoSaida } from '@desbravadores/shared'
 import request from 'supertest'
 import type { Server } from 'node:http'
 import type { z } from 'zod'
@@ -16,9 +16,11 @@ import {
   prismaDeTeste,
   publicarCronograma,
 } from '../../test/fabricas'
+import { testarIsolamento } from '../../test/isolamento'
 import { clienteHttp, corpo, hoje } from '../../test/p6'
 
 type Gravado = z.infer<typeof EventoGravadoSaida>
+type Saida = z.infer<typeof EventoSaida>
 type Ano = z.infer<typeof CalendarioSaida>
 
 function dia(deslocamento: number): string {
@@ -270,6 +272,39 @@ describe('calendário do clube — eventos', () => {
       const alvo = await criarEvento({ clubeId: clube.id, tipo: 'SEM_REUNIAO', inicio: dia(10) })
       expect((await apagar(`/api/calendario/eventos/${alvo.id}`, adm.autorizacao)).status).toBe(204)
       expect(await notificacoesDe(instrutor.usuario.id)).toEqual([])
+    })
+  })
+
+  describe('GET /calendario/eventos/:id', () => {
+    it('le o evento do clube para qualquer papel logado; removido e de outro clube → 404; id malformado → 400', async () => {
+      const { adm, instrutor } = await cenario()
+      const outro = await criarClube()
+      const criado = corpo<Gravado>(await http.post('/api/calendario/eventos', adm.autorizacao, evento())).evento
+      const lido = corpo<Saida>(await http.get(`/api/calendario/eventos/${criado.id}`, instrutor.autorizacao).expect(200))
+      expect(lido).toEqual(criado)
+      const alheio = await criarEvento({ clubeId: outro.id, tipo: 'EVENTO', inicio: dia(4) })
+      await http.get(`/api/calendario/eventos/${alheio.id}`, adm.autorizacao).expect(404)
+      await http.get('/api/calendario/eventos/nao-e-uuid', adm.autorizacao).expect(400)
+      expect((await apagar(`/api/calendario/eventos/${criado.id}`, adm.autorizacao)).status).toBe(204)
+      await http.get(`/api/calendario/eventos/${criado.id}`, adm.autorizacao).expect(404)
+    })
+
+    it('a atividade "evento criado" leva à ficha do evento', async () => {
+      const { clube, adm } = await cenario()
+      const criado = corpo<Gravado>(await http.post('/api/calendario/eventos', adm.autorizacao, evento())).evento
+      const [atividade] = await prismaDeTeste().atividade.findMany({ where: { clubeId: clube.id } })
+      expect(atividade?.link).toBe(`/adm/calendario/eventos/${criado.id}`)
+    })
+
+    testarIsolamento({
+      titulo: 'GET /calendario/eventos/:id',
+      app: () => app,
+      papel: 'ADM',
+      semear: async (clube) => {
+        const alvo = await criarEvento({ clubeId: clube.id, tipo: 'FERIADO', inicio: dia(3) })
+        return { metodo: 'get', caminho: `/api/calendario/eventos/${alvo.id}` }
+      },
+      esperado: { tipo: 'NAO_ENCONTRADO' },
     })
   })
 })

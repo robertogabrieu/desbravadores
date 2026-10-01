@@ -55,6 +55,7 @@ function montarSaida(usuario: UsuarioComVinculos): Saida {
     nome: usuario.nome,
     email: usuario.email,
     genero: usuario.genero,
+    ultimoAcessoEm: usuario.ultimoAcessoEm?.toISOString() ?? null,
     situacao: situacaoNoClube(usuario, vinculos.filter((v) => v.ativo).length),
     vinculos: vinculos.map((vinculo) => ({
       id: vinculo.id,
@@ -134,7 +135,12 @@ export class UsuariosService {
     await this.avisarNovoAcesso(clubeId, usuario)
 
     const gravado = await this.carregar(clubeId, usuario.id)
-    return { ...montarSaida(gravado), nome: entrada.nome, genero: entrada.genero ?? null, situacao: 'CONVIDADO' }
+    return { ...montarSaida(gravado), nome: entrada.nome, genero: entrada.genero ?? null, situacao: 'CONVIDADO', ultimoAcessoEm: null }
+  }
+
+  /** Usuário com vínculo (ativo ou não) neste clube, com todos os vínculos daqui; senão 404. */
+  async obter(sessao: SessaoLogada, id: string): Promise<Saida> {
+    return montarSaida(await this.carregar(sessao.clubeId, id))
   }
 
   async editar(sessao: SessaoLogada, id: string, entrada: z.infer<typeof UsuarioEditarEntrada>): Promise<Saida> {

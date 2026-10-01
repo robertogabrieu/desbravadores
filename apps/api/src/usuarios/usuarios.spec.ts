@@ -574,4 +574,57 @@ describe('usuarios e vinculos', () => {
       esperado: { tipo: 'NAO_ENCONTRADO' },
     })
   })
+
+  describe('GET /usuarios/:id e ultimoAcessoEm', () => {
+    it('le o usuario do clube com vinculos inativos e o ultimo acesso; a lista traz o mesmo campo', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const alvo = await criarAcesso({ clubeId: clube.id, papel: 'CONSELHEIRO' })
+      await criarVinculo({ usuarioId: alvo.usuario.id, clubeId: clube.id, papel: 'INSTRUTOR', ativo: false })
+      const quando = new Date('2026-09-30T13:45:00.000Z')
+      await prismaDeTeste().usuario.update({ where: { id: alvo.usuario.id }, data: { ultimoAcessoEm: quando } })
+
+      const lido = corpo<Usuario>(await api.get(`/api/usuarios/${alvo.usuario.id}`, adm.autorizacao).expect(200))
+      expect(lido).toMatchObject({ id: alvo.usuario.id, ultimoAcessoEm: quando.toISOString() })
+      expect(lido.vinculos.map((v) => `${v.papel}:${v.ativo}`).sort()).toEqual(['CONSELHEIRO:true', 'INSTRUTOR:false'])
+      const lista = corpo<Lista>(await api.get('/api/usuarios', adm.autorizacao).expect(200))
+      expect(lista.itens.find((u) => u.id === alvo.usuario.id)?.ultimoAcessoEm).toBe(quando.toISOString())
+      expect(lista.itens.find((u) => u.id === adm.usuario.id)?.ultimoAcessoEm).toBeNull()
+    })
+
+    it('usuario sem vinculo neste clube → 404; id malformado → 400; sem usuario.gerenciar → 403', async () => {
+      const clube = await criarClube()
+      const outro = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const alheio = await criarAcesso({ clubeId: outro.id, papel: 'CONSELHEIRO' })
+      const conselheiro = await criarAcesso({ clubeId: clube.id, papel: 'CONSELHEIRO' })
+      expect((await api.get(`/api/usuarios/${alheio.usuario.id}`, adm.autorizacao).expect(404)).body).toMatchObject({ codigo: 'NAO_ENCONTRADO' })
+      expect((await api.get('/api/usuarios/nao-e-uuid', adm.autorizacao).expect(400)).body).toMatchObject({ codigo: 'VALIDACAO' })
+      await api.get(`/api/usuarios/${adm.usuario.id}`, conselheiro.autorizacao).expect(403)
+    })
+
+    it('o eco do POST para e-mail ja cadastrado nao revela o ultimo acesso da conta', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const existente = await criarUsuario({ email: 'ja.existe@exemplo.org' })
+      await prismaDeTeste().usuario.update({ where: { id: existente.id }, data: { ultimoAcessoEm: new Date() } })
+      const saida = corpo<Usuario>(
+        await api.post('/api/usuarios', adm.autorizacao, { nome: 'Outro Nome', email: 'ja.existe@exemplo.org', vinculos: [{ papel: 'INSTRUTOR' }] }).expect(201),
+      )
+      expect(saida.ultimoAcessoEm).toBeNull()
+    })
+  })
+
+  describe('isolamento entre clubes: leitura do usuario', () => {
+    testarIsolamento({
+      titulo: 'GET /usuarios/:id',
+      app: () => app,
+      papel: 'ADM',
+      semear: async (clube) => {
+        const acesso = await criarAcesso({ clubeId: clube.id, papel: 'CONSELHEIRO' })
+        return { metodo: 'get', caminho: `/api/usuarios/${acesso.usuario.id}` }
+      },
+      esperado: { tipo: 'NAO_ENCONTRADO' },
+    })
+  })
 })

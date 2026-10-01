@@ -147,7 +147,60 @@ describe('unidades', () => {
     expect(desativada.ativa).toBe(false)
   })
 
+  it('GET /unidades/:id: ADM le ativa e inativa; totalMembros conta so DBV ativo com passagem aberta', async () => {
+    const clube = await criarClube()
+    const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+    const aguias = await criarUnidade({ clubeId: clube.id, nome: 'Aguias' })
+    const ativo = await criarDbv({ clubeId: clube.id })
+    const inativo = await criarDbv({ clubeId: clube.id, ativo: false })
+    const diretoria = await criarDbv({ clubeId: clube.id, tipo: 'DIRETORIA' })
+    for (const dbv of [ativo, inativo, diretoria]) await colocar(clube.id, dbv.id, aguias.id)
+
+    const lida = corpo<Unidade>(await api.get(`/api/unidades/${aguias.id}`, adm.autorizacao).expect(200))
+    expect(lida).toMatchObject({ id: aguias.id, nome: 'Aguias', totalMembros: 1 })
+    const membros = corpo<Membro[]>(await api.get(`/api/unidades/${aguias.id}/membros`, adm.autorizacao).expect(200))
+    expect(membros).toHaveLength(lida.totalMembros)
+    const lista = corpo<Unidade[]>(await api.get('/api/unidades', adm.autorizacao).expect(200))
+    expect(lista.find((u) => u.id === aguias.id)?.totalMembros).toBe(1)
+
+    await prismaDeTeste().unidade.updateMany({ where: { id: aguias.id, clubeId: clube.id }, data: { ativa: false } })
+    expect(corpo<Unidade>(await api.get(`/api/unidades/${aguias.id}`, adm.autorizacao).expect(200)).ativa).toBe(false)
+  })
+
+  it('GET /unidades/:id: conselheiro le a sua; fora do escopo, inativa e instrutor → 404; id malformado → 400', async () => {
+    const clube = await criarClube()
+    const sua = await criarUnidade({ clubeId: clube.id })
+    const alheia = await criarUnidade({ clubeId: clube.id })
+    const conselheiro = await criarAcesso({ clubeId: clube.id, papel: 'CONSELHEIRO', unidadeIds: [sua.id] })
+    const instrutor = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR' })
+    await api.get(`/api/unidades/${sua.id}`, conselheiro.autorizacao).expect(200)
+    await api.get(`/api/unidades/${alheia.id}`, conselheiro.autorizacao).expect(404)
+    await api.get(`/api/unidades/${sua.id}`, instrutor.autorizacao).expect(404)
+    await prismaDeTeste().unidade.updateMany({ where: { id: sua.id, clubeId: clube.id }, data: { ativa: false } })
+    await api.get(`/api/unidades/${sua.id}`, conselheiro.autorizacao).expect(404)
+    await api.get('/api/unidades/nao-e-uuid', conselheiro.autorizacao).expect(400)
+  })
+
+  it('GET /unidades/sem-membros continua respondendo a lista (nao cai na rota :id)', async () => {
+    const clube = await criarClube()
+    const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+    const livre = await criarDbv({ clubeId: clube.id })
+    const lista = corpo<Membro[]>(await api.get('/api/unidades/sem-membros', adm.autorizacao).expect(200))
+    expect(lista.map((m) => m.dbvId)).toContain(livre.id)
+  })
+
   describe('isolamento entre clubes', () => {
+    testarIsolamento({
+      titulo: 'GET /unidades/:id',
+      app: () => app,
+      papel: 'ADM',
+      semear: async (clube) => {
+        const unidade = await criarUnidade({ clubeId: clube.id })
+        return { metodo: 'get', caminho: `/api/unidades/${unidade.id}` }
+      },
+      esperado: { tipo: 'NAO_ENCONTRADO' },
+    })
+
     testarIsolamento({
       titulo: 'GET /unidades (lista)',
       app: () => app,
