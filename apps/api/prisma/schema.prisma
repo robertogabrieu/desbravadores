@@ -421,6 +421,7 @@ model Desbravador {
   convitesAcesso           ConviteAcesso[]
 
   @@unique([clubeId, id])
+  @@unique([clubeId, usuarioId], where: { usuarioId: { not: null } }, map: "desbravador_conta_por_clube")
   @@index([clubeId, ativo, nome])
   @@index([usuarioId])
 }

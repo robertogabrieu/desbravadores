@@ -12,12 +12,24 @@ import { Botao } from '../../ui/Botao'
 import { Campo } from '../../ui/Campo'
 import { Carregando, ErroDeCarga } from '../../ui/EstadosDeCarga'
 import { descricaoDoPapelDoConvite } from '../adm/desbravadores/mensagem-convite'
-import { MENSAGEM_CONVITE_VENCIDO, MENSAGEM_LOGIN_RECUSADO, tokenRecusado } from './mensagens'
+import {
+  MENSAGEM_CONTA_INATIVA,
+  MENSAGEM_CONTA_PENDENTE,
+  MENSAGEM_CONVITE_VENCIDO,
+  MENSAGEM_LOGIN_RECUSADO,
+  tokenRecusado,
+} from './mensagens'
 import { TelaAcesso } from './TelaAcesso'
 
 const camposBase = z.object({ email: Email, confirmacaoEmail: z.string(), senha: z.string(), confirmacao: z.string() })
 const emailsIguais = (campos: z.output<typeof camposBase>): boolean => campos.email === campos.confirmacaoEmail.trim().toLowerCase()
 const MENSAGEM_EMAILS = { message: 'Os e-mails não são iguais', path: ['confirmacaoEmail'] }
+
+/** Conta que existe mas não aceita senha por este link: a tela diz a saída em vez de pedir a senha. */
+const MENSAGEM_DA_CONTA_RECUSADA: Partial<Record<string, string>> = {
+  CONTA_PENDENTE: MENSAGEM_CONTA_PENDENTE,
+  CONTA_INATIVA: MENSAGEM_CONTA_INATIVA,
+}
 
 /** Conta nova: senha pela regra do app e confirmada. */
 const CamposContaNova = camposBase
@@ -57,11 +69,11 @@ export function AceitarConviteAcesso() {
       </TelaAcesso>
     )
   }
-  const { clube, nome } = convite.data
+  const { clube, nome, sexo } = convite.data
   return (
     <TelaAcesso
       titulo="Criar meu acesso"
-      subtitulo={`O ${clube} convidou você, ${nome}, para ser ${descricaoDoPapelDoConvite(convite.data)}.`}
+      subtitulo={`O ${clube} convidou você, ${nome}, para ser ${descricaoDoPapelDoConvite(convite.data, sexo)}.`}
     >
       <FormularioDoAcesso token={token} />
     </TelaAcesso>
@@ -98,6 +110,11 @@ function FormularioDoAcesso({ token }: { token: string }) {
         modo.current = true
         setContaExistente(true)
         setValue('senha', '')
+        return
+      }
+      const contaRecusada = erro instanceof ErroDaApi ? MENSAGEM_DA_CONTA_RECUSADA[erro.erro.codigo] : undefined
+      if (contaRecusada) {
+        setError('root', { message: contaRecusada })
         return
       }
       if (tokenRecusado(erro)) {

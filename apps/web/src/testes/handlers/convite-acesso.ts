@@ -48,7 +48,7 @@ export function handlersConviteAcesso(
 }
 
 export function criarConvitePublico(parcial: Partial<ConvitePublico> = {}): ConvitePublico {
-  return { clube: 'Clube Órion', nome: 'Paulo Henrique Souza', papel: 'CONSELHEIRO', unidades: [{ id: uuid(201), nome: 'Águias' }], classes: [], ...parcial }
+  return { clube: 'Clube Órion', nome: 'Paulo Henrique Souza', sexo: 'M', papel: 'CONSELHEIRO', unidades: [{ id: uuid(201), nome: 'Águias' }], classes: [], ...parcial }
 }
 
 export const handlerConvitePublico = (convite: ConvitePublico = criarConvitePublico()) =>
@@ -68,3 +68,7 @@ export function handlerAceitarConviteAcesso(recebidos: unknown[] = [], senhaDaCo
     return HttpResponse.json(sessao)
   })
 }
+
+/** Aceite recusado pela situação da conta (convidada sem senha ou desativada): o código decide o texto da tela. */
+export const handlerAceitarConviteAcessoRecusado = (status: number, codigo: string) =>
+  http.post('/api/acesso/:token', () => erroDaApi(status, codigo, 'Detalhe que a tela não mostra'))

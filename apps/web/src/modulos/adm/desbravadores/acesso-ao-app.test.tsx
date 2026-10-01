@@ -19,16 +19,16 @@ const aguias = criarUnidade({ id: uuid(201), nome: 'Águias' })
 const amigo = criarClasse({ id: uuid(101), nome: 'Amigo', corToken: '--classe-amigo' })
 const paulo = criarDesbravador({ id: uuid(310), nome: 'Paulo Henrique Souza', sexo: 'M', idade: 17 })
 
-async function abrirAcesso(situacao?: SituacaoAcesso, registro = { gerados: [] as unknown[], cancelados: 0 }) {
+async function abrirAcesso(situacao?: SituacaoAcesso, registro = { gerados: [] as unknown[], cancelados: 0 }, dbv = paulo) {
   servidor.use(
-    handlerDesbravadores([paulo]),
+    handlerDesbravadores([dbv]),
     handlerUnidades([aguias]),
     handlerClasses([amigo]),
     ...handlersConviteAcesso(situacao, registro),
   )
   renderizarRotas(rotasAdmDesbravadores, '/adm/desbravadores')
-  await userEvent.click(await screen.findByRole('button', { name: 'Editar Paulo Henrique Souza' }))
-  const painel = within(await screen.findByRole('dialog', { name: 'Editar Paulo Henrique Souza' }))
+  await userEvent.click(await screen.findByRole('button', { name: `Editar ${dbv.nome}` }))
+  const painel = within(await screen.findByRole('dialog', { name: `Editar ${dbv.nome}` }))
   const secao = within(await painel.findByRole('region', { name: 'Acesso ao app' }))
   return { secao, registro }
 }
@@ -100,6 +100,22 @@ describe('acesso ao app · convite aberto', () => {
     await userEvent.click(confirmacao.getByRole('button', { name: 'Sim, cancelar convite' }))
     await waitFor(() => expect(registro.cancelados).toBe(1))
     expect(await secao.findByRole('button', { name: 'Gerar convite de acesso' })).toBeInTheDocument()
+  })
+})
+
+describe('acesso ao app · ficha de uma menina', () => {
+  const ana = criarDesbravador({ id: uuid(311), nome: 'Ana Clara Lima', sexo: 'F', idade: 17 })
+
+  it('convite aberto e mensagem do WhatsApp no feminino', async () => {
+    const { secao } = await abrirAcesso({ convite: null, conta: null }, { gerados: [], cancelados: 0 }, ana)
+    await userEvent.click(await secao.findByRole('button', { name: 'Gerar convite de acesso' }))
+    await userEvent.click(await secao.findByRole('checkbox', { name: 'Águias' }))
+    await userEvent.click(secao.getByRole('button', { name: 'Gerar link' }))
+    expect(await secao.findByText(/Convite aberto para conselheira da unidade Águias/)).toBeInTheDocument()
+    const mensagem =
+      `Olá, Ana! Você foi convidada para usar o App do Desbravador no Clube Teste como conselheira da unidade Águias. ` +
+      `Crie seu acesso: ${LINK_CONVITE}`
+    expect(secao.getByRole('link', { name: 'Enviar pelo WhatsApp' })).toHaveAttribute('href', `https://wa.me/?text=${encodeURIComponent(mensagem)}`)
   })
 })
 

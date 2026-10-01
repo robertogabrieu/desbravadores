@@ -7,6 +7,7 @@ import {
   TOKEN_CONVITE_ACESSO,
   criarConvitePublico,
   handlerAceitarConviteAcesso,
+  handlerAceitarConviteAcessoRecusado,
   handlerConvitePublico,
   handlerConvitePublicoVencido,
 } from '../../testes/handlers/convite-acesso'
@@ -79,6 +80,37 @@ describe('aceitar convite de acesso por link', () => {
       { email: 'ana@exemplo.org', senha: 'senha-errada' },
       { email: 'ana@exemplo.org', senha: 'senha-de-sempre' },
     ])
+  })
+
+  it('ficha de uma menina: o convite diz conselheira', async () => {
+    servidor.use(handlerSemSessao(), handlerConvitePublico(criarConvitePublico({ nome: 'Ana Clara Lima', sexo: 'F' })))
+    renderizarRotas(rotas, URL_DO_CONVITE)
+    expect(
+      await screen.findByText('O Clube Órion convidou você, Ana Clara Lima, para ser conselheira da unidade Águias.'),
+    ).toBeInTheDocument()
+  })
+
+  it('e-mail convidado por e-mail e ainda sem senha: explica a saída e não pede a senha da conta', async () => {
+    servidor.use(handlerSemSessao(), handlerConvitePublico(), handlerAceitarConviteAcessoRecusado(409, 'CONTA_PENDENTE'))
+    renderizarRotas(rotas, URL_DO_CONVITE)
+    await preencher('paulo@exemplo.org', 'paulo@exemplo.org')
+    await userEvent.click(screen.getByRole('button', { name: 'Criar meu acesso' }))
+    expect(
+      await screen.findByText(
+        'Este e-mail já recebeu um convite por e-mail e ainda não criou a senha. Use o link desse e-mail ou peça ao Adm para reenviá-lo.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Você já tem conta. Digite a senha que você usa.')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Criar meu acesso' })).toBeInTheDocument()
+  })
+
+  it('conta desativada: manda falar com o Adm', async () => {
+    servidor.use(handlerSemSessao(), handlerConvitePublico(), handlerAceitarConviteAcessoRecusado(422, 'CONTA_INATIVA'))
+    renderizarRotas(rotas, URL_DO_CONVITE)
+    await preencher('paulo@exemplo.org', 'paulo@exemplo.org')
+    await userEvent.click(screen.getByRole('button', { name: 'Criar meu acesso' }))
+    expect(await screen.findByText('Esta conta está desativada. Fale com o Adm do clube.')).toBeInTheDocument()
+    expect(screen.queryByText('Você já tem conta. Digite a senha que você usa.')).not.toBeInTheDocument()
   })
 
   it('convite inválido mostra o aviso e nenhum formulário', async () => {

@@ -187,6 +187,7 @@ describe('convidado abre e aceita o link', () => {
     expect(publico).toEqual({
       clube: c.clube.nome,
       nome: c.dbv.nome,
+      sexo: 'M',
       papel: 'CONSELHEIRO',
       unidades: [{ id: c.unidade.id, nome: c.unidade.nome }],
       classes: [],
@@ -325,6 +326,99 @@ describe('convidado abre e aceita o link', () => {
     const resposta = await aceitar(token, email).expect(422)
     expect(resposta.body).toMatchObject({ codigo: 'REGRA' })
     expect(await prismaDeTeste().usuario.count({ where: { email } })).toBe(0)
+  })
+})
+
+describe('regras do aceite: ficha inativa, conta sem senha ou inativa, corridas', () => {
+  const INVALIDO = 'Este convite não vale mais. Peça um novo ao Adm do clube.'
+
+  it('ficha inativa nao gera convite: 422 pedindo para reativar', async () => {
+    const c = await cenario()
+    await prismaDeTeste().desbravador.update({ where: { id: c.dbv.id }, data: { ativo: false } })
+    const recusa = await api
+      .post(`/api/desbravadores/${c.dbv.id}/convite-acesso`, c.adm.autorizacao, { papel: 'CONSELHEIRO', unidadeIds: [c.unidade.id] })
+      .expect(422)
+    expect(recusa.body).toMatchObject({ codigo: 'REGRA', mensagem: 'Reative o desbravador antes de convidar.' })
+    expect(await prismaDeTeste().conviteAcesso.count({ where: { clubeId: c.clube.id } })).toBe(0)
+  })
+
+  it('ficha inativada depois de gerar: o link nao vale mais (410) no GET e no POST, e nada e criado', async () => {
+    const c = await cenario()
+    const token = tokenDoLink((await gerar(c)).link)
+    await prismaDeTeste().desbravador.update({ where: { id: c.dbv.id }, data: { ativo: false } })
+    expect((await verPublico(token).expect(410)).body).toMatchObject({ codigo: 'TOKEN_INVALIDO', mensagem: INVALIDO })
+    const email = emailNovo()
+    expect((await aceitar(token, email).expect(410)).body).toMatchObject({ codigo: 'TOKEN_INVALIDO', mensagem: INVALIDO })
+    expect(await prismaDeTeste().usuario.count({ where: { email } })).toBe(0)
+  })
+
+  it('conta convidada por e-mail (sem senha): 409 CONTA_PENDENTE, senha nao e definida e o convite continua valendo', async () => {
+    const c = await cenario()
+    const convidada = await criarUsuario({ status: 'CONVIDADO' })
+    const token = tokenDoLink((await gerar(c)).link)
+    const resposta = await aceitar(token, convidada.email).expect(409)
+    expect(resposta.body).toMatchObject({
+      codigo: 'CONTA_PENDENTE',
+      mensagem:
+        'Este e-mail já recebeu um convite por e-mail e ainda não criou a senha. Use o link desse e-mail ou peça ao Adm para reenviá-lo.',
+    })
+    const depois = await prismaDeTeste().usuario.findUniqueOrThrow({ where: { id: convidada.id } })
+    expect(depois).toMatchObject({ status: 'CONVIDADO', senhaHash: null })
+    expect((await prismaDeTeste().desbravador.findUniqueOrThrow({ where: { id: c.dbv.id } })).usuarioId).toBeNull()
+    await verPublico(token).expect(200)
+  })
+
+  it('conta desativada: 422 CONTA_INATIVA mesmo com a senha certa, e nada e ligado', async () => {
+    const c = await cenario()
+    const inativa = await criarUsuario({ status: 'INATIVO' })
+    const token = tokenDoLink((await gerar(c)).link)
+    const resposta = await aceitar(token, inativa.email, SENHA_DE_TESTE).expect(422)
+    expect(resposta.body).toMatchObject({ codigo: 'CONTA_INATIVA', mensagem: 'Esta conta está desativada. Fale com o Adm do clube.' })
+    expect(await prismaDeTeste().vinculo.count({ where: { usuarioId: inativa.id } })).toBe(0)
+    expect((await prismaDeTeste().desbravador.findUniqueOrThrow({ where: { id: c.dbv.id } })).usuarioId).toBeNull()
+    await verPublico(token).expect(200)
+  })
+
+  it('GET publico traz o sexo da ficha', async () => {
+    const c = await cenario()
+    const token = tokenDoLink((await gerar(c)).link)
+    expect(ConvitePublicoSaida.parse((await verPublico(token).expect(200)).body).sexo).toBe('M')
+  })
+
+  it('corrida de e-mail novo em dois convites: um cria a conta, o outro recebe 409 CONTA_EXISTENTE (nunca 500)', async () => {
+    const a = await cenario()
+    const b = await cenario()
+    const tokenA = tokenDoLink((await gerar(a)).link)
+    const tokenB = tokenDoLink((await gerar(b)).link)
+    const email = emailNovo()
+    const respostas = await Promise.all([aceitar(tokenA, email), aceitar(tokenB, email, 'OutraSenha@456')])
+    expect(respostas.map((r) => r.status).sort()).toEqual([200, 409])
+    expect(respostas.find((r) => r.status === 409)?.body).toMatchObject({ codigo: 'CONTA_EXISTENTE' })
+    expect(await prismaDeTeste().usuario.count({ where: { email } })).toBe(1)
+  })
+
+  it('corrida da mesma conta em duas fichas do clube: uma liga, a outra 422, e o banco fica com uma ficha so', async () => {
+    const c = await cenario()
+    const outraFicha = await criarDbv({ clubeId: c.clube.id, nome: 'Paulo Segundo Cadastro' })
+    const existente = await criarUsuario()
+    const tokenA = tokenDoLink((await gerar(c)).link)
+    const tokenB = tokenDoLink((await gerar({ ...c, dbv: outraFicha })).link)
+    const respostas = await Promise.all([aceitar(tokenA, existente.email, SENHA_DE_TESTE), aceitar(tokenB, existente.email, SENHA_DE_TESTE)])
+    expect(respostas.map((r) => r.status).sort()).toEqual([200, 422])
+    expect(respostas.find((r) => r.status === 422)?.body).toMatchObject({
+      codigo: 'REGRA',
+      mensagem: 'Este e-mail já está ligado a outro desbravador do clube.',
+    })
+    expect(await prismaDeTeste().desbravador.count({ where: { clubeId: c.clube.id, usuarioId: existente.id } })).toBe(1)
+  })
+
+  it('o banco recusa a mesma conta em duas fichas do clube mesmo por fora do servico', async () => {
+    const c = await cenario()
+    const usuario = await criarUsuario()
+    await criarDbv({ clubeId: c.clube.id, usuarioId: usuario.id })
+    await expect(criarDbv({ clubeId: c.clube.id, usuarioId: usuario.id })).rejects.toMatchObject({ code: 'P2002' })
+    const outroClube = await criarClube()
+    await criarDbv({ clubeId: outroClube.id, usuarioId: usuario.id })
   })
 })
 

@@ -18,7 +18,7 @@ import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
 import { ErroApp } from '../comum/erros'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { PrismaService } from '../comum/prisma/prisma.service'
-import type { Prisma } from '../generated/prisma/client.js'
+import { Prisma } from '../generated/prisma/client.js'
 import { colador, daDataCivil, paginar, paraDataCivil, semAcento } from './apoio'
 import { ServicoEscopo, type RelogioDoClube } from './escopo.service'
 
@@ -27,6 +27,14 @@ type Matricula = z.infer<typeof MatriculaSaida>
 type Aviso = z.infer<typeof AvisoContrato>
 type Cliente = Prisma.TransactionClient
 export type ClasseParaMatricula = { id: string; tipo: 'REGULAR' | 'AVANCADA'; trilha: 'INDIVIDUAL' | 'AGRUPADAS' }
+
+/** Uma conta liga no maximo uma ficha por clube: o indice parcial de Desbravador recusa a segunda. */
+function recusarContaJaLigada(falha: unknown): never {
+  if (falha instanceof Prisma.PrismaClientKnownRequestError && falha.code === 'P2002') {
+    throw new ErroApp('REGRA', 'Este usuário já está ligado a outro desbravador do clube.')
+  }
+  throw falha
+}
 
 /** O caderno das Agrupadas e para 16 anos ou mais: uma turma so, sem divisao por idade. */
 const IDADE_MINIMA_AGRUPADAS = 16
@@ -175,9 +183,9 @@ export class DesbravadoresService {
       throw new ErroApp('REGRA', 'Escolha a classe regular; a avançada entra junto.')
     }
 
-    const criado = await this.prisma.$transaction((tx) =>
-      this.gravarNovo(tx, { clubeId, anoClube: relogio.anoClube, entrada, classe }),
-    )
+    const criado = await this.prisma
+      .$transaction((tx) => this.gravarNovo(tx, { clubeId, anoClube: relogio.anoClube, entrada, classe }))
+      .catch(recusarContaJaLigada)
     return this.saidaComAvisos(sessao, criado.id, relogio)
   }
 
@@ -257,7 +265,7 @@ export class DesbravadoresService {
         autorizacaoImagem: entrada.autorizacaoImagem,
         autorizacaoImagemEm: entrada.autorizacaoImagemEm ? daDataCivil(entrada.autorizacaoImagemEm) : entrada.autorizacaoImagemEm,
       },
-    })
+    }).catch(recusarContaJaLigada)
     return this.saidaComAvisos(sessao, id, relogio)
   }
 

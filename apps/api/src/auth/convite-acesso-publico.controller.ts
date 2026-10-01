@@ -7,7 +7,7 @@ import { Publica } from '../comum/decorators/publica.decorator'
 import { ZodValidationPipe } from '../comum/pipes/zod-validation.pipe'
 import { ConviteAcessoPublicoService } from './convite-acesso-publico.service'
 import { gravarCookieDoRefresh } from './cookie-refresh'
-import { GuardaLimite, LIMITE_LOGIN, LIMITE_POR_IP } from './limite'
+import { GuardaLimite, LIMITE_ACEITE_POR_LINK, LIMITE_LOGIN } from './limite'
 
 const TokenDaRota = new ZodValidationPipe(z.string().min(20).max(200))
 
@@ -27,8 +27,7 @@ export class ConviteAcessoPublicoController {
 
   @Publica()
   @UseGuards(GuardaLimite)
-  @SkipThrottle({ porEmail: true })
-  @Throttle(LIMITE_POR_IP)
+  @Throttle(LIMITE_ACEITE_POR_LINK)
   @HttpCode(200)
   @Post(':token')
   async aceitar(

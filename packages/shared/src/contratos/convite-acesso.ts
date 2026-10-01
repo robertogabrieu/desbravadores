@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { Papel } from '../enums'
+import { Papel, Sexo } from '../enums'
 import { Email, InstanteIso, Uuid } from './comum'
 import { RefClasse, RefUnidade } from './auth'
 
@@ -33,6 +33,8 @@ export const SituacaoAcessoSaida = z.object({
 export const ConvitePublicoSaida = z.object({
   clube: z.string(),
   nome: z.string(),
+  /** Sexo da ficha: a tela escreve "conselheira" ou "conselheiro". */
+  sexo: Sexo,
   papel: PapelDoConvite,
   unidades: z.array(RefUnidade),
   classes: z.array(RefClasse),

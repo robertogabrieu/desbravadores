@@ -208,7 +208,14 @@ export function ListaDesbravadores() {
             aoCancelar={fecharPainel}
           />
         )}
-        {painel?.tipo === 'editar' && <AcessoAoApp key={painel.desbravador.id} dbvId={painel.desbravador.id} nome={painel.desbravador.nome} />}
+        {painel?.tipo === 'editar' && (
+          <AcessoAoApp
+            key={painel.desbravador.id}
+            dbvId={painel.desbravador.id}
+            nome={painel.desbravador.nome}
+            sexo={painel.desbravador.sexo}
+          />
+        )}
         {painel?.tipo === 'inativar' && (
           <FormularioInativar desbravador={painel.desbravador} aoConcluir={fecharPainel} aoCancelar={fecharPainel} />
         )}

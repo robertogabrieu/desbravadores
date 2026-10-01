@@ -8,13 +8,18 @@ import {
   conviteAberto,
   exigirRelacoesDoConvite,
 } from '../desbravadores/convite-acesso.apresentacao'
-import type { ConviteAcesso } from '../generated/prisma/client.js'
+import { Prisma, type ConviteAcesso } from '../generated/prisma/client.js'
 import { hashDoToken } from '../sessao/tokens'
 import { UsuariosService } from '../usuarios/usuarios.service'
 import { AuthService, type SessaoEmitida } from './auth.service'
 import { hashDaSenha, senhaConfere } from './senha'
 
 const MENSAGEM_INVALIDO = 'Este convite não vale mais. Peça um novo ao Adm do clube.'
+const MENSAGEM_CONTA_EXISTENTE = 'Você já tem conta. Digite a senha que você usa.'
+const MENSAGEM_OUTRA_FICHA = 'Este e-mail já está ligado a outro desbravador do clube.'
+const MENSAGEM_CONTA_PENDENTE =
+  'Este e-mail já recebeu um convite por e-mail e ainda não criou a senha. Use o link desse e-mail ou peça ao Adm para reenviá-lo.'
+const MENSAGEM_CONTA_INATIVA = 'Esta conta está desativada. Fale com o Adm do clube.'
 const MENSAGEM_RELACAO_SUMIU =
   'A unidade ou a classe deste convite não está mais disponível. Peça um novo convite ao Adm do clube.'
 
@@ -31,31 +36,40 @@ export class ConviteAcessoPublicoService {
     const convite = await this.conviteValido(token)
     const [clube, ficha, apresentado] = await Promise.all([
       this.prisma.clube.findUniqueOrThrow({ where: { id: convite.clubeId }, select: { nome: true } }),
-      this.prisma.desbravador.findUniqueOrThrow({ where: { id: convite.dbvId }, select: { nome: true } }),
+      this.fichaAtiva(convite),
       apresentarConvite(this.prisma, convite, null),
     ])
-    return { clube: clube.nome, nome: ficha.nome, papel: apresentado.papel, unidades: apresentado.unidades, classes: apresentado.classes }
+    return {
+      clube: clube.nome,
+      nome: ficha.nome,
+      sexo: ficha.sexo,
+      papel: apresentado.papel,
+      unidades: apresentado.unidades,
+      classes: apresentado.classes,
+    }
   }
 
   async aceitar(token: string, entrada: z.infer<typeof AceitarConviteAcessoEntrada>, aparelho?: string): Promise<SessaoEmitida> {
     const convite = await this.conviteValido(token)
     const { clubeId } = convite
     await exigirRelacoesDoConvite(this.prisma, convite, new ErroApp('REGRA', MENSAGEM_RELACAO_SUMIU))
-    const ficha = await this.prisma.desbravador.findUniqueOrThrow({ where: { id: convite.dbvId } })
+    const ficha = await this.fichaAtiva(convite)
     if (ficha.usuarioId) throw new ErroApp('REGRA', 'Este desbravador já tem acesso ao app.')
 
     const existente = await this.prisma.usuario.findUnique({ where: { email: entrada.email } })
     let senhaHash: string | null = null
     if (existente) {
-      const confere = await senhaConfere(existente.senhaHash, entrada.senha)
-      if (!confere || existente.status !== 'ATIVO') {
-        throw new ErroApp('CONTA_EXISTENTE', 'Você já tem conta. Digite a senha que você usa.')
+      // Conta sem senha ou desativada nao tem senha a conferir aqui, e este link nunca define senha.
+      if (existente.status === 'CONVIDADO') throw new ErroApp('CONTA_PENDENTE', MENSAGEM_CONTA_PENDENTE)
+      if (existente.status === 'INATIVO') throw new ErroApp('CONTA_INATIVA', MENSAGEM_CONTA_INATIVA)
+      if (!(await senhaConfere(existente.senhaHash, entrada.senha))) {
+        throw new ErroApp('CONTA_EXISTENTE', MENSAGEM_CONTA_EXISTENTE)
       }
       const outraFicha = await this.prisma.desbravador.findFirst({
         where: { clubeId, usuarioId: existente.id, id: { not: ficha.id } },
         select: { id: true },
       })
-      if (outraFicha) throw new ErroApp('REGRA', 'Este e-mail já está ligado a outro desbravador do clube.')
+      if (outraFicha) throw new ErroApp('REGRA', MENSAGEM_OUTRA_FICHA)
     } else {
       const regra = Senha.safeParse(entrada.senha)
       if (!regra.success) {
@@ -74,18 +88,26 @@ export class ConviteAcessoPublicoService {
       if (consumido.count === 0) throw new ErroApp('TOKEN_INVALIDO', MENSAGEM_INVALIDO)
       const usuario = existente
         ? await tx.usuario.update({ where: { id: existente.id }, data: { ultimoAcessoEm: agora } })
-        : await tx.usuario.create({
-            data: { nome: ficha.nome, email: entrada.email, genero: ficha.sexo, senhaHash, status: 'ATIVO', ultimoAcessoEm: agora },
-          })
-      const ligada = await tx.desbravador.updateMany({
-        where: { clubeId, id: ficha.id, usuarioId: null },
-        data: { usuarioId: usuario.id },
-      })
+        : await tx.usuario
+            .create({
+              data: { nome: ficha.nome, email: entrada.email, genero: ficha.sexo, senhaHash, status: 'ATIVO', ultimoAcessoEm: agora },
+            })
+            .catch(traduzirViolacaoUnica(new ErroApp('CONTA_EXISTENTE', MENSAGEM_CONTA_EXISTENTE)))
+      const ligada = await tx.desbravador
+        .updateMany({ where: { clubeId, id: ficha.id, usuarioId: null }, data: { usuarioId: usuario.id } })
+        .catch(traduzirViolacaoUnica(new ErroApp('REGRA', MENSAGEM_OUTRA_FICHA)))
       if (ligada.count === 0) throw new ErroApp('REGRA', 'Este desbravador já tem acesso ao app.')
       await this.usuarios.acrescentarPapel(tx, clubeId, usuario.id, convite.papel, convite)
       return usuario.id
     })
     return this.auth.abrirSessao(usuarioId, aparelho)
+  }
+
+  /** Ficha inativada depois de gerar: o convite deixa de valer, como um cancelado. */
+  private async fichaAtiva(convite: ConviteAcesso) {
+    const ficha = await this.prisma.desbravador.findUniqueOrThrow({ where: { id: convite.dbvId } })
+    if (!ficha.ativo) throw new ErroApp('TOKEN_INVALIDO', MENSAGEM_INVALIDO)
+    return ficha
   }
 
   private async conviteValido(token: string): Promise<ConviteAcesso> {
@@ -94,5 +116,16 @@ export class ConviteAcessoPublicoService {
       throw new ErroApp('TOKEN_INVALIDO', MENSAGEM_INVALIDO)
     }
     return convite
+  }
+}
+
+/**
+ * Corrida que o banco decide: e-mail unico (duas contas novas com o mesmo e-mail) ou uma conta por
+ * ficha no clube (indice parcial em Desbravador). A violacao vira o erro de regra correspondente.
+ */
+function traduzirViolacaoUnica(erro: ErroApp): (falha: unknown) => never {
+  return (falha) => {
+    if (falha instanceof Prisma.PrismaClientKnownRequestError && falha.code === 'P2002') throw erro
+    throw falha
   }
 }

@@ -29,6 +29,7 @@ export class ConviteAcessoService {
     const { clubeId } = sessao
     const ficha = await this.exigirFicha(clubeId, dbvId)
     if (ficha.usuarioId) throw new ErroApp('REGRA', 'Este desbravador já tem acesso ao app.')
+    if (!ficha.ativo) throw new ErroApp('REGRA', 'Reative o desbravador antes de convidar.')
     const relacoes = {
       clubeId,
       unidadeIds: entrada.papel === 'CONSELHEIRO' ? [...new Set(entrada.unidadeIds)] : [],
@@ -83,8 +84,8 @@ export class ConviteAcessoService {
     await this.prisma.conviteAcesso.updateMany({ where: { clubeId, dbvId, ...conviteAberto(agora) }, data: { canceladoEm: agora } })
   }
 
-  private async exigirFicha(clubeId: string, id: string): Promise<{ usuarioId: string | null }> {
-    const ficha = await this.prisma.desbravador.findFirst({ where: { clubeId, id }, select: { usuarioId: true } })
+  private async exigirFicha(clubeId: string, id: string): Promise<{ usuarioId: string | null; ativo: boolean }> {
+    const ficha = await this.prisma.desbravador.findFirst({ where: { clubeId, id }, select: { usuarioId: true, ativo: true } })
     if (!ficha) throw new ErroApp('NAO_ENCONTRADO', 'Desbravador não encontrado.')
     return ficha
   }

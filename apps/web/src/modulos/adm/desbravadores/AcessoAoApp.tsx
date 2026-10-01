@@ -1,4 +1,6 @@
+import type { Sexo as SexoContrato } from '@desbravadores/shared'
 import { useId, useState } from 'react'
+import type { z } from 'zod'
 import {
   useCancelarConviteAcesso,
   useGerarConviteAcesso,
@@ -21,14 +23,17 @@ import { descricaoDoPapelDoConvite, linkDoWhatsApp, mensagemDoConvite } from './
 interface Propriedades {
   dbvId: string
   nome: string
+  sexo: Sexo
 }
+
+type Sexo = z.infer<typeof SexoContrato>
 
 const FUSO_DO_CLUBE = 'America/Sao_Paulo'
 const dataCurta = (instante: string): string => new Date(instante).toLocaleDateString('pt-BR', { timeZone: FUSO_DO_CLUBE })
 const primeiroNome = (nome: string): string => nome.trim().split(/\s+/)[0] ?? nome
 
 /** Seção "Acesso ao app" do painel de editar: gerar, enviar e cancelar o convite por link. */
-export function AcessoAoApp({ dbvId, nome }: Propriedades) {
+export function AcessoAoApp({ dbvId, nome, sexo }: Propriedades) {
   const idTitulo = useId()
   const situacao = useSituacaoAcesso(dbvId)
   const [escolhendo, setEscolhendo] = useState(false)
@@ -53,7 +58,7 @@ export function AcessoAoApp({ dbvId, nome }: Propriedades) {
   } else if (escolhendo) {
     conteudo = <EscolhaDoConvite dbvId={dbvId} aoVoltar={() => setEscolhendo(false)} aoGerar={() => setEscolhendo(false)} />
   } else if (situacao.data.convite) {
-    conteudo = <ConviteAberto dbvId={dbvId} nome={nome} convite={situacao.data.convite} aoGerarOutro={() => setEscolhendo(true)} />
+    conteudo = <ConviteAberto dbvId={dbvId} nome={nome} sexo={sexo} convite={situacao.data.convite} aoGerarOutro={() => setEscolhendo(true)} />
   } else {
     conteudo = (
       <>
@@ -150,11 +155,13 @@ function EscolhaDoConvite({ dbvId, aoVoltar, aoGerar }: { dbvId: string; aoVolta
 function ConviteAberto({
   dbvId,
   nome,
+  sexo,
   convite,
   aoGerarOutro,
 }: {
   dbvId: string
   nome: string
+  sexo: Sexo
   convite: ConviteAcesso
   aoGerarOutro: () => void
 }) {
@@ -188,7 +195,7 @@ function ConviteAberto({
   return (
     <div className="flex flex-col gap-3">
       <p className="text-base text-texto">
-        {`Convite aberto para ${descricaoDoPapelDoConvite(convite)}, vale até ${dataCurta(convite.expiraEm)}.`}
+        {`Convite aberto para ${descricaoDoPapelDoConvite(convite, sexo)}, vale até ${dataCurta(convite.expiraEm)}.`}
       </p>
       {link ? (
         <>
@@ -196,7 +203,7 @@ function ConviteAberto({
           <div className="flex flex-wrap gap-2">
             <a
               className={estiloDoBotao({ variante: 'primario' })}
-              href={linkDoWhatsApp(mensagemDoConvite({ nome, clube: vinculoAtivo?.clube.nome ?? '', convite, link }))}
+              href={linkDoWhatsApp(mensagemDoConvite({ nome, sexo, clube: vinculoAtivo?.clube.nome ?? '', convite, link }))}
               target="_blank"
               rel="noreferrer"
             >
