@@ -257,7 +257,7 @@ function FormularioDeEnvio({ unidades, unidadeId, aoTrocarUnidade, reuniaoDoLink
           <span className="text-sm text-texto-2">{fotos.length === 0 ? 'Nenhuma foto escolhida' : `${fotos.length} ${fotos.length === 1 ? 'foto' : 'fotos'} · ${formatarTamanho(tamanhoTotal)}`}</span>
         </div>
         {fotos.length > 0 && (
-          <ul className="grid grid-cols-3 gap-2">
+          <ul className="grid grid-cols-3 gap-2 md:grid-cols-4 lg:grid-cols-6">
             {fotos.map((foto) => (
               <li key={foto.id} className="relative aspect-square overflow-hidden rounded-botao bg-marca-suave">
                 <img src={foto.previa} alt={`Prévia de ${foto.arquivo.name}`} className="size-full object-cover" />

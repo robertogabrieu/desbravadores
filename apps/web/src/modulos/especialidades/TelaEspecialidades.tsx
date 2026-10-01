@@ -148,7 +148,7 @@ export function TelaEspecialidades() {
       <>
         <div className="flex flex-col gap-2">
           <Campo rotulo="Buscar desbravador" type="search" value={buscaDbv} onChange={(e) => definirBuscaDbv(e.target.value)} placeholder="Buscar desbravador" />
-          <div role="group" aria-label="Desbravador" className="flex gap-3 overflow-x-auto pb-1">
+          <div role="group" aria-label="Desbravador" className="flex gap-3 overflow-x-auto pb-1 md:flex-wrap">
             {desbravadores.map((item) => (
               <button
                 key={item.dbvId}

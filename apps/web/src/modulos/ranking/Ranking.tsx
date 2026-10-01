@@ -130,7 +130,7 @@ export function Ranking() {
           {['Trimestre', 'Ano'].map((periodo) => (
             <button key={periodo} type="button" disabled className="flex min-h-[var(--touch-min)] flex-1 items-center justify-center gap-2 disabled:opacity-60">
               {periodo}
-              <span className="rounded-full bg-trilho px-2 text-[11px] font-semibold text-texto-3">em breve</span>
+              <span className="rounded-full bg-trilho px-2 py-0.5 text-[11px] font-semibold text-texto-3">em breve</span>
             </button>
           ))}
         </div>
@@ -159,7 +159,7 @@ export function Ranking() {
       </div>
 
       {opcoesDeUnidade.length >= 2 && (
-        <div className="flex gap-2 overflow-x-auto">
+        <div className="flex gap-2 overflow-x-auto md:flex-wrap">
           <Chip selecionado={unidadeId === undefined} aoAlternar={() => setUnidadeId(undefined)}>
             Todas as unidades
           </Chip>

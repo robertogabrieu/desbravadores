@@ -176,7 +176,7 @@ function CorpoChamada({ pacote, baixadoEm, unidade, data, base, chave, reuniaoId
         <span>{`${resumo.biblias} Bíblias`}</span>
       </div>
       <p className="text-sm text-texto-2">Toque no nome para marcar presença. Depois marque atraso, uniforme e Bíblia.</p>
-      <ul className="flex flex-col gap-2">
+      <ul className="grid gap-2 md:grid-cols-2">
         {unidade.membros.map((membro) => (
           <LinhaDbv
             key={membro.dbvId}
@@ -192,14 +192,14 @@ function CorpoChamada({ pacote, baixadoEm, unidade, data, base, chave, reuniaoId
         <Campo rotulo="Local" value={cabecalho.local} maxLength={120} onChange={(e) => mudar(editarCabecalho(estado, { local: e.target.value }))} />
         <Campo rotulo="Observações" value={cabecalho.observacoes} maxLength={2000} onChange={(e) => mudar(editarCabecalho(estado, { observacoes: e.target.value }))} />
       </section>
-      <div className="sticky bottom-0 flex flex-col gap-2 border-t border-borda bg-superficie py-3">
+      <div className="flex flex-col gap-2 border-t border-borda pt-4">
         {modo === 'SEM_CONEXAO' && avisos.instalarNaTelaInicial && (
           <FaixaAviso>Instale o app na tela inicial para não perder chamadas guardadas</FaixaAviso>
         )}
         {faltam > 0 && <p className="text-sm text-texto-2">{faltam === 1 ? 'Marque o 1 que falta' : `Marque os ${faltam} que faltam`}</p>}
         <p className="flex items-center gap-2 text-sm">
           <span className="font-semibold">{`${resumo.pontos} pts`}</span>
-          <span className="rounded-full bg-alerta-fundo px-2 text-alerta">provisório</span>
+          <span className="rounded-full bg-alerta-fundo px-2 py-0.5 text-alerta">provisório</span>
         </p>
         <Botao largura="total" disabled={!podeSalvar} carregando={salvar.isPending} onClick={aoSalvar}>
           {`Salvar chamada · ${resumo.pontos} pts`}
