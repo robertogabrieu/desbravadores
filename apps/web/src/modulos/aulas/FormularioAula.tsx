@@ -219,7 +219,7 @@ function CorpoAula({ pacote, baixadoEm, classe, data, base, chave, registroAulaI
         </section>
       )}
 
-      <div className="sticky bottom-0 flex flex-col gap-2 border-t border-borda bg-superficie py-3">
+      <div className="flex flex-col gap-2 border-t border-borda pt-4">
         {modo === 'SEM_CONEXAO' && avisos.instalarNaTelaInicial && <FaixaAviso>Instale o app na tela inicial para não perder aulas guardadas</FaixaAviso>}
         {pontosAtivos && (
           <p className="flex items-center gap-2 text-sm">

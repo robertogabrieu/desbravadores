@@ -192,7 +192,7 @@ function CorpoChamada({ pacote, baixadoEm, unidade, data, base, chave, reuniaoId
         <Campo rotulo="Local" value={cabecalho.local} maxLength={120} onChange={(e) => mudar(editarCabecalho(estado, { local: e.target.value }))} />
         <Campo rotulo="Observações" value={cabecalho.observacoes} maxLength={2000} onChange={(e) => mudar(editarCabecalho(estado, { observacoes: e.target.value }))} />
       </section>
-      <div className="sticky bottom-0 flex flex-col gap-2 border-t border-borda bg-superficie py-3">
+      <div className="flex flex-col gap-2 border-t border-borda pt-4">
         {modo === 'SEM_CONEXAO' && avisos.instalarNaTelaInicial && (
           <FaixaAviso>Instale o app na tela inicial para não perder chamadas guardadas</FaixaAviso>
         )}
