@@ -203,6 +203,7 @@ export class ReunioesEnvioService {
     const { clubeId } = sessao
     const porDbv = new Map(envio.linhas.map((linha) => [linha.dbvId, linha]))
     const dataDaReuniao = daDataCivil(envio.data)
+    // Vale a unidade na data, não o Tipo de hoje: quem virou Diretoria depois ainda é da chamada daquele dia.
     const membros = await tx.membroUnidade.findMany({
       where: {
         clubeId,
@@ -210,7 +211,7 @@ export class ReunioesEnvioService {
         dbvId: { in: [...porDbv.keys()] },
         inicio: { lte: dataDaReuniao },
         OR: [{ fim: null }, { fim: { gt: dataDaReuniao } }],
-        dbv: { clubeId, tipo: 'DBV', ativo: true },
+        dbv: { clubeId, ativo: true },
       },
       select: { dbvId: true, dbv: { select: { nome: true } } },
     })

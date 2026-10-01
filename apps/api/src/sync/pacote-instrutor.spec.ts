@@ -52,7 +52,8 @@ describe('GET /api/sync/pacote do instrutor (F11)', () => {
     const ana = await criarDbv({ clubeId: clube.id, nome: 'Ana Souza' })
     const bia = await criarDbv({ clubeId: clube.id, nome: 'Bia Lima' })
     const lider = await criarDbv({ clubeId: clube.id, nome: 'Carla Lider', tipo: 'LIDER' })
-    for (const dbv of [bia, ana, lider]) {
+    const diretoria = await criarDbv({ clubeId: clube.id, nome: 'Dora Diretoria', tipo: 'DIRETORIA' })
+    for (const dbv of [bia, ana, lider, diretoria]) {
       await criarMatricula({ clubeId: clube.id, dbvId: dbv.id, classeId: classe.id, anoClube: anoCorrente() })
     }
     const requisitos = await prismaDeTeste().requisito.findMany({
@@ -100,7 +101,7 @@ describe('GET /api/sync/pacote do instrutor (F11)', () => {
     expect(instrutor).not.toBeNull()
     expect(instrutor?.classes.map((x) => x.classe.id)).toEqual([c.classe.id])
     const classe = instrutor?.classes[0]
-    expect(classe?.membros.map((m) => [m.nome, m.tipo])).toEqual([['Ana Souza', 'DBV'], ['Bia Lima', 'DBV'], ['Carla Lider', 'LIDER']])
+    expect(classe?.membros.map((m) => [m.nome, m.tipo])).toEqual([['Ana Souza', 'DBV'], ['Bia Lima', 'DBV'], ['Carla Lider', 'LIDER'], ['Dora Diretoria', 'DIRETORIA']])
     expect(classe?.membros[0]?.concluidos.sort()).toEqual([r1, r2].sort())
     expect(classe?.membros[1]?.concluidos).toEqual([])
     const ordenadas = [...(classe?.membros[0]?.conclusoes ?? [])].sort((a, b) => a.requisitoId.localeCompare(b.requisitoId))

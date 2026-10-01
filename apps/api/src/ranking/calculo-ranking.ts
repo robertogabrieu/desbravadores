@@ -59,19 +59,25 @@ function comparar(a: EntradaDoRanking, b: EntradaDoRanking): number {
 export class CalculoRanking {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** DBVs ativos do clube, ja na ordem do ranking; `unidadeId` filtra pelos membros atuais. */
+  /**
+   * Quem era desbravador no mes, ja na ordem do ranking: DBV ativo, com a unidade atual; ou Diretoria que so
+   * entrou depois do fim do mes e era DBV na vespera da entrada, com a unidade que tinha entao (gravada na
+   * troca de Tipo, nula se nao tinha). Aparece como aparecia antes de entrar. `unidadeId` filtra por essa unidade.
+   */
   async doMes(clubeId: string, mes: string, anoClube: number, unidadeId?: string): Promise<EntradaDoRanking[]> {
-    const dbvs = await this.prisma.desbravador.findMany({
+    const { fim: fimDoMes } = limitesDoMes(mes)
+    const fichas = await this.prisma.desbravador.findMany({
       where: {
         clubeId,
-        tipo: 'DBV',
         ativo: true,
-        ...(unidadeId ? { membros: { some: { clubeId, unidadeId, fim: null } } } : {}),
+        OR: [{ tipo: 'DBV' }, { tipo: 'DIRETORIA', diretoriaVeioDeDbv: true, diretoriaDesde: { gte: fimDoMes } }],
       },
       select: {
         id: true,
         nome: true,
         nomePublico: true,
+        tipo: true,
+        diretoriaUnidadeAnterior: { select: { id: true, nome: true } },
         membros: { where: { fim: null }, select: { unidade: { select: { id: true, nome: true } } } },
         matriculas: {
           where: { anoClube, status: 'CURSANDO', classe: { tipo: 'REGULAR' } },
@@ -79,13 +85,18 @@ export class CalculoRanking {
         },
       },
     })
+    const comUnidade = fichas.map((ficha) => ({
+      ...ficha,
+      unidade: ficha.tipo === 'DIRETORIA' ? ficha.diretoriaUnidadeAnterior : ficha.membros[0]?.unidade,
+    }))
+    const dbvs = unidadeId ? comUnidade.filter((dbv) => dbv.unidade?.id === unidadeId) : comUnidade
     const dbvIds = dbvs.map((dbv) => dbv.id)
     const pontos = await this.pontosPorDbv(clubeId, dbvIds, mes)
     const chamadas = await this.situacoesPorDbv(clubeId, dbvIds, mes)
 
     return dbvs
       .map((dbv): EntradaDoRanking => {
-        const unidade = dbv.membros[0]?.unidade
+        const { unidade } = dbv
         const classe = dbv.matriculas[0]?.classe
         return {
           dbvId: dbv.id,

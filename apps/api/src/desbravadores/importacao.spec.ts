@@ -327,6 +327,18 @@ describe('importacao de desbravadores por planilha', () => {
       expect(linhas[0]?.avisos.map((a) => a.codigo)).toContain('AVISO_DUPLICADO')
     })
 
+    it('quem tem 16 ate junho entra como Diretoria: a previa avisa e ignora a unidade da linha', async () => {
+      const { clube, adm } = await admDeClubeNovo()
+      await criarUnidade({ clubeId: clube.id, nome: 'Águias', tipo: 'MISTA' })
+      const arquivo = await xlsx([
+        ['Nome', 'Data de nascimento', 'Sexo', 'Unidade'],
+        ['Ana Maior', nascimentoComIdade(17), 'F', 'Águias'],
+      ])
+      const { linhas } = corpo<Previa>(await previa(adm.autorizacao, arquivo).expect(200))
+      expect(linhas[0]).toMatchObject({ unidadeId: null, erros: [] })
+      expect(linhas[0]?.avisos).toContainEqual({ codigo: 'AVISO_DIRETORIA_SEM_UNIDADE', mensagem: 'Diretoria não entra em unidade.' })
+    })
+
     it('unidade e classe nao encontradas viram aviso e celula vazia; nao cria unidade', async () => {
       const { clube, adm } = await admDeClubeNovo()
       const aguias = await criarUnidade({ clubeId: clube.id, nome: 'Águias', tipo: 'MISTA' })
@@ -558,6 +570,16 @@ describe('importacao de desbravadores por planilha', () => {
       expect(matriculas.map((m) => m.classe.tipo).sort()).toEqual(['AVANCADA', 'REGULAR'])
       expect(matriculas.every((m) => m.anoClube === anoCorrente() && m.status === 'CURSANDO')).toBe(true)
       expect(await prisma.desbravador.count({ where: { clubeId: clube.id } })).toBe(2)
+    })
+
+    it('linha de 16 ate junho grava Diretoria desde a entrada, sem unidade e sem passagem, mesmo com a unidade enviada', async () => {
+      const { clube, adm } = await admDeClubeNovo()
+      const unidade = await criarUnidade({ clubeId: clube.id })
+      await confirmar(adm.autorizacao, [linhaPronta({ nascimento: nascimentoComIdade(17), unidadeId: unidade.id })]).expect(201)
+      const prisma = prismaDeTeste()
+      const ficha = await prisma.desbravador.findFirstOrThrow({ where: { clubeId: clube.id } })
+      expect(ficha).toMatchObject({ tipo: 'DIRETORIA', diretoriaPeloAdm: false, diretoriaDesde: new Date('2026-02-01T00:00:00Z') })
+      expect(await prisma.membroUnidade.count({ where: { clubeId: clube.id } })).toBe(0)
     })
 
     it('uma linha com erro: 422 com os erros por linha e nada gravado', async () => {

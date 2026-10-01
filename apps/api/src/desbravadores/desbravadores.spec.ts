@@ -325,7 +325,7 @@ describe('desbravadores: escopo, contato, cadastro, matricula', () => {
       expect(comUnidade.body).toMatchObject({ codigo: 'REGRA' })
     })
 
-    it('DBV com conta de usuario do clube e aceito no cadastro e na edicao, e o tipo nao muda', async () => {
+    it('DBV com conta de usuario do clube e aceito no cadastro e na edicao; conselheiro ou instrutor vira Diretoria', async () => {
       const clube = await criarClube()
       const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
       const usuario = await criarUsuario()
@@ -335,7 +335,7 @@ describe('desbravadores: escopo, contato, cadastro, matricula', () => {
           .post('/api/desbravadores', adm.autorizacao, { ...base, nascimento: nascimentoComIdade(16), usuarioId: usuario.id })
           .expect(201),
       )
-      expect(dados).toMatchObject({ tipo: 'DBV', usuarioId: usuario.id })
+      expect(dados).toMatchObject({ tipo: 'DIRETORIA', usuarioId: usuario.id })
 
       const outroUsuario = await criarUsuario()
       await criarVinculo({ usuarioId: outroUsuario.id, clubeId: clube.id, papel: 'INSTRUTOR' })
@@ -343,7 +343,7 @@ describe('desbravadores: escopo, contato, cadastro, matricula', () => {
       const editado = corpo<ComAvisos>(
         await api.patch(`/api/desbravadores/${semConta.id}`, adm.autorizacao, { usuarioId: outroUsuario.id }).expect(200),
       )
-      expect(editado.dados).toMatchObject({ tipo: 'DBV', usuarioId: outroUsuario.id })
+      expect(editado.dados).toMatchObject({ tipo: 'DIRETORIA', usuarioId: outroUsuario.id })
     })
 
     it('conta ja ligada a outra ficha do clube: cadastro e edicao recusam (422) e nada muda', async () => {

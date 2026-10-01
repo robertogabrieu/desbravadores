@@ -6,6 +6,7 @@ import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { daDataCivil } from '../desbravadores/apoio'
 import { ServicoEscopo, type RelogioDoClube } from '../desbravadores/escopo.service'
+import type { TipoPessoa } from '../generated/prisma/client.js'
 import { ServicoPontos } from '../pontos/servico-pontos'
 import { ehViolacaoUnica, exigirDataDoAnoCorrente, exigirFichaDeOutraPessoa, jaConcluido } from './conclusoes'
 import { ServicoProgresso } from './servico-progresso'
@@ -92,7 +93,7 @@ export class RequisitosDbvService {
     dbvId: string,
     requisitoId: string,
     exigirAtivo: boolean,
-  ): Promise<{ id: string; tipo: 'DBV' | 'LIDER'; usuarioId: string | null }> {
+  ): Promise<{ id: string; tipo: TipoPessoa; usuarioId: string | null }> {
     const { clubeId } = sessao
     const dbv = await this.progresso.exigirDbvNoEscopo(sessao, relogio, dbvId)
     const requisito = await this.prisma.requisito.findUnique({

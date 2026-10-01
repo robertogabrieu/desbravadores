@@ -204,7 +204,7 @@ export class AulasEnvioService {
     }
   }
 
-  /** F1: matriculas CURSANDO na classe no ano do clube da data, DBV ativo, tipo DBV ou LIDER. */
+  /** F1: matriculas CURSANDO na classe no ano do clube da data, ativo, de qualquer Tipo (todos cursam classe). */
   private async membrosDaAula(tx: Tx, clubeId: string, classeId: string, data: string, inicioAnoClube: string): Promise<Membros> {
     const matriculas = await tx.matriculaClasse.findMany({
       where: {
@@ -212,7 +212,7 @@ export class AulasEnvioService {
         classeId,
         anoClube: anoClube(data, inicioAnoClube),
         status: 'CURSANDO',
-        dbv: { clubeId, ativo: true, tipo: { in: ['DBV', 'LIDER'] } },
+        dbv: { clubeId, ativo: true, tipo: { in: ['DBV', 'DIRETORIA', 'LIDER'] } },
       },
       select: { dbvId: true, dbv: { select: { nome: true, tipo: true, usuarioId: true } } },
     })

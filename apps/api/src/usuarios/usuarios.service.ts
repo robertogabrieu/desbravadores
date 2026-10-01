@@ -18,6 +18,7 @@ import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { colador, paginar, semAcento } from '../desbravadores/apoio'
+import { ServicoTipoDaFicha } from '../desbravadores/tipo-da-ficha.service'
 import { emailAdicionado, emailConvite } from '../email/modelos'
 import { SERVICO_EMAIL, type ServicoEmail } from '../email/servico-email'
 import type { Prisma, Usuario } from '../generated/prisma/client.js'
@@ -76,6 +77,7 @@ export class UsuariosService {
     private readonly prisma: PrismaService,
     private readonly tokens: ServicoTokenUsoUnico,
     @Inject(SERVICO_EMAIL) private readonly email: ServicoEmail,
+    private readonly tipo: ServicoTipoDaFicha,
   ) {}
 
   async listar(sessao: SessaoLogada, filtro: z.infer<typeof UsuarioFiltro>): Promise<z.infer<typeof UsuarioLista>> {
@@ -119,12 +121,14 @@ export class UsuariosService {
 
     const existente = await this.prisma.usuario.findUnique({ where: { email: entrada.email } })
     if (existente) await this.exigirPapeisLivres(clubeId, existente.id, papeis)
+    const hoje = await this.tipo.hoje(clubeId)
 
     const usuario = await this.prisma.$transaction(async (tx) => {
       const alvo =
         existente ??
         (await tx.usuario.create({ data: { nome: entrada.nome, email: entrada.email, genero: entrada.genero ?? null } }))
       for (const vinculo of entrada.vinculos) await this.aplicarVinculo(tx, clubeId, alvo.id, vinculo)
+      await this.tipo.sincronizarConta(tx, clubeId, alvo.id, hoje)
       return alvo
     })
     await this.avisarNovoAcesso(clubeId, usuario)
@@ -155,7 +159,11 @@ export class UsuariosService {
     const usuario = await this.carregar(clubeId, id)
     const ativos = usuario.vinculos.filter((v) => v.ativo)
     await this.exigirOutroAdm(clubeId, ativos.map((v) => v.id), ativos.some((v) => v.papel === 'ADM'))
-    await this.prisma.vinculo.updateMany({ where: { clubeId, usuarioId: id, ativo: true }, data: { ativo: false } })
+    const hoje = await this.tipo.hoje(clubeId)
+    await this.prisma.$transaction(async (tx) => {
+      await tx.vinculo.updateMany({ where: { clubeId, usuarioId: id, ativo: true }, data: { ativo: false } })
+      await this.tipo.sincronizarConta(tx, clubeId, id, hoje)
+    })
     return montarSaida(await this.carregar(clubeId, id))
   }
 
@@ -164,7 +172,11 @@ export class UsuariosService {
     await this.carregar(clubeId, id)
     await this.validarVinculo(clubeId, entrada)
     await this.exigirPapeisLivres(clubeId, id, [entrada.papel])
-    await this.prisma.$transaction((tx) => this.aplicarVinculo(tx, clubeId, id, entrada))
+    const hoje = await this.tipo.hoje(clubeId)
+    await this.prisma.$transaction(async (tx) => {
+      await this.aplicarVinculo(tx, clubeId, id, entrada)
+      await this.tipo.sincronizarConta(tx, clubeId, id, hoje)
+    })
     return montarSaida(await this.carregar(clubeId, id))
   }
 
@@ -179,10 +191,12 @@ export class UsuariosService {
     if (entrada.ativo === false && vinculo.ativo) {
       await this.exigirOutroAdm(clubeId, [vinculo.id], vinculo.papel === 'ADM')
     }
+    const hoje = await this.tipo.hoje(clubeId)
 
     await this.prisma.$transaction(async (tx) => {
       if (entrada.ativo !== undefined) await tx.vinculo.update({ where: { id: vinculo.id, clubeId }, data: { ativo: entrada.ativo } })
       await this.substituirRelacoes(tx, clubeId, vinculo.id, entrada)
+      await this.tipo.sincronizarConta(tx, clubeId, vinculo.usuarioId, hoje)
     })
     return montarSaida(await this.carregar(clubeId, vinculo.usuarioId))
   }
@@ -198,7 +212,8 @@ export class UsuariosService {
 
   /**
    * Convite por link: papel ja ativo no clube ganha as unidades/classes a mais; papel ausente ou
-   * desativado nasce (ou volta) so com as do convite. Roda na transacao de quem chama.
+   * desativado nasce (ou volta) so com as do convite. Roda na transacao de quem chama, que ja ligou a
+   * ficha a conta: o Tipo da ficha e recalculado junto.
    */
   async acrescentarPapel(
     tx: Cliente,
@@ -208,18 +223,19 @@ export class UsuariosService {
     relacoes: { unidadeIds: string[]; classeIds: string[] },
   ): Promise<void> {
     const ativo = await tx.vinculo.findFirst({ where: { clubeId, usuarioId, papel, ativo: true } })
-    if (!ativo) {
+    if (ativo) {
+      await tx.vinculoUnidade.createMany({
+        data: [...new Set(relacoes.unidadeIds)].map((unidadeId) => ({ clubeId, vinculoId: ativo.id, unidadeId })),
+        skipDuplicates: true,
+      })
+      await tx.vinculoClasse.createMany({
+        data: [...new Set(relacoes.classeIds)].map((classeId) => ({ vinculoId: ativo.id, classeId })),
+        skipDuplicates: true,
+      })
+    } else {
       await this.aplicarVinculo(tx, clubeId, usuarioId, { papel, ...relacoes, ajustes: [] })
-      return
     }
-    await tx.vinculoUnidade.createMany({
-      data: [...new Set(relacoes.unidadeIds)].map((unidadeId) => ({ clubeId, vinculoId: ativo.id, unidadeId })),
-      skipDuplicates: true,
-    })
-    await tx.vinculoClasse.createMany({
-      data: [...new Set(relacoes.classeIds)].map((classeId) => ({ vinculoId: ativo.id, classeId })),
-      skipDuplicates: true,
-    })
+    await this.tipo.sincronizarConta(tx, clubeId, usuarioId, await this.tipo.hoje(clubeId))
   }
 
   /** Usuario alcancavel so por quem tem vinculo (ativo ou nao) neste clube; senao 404. */

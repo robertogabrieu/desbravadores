@@ -24,7 +24,7 @@ export function criarPerfil(parcial: Partial<PerfilDbv> = {}): PerfilDbv {
       unidade: { id: uuid(101), nome: 'Águias' },
       classeAtual: CLASSE_COMPANHEIRO,
       avancadaAtual: null,
-      diretoria: { membro: false, motivos: [] },
+      motivosDiretoria: [],
       instrui: [],
       aconselha: [],
     },

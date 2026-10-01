@@ -358,6 +358,23 @@ describe('PUT /api/sync/aulas/:uuid', () => {
     expect(saida.totalPontos).toBe(0)
   })
 
+  it('DIRETORIA entra na aula e conclui requisito, mas nao pontua', async () => {
+    const c = await cenario()
+    const diretoria = await criarDbv({ clubeId: c.clube.id, nome: 'Dora Diretoria', tipo: 'DIRETORIA' })
+    await criarMatricula({ clubeId: c.clube.id, dbvId: diretoria.id, classeId: c.classe.id, anoClube: anoCorrente() })
+    const saida = await c.ok(
+      c.enviar({
+        presencas: [{ dbvId: c.ana.id }, { dbvId: diretoria.id }],
+        marcados: [{ dbvId: diretoria.id, requisitoId: c.r1 }],
+      }),
+    )
+    expect(saida.presencas.map((p) => p.dbvId)).toContain(diretoria.id)
+    expect(saida.ignorados).toEqual([])
+    expect(await c.concluidosAtivos(diretoria.id)).toHaveLength(1)
+    expect(await c.lancamentos(diretoria.id)).toEqual([])
+    expect(saida.totalPontos).toBe(0)
+  })
+
   it('criterio de requisito inativo conclui sem lancar pontos', async () => {
     const c = await cenario()
     const criterio = await criterioPorGatilho(c.clube.id, 'REQUISITO')

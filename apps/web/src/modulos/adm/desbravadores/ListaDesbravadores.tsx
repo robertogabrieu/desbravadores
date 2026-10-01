@@ -1,8 +1,9 @@
+import { TipoPessoa } from '@desbravadores/shared'
 import { FileSpreadsheet, Plus } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { POR_PAGINA, useDesbravadores, useReativarDesbravador } from '../../../api/desbravadores'
-import type { Aviso, Desbravador, FiltroDiretoria, SituacaoDesbravador } from '../../../api/desbravadores'
+import type { Aviso, Desbravador, SituacaoDesbravador, TipoDesbravador } from '../../../api/desbravadores'
 import { useClasses, useUnidades } from '../../../api/leitura'
 import { Botao } from '../../../ui/Botao'
 import { Campo } from '../../../ui/Campo'
@@ -10,7 +11,6 @@ import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { FaixaAviso } from '../../../ui/FaixaAviso'
 import { FolhaLateral } from '../../../ui/FolhaLateral'
 import { Selecao } from '../../../ui/Selecao'
-import { Selo } from '../../../ui/Selo'
 import { Tabela } from '../../../ui/Tabela'
 import type { ColunaTabela } from '../../../ui/Tabela'
 import { AcessoAoApp } from './AcessoAoApp'
@@ -24,6 +24,14 @@ type Painel = { tipo: 'novo' } | { tipo: 'editar' | 'inativar'; desbravador: Des
 
 const SEM_UNIDADE = 'sem'
 
+const NOME_DO_TIPO: Record<TipoDesbravador, string> = { DBV: 'Desbravador', DIRETORIA: 'Diretoria', LIDER: 'Líder' }
+
+/** O valor da seleção vira Tipo; "Todos" (vazio) não filtra. */
+const lerTipo = (valor: string): TipoDesbravador | '' => {
+  const lido = TipoPessoa.safeParse(valor)
+  return lido.success ? lido.data : ''
+}
+
 function ehResultadoDaImportacao(estado: unknown): estado is ResultadoDaImportacao {
   return typeof estado === 'object' && estado !== null && 'importados' in estado && typeof estado.importados === 'number'
 }
@@ -33,7 +41,7 @@ export function ListaDesbravadores() {
   const [unidade, setUnidade] = useState('')
   const [classeId, setClasseId] = useState('')
   const [situacao, setSituacao] = useState<SituacaoDesbravador>('true')
-  const [diretoria, setDiretoria] = useState<FiltroDiretoria | ''>('')
+  const [tipo, setTipo] = useState<TipoDesbravador | ''>('')
   const [pagina, setPagina] = useState(1)
   const [painel, setPainel] = useState<Painel>(null)
   const [avisos, setAvisos] = useState<Aviso[]>([])
@@ -57,7 +65,7 @@ export function ListaDesbravadores() {
     semUnidade: unidade === SEM_UNIDADE || undefined,
     classeId: classeId || undefined,
     ativo: situacao,
-    diretoria: diretoria || undefined,
+    tipo: tipo || undefined,
     pagina,
   })
 
@@ -81,17 +89,12 @@ export function ListaDesbravadores() {
     {
       chave: 'nome',
       titulo: 'Nome',
-      celula: (d) => (
-        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="font-semibold">{d.nome}</span>
-          {d.diretoria.membro && <Selo>Diretoria</Selo>}
-        </span>
-      ),
+      celula: (d) => <span className="font-semibold">{d.nome}</span>,
     },
     { chave: 'idade', titulo: 'Idade', celula: (d) => d.idade },
-    { chave: 'unidade', titulo: 'Unidade', celula: (d) => (d.tipo === 'LIDER' ? '—' : (d.unidade?.nome ?? 'Sem unidade')) },
+    { chave: 'unidade', titulo: 'Unidade', celula: (d) => (d.tipo === 'DBV' ? (d.unidade?.nome ?? 'Sem unidade') : '—') },
     { chave: 'classe', titulo: 'Classe', celula: (d) => (d.classeAtual ? <ChipClasse classe={d.classeAtual} /> : '—') },
-    { chave: 'tipo', titulo: 'Tipo', celula: (d) => (d.tipo === 'LIDER' ? 'Líder' : 'Desbravador') },
+    { chave: 'tipo', titulo: 'Tipo', celula: (d) => NOME_DO_TIPO[d.tipo] },
     {
       chave: 'acoes',
       titulo: 'Ações',
@@ -187,14 +190,11 @@ export function ListaDesbravadores() {
           <option value="false">Inativos</option>
           <option value="todos">Todos</option>
         </Selecao>
-        <Selecao
-          rotulo="Diretoria"
-          value={diretoria}
-          onChange={(e) => filtrar(setDiretoria)(e.target.value === 'sim' ? 'sim' : e.target.value === 'nao' ? 'nao' : '')}
-        >
+        <Selecao rotulo="Tipo" value={tipo} onChange={(e) => filtrar(setTipo)(lerTipo(e.target.value))}>
           <option value="">Todos</option>
-          <option value="sim">Só Diretoria</option>
-          <option value="nao">Fora da Diretoria</option>
+          <option value="DBV">{NOME_DO_TIPO.DBV}</option>
+          <option value="DIRETORIA">{NOME_DO_TIPO.DIRETORIA}</option>
+          <option value="LIDER">{NOME_DO_TIPO.LIDER}</option>
         </Selecao>
       </div>
 

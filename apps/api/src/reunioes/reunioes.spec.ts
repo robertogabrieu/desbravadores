@@ -287,13 +287,26 @@ describe('PUT /api/sync/reunioes/:uuid', () => {
       expect(saida.ignorados.map((i) => i.nome)).toEqual(['Eva Saiu'])
     })
 
-    it('DBV inativo e LIDER nao entram na chamada', async () => {
+    it('DBV inativo nao entra na chamada', async () => {
       const c = await cenario()
       const inativo = await criarDbv({ clubeId: c.clube.id, nome: 'Fabio Inativo', ativo: false })
-      const lider = await criarDbv({ clubeId: c.clube.id, nome: 'Gil Lider', tipo: 'LIDER' })
-      for (const dbv of [inativo, lider]) await criarMembro({ dbvId: dbv.id, unidadeId: c.unidade.id, inicio: '2026-01-01' })
-      const saida = await c.ok(c.enviar({ linhas: [{ dbvId: c.ana.id }, { dbvId: inativo.id }, { dbvId: lider.id }] }))
-      expect(saida.ignorados.map((i) => i.nome).sort()).toEqual(['Fabio Inativo', 'Gil Lider'])
+      await criarMembro({ dbvId: inativo.id, unidadeId: c.unidade.id, inicio: '2026-01-01' })
+      const saida = await c.ok(c.enviar({ linhas: [{ dbvId: c.ana.id }, { dbvId: inativo.id }] }))
+      expect(saida.ignorados.map((i) => i.nome)).toEqual(['Fabio Inativo'])
+    })
+
+    it('vale a unidade na data: quem virou Diretoria depois da reuniao entra nela; a reuniao do dia da troca ja nao a inclui', async () => {
+      const c = await cenario()
+      const dora = await criarDbv({ clubeId: c.clube.id, nome: 'Dora Diretoria', tipo: 'DIRETORIA' })
+      await criarMembro({ dbvId: dora.id, unidadeId: c.unidade.id, inicio: '2026-01-01', fim: diasAtras(1) })
+
+      const antes = randomUUID()
+      const saidaAntes = await c.ok(c.enviar({ uuid: antes, data: diasAtras(3), linhas: [{ dbvId: c.ana.id }, { dbvId: dora.id }] }))
+      expect(saidaAntes.ignorados).toEqual([])
+      expect((await chamadasDaReuniao(antes)).map((l) => l.dbvId).sort()).toEqual([c.ana.id, dora.id].sort())
+
+      const naTroca = await c.ok(c.enviar({ data: diasAtras(1), linhas: [{ dbvId: c.ana.id }, { dbvId: dora.id }] }))
+      expect(naTroca.ignorados.map((i) => i.nome)).toEqual(['Dora Diretoria'])
     })
   })
 

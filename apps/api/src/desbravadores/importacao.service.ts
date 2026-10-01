@@ -4,11 +4,13 @@ import {
   avisoDeSexoDaUnidade,
   DesbravadorCriarEntrada,
   LIMITE_LINHAS_IMPORTACAO,
+  MENSAGEM_DIRETORIA_SEM_UNIDADE,
   MENSAGEM_JA_EXISTE_NO_CLUBE,
   mensagemRepetidaNaPlanilha,
   errosDaLinhaImportada,
   errosEmLista,
   idade,
+  tipoDaFicha,
   type CampoDaLinhaImportada,
   type ErroDeCampo,
   type Aviso,
@@ -92,6 +94,12 @@ function repeticoesSemAMarca(linhas: z.infer<typeof LinhaConfirmada>[], pessoasD
     if (anterior === undefined) vistas.set(chave, linha.linha)
   }
   return repetidas
+}
+
+/** Pessoa nova, sem conta: o Tipo sai só da idade, pela mesma função do cadastro. */
+function entraNaDiretoria(nascimento: string, hoje: string): boolean {
+  const ficha = { tipo: 'DBV', diretoriaPeloAdm: false, diretoriaDesde: null, nascimento, papeis: [] } as const
+  return tipoDaFicha(ficha, hoje).tipo === 'DIRETORIA'
 }
 
 @Injectable()
@@ -182,6 +190,7 @@ export class ImportacaoService {
           await this.desbravadores.gravarNovo(tx, {
             clubeId,
             anoClube: relogio.anoClube,
+            hoje: relogio.hoje,
             entrada: this.paraCadastro(linha),
             classe: linha.classeId ? classesPorId.get(linha.classeId) : undefined,
           })
@@ -250,7 +259,10 @@ export class ImportacaoService {
     if (!entradaEm) errosDeLeitura.entradaEm = `Data de entrada inválida: ${texto('entradaEm')}`
 
     const avisos: AvisoDaLinha[] = []
-    const nomeDaUnidade = texto('unidade')
+    // Mesma decisão do cadastro: quem já tem 16 até junho entra como Diretoria, e Diretoria não tem unidade.
+    const diretoria = nascimento !== null && entraNaDiretoria(nascimento, contexto.relogio.hoje)
+    if (diretoria) avisos.push({ codigo: AVISOS_IMPORTACAO.diretoriaSemUnidade, mensagem: MENSAGEM_DIRETORIA_SEM_UNIDADE })
+    const nomeDaUnidade = diretoria ? '' : texto('unidade')
     const unidade = nomeDaUnidade ? contexto.unidadesPorNome.get(nomeNormalizado(nomeDaUnidade)) : undefined
     if (nomeDaUnidade && !unidade) {
       avisos.push({ codigo: AVISOS_IMPORTACAO.unidadeInexistente, mensagem: `A unidade ${nomeDaUnidade} não existe no clube` })

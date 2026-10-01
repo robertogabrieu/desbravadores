@@ -140,6 +140,153 @@ describe('ranking do mes', () => {
     expect(saida.itens[0]?.pontos).toBe(0)
   })
 
+  describe('Diretoria nos meses anteriores à entrada: o ranking não muda com a troca de Tipo', () => {
+    const MESES = ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09']
+    const CRIANCA = '2014-03-10'
+
+    async function retrato(autorizacao: string) {
+      const fotos: unknown[] = []
+      for (const mes of MESES) {
+        const ranking = corpo<Ranking>(await api.get(`/api/ranking?mes=${mes}`, autorizacao))
+        const unidades = corpo<Unidades>(await api.get(`/api/ranking/unidades?mes=${mes}`, autorizacao))
+        fotos.push({
+          mes,
+          itens: ranking.itens.map((i) => [i.dbvId, i.unidade?.id ?? null, i.pontos]),
+          medias: unidades.map((u) => [u.unidade.id, u.mediaPontos, u.totalDbvs]),
+        })
+      }
+      return fotos
+    }
+
+    async function itemDe(autorizacao: string, mes: string, dbvId: string) {
+      return corpo<Ranking>(await api.get(`/api/ranking?mes=${mes}`, autorizacao)).itens.find((i) => i.dbvId === dbvId)
+    }
+
+    async function trocarTipo(autorizacao: string, dbvId: string, tipo: 'DBV' | 'DIRETORIA' | 'LIDER') {
+      await api.patch(`/api/desbravadores/${dbvId}`, autorizacao, { tipo }).expect(200)
+    }
+
+    async function moverUnidade(autorizacao: string, dbvId: string, unidadeId: string | null, desde: string) {
+      await api.put(`/api/desbravadores/${dbvId}/unidade`, autorizacao, { unidadeId, desde }).expect(200)
+    }
+
+    /** Ana fica na unidade A o ano todo e Caio na B; a pessoa observada pontua em fevereiro e em agosto. */
+    async function cenario() {
+      congelarRelogio('2026-10-05T15:00:00Z')
+      const { clube, unidade: unidadeA, adm } = await clubeComUnidade()
+      const unidadeB = await criarUnidade({ clubeId: clube.id })
+      const ana = await criarDbv({ clubeId: clube.id, nome: 'Ana Costa', nascimento: CRIANCA })
+      await criarMembro({ dbvId: ana.id, unidadeId: unidadeA.id, inicio: '2026-01-01' })
+      const caio = await criarDbv({ clubeId: clube.id, nome: 'Caio Alves', nascimento: CRIANCA })
+      await criarMembro({ dbvId: caio.id, unidadeId: unidadeB.id, inicio: '2026-01-01' })
+      const bia = await criarDbv({ clubeId: clube.id, nome: 'Bia Trocou', nascimento: CRIANCA })
+      await criarLancamento({ clubeId: clube.id, dbvId: ana.id, pontos: 10, data: '2026-02-05' })
+      await criarLancamento({ clubeId: clube.id, dbvId: caio.id, pontos: 20, data: '2026-02-05' })
+      await criarLancamento({ clubeId: clube.id, dbvId: bia.id, pontos: 30, data: '2026-02-05' })
+      await criarLancamento({ clubeId: clube.id, dbvId: bia.id, pontos: 40, data: '2026-08-05' })
+      return { clube, adm, unidadeA, unidadeB, ana, caio, bia }
+    }
+
+    it('troca simples: aparece na unidade de então em jan-set, com as mesmas médias; do mês da entrada em diante, não', async () => {
+      const { adm, unidadeA, unidadeB, bia, caio } = await cenario()
+      await criarMembro({ dbvId: bia.id, unidadeId: unidadeA.id, inicio: '2026-01-01', fim: '2026-03-20' })
+      await criarMembro({ dbvId: bia.id, unidadeId: unidadeB.id, inicio: '2026-07-01' })
+      const antes = await retrato(adm.autorizacao)
+
+      await trocarTipo(adm.autorizacao, bia.id, 'DIRETORIA')
+
+      expect(await retrato(adm.autorizacao)).toEqual(antes)
+      expect((await itemDe(adm.autorizacao, '2026-02', bia.id))?.unidade?.id).toBe(unidadeB.id)
+      const fevereiro = corpo<Unidades>(await api.get(`/api/ranking/unidades?mes=2026-02`, adm.autorizacao))
+      expect(fevereiro.find((u) => u.unidade.id === unidadeB.id)).toMatchObject({ mediaPontos: 25, totalDbvs: 2 })
+      const daUnidade = corpo<Ranking>(await api.get(`/api/ranking?mes=2026-02&unidadeId=${unidadeB.id}`, adm.autorizacao))
+      expect(daUnidade.itens.map((i) => i.dbvId)).toEqual([bia.id, caio.id])
+      expect(await itemDe(adm.autorizacao, '2026-10', bia.id)).toBeUndefined()
+    })
+
+    it('o mês da entrada já não conta, nem quando ela cai no último dia dele', async () => {
+      const { adm, unidadeA, bia } = await cenario()
+      await criarMembro({ dbvId: bia.id, unidadeId: unidadeA.id, inicio: '2026-01-01' })
+      congelarRelogio('2026-08-31T15:00:00Z')
+
+      await trocarTipo(adm.autorizacao, bia.id, 'DIRETORIA')
+
+      expect((await itemDe(adm.autorizacao, '2026-07', bia.id))?.unidade?.id).toBe(unidadeA.id)
+      expect(await itemDe(adm.autorizacao, '2026-08', bia.id)).toBeUndefined()
+    })
+
+    it('Adm muda a unidade no dia da entrada: vale a que estava aberta na troca de Tipo; tirada no mesmo dia, aparece sem unidade', async () => {
+      const { clube, adm, unidadeA, unidadeB, bia } = await cenario()
+      await criarMembro({ dbvId: bia.id, unidadeId: unidadeA.id, inicio: '2026-01-01' })
+      const eli = await criarDbv({ clubeId: clube.id, nome: 'Eli Tirado', nascimento: CRIANCA })
+      await criarMembro({ dbvId: eli.id, unidadeId: unidadeA.id, inicio: '2026-01-01' })
+      await criarLancamento({ clubeId: clube.id, dbvId: eli.id, pontos: 7, data: '2026-03-05' })
+      await moverUnidade(adm.autorizacao, bia.id, unidadeB.id, '2026-10-05')
+      await moverUnidade(adm.autorizacao, eli.id, null, '2026-10-05')
+      const antes = await retrato(adm.autorizacao)
+
+      await trocarTipo(adm.autorizacao, bia.id, 'DIRETORIA')
+      await trocarTipo(adm.autorizacao, eli.id, 'DIRETORIA')
+
+      expect(await retrato(adm.autorizacao)).toEqual(antes)
+      expect((await itemDe(adm.autorizacao, '2026-02', bia.id))?.unidade?.id).toBe(unidadeB.id)
+      expect(await itemDe(adm.autorizacao, '2026-03', eli.id)).toMatchObject({ unidade: null, pontos: 7 })
+    })
+
+    it('passagem com início futuro: vale a unidade que a ficha tinha aberta na troca de Tipo', async () => {
+      const { adm, unidadeA, unidadeB, bia } = await cenario()
+      await criarMembro({ dbvId: bia.id, unidadeId: unidadeA.id, inicio: '2026-01-01' })
+      await moverUnidade(adm.autorizacao, bia.id, unidadeB.id, '2026-10-20')
+      const antes = await retrato(adm.autorizacao)
+
+      await trocarTipo(adm.autorizacao, bia.id, 'DIRETORIA')
+
+      expect(await retrato(adm.autorizacao)).toEqual(antes)
+      expect((await itemDe(adm.autorizacao, '2026-02', bia.id))?.unidade?.id).toBe(unidadeB.id)
+    })
+
+    it('DBV sem unidade continua aparecendo sem unidade depois de entrar na Diretoria', async () => {
+      const { adm, bia } = await cenario()
+      const antes = await retrato(adm.autorizacao)
+
+      await trocarTipo(adm.autorizacao, bia.id, 'DIRETORIA')
+
+      expect(await retrato(adm.autorizacao)).toEqual(antes)
+      expect(await itemDe(adm.autorizacao, '2026-02', bia.id)).toMatchObject({ unidade: null, pontos: 30 })
+    })
+
+    it('Líder que passa a Diretoria não aparece em mês nenhum, nem quando tinha sido DBV antes de Líder', async () => {
+      const { adm, unidadeA, bia } = await cenario()
+      await criarMembro({ dbvId: bia.id, unidadeId: unidadeA.id, inicio: '2026-01-01' })
+      await trocarTipo(adm.autorizacao, bia.id, 'LIDER')
+      const antes = await retrato(adm.autorizacao)
+
+      await trocarTipo(adm.autorizacao, bia.id, 'DIRETORIA')
+
+      expect(await retrato(adm.autorizacao)).toEqual(antes)
+      for (const mes of MESES) expect(await itemDe(adm.autorizacao, mes, bia.id)).toBeUndefined()
+    })
+
+    it('saída e reentrada: vale a última entrada', async () => {
+      const { adm, unidadeA, unidadeB, bia } = await cenario()
+      await criarMembro({ dbvId: bia.id, unidadeId: unidadeA.id, inicio: '2026-01-01' })
+      await trocarTipo(adm.autorizacao, bia.id, 'DIRETORIA')
+      await trocarTipo(adm.autorizacao, bia.id, 'DBV')
+      expect((await itemDe(adm.autorizacao, '2026-02', bia.id))?.unidade).toBeNull()
+      await moverUnidade(adm.autorizacao, bia.id, unidadeB.id, '2026-10-05')
+      const antes = await retrato(adm.autorizacao)
+
+      await trocarTipo(adm.autorizacao, bia.id, 'DIRETORIA')
+
+      expect(await retrato(adm.autorizacao)).toEqual(antes)
+      expect((await itemDe(adm.autorizacao, '2026-02', bia.id))?.unidade?.id).toBe(unidadeB.id)
+
+      await trocarTipo(adm.autorizacao, bia.id, 'LIDER')
+      await trocarTipo(adm.autorizacao, bia.id, 'DIRETORIA')
+      expect(await itemDe(adm.autorizacao, '2026-02', bia.id)).toBeUndefined()
+    })
+  })
+
   it('sem mes, usa o mes corrente no fuso do clube (02:00 UTC de 1o de maio ainda e abril)', async () => {
     congelarRelogio('2026-05-01T02:00:00Z')
     const { clube, unidade, adm } = await clubeComUnidade()
