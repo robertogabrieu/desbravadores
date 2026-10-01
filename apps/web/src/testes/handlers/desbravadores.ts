@@ -22,6 +22,7 @@ export function criarDesbravador(parcial: Partial<Desbravador> = {}): Desbravado
     unidade: null,
     classeAtual: null,
     avancadaAtual: null,
+    diretoria: { membro: false, motivos: [] },
     ...parcial,
   }
 }
@@ -49,7 +50,8 @@ export const handlerDesbravadores = (todos: Desbravador[] = [], aoConsultar?: (u
         (!consulta.get('busca') || d.nome.toLowerCase().includes((consulta.get('busca') ?? '').toLowerCase())) &&
         (!consulta.get('unidadeId') || d.unidade?.id === consulta.get('unidadeId')) &&
         (consulta.get('semUnidade') !== 'true' || d.unidade === null) &&
-        (!consulta.get('classeId') || d.classeAtual?.id === consulta.get('classeId')),
+        (!consulta.get('classeId') || d.classeAtual?.id === consulta.get('classeId')) &&
+        (!consulta.get('diretoria') || d.diretoria.membro === (consulta.get('diretoria') === 'sim')),
     )
     const itens = filtrados.slice((pagina - 1) * porPagina, pagina * porPagina)
     return HttpResponse.json({ itens, total: filtrados.length, pagina, porPagina })

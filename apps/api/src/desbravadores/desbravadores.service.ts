@@ -1,13 +1,16 @@
 import { Injectable } from '@nestjs/common'
 import {
   avisoDeSexoDaUnidade,
+  diretoriaPelaIdade,
   idade,
+  nascimentoLimiteDaDiretoria,
   nomePublico as calcularNomePublico,
   type Aviso as AvisoContrato,
   type DesbravadorCriarEntrada,
   type DesbravadorEditarEntrada,
   type DesbravadorFiltro,
   type DesbravadorSaida,
+  type MotivoDiretoria,
   type InativarEntrada,
   type MatriculaEntrada,
   type MatriculaSaida,
@@ -25,11 +28,28 @@ import { ServicoEscopo, type RelogioDoClube } from './escopo.service'
 type Saida = z.infer<typeof DesbravadorSaida>
 type Matricula = z.infer<typeof MatriculaSaida>
 type Aviso = z.infer<typeof AvisoContrato>
+type Motivo = z.infer<typeof MotivoDiretoria>
 type Cliente = Prisma.TransactionClient
 export type ClasseParaMatricula = { id: string; tipo: 'REGULAR' | 'AVANCADA'; trilha: 'INDIVIDUAL' | 'AGRUPADAS' }
 
 /** O caderno das Agrupadas e para 16 anos ou mais: uma turma so, sem divisao por idade. */
 const IDADE_MINIMA_AGRUPADAS = 16
+
+/** Papéis que fazem da conta ligada à ficha membro da Diretoria; ADM não conta. */
+const PAPEIS_DA_DIRETORIA = ['CONSELHEIRO', 'INSTRUTOR'] satisfies Motivo[]
+
+function vinculosDaDiretoria(clubeId: string) {
+  return { clubeId, ativo: true, papel: { in: PAPEIS_DA_DIRETORIA } } satisfies Prisma.VinculoWhereInput
+}
+
+/** Mesma regra de `diretoriaPelaIdade` e dos vínculos, no banco, para o filtro paginar sobre o resultado. */
+function ondeDiretoria(clubeId: string, hoje: string, membro: boolean): Prisma.DesbravadorWhereInput {
+  const limite = daDataCivil(nascimentoLimiteDaDiretoria(hoje))
+  const vinculos = vinculosDaDiretoria(clubeId)
+  if (membro) return { OR: [{ nascimento: { lte: limite } }, { usuario: { vinculos: { some: vinculos } } }] }
+  // Sem usuário ligado o NOT de uma relação vira NULL no SQL e some da lista: o "fora" é escrito por extenso.
+  return { nascimento: { gt: limite }, OR: [{ usuarioId: null }, { usuario: { vinculos: { none: vinculos } } }] }
+}
 
 const CAMPOS_DO_CONSELHEIRO = [
   'nome',
@@ -41,8 +61,9 @@ const CAMPOS_DO_CONSELHEIRO = [
   'autorizacaoImagemEm',
 ]
 
-function relacoesDoAno(anoClube: number) {
+function relacoesDoAno(clubeId: string, anoClube: number) {
   return {
+    usuario: { select: { vinculos: { where: vinculosDaDiretoria(clubeId), select: { papel: true } } } },
     membros: {
       where: { fim: null },
       include: { unidade: { select: { id: true, nome: true, tipo: true } } },
@@ -56,6 +77,14 @@ function relacoesDoAno(anoClube: number) {
 }
 
 type DesbravadorCompleto = Prisma.DesbravadorGetPayload<{ include: ReturnType<typeof relacoesDoAno> }>
+
+function diretoria(dbv: DesbravadorCompleto, hoje: string): Saida['diretoria'] {
+  const papeis = new Set(dbv.usuario?.vinculos.map((vinculo) => vinculo.papel))
+  const motivos: Motivo[] = []
+  if (diretoriaPelaIdade(paraDataCivil(dbv.nascimento), hoje)) motivos.push('IDADE')
+  for (const papel of PAPEIS_DA_DIRETORIA) if (papeis.has(papel)) motivos.push(papel)
+  return { membro: motivos.length > 0, motivos }
+}
 
 function classeRegularAtual(dbv: DesbravadorCompleto): DesbravadorCompleto['matriculas'][number]['classe'] | undefined {
   return dbv.matriculas.find((m) => m.classe.tipo === 'REGULAR')?.classe
@@ -82,6 +111,7 @@ export function montarSaida(dbv: DesbravadorCompleto, relogio: RelogioDoClube, c
     unidade: unidade ? { id: unidade.id, nome: unidade.nome } : null,
     classeAtual: regular ? refClasse(regular) : null,
     avancadaAtual: avancada ? refClasse(avancada) : null,
+    diretoria: diretoria(dbv, relogio.hoje),
   }
   if (comContato) {
     saida.contato = {
@@ -126,6 +156,7 @@ export class DesbravadoresService {
     if (filtro.tipo) condicoes.push({ tipo: filtro.tipo })
     if (filtro.unidadeId) condicoes.push({ membros: { some: { clubeId, unidadeId: filtro.unidadeId, fim: null } } })
     if (filtro.semUnidade) condicoes.push({ membros: { none: { fim: null } } })
+    if (filtro.diretoria) condicoes.push(ondeDiretoria(clubeId, relogio.hoje, filtro.diretoria === 'sim'))
     if (filtro.classeId) {
       condicoes.push({
         matriculas: { some: { clubeId, classeId: filtro.classeId, anoClube: relogio.anoClube, status: 'CURSANDO' } },
@@ -144,7 +175,7 @@ export class DesbravadoresService {
 
     const linhas = await this.prisma.desbravador.findMany({
       where: { clubeId, id: { in: idsDaPagina } },
-      include: relacoesDoAno(relogio.anoClube),
+      include: relacoesDoAno(clubeId, relogio.anoClube),
     })
     const porId = new Map(linhas.map((linha) => [linha.id, linha]))
     const comContato = permissoes.includes('dbv.ver_contato')
@@ -342,7 +373,7 @@ export class DesbravadoresService {
     const doPapel = await this.escopo.filtroDesbravadores(sessao, relogio)
     const dbv = await this.prisma.desbravador.findFirst({
       where: { clubeId: sessao.clubeId, AND: [doPapel, { id }] },
-      include: relacoesDoAno(relogio.anoClube),
+      include: relacoesDoAno(sessao.clubeId, relogio.anoClube),
     })
     if (!dbv) throw new ErroApp('NAO_ENCONTRADO', 'Desbravador não encontrado.')
     return dbv

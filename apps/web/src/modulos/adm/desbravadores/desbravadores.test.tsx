@@ -369,3 +369,73 @@ describe('A1 · inativar e reativar', () => {
     expect(screen.queryByRole('button', { name: /Inativar/ })).not.toBeInTheDocument()
   })
 })
+
+describe('Diretoria', () => {
+  const diretor = criarDesbravador({
+    id: uuid(501),
+    nome: 'Davi Rocha',
+    idade: 16,
+    diretoria: { membro: true, motivos: ['IDADE', 'CONSELHEIRO'] },
+  })
+  const instrutora = criarDesbravador({
+    id: uuid(502),
+    nome: 'Eva Prado',
+    tipo: 'LIDER',
+    idade: 14,
+    diretoria: { membro: true, motivos: ['INSTRUTOR'] },
+  })
+
+  it('selo "Diretoria" só na linha de quem é', async () => {
+    abrir([ana, diretor])
+    expect(within(await screen.findByRole('row', { name: /Davi Rocha/ })).getByText('Diretoria')).toBeInTheDocument()
+    expect(within(linhaDe('Ana Clara Souza')).queryByText('Diretoria')).not.toBeInTheDocument()
+  })
+
+  it('filtro Diretoria: todos por padrão, só Diretoria e fora da Diretoria', async () => {
+    const consultas: URL[] = []
+    abrir([ana, diretor], (url) => consultas.push(url))
+    await screen.findByRole('row', { name: /Ana Clara/ })
+    const ultima = () => consultas[consultas.length - 1]?.searchParams
+    expect(ultima()?.get('diretoria')).toBeNull()
+
+    await userEvent.selectOptions(screen.getByLabelText('Diretoria'), 'Só Diretoria')
+    await waitFor(() => expect(ultima()?.get('diretoria')).toBe('sim'))
+    await waitFor(() => expect(screen.queryByRole('row', { name: /Ana Clara/ })).not.toBeInTheDocument())
+    expect(screen.getByRole('row', { name: /Davi Rocha/ })).toBeInTheDocument()
+
+    await userEvent.selectOptions(screen.getByLabelText('Diretoria'), 'Fora da Diretoria')
+    await waitFor(() => expect(ultima()?.get('diretoria')).toBe('nao'))
+    expect(await screen.findByRole('row', { name: /Ana Clara/ })).toBeInTheDocument()
+
+    await userEvent.selectOptions(screen.getByLabelText('Diretoria'), 'Todos')
+    await waitFor(() => expect(ultima()?.get('diretoria')).toBeNull())
+  })
+
+  it('filtro sem ninguém da Diretoria mostra o estado vazio', async () => {
+    abrir([ana])
+    await screen.findByRole('row', { name: /Ana Clara/ })
+    await userEvent.selectOptions(screen.getByLabelText('Diretoria'), 'Só Diretoria')
+    expect(await screen.findByText('Nenhum desbravador encontrado')).toBeInTheDocument()
+  })
+
+  it('o painel diz "Membro da Diretoria" com todos os motivos', async () => {
+    abrir([diretor, instrutora])
+    await userEvent.click(await screen.findByRole('button', { name: 'Editar Davi Rocha' }))
+    const painel = within(await screen.findByRole('dialog', { name: 'Editar Davi Rocha' }))
+    expect(painel.getByText('Membro da Diretoria')).toBeInTheDocument()
+    expect(painel.getByText('pela idade (16 anos até junho), conselheiro')).toBeInTheDocument()
+  })
+
+  it('o painel mostra o motivo instrutor', async () => {
+    abrir([instrutora])
+    await userEvent.click(await screen.findByRole('button', { name: 'Editar Eva Prado' }))
+    expect(within(await screen.findByRole('dialog', { name: 'Editar Eva Prado' })).getByText('instrutor')).toBeInTheDocument()
+  })
+
+  it('o painel de quem não é da Diretoria não tem a linha', async () => {
+    abrir([ana])
+    await userEvent.click(await screen.findByRole('button', { name: 'Editar Ana Clara Souza' }))
+    const painel = within(await screen.findByRole('dialog', { name: 'Editar Ana Clara Souza' }))
+    expect(painel.queryByText('Membro da Diretoria')).not.toBeInTheDocument()
+  })
+})
