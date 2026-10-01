@@ -32,7 +32,7 @@ export function LayoutCelular() {
     <div className="mx-auto flex min-h-dvh max-w-[480px] flex-col bg-fundo">
       <FaixaSessaoExpirada />
       <FaixaSemConexao />
-      <header className="flex items-center justify-between gap-2 bg-marca px-4 text-white">
+      <header className="flex items-center justify-between gap-2 bg-marca px-4 py-2 text-white">
         <Marca classeDoNome={comSeloDoPapel ? 'max-[419px]:sr-only' : undefined} />
         <div className="flex min-w-0 items-center gap-1">
           <SeloAguardandoEnvio />

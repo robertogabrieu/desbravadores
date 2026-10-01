@@ -199,7 +199,7 @@ function CorpoChamada({ pacote, baixadoEm, unidade, data, base, chave, reuniaoId
         {faltam > 0 && <p className="text-sm text-texto-2">{faltam === 1 ? 'Marque o 1 que falta' : `Marque os ${faltam} que faltam`}</p>}
         <p className="flex items-center gap-2 text-sm">
           <span className="font-semibold">{`${resumo.pontos} pts`}</span>
-          <span className="rounded-full bg-alerta-fundo px-2 text-alerta">provisório</span>
+          <span className="rounded-full bg-alerta-fundo px-2 py-0.5 text-alerta">provisório</span>
         </p>
         <Botao largura="total" disabled={!podeSalvar} carregando={salvar.isPending} onClick={aoSalvar}>
           {`Salvar chamada · ${resumo.pontos} pts`}

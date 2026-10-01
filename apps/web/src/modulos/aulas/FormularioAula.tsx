@@ -224,7 +224,7 @@ function CorpoAula({ pacote, baixadoEm, classe, data, base, chave, registroAulaI
         {pontosAtivos && (
           <p className="flex items-center gap-2 text-sm">
             <span className="font-semibold">{`${pontos} pts`}</span>
-            <span className="rounded-full bg-alerta-fundo px-2 text-alerta">provisório</span>
+            <span className="rounded-full bg-alerta-fundo px-2 py-0.5 text-alerta">provisório</span>
           </p>
         )}
         <Botao
@@ -266,7 +266,7 @@ function LinhaDbv({ membro, presente, situacao, requisitos, estado, comFila, aoA
         <span className="flex flex-col">
           <span className={cn('flex items-baseline gap-2 text-sm font-bold', !presente && 'text-texto-2')}>
             {membro.nome}
-            {membro.voce && <span className="rounded-full bg-marca-suave px-2 text-xs text-texto">você</span>}
+            {membro.voce && <span className="rounded-full bg-marca-suave px-2 py-0.5 text-xs text-texto">você</span>}
           </span>
           <span className="text-xs text-texto-2">{presente ? 'Presente' : situacao === false ? 'Faltou' : 'Sem marcação'}</span>
         </span>

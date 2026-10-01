@@ -25,7 +25,7 @@ function LinhaDoDbv({ item }: { item: Item }) {
         <div className="flex items-baseline gap-3">
           <span className="flex flex-1 items-baseline gap-2 text-base font-semibold text-texto">
             {item.nome}
-            {item.voce && <span className="rounded-full bg-marca-suave px-2 text-xs font-bold text-texto">você</span>}
+            {item.voce && <span className="rounded-full bg-marca-suave px-2 py-0.5 text-xs font-bold text-texto">você</span>}
           </span>
           <span className="text-sm text-texto-2">{`faltam ${item.faltam} req.`}</span>
           <span data-abaixo={abaixo} className={cn('w-12 text-right text-base font-extrabold', abaixo ? 'text-alerta' : 'text-texto')}>{`${item.percentual}%`}</span>
