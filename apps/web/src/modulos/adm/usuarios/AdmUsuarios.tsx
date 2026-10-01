@@ -1,7 +1,7 @@
 import { Papel as EsquemaPapel } from '@desbravadores/shared'
 import type { Papel } from '@desbravadores/shared'
 import { Plus } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { POR_PAGINA_USUARIOS, useUsuarios } from '../../../api/usuarios'
 import type { Usuario } from '../../../api/usuarios'
@@ -33,11 +33,22 @@ export function AdmUsuarios() {
   const buscaAplicada = filtros.ler('busca')
   const pagina = Number(filtros.ler('pagina')) || 1
   const [busca, setBusca] = useState(buscaAplicada)
+  const aplicadaPeloCampo = useRef(buscaAplicada)
   const usuarios = useUsuarios({ papel, busca: buscaAplicada.trim(), pagina })
+
+  // Busca que mudou por fora do campo (limpar pelo menu, voltar e avançar no navegador) passa para o campo.
+  useEffect(() => {
+    if (buscaAplicada === aplicadaPeloCampo.current) return
+    aplicadaPeloCampo.current = buscaAplicada
+    setBusca(buscaAplicada)
+  }, [buscaAplicada])
 
   useEffect(() => {
     if (busca === buscaAplicada) return
-    const espera = setTimeout(() => filtros.mudar({ busca, pagina: '' }), 300)
+    const espera = setTimeout(() => {
+      aplicadaPeloCampo.current = busca
+      filtros.mudar({ busca, pagina: '' })
+    }, 300)
     return () => clearTimeout(espera)
   }, [busca, buscaAplicada])
 

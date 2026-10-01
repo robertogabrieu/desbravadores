@@ -54,6 +54,7 @@ function RetornoDaCorrecao({ retorno, ficha }: { retorno: Retorno; ficha: string
 
 function CorrecaoDoAdm({ detalhe, pacote, ficha }: { detalhe: Detalhe; pacote: Pacote; ficha: string }) {
   const navegar = useNavigate()
+  const { modo } = useConexao()
   const corrigir = useCorrigirChamada()
   const [retorno, setRetorno] = useState<Retorno | null>(null)
   // Quem era da unidade naquela data: as linhas da reunião, não os membros de hoje.
@@ -85,7 +86,8 @@ function CorrecaoDoAdm({ detalhe, pacote, ficha }: { detalhe: Detalhe; pacote: P
       envioDireto={{
         enviar,
         enviando: corrigir.isPending,
-        bloqueado: retorno?.tipo === 'SALVO_COM_AVISOS',
+        // Perder a conexão com o formulário aberto não o desmonta: só impede o envio, e as marcas ficam.
+        bloqueado: retorno?.tipo === 'SALVO_COM_AVISOS' || modo === 'SEM_CONEXAO',
         retorno: retorno && <RetornoDaCorrecao retorno={retorno} ficha={ficha} />,
       }}
     />
@@ -101,7 +103,22 @@ export function CorrigirChamada() {
   const ficha = `/adm/reunioes/${id}`
 
   let corpo: ReactNode
-  if (modo === 'SEM_CONEXAO') corpo = <EstadoVazio titulo="Corrigir a chamada precisa de internet" descricao="Conecte-se e abra de novo. Nada foi alterado." />
+  // Com o formulário montado, perder a conexão não o troca pelo aviso: as marcas já feitas não se perdem.
+  if (dados && pacote && !carregando) {
+    corpo = dados.podeEditar ? (
+      <CorrecaoDoAdm detalhe={dados} pacote={pacote} ficha={ficha} />
+    ) : (
+      <EstadoVazio
+        titulo="Esta reunião não pode ser corrigida"
+        descricao="Você não tem permissão para corrigir esta chamada."
+        acao={
+          <Link to={ficha} className={estiloDoBotao({ variante: 'secundario' })}>
+            Voltar à ficha
+          </Link>
+        }
+      />
+    )
+  } else if (modo === 'SEM_CONEXAO') corpo = <EstadoVazio titulo="Corrigir a chamada precisa de internet" descricao="Conecte-se e abra de novo. Nada foi alterado." />
   else if (detalhe.isPending || carregando) corpo = <EsqueletoChamada />
   else if (detalhe.isError)
     corpo = ehNaoEncontrado(detalhe.error) ? (
@@ -109,17 +126,16 @@ export function CorrigirChamada() {
     ) : (
       <ErroDeCarga erro={detalhe.error} aoTentarDeNovo={() => void detalhe.refetch()} />
     )
-  else if (!pacote) corpo = <EstadoVazio titulo="A configuração do clube ainda não chegou" descricao="Aguarde um instante e abra de novo." />
-  else corpo = <CorrecaoDoAdm detalhe={detalhe.data} pacote={pacote} ficha={ficha} />
+  else corpo = <EstadoVazio titulo="A configuração do clube ainda não chegou" descricao="Aguarde um instante e abra de novo." />
 
   return (
-    <main className="flex flex-col gap-5 p-4">
+    <div className="flex flex-col gap-5 p-4">
       <CabecalhoDaPagina
         voltar={{ para: ficha, rotulo: 'Reunião' }}
         sobretitulo={dados ? `Unidade ${dados.unidade.nome} · ${dataPorExtenso(dados.data)}` : undefined}
         titulo="Corrigir chamada"
       />
       {corpo}
-    </main>
+    </div>
   )
 }

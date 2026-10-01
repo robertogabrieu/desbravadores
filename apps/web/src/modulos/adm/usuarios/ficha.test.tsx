@@ -1,7 +1,8 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
-import { HttpResponse, http } from 'msw'
+import { HttpResponse, delay, http } from 'msw'
+import { chavesUsuarios } from '../../../api/usuarios'
 import type { Usuario } from '../../../api/usuarios'
 import { caixa } from '../../../testes/handlers/caixa'
 import type { Caixa } from '../../../testes/handlers/caixa'
@@ -144,6 +145,7 @@ describe('ficha do usuário', () => {
     await waitFor(() => expect(roteador.state.location.pathname).toBe(`/adm/usuarios/${uuid(710)}`))
     expect(corposDados).toEqual([{ nome: 'Carla M. Souza', genero: 'F' }])
     expect(corposVinculo).toHaveLength(1)
+    expect(roteador.state.historyAction).toBe('REPLACE')
   })
 
   it('fora de convidado, nome e gênero ficam travados e e-mail é só leitura; sem alteração nada é gravado', async () => {
@@ -194,6 +196,19 @@ describe('ficha do usuário', () => {
     await userEvent.click(await screen.findByLabelText('Águias'))
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(roteador.state.location.pathname).toBe(`/adm/usuarios/${uuid(720)}`))
+  })
+
+  it('criar não grava a resposta na ficha: a ficha lê do servidor', async () => {
+    const criado = criarUsuario({ id: uuid(720), nome: 'Rui Novo', email: 'rui@clube.test', situacao: 'CONVIDADO' })
+    servidor.use(handlerCriarUsuario(criado))
+    const { roteador, clienteConsultas } = abrir('/adm/usuarios/novo')
+    servidor.use(http.get(`/api/usuarios/${uuid(720)}`, () => delay('infinite')))
+    await userEvent.type(await screen.findByLabelText('Nome'), 'Rui Novo')
+    await userEvent.type(screen.getByLabelText('E-mail'), 'rui@clube.test')
+    await userEvent.click(await screen.findByLabelText('Águias'))
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    await waitFor(() => expect(roteador.state.location.pathname).toBe(`/adm/usuarios/${uuid(720)}`))
+    expect(clienteConsultas.getQueryData(chavesUsuarios.um(uuid(720)))).toBeUndefined()
   })
 
   it.each([`/adm/usuarios/${uuid(799)}`, '/adm/usuarios/abc'])('%s → "Não encontramos este usuário"', async (rota) => {

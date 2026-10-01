@@ -8,7 +8,7 @@ import { CabecalhoDaPagina } from '../../../ui/CabecalhoDaPagina'
 import { Campo } from '../../../ui/Campo'
 import { RodapeDoFormulario } from '../../../ui/RodapeDoFormulario'
 import { Selecao } from '../../../ui/Selecao'
-import { useVoltarPara } from '../navegacao'
+import { useVoltar, useVoltarPara } from '../navegacao'
 import { BlocoVinculo } from './BlocoVinculo'
 import { ComUsuario, SITUACAO } from './FichaUsuario'
 import { corpoDaEdicao, entradaDoVinculo, mensagemDeErro, mesmoRascunho, rascunhoDoVinculo, rascunhoVazio } from './vinculos'
@@ -57,14 +57,14 @@ export function NovoUsuario() {
     setErro(undefined)
     try {
       const criado = await criar.mutateAsync({ nome: nome.trim(), email: email.trim(), genero: paraGenero(genero), vinculos: blocos.map((b) => entradaDoVinculo(b.rascunho)) })
-      void navegar(`/adm/usuarios/${criado.id}`, { state: { voltarPara } })
+      void navegar(`/adm/usuarios/${criado.id}`, { replace: true, state: { voltarPara } })
     } catch (falha) {
       setErro(mensagemDeErro(falha))
     }
   }
 
   return (
-    <main className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-5 p-4">
       <CabecalhoDaPagina voltar={{ para: voltarPara, rotulo: 'Usuários' }} sobretitulo="Usuário" titulo="Novo usuário" />
       <form onSubmit={(evento) => void salvar(evento)} className="flex max-w-2xl flex-col gap-4">
         <Campo rotulo="Nome" value={nome} onChange={(evento) => setNome(evento.target.value)} />
@@ -102,7 +102,7 @@ export function NovoUsuario() {
         )}
         <RodapeDoFormulario cancelar={{ para: voltarPara }} salvando={criar.isPending} />
       </form>
-    </main>
+    </div>
   )
 }
 
@@ -111,13 +111,13 @@ export const EditarUsuario = () => <ComUsuario aoCarregar={(usuario) => <Formula
 
 function FormularioExistente({ usuario }: { usuario: Usuario }) {
   const [parametros] = useSearchParams()
-  const voltarPara = useVoltarPara('/adm/usuarios')
+  const voltar = useVoltar({ para: '/adm/usuarios', rotulo: 'Usuários' })
   const navegar = useNavigate()
   const editar = useEditarUsuario()
   const editarVinculo = useEditarVinculo()
   const acrescentar = useAcrescentarVinculo()
   const convidado = usuario.situacao === 'CONVIDADO'
-  const aFicha = { para: `/adm/usuarios/${usuario.id}`, estado: { voltarPara } }
+  const aFicha = { para: `/adm/usuarios/${usuario.id}`, estado: { voltarPara: voltar.para, voltarRotulo: voltar.rotulo } }
   // O que a API já tem; muda a cada gravação que deu certo.
   const [atual, setAtual] = useState(usuario)
   const [nome, setNome] = useState(usuario.nome)
@@ -155,7 +155,7 @@ function FormularioExistente({ usuario }: { usuario: Usuario }) {
         await passo(`novo-${bloco.chave}`, () => acrescentar.mutateAsync({ usuarioId: usuario.id, corpo: entradaDoVinculo(bloco.rascunho) }))
         setNovos((atuais) => atuais.filter((b) => b.chave !== bloco.chave))
       }
-      void navegar(aFicha.para, { state: aFicha.estado })
+      void navegar(aFicha.para, { replace: true, state: aFicha.estado })
     } catch {
       // O erro já está no bloco que falhou; o que gravou antes dele fica gravado.
     } finally {

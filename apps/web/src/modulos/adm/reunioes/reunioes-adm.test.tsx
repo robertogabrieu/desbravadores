@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ModoConexao } from '../../../offline'
@@ -7,13 +7,36 @@ import { criarDetalheReuniao, criarSaidaEnvio, handlerCorrigirChamada, handlerRe
 import { uuid } from '../../../testes/handlers/sessao'
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
+import { chavesLeitura } from '../../../api/leitura'
+import { chavesVisaoGeral } from '../../../api/visao-geral'
 import { rotasAdmReunioes } from './rotas'
 
-const offline = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao }))
-vi.mock('../../../offline', async (importarOriginal) => ({
-  ...(await importarOriginal<typeof import('../../../offline')>()),
-  useConexao: () => ({ modo: offline.modo }),
-}))
+const offline = vi.hoisted(() => {
+  const ouvintes = new Set<() => void>()
+  return {
+    modo: 'ONLINE' as ModoConexao,
+    ouvintes,
+    mudar(modo: ModoConexao) {
+      this.modo = modo
+      ouvintes.forEach((ouvinte) => ouvinte())
+    },
+  }
+})
+vi.mock('../../../offline', async (importarOriginal) => {
+  const { useSyncExternalStore } = await import('react')
+  return {
+    ...(await importarOriginal<typeof import('../../../offline')>()),
+    useConexao: () => ({
+      modo: useSyncExternalStore(
+        (ouvinte) => {
+          offline.ouvintes.add(ouvinte)
+          return () => offline.ouvintes.delete(ouvinte)
+        },
+        () => offline.modo,
+      ),
+    }),
+  }
+})
 beforeEach(() => {
   offline.modo = 'ONLINE'
 })
@@ -125,5 +148,35 @@ describe('corrigir chamada (Adm)', () => {
     offline.modo = 'SEM_CONEXAO'
     abrir(`/adm/reunioes/${uuid(601)}/chamada`)
     expect(await screen.findByRole('heading', { name: 'Corrigir a chamada precisa de internet' })).toBeInTheDocument()
+  })
+
+  it('perder a conexão com o formulário aberto mantém o formulário e as marcas; Salvar desliga', async () => {
+    abrir(`/adm/reunioes/${uuid(601)}/chamada`)
+    await userEvent.click(await screen.findByRole('button', { name: /Júlia Rocha/ }))
+    expect(screen.getByRole('button', { name: /Salvar chamada/ })).toBeEnabled()
+    act(() => offline.mudar('SEM_CONEXAO'))
+    expect(screen.getByRole('button', { name: /Júlia Rocha/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Salvar chamada/ })).toBeDisabled()
+    expect(screen.queryByRole('heading', { name: 'Corrigir a chamada precisa de internet' })).not.toBeInTheDocument()
+    act(() => offline.mudar('ONLINE'))
+    expect(screen.getByRole('button', { name: /Salvar chamada/ })).toBeEnabled()
+  })
+
+  it('sem permissão de corrigir, mostra o bloqueio no lugar do formulário, com Voltar à ficha', async () => {
+    const bloqueada = caixa(criarDetalheReuniao({ ...reuniao().atual, podeEditar: false }))
+    abrir(`/adm/reunioes/${uuid(601)}/chamada`, bloqueada)
+    expect(await screen.findByRole('heading', { name: 'Esta reunião não pode ser corrigida' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Salvar chamada/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Voltar à ficha' })).toHaveAttribute('href', `/adm/reunioes/${uuid(601)}`)
+  })
+
+  it('depois de corrigir, a frequência da unidade e a visão geral ficam para reler', async () => {
+    const { clienteConsultas } = abrir(`/adm/reunioes/${uuid(601)}/chamada`, reuniao(), handlerCorrigirChamada((id) => criarSaidaEnvio(id)))
+    clienteConsultas.setQueryData([chavesLeitura.semMembros[0], uuid(201)], { marcador: true })
+    clienteConsultas.setQueryData(chavesVisaoGeral.todas, { marcador: true })
+    await userEvent.click(await screen.findByRole('button', { name: /Júlia Rocha/ }))
+    await userEvent.click(screen.getByRole('button', { name: /Salvar chamada/ }))
+    await waitFor(() => expect(clienteConsultas.getQueryState(chavesVisaoGeral.todas)?.isInvalidated).toBe(true))
+    expect(clienteConsultas.getQueryState([chavesLeitura.semMembros[0], uuid(201)])?.isInvalidated).toBe(true)
   })
 })

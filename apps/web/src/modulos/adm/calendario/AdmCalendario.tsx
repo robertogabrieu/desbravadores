@@ -13,6 +13,7 @@ import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { Esqueleto } from '../../../ui/Esqueleto'
 import { cn } from '../../../ui/cn'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/EstadosDeCarga'
+import { dataCivilBr } from '../formatos'
 import { useEstadoDeVolta, useFiltrosNaUrl } from '../navegacao'
 import {
   DIAS_DA_SEMANA,
@@ -20,7 +21,6 @@ import {
   MESES_CURTOS,
   chaveDoDia,
   chaveDoMes,
-  dataBrasileira,
   diasDaGrade,
   eventosDoDia,
   eventosDoMes,
@@ -33,8 +33,8 @@ const MAXIMO_POR_DIA = 2
 
 const periodo = (evento: EventoCalendario): string =>
   evento.inicio === evento.fim
-    ? dataBrasileira(evento.inicio)
-    : `${dataBrasileira(evento.inicio)} a ${dataBrasileira(evento.fim)}`
+    ? dataCivilBr(evento.inicio)
+    : `${dataCivilBr(evento.inicio)} a ${dataCivilBr(evento.fim)}`
 
 const fichaDoEvento = (evento: EventoCalendario): string => `/adm/calendario/eventos/${evento.id}`
 

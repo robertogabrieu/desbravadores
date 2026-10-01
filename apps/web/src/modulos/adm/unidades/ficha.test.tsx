@@ -1,16 +1,21 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { HttpResponse, delay, http } from 'msw'
 import { describe, expect, it } from 'vitest'
 import type { Membro, Unidade } from '../../../api/leitura'
+import { handlersConviteAcesso } from '../../../testes/handlers/convite-acesso'
 import { caixa } from '../../../testes/handlers/caixa'
 import type { Caixa } from '../../../testes/handlers/caixa'
-import { handlerMoverUnidade } from '../../../testes/handlers/desbravadores'
+import { criarDesbravador, handlerDesbravador, handlerMoverUnidade } from '../../../testes/handlers/desbravadores'
+import { handlerPerfilDe } from '../../../testes/handlers/perfil'
+import { handlerProgressoDbv } from '../../../testes/handlers/progresso'
 import { criarMembro, criarUnidade, handlerMembrosUnidade, handlerSemMembros, handlerUnidades } from '../../../testes/handlers/leitura'
 import { criarResumo, handlerReunioes } from '../../../testes/handlers/reunioes'
 import { uuid } from '../../../testes/handlers/sessao'
 import { handlerCriarUnidade, handlerEditarUnidade, handlerUnidade } from '../../../testes/handlers/unidades'
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
+import { rotasAdmDesbravadores } from '../desbravadores/rotas'
 import { rotasAdmUnidades } from './rotas'
 
 const aguias = (parcial: Partial<Unidade> = {}) =>
@@ -40,13 +45,13 @@ interface Cenario {
 function abrir(rota: string, { unidade = aguias(), outras = [], membros = [ana, julia], sem = [bruno], reunioes = {} }: Cenario = {}) {
   const consultas: { unidadeId: string; mes: string }[] = []
   servidor.use(handlerUnidade(unidade, ...outras), handlerUnidades([unidade.atual]), handlerMembrosUnidade(membros), handlerSemMembros(sem), handlerReunioes(reunioes, consultas))
-  return { ...renderizarRotas(rotasAdmUnidades, rota), consultas, unidade }
+  return { ...renderizarRotas([...rotasAdmUnidades, { path: '/adm/desbravadores/novo', element: <p>novo desbravador</p> }], rota), consultas, unidade }
 }
 
 describe('ficha da unidade', () => {
   it('lista → ficha pelo cartão; mostra tipo, situação, grito, conselheiros e membros', async () => {
     abrir('/adm/unidades')
-    await userEvent.click(await screen.findByRole('link', { name: 'Águias' }))
+    await userEvent.click(await screen.findByRole('link', { name: /^Águias/ }))
     expect(await screen.findByRole('heading', { level: 1, name: 'Águias' })).toBeInTheDocument()
     expect(screen.getByText('Unidade feminina · Ativa')).toBeInTheDocument()
     expect(screen.getByText('“Voando alto!”')).toBeInTheDocument()
@@ -77,6 +82,53 @@ describe('ficha da unidade', () => {
     expect(screen.getByRole('link', { name: 'Cadastrar desbravador' })).toHaveAttribute('href', '/adm/desbravadores/novo')
   })
 
+  it('com membros e ninguém disponível, não oferece cadastrar', async () => {
+    abrir(`/adm/unidades/${uuid(201)}`, { sem: [] })
+    await screen.findByRole('link', { name: /Ana Beatriz Souza/ })
+    expect(screen.queryByRole('link', { name: 'Cadastrar desbravador' })).not.toBeInTheDocument()
+  })
+
+  it('o vazio de unidade inativa não oferece ação nenhuma', async () => {
+    abrir(`/adm/unidades/${uuid(201)}`, { unidade: aguias({ ativa: false, totalMembros: 0 }), membros: [], sem: [] })
+    await screen.findByText('Nenhum desbravador nesta unidade')
+    expect(screen.queryByRole('link', { name: 'Cadastrar desbravador' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Adicionar desbravador sem unidade' })).not.toBeInTheDocument()
+  })
+
+  it('cadastrar a partir do vazio leva a unidade como destino do Voltar', async () => {
+    const { roteador } = abrir(`/adm/unidades/${uuid(201)}`, { unidade: aguias({ totalMembros: 0 }), membros: [], sem: [] })
+    await userEvent.click(await screen.findByRole('link', { name: 'Cadastrar desbravador' }))
+    await waitFor(() => expect(roteador.state.location.pathname).toBe('/adm/desbravadores/novo'))
+    expect(roteador.state.location.state).toMatchObject({ voltarPara: `/adm/unidades/${uuid(201)}`, voltarRotulo: 'Águias' })
+  })
+
+  it('unidade → membro → Voltar diz o nome da unidade e leva a ela', async () => {
+    const dbv = caixa(criarDesbravador({ id: uuid(301), nome: 'Ana Beatriz Souza' }))
+    servidor.use(handlerDesbravador(dbv), handlerPerfilDe([dbv]), handlerProgressoDbv(), ...handlersConviteAcesso())
+    const unidade = aguias()
+    servidor.use(handlerUnidade(unidade), handlerUnidades([unidade.atual]), handlerMembrosUnidade([ana, julia]), handlerSemMembros([bruno]), handlerReunioes({}))
+    const { roteador } = renderizarRotas([...rotasAdmUnidades, ...rotasAdmDesbravadores], `/adm/unidades/${uuid(201)}`)
+    await userEvent.click(await screen.findByRole('link', { name: /Ana Beatriz Souza/ }))
+    await userEvent.click(await screen.findByRole('link', { name: 'Voltar para Águias' }))
+    expect(roteador.state.location.pathname).toBe(`/adm/unidades/${uuid(201)}`)
+  })
+
+  it('trocar o mês mantém o cartão e as setas; só a lista espera', async () => {
+    abrir(`/adm/unidades/${uuid(201)}?mes=2026-09`)
+    servidor.use(
+      http.get('/api/reunioes', async ({ request }) => {
+        if (new URL(request.url).searchParams.get('mes') === '2026-08') await delay('infinite')
+        return HttpResponse.json([])
+      }),
+    )
+    const anterior = await screen.findByRole('button', { name: 'Mês anterior' })
+    await userEvent.click(anterior)
+    expect(await screen.findByRole('heading', { name: 'Reuniões de agosto de 2026' })).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'Carregando as reuniões' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Mês anterior' })).toBe(anterior)
+    expect(anterior).toHaveFocus()
+  })
+
   it('reuniões do mês com ‹ ›, mês no endereço e link para a ficha da reunião', async () => {
     const domingo = criarResumo({
       id: uuid(601),
@@ -89,7 +141,7 @@ describe('ficha da unidade', () => {
       reunioes: { '2026-09': [domingo] },
     })
     const secao = within(await screen.findByRole('region', { name: 'Reuniões de setembro de 2026' }))
-    expect(secao.getByRole('link', { name: /Domingo, 27 de setembro/ })).toHaveAttribute('href', `/adm/reunioes/${uuid(601)}`)
+    expect(await secao.findByRole('link', { name: /Domingo, 27 de setembro/ })).toHaveAttribute('href', `/adm/reunioes/${uuid(601)}`)
     expect(secao.getByText(/7 de 8 presentes · 1 atraso/)).toBeInTheDocument()
     await userEvent.click(secao.getByRole('button', { name: 'Mês anterior' }))
     expect(roteador.state.location.search).toBe('?mes=2026-08')
@@ -112,6 +164,7 @@ describe('ficha da unidade', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     expect(await screen.findByRole('heading', { level: 1, name: 'Águias Douradas' })).toBeInTheDocument()
     expect(roteador.state.location.pathname).toBe(`/adm/unidades/${uuid(201)}`)
+    expect(roteador.state.historyAction).toBe('REPLACE')
   })
 
   it('Nova → Salvar leva à ficha da criada', async () => {

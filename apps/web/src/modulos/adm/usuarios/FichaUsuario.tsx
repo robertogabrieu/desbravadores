@@ -16,7 +16,7 @@ import { EstadoNaoEncontrado, ehNaoEncontrado } from '../../../ui/EstadoNaoEncon
 import { ListaDePares } from '../../../ui/ListaDePares'
 import { Selo } from '../../../ui/Selo'
 import { FUSO_PADRAO_DO_CLUBE, textoDoUltimoAcesso } from '../formatos'
-import { useVoltarPara } from '../navegacao'
+import { useVoltar } from '../navegacao'
 import { escopoDoPapel, mensagemDeErro, oQuePodeFazer } from './vinculos'
 
 export const SITUACAO: Record<Usuario['situacao'], string> = { ATIVO: 'Ativo', CONVIDADO: 'Convite enviado', INATIVO: 'Inativo' }
@@ -50,7 +50,7 @@ export function ComUsuario({ aoCarregar }: { aoCarregar: (usuario: Usuario) => R
   else if (consulta.isError) corpo = <ErroDeCarga erro={consulta.error} aoTentarDeNovo={() => void consulta.refetch()} />
   else corpo = <Carregando rotulo="Carregando o usuário" />
 
-  return <main className="flex flex-col gap-6 p-6">{corpo}</main>
+  return <div className="flex flex-col gap-5 p-4">{corpo}</div>
 }
 
 export const FichaUsuario = () => <ComUsuario aoCarregar={(usuario) => <FichaComCatalogo usuario={usuario} />} />
@@ -98,7 +98,8 @@ function CartaoDoPapel({ vinculo, genero, catalogo }: { vinculo: VinculoUsuario;
 }
 
 function FichaCarregada({ usuario, catalogo }: { usuario: Usuario; catalogo: CatalogoPermissao[] }) {
-  const voltarPara = useVoltarPara('/adm/usuarios')
+  const voltar = useVoltar({ para: '/adm/usuarios', rotulo: 'Usuários' })
+  const estadoDeVolta = { voltarPara: voltar.para, voltarRotulo: voltar.rotulo }
   const { eu } = useSessao()
   const desativar = useDesativarUsuario()
   const reenviar = useReenviarConvite()
@@ -123,11 +124,11 @@ function FichaCarregada({ usuario, catalogo }: { usuario: Usuario; catalogo: Cat
   return (
     <>
       <CabecalhoDaPagina
-        voltar={{ para: voltarPara, rotulo: 'Usuários' }}
+        voltar={voltar}
         sobretitulo={`Usuário · ${SITUACAO[usuario.situacao]}`}
         titulo={usuario.nome}
         acoes={
-          <Link to={caminhoDaEdicao} state={{ voltarPara }} className={estiloDoBotao()}>
+          <Link to={caminhoDaEdicao} state={estadoDeVolta} className={estiloDoBotao()}>
             Editar
           </Link>
         }
@@ -175,7 +176,7 @@ function FichaCarregada({ usuario, catalogo }: { usuario: Usuario; catalogo: Cat
             Desativar neste clube
           </Botao>
         ) : (
-          <Link to={`${caminhoDaEdicao}?acrescentar=1`} state={{ voltarPara }} className={estiloDoBotao({ variante: 'secundario' })}>
+          <Link to={`${caminhoDaEdicao}?acrescentar=1`} state={estadoDeVolta} className={estiloDoBotao({ variante: 'secundario' })}>
             Acrescentar papel
           </Link>
         )}

@@ -23,7 +23,7 @@ export function ReunioesDoMes({ unidadeId }: { unidadeId: string }) {
 
   let corpo: ReactNode
   if (reunioes.isError) corpo = <ErroDeCarga erro={reunioes.error} aoTentarDeNovo={() => void reunioes.refetch()} />
-  else if (!reunioes.data) corpo = null
+  else if (!reunioes.data) corpo = <Carregando rotulo="Carregando as reuniões" />
   else if (reunioes.data.length === 0) corpo = <p className="py-4 text-base text-texto-2">Nenhuma reunião em {nome}</p>
   else
     corpo = (
@@ -49,9 +49,6 @@ export function ReunioesDoMes({ unidadeId }: { unidadeId: string }) {
         })}
       </ul>
     )
-
-  // Enquanto lê, só o aviso: a seção (e as setas) aparecem com a lista pronta, sem pular de conteúdo.
-  if (!reunioes.data && !reunioes.isError) return <Carregando rotulo="Carregando as reuniões" />
 
   return (
     <Cartao role="region" aria-labelledby="titulo-reunioes" className="flex flex-col gap-3">

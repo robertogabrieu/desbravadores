@@ -20,7 +20,7 @@ import { ListaDePares } from '../../../ui/ListaDePares'
 import type { Par } from '../../../ui/ListaDePares'
 import { SecaoProgresso } from '../../perfil/SecaoProgresso'
 import { dataCivilBr } from '../formatos'
-import { useAvisosDaFicha, useVoltarPara } from '../navegacao'
+import { useAvisosDaFicha, useVoltar } from '../navegacao'
 import { AcessoAoApp } from './AcessoAoApp'
 import { ChipClasse } from './ChipClasse'
 import { MENSAGEM_GENERICA, lerErroDaApi } from './erros'
@@ -148,7 +148,7 @@ function Rodape({ dbv, aoErro }: { dbv: Desbravador; aoErro: (mensagem: string |
 function Conteudo({ perfil }: { perfil: PerfilDbv }) {
   const { dbv } = perfil
   const idCadastro = useId()
-  const voltarPara = useVoltarPara(LISTA)
+  const voltar = useVoltar({ para: LISTA, rotulo: 'Desbravadores' })
   const { avisos, dispensar } = useAvisosDaFicha()
   const [erroDaAcao, setErroDaAcao] = useState<string | null>(null)
   const contato = dbv.contato
@@ -156,7 +156,7 @@ function Conteudo({ perfil }: { perfil: PerfilDbv }) {
   return (
     <div className="flex flex-col gap-5">
       <CabecalhoDaPagina
-        voltar={{ para: voltarPara, rotulo: 'Desbravadores' }}
+        voltar={voltar}
         sobretitulo={`${NOME_DO_TIPO[dbv.tipo]} · ${dbv.ativo ? 'Ativo' : 'Inativo'}`}
         titulo={dbv.nome}
         apoio={
@@ -166,7 +166,7 @@ function Conteudo({ perfil }: { perfil: PerfilDbv }) {
           </>
         }
         acoes={
-          <Link to={`${LISTA}/${dbv.id}/editar`} state={{ voltarPara }} className={estiloDoBotao()}>
+          <Link to={`${LISTA}/${dbv.id}/editar`} state={{ voltarPara: voltar.para, voltarRotulo: voltar.rotulo }} className={estiloDoBotao()}>
             Editar
           </Link>
         }

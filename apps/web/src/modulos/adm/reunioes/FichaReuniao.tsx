@@ -27,7 +27,7 @@ export function FichaReuniao() {
   else if (consulta.isError) corpo = <ErroDeCarga erro={consulta.error} aoTentarDeNovo={() => void consulta.refetch()} />
   else corpo = <Carregando rotulo="Carregando a reunião" />
 
-  return <main className="flex flex-col gap-6 p-6">{corpo}</main>
+  return <div className="flex flex-col gap-5 p-4">{corpo}</div>
 }
 
 function FichaCarregada({ dados }: { dados: Detalhe }) {
@@ -68,7 +68,6 @@ function FichaCarregada({ dados }: { dados: Detalhe }) {
         <h2 className="font-titulo text-lg font-bold">Alterações</h2>
         <p className="text-base">{dados.alterada ? `Corrigida por ${dados.alterada.por} em ${instanteCurto(dados.alterada.em, fuso)}.` : 'Nenhuma correção desde o registro.'}</p>
         {dados.alterada?.conflito && <p className="text-base font-semibold text-alerta">Houve conflito entre aparelhos.</p>}
-        <p className="text-sm text-texto-2">O conselheiro corrige até o prazo de correção do clube; o Adm corrige a qualquer momento — por exemplo, quem chegou depois da chamada.</p>
       </section>
     </>
   )

@@ -14,7 +14,7 @@ import { EstadoNaoEncontrado, ehNaoEncontrado } from '../../../ui/EstadoNaoEncon
 import { FaixaAviso } from '../../../ui/FaixaAviso'
 import { ListaDePares } from '../../../ui/ListaDePares'
 import { lerErroDaApi } from '../desbravadores/erros'
-import { horaCurta, periodoPorExtenso } from '../formatos'
+import { horaCurta, juntarNomes, periodoPorExtenso } from '../formatos'
 import { useAvisosDaFicha, useVoltarPara } from '../navegacao'
 import { ROTULOS_DO_TIPO } from './tipos'
 
@@ -22,6 +22,26 @@ const CALENDARIO = '/adm/calendario'
 const TRACO = '—'
 
 const simOuNao = (valor: boolean): string => (valor ? 'Sim' : 'Não')
+
+/** Os domingos de `inicio` a `fim` (AAAA-MM-DD), como número do dia: sex 16 a dom 18 → [18]. */
+function domingosDoPeriodo(inicio: string, fim: string): number[] {
+  const domingos: number[] = []
+  const dia = new Date(`${inicio}T00:00:00Z`)
+  const ultimo = new Date(`${fim}T00:00:00Z`)
+  for (; dia <= ultimo; dia.setUTCDate(dia.getUTCDate() + 1)) {
+    if (dia.getUTCDay() === 0) domingos.push(dia.getUTCDate())
+  }
+  return domingos
+}
+
+/** "Cancela a reunião de domingo 18"; sem domingo no período (ou sem cancelar), o rótulo simples. */
+function rotuloDoCancelamento(evento: EventoCalendario): string {
+  const domingos = evento.cancelaReuniao ? domingosDoPeriodo(evento.inicio, evento.fim) : []
+  if (domingos.length === 0) return 'Cancela a reunião'
+  return domingos.length === 1
+    ? `Cancela a reunião de domingo ${domingos[0]}`
+    : `Cancela as reuniões de domingo ${juntarNomes(domingos.map(String))}`
+}
 
 function Conteudo({ evento }: { evento: EventoCalendario }) {
   const mes = `${CALENDARIO}?mes=${evento.inicio.slice(0, 7)}`
@@ -97,7 +117,7 @@ function Conteudo({ evento }: { evento: EventoCalendario }) {
           <h2 className="font-titulo text-lg font-bold text-texto">O que muda no calendário</h2>
           <ListaDePares
             pares={[
-              { rotulo: 'Cancela a reunião', valor: simOuNao(evento.cancelaReuniao) },
+              { rotulo: rotuloDoCancelamento(evento), valor: simOuNao(evento.cancelaReuniao) },
               { rotulo: 'Bloqueia aulas nessas datas', valor: simOuNao(evento.bloqueiaAula) },
               { rotulo: 'Bom para requisitos de campo', valor: simOuNao(evento.bomParaCampo) },
             ]}

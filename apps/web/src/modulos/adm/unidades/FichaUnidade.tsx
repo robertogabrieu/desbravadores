@@ -13,7 +13,7 @@ import { EstadoNaoEncontrado, ehNaoEncontrado } from '../../../ui/EstadoNaoEncon
 import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { ListaDePares } from '../../../ui/ListaDePares'
 import { juntarNomes } from '../formatos'
-import { useEstadoDeVolta, useVoltarPara } from '../navegacao'
+import { useEstadoDeVolta, useVoltar } from '../navegacao'
 import { AdicionarSemUnidade } from './AdicionarSemUnidade'
 import { ReunioesDoMes } from './ReunioesDoMes'
 import { rotuloDoTipo } from './tipos'
@@ -34,7 +34,7 @@ export function ComUnidade({ aoCarregar }: { aoCarregar: (unidade: Unidade) => R
   else if (consulta.isError) corpo = <ErroDeCarga erro={consulta.error} aoTentarDeNovo={() => void consulta.refetch()} />
   else corpo = <Carregando rotulo="Carregando a unidade" />
 
-  return <main className="flex flex-col gap-6 p-6">{corpo}</main>
+  return <div className="flex flex-col gap-5 p-4">{corpo}</div>
 }
 
 export const FichaUnidade = () => <ComUnidade aoCarregar={(unidade) => <FichaCarregada unidade={unidade} />} />
@@ -45,8 +45,8 @@ function totalPorExtenso(unidade: Unidade): string {
   return `${unidade.totalMembros} ${unidade.totalMembros === 1 ? singular : plural}`
 }
 
-function LinhaDoMembro({ membro }: { membro: Membro }) {
-  const estado = useEstadoDeVolta()
+function LinhaDoMembro({ membro, unidadeNome }: { membro: Membro; unidadeNome: string }) {
+  const estado = useEstadoDeVolta(unidadeNome)
   return (
     <li>
       <Link
@@ -71,18 +71,24 @@ function SecaoMembros({ unidade }: { unidade: Unidade }) {
   const semUnidade = useSemMembros()
   const [adicionando, setAdicionando] = useState(false)
 
+  const estadoDeVolta = useEstadoDeVolta(unidade.nome)
+  const vazia = membros.data?.length === 0
+
   let acao: ReactNode = null
-  if (semUnidade.data) {
-    acao =
-      unidade.ativa && semUnidade.data.length > 0 ? (
+  if (semUnidade.data && unidade.ativa) {
+    if (semUnidade.data.length > 0) {
+      acao = (
         <Botao variante="secundario" onClick={() => setAdicionando(true)}>
           Adicionar desbravador sem unidade
         </Botao>
-      ) : (
-        <Link to="/adm/desbravadores/novo" className={estiloDoBotao({ variante: 'secundario' })}>
+      )
+    } else if (vazia) {
+      acao = (
+        <Link to="/adm/desbravadores/novo" state={estadoDeVolta} className={estiloDoBotao({ variante: 'secundario' })}>
           Cadastrar desbravador
         </Link>
       )
+    }
   }
 
   let corpo: ReactNode
@@ -94,7 +100,7 @@ function SecaoMembros({ unidade }: { unidade: Unidade }) {
       <>
         <ul className="flex flex-col">
           {membros.data.map((membro) => (
-            <LinhaDoMembro key={membro.dbvId} membro={membro} />
+            <LinhaDoMembro key={membro.dbvId} membro={membro} unidadeNome={unidade.nome} />
           ))}
         </ul>
         {acao && <div>{acao}</div>}
@@ -113,16 +119,16 @@ function SecaoMembros({ unidade }: { unidade: Unidade }) {
 }
 
 function FichaCarregada({ unidade }: { unidade: Unidade }) {
-  const voltarPara = useVoltarPara('/adm/unidades')
+  const voltar = useVoltar({ para: '/adm/unidades', rotulo: 'Unidades' })
   return (
     <>
       <CabecalhoDaPagina
-        voltar={{ para: voltarPara, rotulo: 'Unidades' }}
+        voltar={voltar}
         sobretitulo={`Unidade ${rotuloDoTipo(unidade.tipo).toLowerCase()} · ${unidade.ativa ? 'Ativa' : 'Inativa'}`}
         titulo={unidade.nome}
         apoio={unidade.gritoDeGuerra ? <span>“{unidade.gritoDeGuerra}”</span> : undefined}
         acoes={
-          <Link to={`/adm/unidades/${unidade.id}/editar`} state={{ voltarPara }} className={estiloDoBotao()}>
+          <Link to={`/adm/unidades/${unidade.id}/editar`} state={{ voltarPara: voltar.para, voltarRotulo: voltar.rotulo }} className={estiloDoBotao()}>
             Editar
           </Link>
         }

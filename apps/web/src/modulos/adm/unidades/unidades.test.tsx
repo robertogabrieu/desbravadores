@@ -29,12 +29,12 @@ function abrir(rota = '/adm/unidades', listaDeUnidades = handlerUnidades([aguias
   return renderizarRotas(rotasAdmUnidades, rota)
 }
 
-const cartao = (nome: string) => within(screen.getByRole('article', { name: nome }))
+const cartao = (nome: string) => within(screen.getByRole('link', { name: new RegExp(`^${nome}`) }))
 
 describe('A3 · cartões', () => {
   it('mostram nome, tipo, conselheiros e total; inativa vem marcada', async () => {
     abrir()
-    await screen.findByRole('article', { name: 'Águias' })
+    await screen.findByRole('link', { name: /^Águias/ })
     expect(cartao('Águias').getByText('Masculina')).toBeInTheDocument()
     expect(cartao('Águias').getByText('Conselheiros: Paulo Reis, Rita Melo')).toBeInTheDocument()
     expect(cartao('Águias').getByText('1 DBV')).toBeInTheDocument()
@@ -54,13 +54,13 @@ describe('A3 · cartões', () => {
         return HttpResponse.json([aguias])
       }),
     )
-    await screen.findByRole('article', { name: 'Águias' })
+    await screen.findByRole('link', { name: /^Águias/ })
     expect(consulta).toBe('?todas=true')
   })
 
   it('o cartão inteiro é link para a ficha; não há mais painel de membros nem Editar no cartão', async () => {
     abrir()
-    expect(await screen.findByRole('link', { name: 'Águias' })).toHaveAttribute('href', `/adm/unidades/${uuid(201)}`)
+    expect(await screen.findByRole('link', { name: /^Águias/ })).toHaveAttribute('href', `/adm/unidades/${uuid(201)}`)
     expect(screen.queryByRole('button', { name: /Membros de/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Editar/ })).not.toBeInTheDocument()
   })

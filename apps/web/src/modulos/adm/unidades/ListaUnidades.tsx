@@ -53,10 +53,9 @@ export function ListaUnidades() {
             key={unidade.id}
             to={`/adm/unidades/${unidade.id}`}
             state={estadoDeVolta}
-            aria-label={unidade.nome}
             className="block rounded-cartao focus-visible:outline-2 focus-visible:outline-marca"
           >
-            <Cartao role="article" aria-label={unidade.nome} className="flex h-full flex-col gap-2 hover:bg-superficie-suave">
+            <Cartao className="flex h-full flex-col gap-2 hover:bg-superficie-suave">
               <div className="flex items-start justify-between gap-2">
                 <h2 className="font-titulo text-lg font-bold text-texto">{unidade.nome}</h2>
                 {!unidade.ativa && <span className="rounded-full bg-superficie-suave px-2.5 py-0.5 text-sm font-semibold text-texto-2">Inativa</span>}

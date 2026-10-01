@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { chavesCalendario } from '../../../api/calendario'
 import type { EventoCalendario } from '../../../api/calendario'
 import { caixa } from '../../../testes/handlers/caixa'
 import type { Caixa } from '../../../testes/handlers/caixa'
@@ -47,6 +48,18 @@ describe('ficha do evento', () => {
     expect(screen.getByText('7h')).toBeInTheDocument()
     expect(screen.getByText('Sítio Recanto Verde')).toBeInTheDocument()
     const muda = within(screen.getByRole('region', { name: 'O que muda no calendário' }))
+    expect(muda.getByText('Cancela a reunião de domingo 18', { selector: 'dt' }).nextElementSibling).toHaveTextContent('Sim')
+  })
+
+  it('cancelar a reunião diz o dia de cada domingo dentro do período', async () => {
+    abrir(`/adm/calendario/eventos/${uuid(803)}`, caixa(criarEvento(3, { inicio: '2026-10-10', fim: '2026-10-18', cancelaReuniao: true })))
+    const muda = within(await screen.findByRole('region', { name: 'O que muda no calendário' }))
+    expect(muda.getByText('Cancela as reuniões de domingo 11 e 18', { selector: 'dt' })).toBeInTheDocument()
+  })
+
+  it('cancelar sem domingo no período não inventa dia', async () => {
+    abrir(`/adm/calendario/eventos/${uuid(804)}`, caixa(criarEvento(4, { inicio: '2026-10-20', fim: '2026-10-21', cancelaReuniao: true })))
+    const muda = within(await screen.findByRole('region', { name: 'O que muda no calendário' }))
     expect(muda.getByText('Cancela a reunião', { selector: 'dt' }).nextElementSibling).toHaveTextContent('Sim')
   })
 
@@ -66,6 +79,7 @@ describe('ficha do evento', () => {
     const { roteador } = abrir(`/adm/calendario/eventos/${uuid(801)}/editar`, evento)
     await userEvent.click(await screen.findByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() => expect(roteador.state.location.pathname).toBe(`/adm/calendario/eventos/${uuid(801)}`))
+    expect(roteador.state.historyAction).toBe('REPLACE')
     expect(await screen.findByText('2 aulas estavam marcadas nessas datas: Amigo (17/10) e Companheiro (18/10). Os instrutores foram avisados.')).toBeInTheDocument()
   })
 
@@ -89,6 +103,23 @@ describe('ficha do evento', () => {
     await userEvent.click(within(screen.getByRole('dialog', { name: 'Excluir Acampamento de primavera?' })).getByRole('button', { name: 'Excluir' }))
     await waitFor(() => expect(roteador.state.location.search).toBe('?mes=2026-10'))
     expect(excluidos).toEqual([uuid(801)])
+  })
+
+  it('excluir tira o evento do cache em vez de reler o que acabou de sumir', async () => {
+    let leituras = 0
+    const { roteador, evento, clienteConsultas } = abrir(`/adm/calendario/eventos/${uuid(801)}`)
+    servidor.use(
+      handlerExcluirEvento(),
+      http.get('/api/calendario/eventos/:id', () => {
+        leituras += 1
+        return HttpResponse.json(evento.atual)
+      }),
+    )
+    await userEvent.click(await screen.findByRole('button', { name: 'Excluir' }))
+    await userEvent.click(within(screen.getByRole('dialog', { name: 'Excluir Acampamento de primavera?' })).getByRole('button', { name: 'Excluir' }))
+    await waitFor(() => expect(roteador.state.location.search).toBe('?mes=2026-10'))
+    expect(leituras).toBe(0)
+    expect(clienteConsultas.getQueryData(chavesCalendario.evento(uuid(801)))).toBeUndefined()
   })
 
   it('cancelar a confirmação não exclui', async () => {

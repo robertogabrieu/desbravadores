@@ -1,13 +1,13 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { HttpResponse, http } from 'msw'
+import { HttpResponse, delay, http } from 'msw'
 import { anoClube, hojeNoFuso } from '@desbravadores/shared'
 import { describe, expect, it } from 'vitest'
 import type { RequestHandler } from 'msw'
 import { hojeDoClube } from '../../../api/desbravadores'
 import type { Desbravador } from '../../../api/desbravadores'
 import { caixa } from '../../../testes/handlers/caixa'
-import { handlerPerfilDe } from '../../../testes/handlers/perfil'
+import { criarPerfil, handlerPerfilDe } from '../../../testes/handlers/perfil'
 import { handlerProgressoDbv } from '../../../testes/handlers/progresso'
 import { criarClasse, criarUnidade, criarListaUsuarios, handlerClasses, handlerUnidades, handlerUsuarios } from '../../../testes/handlers/leitura'
 import {
@@ -326,6 +326,37 @@ describe('A1 · editar a classe do ano', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() => expect(matricula).toEqual({ id: bruno.id, classeId: amigo.id, anoClube: anoEsperado, incluirAvancada: true }))
     await esperarFicha()
+  })
+
+  it('trocar a classe: a ficha abre já com a classe nova, sem esperar a releitura do perfil', async () => {
+    const registro = caixa(bruno)
+    let matriculou = false
+    servidor.use(
+      handlerConfiguracao(configuracao),
+      handlerEditarDesbravador(bruno),
+      handlerMatricular(() => {
+        matriculou = true
+        registro.atual = { ...bruno, classeAtual: refAmigo }
+      }),
+      handlerDesbravador(registro),
+      http.get('/api/desbravadores/:id/perfil', async () => {
+        if (matriculou) await delay('infinite')
+        return HttpResponse.json(criarPerfil({ dbv: registro.atual }))
+      }),
+      handlerProgressoDbv(),
+      ...handlersConviteAcesso(),
+      handlerUnidades([aguias]),
+      handlerClasses([amigo]),
+      handlerUsuarios(criarListaUsuarios()),
+    )
+    const { roteador } = renderizarRotas(rotasAdmDesbravadores, `/adm/desbravadores/${bruno.id}`)
+    await userEvent.click(await screen.findByRole('link', { name: 'Editar' }))
+    await screen.findByLabelText('Classe do ano')
+    await userEvent.selectOptions(screen.getByLabelText('Classe do ano'), 'Amigo')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    const ficha = within(await esperarFicha())
+    await waitFor(() => expect(ficha.getByText('Classe do ano', { selector: 'dt' }).nextElementSibling).toHaveTextContent('Amigo'))
+    expect(roteador.state.historyAction).toBe('REPLACE')
   })
 
   it('com classe atual: o campo vem preenchido, sem "Sem classe", e não matricula se a classe não mudou', async () => {

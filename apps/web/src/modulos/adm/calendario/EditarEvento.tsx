@@ -42,6 +42,7 @@ export function EditarEvento() {
 
   const aoGravar = (gravado: EventoGravado) =>
     void navegar(`${CALENDARIO}/eventos/${gravado.evento.id}`, {
+      replace: true,
       state: {
         voltarPara,
         avisos: gravado.aulasAfetadas.length > 0 ? [textoDasAulasAfetadas(gravado.aulasAfetadas)] : [],

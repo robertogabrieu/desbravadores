@@ -60,6 +60,10 @@ export function useExcluirEvento() {
   const cliente = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => requisitarSemResposta(`/api/calendario/eventos/${id}`, { metodo: 'DELETE' }),
-    onSuccess: () => cliente.invalidateQueries({ queryKey: chavesCalendario.todas }),
+    // O evento excluído sai do cache: invalidar o disparava uma leitura que responde "não encontrado".
+    onSuccess: (_, id) => {
+      cliente.removeQueries({ queryKey: chavesCalendario.evento(id) })
+      return cliente.invalidateQueries({ queryKey: chavesCalendario.todas })
+    },
   })
 }

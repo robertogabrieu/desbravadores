@@ -51,11 +51,13 @@ export const chavesDesbravadores = {
   um: (id: string) => ['desbravadores', id] as const,
 }
 
+const lerDesbravador = (id: string) => requisitar(`/api/desbravadores/${id}`, DesbravadorSaida)
+
 /** `habilitada: false` não consulta (a tela de cadastro novo não tem id). */
 export function useDesbravador(id: string, habilitada = true) {
   return useQuery({
     queryKey: chavesDesbravadores.um(id),
-    queryFn: () => requisitar(`/api/desbravadores/${id}`, DesbravadorSaida),
+    queryFn: () => lerDesbravador(id),
     enabled: habilitada,
   })
 }
@@ -154,7 +156,11 @@ export function useMatricular() {
         metodo: 'POST',
         corpo: MatriculaEntrada.parse(entrada),
       }),
-    onSuccess: () => aposGravar(cliente),
+    // A matrícula muda a classe do ano, que o desbravador gravado antes dela ainda não traz: relê para a ficha abrir com a nova.
+    onSuccess: async (_, { id }) => {
+      const relido = await cliente.fetchQuery({ queryKey: chavesDesbravadores.um(id), queryFn: () => lerDesbravador(id), staleTime: 0 }).catch(() => undefined)
+      return aposGravar(cliente, relido)
+    },
   })
 }
 

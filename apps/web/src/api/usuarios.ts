@@ -54,8 +54,8 @@ function useEscrita<V, R>(escrever: (variaveis: V) => Promise<R>, aoGravar?: (cl
 
 const naFicha = (cliente: QueryClient, usuario: Usuario) => cliente.setQueryData(chavesUsuarios.um(usuario.id), usuario)
 
-export const useCriarUsuario = () =>
-  useEscrita((corpo: NovoUsuario) => requisitar('/api/usuarios', UsuarioSaida, { metodo: 'POST', corpo }), naFicha)
+/** A resposta da criação é eco para e-mail que já existia: a ficha do criado lê do servidor, não dela. */
+export const useCriarUsuario = () => useEscrita((corpo: NovoUsuario) => requisitar('/api/usuarios', UsuarioSaida, { metodo: 'POST', corpo }))
 
 export const useEditarUsuario = () =>
   useEscrita(

@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import type { Usuario } from '../../../api/usuarios'
@@ -95,6 +95,17 @@ describe('lista de usuários', () => {
     await waitFor(() => expect(screen.queryByText('Diretoria')).not.toBeInTheDocument())
     expect(screen.getByText('Priscila Andrade')).toBeInTheDocument()
     expect(consultas.at(-1)?.get('busca')).toBe('priscila')
+  })
+
+  it('limpar a busca pelo endereço limpa o campo e a busca antiga não volta', async () => {
+    const { roteador } = abrir(TRES, [], '/adm/usuarios?busca=priscila')
+    const campo = await screen.findByRole('searchbox', { name: 'Buscar usuário' })
+    expect(campo).toHaveValue('priscila')
+    await act(() => roteador.navigate('/adm/usuarios'))
+    expect(campo).toHaveValue('')
+    await new Promise((resolver) => setTimeout(resolver, 450))
+    expect(roteador.state.location.search).toBe('')
+    expect(campo).toHaveValue('')
   })
 
   it('pagina de 25 em 25', async () => {

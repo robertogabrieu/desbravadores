@@ -17,7 +17,6 @@ import { alternarAtraso, alternarJustificada, alternarPresenca, comporEstado, ed
 import type { BaseReuniao, EstadoChamada, Marca } from './estado'
 
 type Pacote = z.infer<typeof PacoteSaida>
-export type UnidadeDoPacote = Pacote['unidades'][number]
 
 /** O que a chamada precisa saber da unidade: o pacote cabe, e a ficha do Adm monta a sua das linhas da reunião. */
 export interface UnidadeDaChamada {
