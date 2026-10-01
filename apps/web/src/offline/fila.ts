@@ -5,7 +5,7 @@ import { banco } from './banco'
 import { acordarMotor, estadoOffline } from './estado'
 import { obterTipo } from './registro'
 import { LIMITE_DE_ESPACO_BYTES } from './tempos'
-import type { Enfileirar, EstadoFila, ItemFila, ItemFilaNaTela, ItensDaChave, UseFila } from './tipos'
+import type { Enfileirar, EstadoFila, ItemFila, ItemFilaNaTela, ItensDaChave, NaoEnviadosDoVinculo, UseFila } from './tipos'
 
 const FIM_DA_CHAVE = '￿'
 
@@ -109,6 +109,10 @@ export async function naoEnviadosDoUsuario(usuarioId: string): Promise<ItemFila[
     .toArray()
   return itens.sort(porCriacao)
 }
+
+/** Não enviados de um vínculo: o que só sobe quando a pessoa voltar a esse papel. */
+export const naoEnviadosDoVinculo: NaoEnviadosDoVinculo = async (usuarioId, vinculoId) =>
+  (await naoEnviadosDoUsuario(usuarioId)).filter((item) => item.vinculoId === vinculoId)
 
 async function tentarAgora(): Promise<void> {
   const sessao = estadoOffline.sessao

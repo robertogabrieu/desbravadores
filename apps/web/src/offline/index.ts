@@ -3,7 +3,7 @@
 export type * from './tipos'
 
 export { useConexao, useModoSessao } from './conexao'
-export { enfileirar, itensDaChave, useFila } from './fila'
+export { enfileirar, itensDaChave, naoEnviadosDoVinculo, useFila } from './fila'
 export { limparDadosDoUsuario } from './limpeza'
 export { registrarTipo } from './registro'
 export { apagarRascunho, gravarRascunho, lerRascunho } from './rascunhos'

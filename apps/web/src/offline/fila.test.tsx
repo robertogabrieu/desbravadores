@@ -9,7 +9,7 @@ import { criarEu, criarVinculo } from '../testes/handlers/sessao'
 import { banco } from './banco'
 import { definirConexao } from './conexao'
 import { dependencias } from './dependencias'
-import { enfileirar, itensDaChave, registrarTipo, useFila } from './index'
+import { enfileirar, itensDaChave, naoEnviadosDoVinculo, registrarTipo, useFila } from './index'
 import type { ItemFila, TipoFila } from './index'
 import { limparFilaDeAbertura } from './limpeza'
 import { aguardarMotorPronto, iniciarMotor } from './motor'
@@ -481,6 +481,21 @@ describe('fila: arquivo por XHR', () => {
     await waitFor(async () => expect((await ler(id))?.estado).toBe('ENVIADO'))
     expect(progressos).toContain(50)
     expect(enviados).toEqual([{ metodo: 'POST', url: '/api/arquivo', campos: ['dados', 'arquivo'] }])
+  })
+})
+
+describe('fila: envios de outro papel', () => {
+  it('naoEnviadosDoVinculo conta só o que falta enviar daquele vínculo, do usuário', async () => {
+    await semear({ estado: 'NA_FILA', criadoEm: 2 })
+    await semear({ estado: 'ERRO', criadoEm: 1 })
+    await semear({ estado: 'ENVIADO' })
+    await semear({ vinculoId: 'vinculo-2' })
+    await semear({ usuarioId: 'usuario-2' })
+
+    const itens = await naoEnviadosDoVinculo(USUARIO, VINCULO)
+
+    expect(itens.map((item) => item.estado)).toEqual(['ERRO', 'NA_FILA'])
+    expect(await naoEnviadosDoVinculo(USUARIO, 'vinculo-2')).toHaveLength(1)
   })
 })
 
