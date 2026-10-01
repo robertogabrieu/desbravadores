@@ -24,7 +24,8 @@ export default defineConfig(({ mode }) => {
               filename: 'sw.ts',
               injectRegister: false,
               manifest: {
-                name: 'Desbravador',
+                name: 'App do Desbravador',
+                // Embaixo do ícone na tela inicial cabem uns 12 caracteres.
                 short_name: 'Desbravador',
                 lang: 'pt-BR',
                 start_url: '/',
@@ -39,7 +40,8 @@ export default defineConfig(({ mode }) => {
                   { src: '/maskable-icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
                 ],
               },
-              injectManifest: { globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'] },
+              // icone-fonte.png só alimenta o gerador de ícones (npm run icones): não vai para o cache do aparelho.
+              injectManifest: { globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'], globIgnores: ['**/icone-fonte.png'] },
             }),
           ]),
     ],
