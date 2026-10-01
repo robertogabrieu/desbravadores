@@ -21,7 +21,7 @@ import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
 import { ErroApp } from '../comum/erros'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { PrismaService } from '../comum/prisma/prisma.service'
-import type { Prisma } from '../generated/prisma/client.js'
+import { Prisma } from '../generated/prisma/client.js'
 import { colador, daDataCivil, paginar, paraDataCivil, semAcento } from './apoio'
 import { ServicoEscopo, type RelogioDoClube } from './escopo.service'
 
@@ -31,6 +31,14 @@ type Aviso = z.infer<typeof AvisoContrato>
 type Motivo = z.infer<typeof MotivoDiretoria>
 type Cliente = Prisma.TransactionClient
 export type ClasseParaMatricula = { id: string; tipo: 'REGULAR' | 'AVANCADA'; trilha: 'INDIVIDUAL' | 'AGRUPADAS' }
+
+/** Uma conta liga no maximo uma ficha por clube: o indice parcial de Desbravador recusa a segunda. */
+function recusarContaJaLigada(falha: unknown): never {
+  if (falha instanceof Prisma.PrismaClientKnownRequestError && falha.code === 'P2002') {
+    throw new ErroApp('REGRA', 'Este usuário já está ligado a outro desbravador do clube.')
+  }
+  throw falha
+}
 
 /** O caderno das Agrupadas e para 16 anos ou mais: uma turma so, sem divisao por idade. */
 const IDADE_MINIMA_AGRUPADAS = 16
@@ -199,9 +207,6 @@ export class DesbravadoresService {
     if (entrada.tipo === 'LIDER' && entrada.unidadeId) {
       throw new ErroApp('REGRA', 'Líder não pertence a uma unidade.')
     }
-    if (entrada.tipo === 'DBV' && entrada.usuarioId) {
-      throw new ErroApp('REGRA', 'Só líder pode ter conta de usuário.')
-    }
     if (entrada.unidadeId) await this.exigirUnidade(clubeId, entrada.unidadeId)
     if (entrada.usuarioId) await this.exigirUsuarioDoClube(clubeId, entrada.usuarioId)
     const classe = entrada.classeId ? await this.exigirClasse(clubeId, entrada.classeId) : undefined
@@ -209,9 +214,9 @@ export class DesbravadoresService {
       throw new ErroApp('REGRA', 'Escolha a classe regular; a avançada entra junto.')
     }
 
-    const criado = await this.prisma.$transaction((tx) =>
-      this.gravarNovo(tx, { clubeId, anoClube: relogio.anoClube, entrada, classe }),
-    )
+    const criado = await this.prisma
+      .$transaction((tx) => this.gravarNovo(tx, { clubeId, anoClube: relogio.anoClube, entrada, classe }))
+      .catch(recusarContaJaLigada)
     return this.saidaComAvisos(sessao, criado.id, relogio)
   }
 
@@ -271,8 +276,6 @@ export class DesbravadoresService {
       }
     }
     const tipoFinal = entrada.tipo ?? atual.tipo
-    const usuarioFinal = entrada.usuarioId === undefined ? atual.usuarioId : entrada.usuarioId
-    if (tipoFinal === 'DBV' && usuarioFinal) throw new ErroApp('REGRA', 'Só líder pode ter conta de usuário.')
     if (tipoFinal === 'LIDER' && atual.membros.length > 0) {
       throw new ErroApp('REGRA', 'Tire o desbravador da unidade antes de torná-lo líder.')
     }
@@ -293,7 +296,7 @@ export class DesbravadoresService {
         autorizacaoImagem: entrada.autorizacaoImagem,
         autorizacaoImagemEm: entrada.autorizacaoImagemEm ? daDataCivil(entrada.autorizacaoImagemEm) : entrada.autorizacaoImagemEm,
       },
-    })
+    }).catch(recusarContaJaLigada)
     return this.saidaComAvisos(sessao, id, relogio)
   }
 

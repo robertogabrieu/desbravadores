@@ -210,6 +210,7 @@ model Clube {
   materiais           Material[]
   notificacoes        Notificacao[]
   atividades          Atividade[]
+  convitesAcesso      ConviteAcesso[]
 }
 
 model ConfiguracaoClube {
@@ -246,6 +247,7 @@ model Usuario {
   tokens        TokenUsoUnico[]
   refreshTokens RefreshToken[]
   desbravadores Desbravador[]
+  convitesAcessoCriados ConviteAcesso[]
   reunioesRegistradas Reuniao[]          @relation("ReuniaoRegistradaPor")
   reunioesAtualizadas Reuniao[]          @relation("ReuniaoAtualizadaPor")
   chamadasAlteradas   Chamada[]
@@ -339,6 +341,30 @@ model TokenUsoUnico {
   @@index([usuarioId, finalidade])
 }
 
+// Convite de acesso por link, gerado na ficha do desbravador: a conta ainda nao existe, por isso
+// nao usa TokenUsoUnico. Unidades e classes sao conferidas de novo no aceite.
+model ConviteAcesso {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  clubeId     String    @db.Uuid
+  dbvId       String    @db.Uuid
+  papel       Papel
+  unidadeIds  String[]  @db.Uuid
+  classeIds   String[]  @db.Uuid
+  tokenHash   String    @unique
+  expiraEm    DateTime  @db.Timestamptz
+  usadoEm     DateTime? @db.Timestamptz
+  canceladoEm DateTime? @db.Timestamptz
+  criadoPorId String    @db.Uuid
+  criadoEm    DateTime  @default(now()) @db.Timestamptz
+
+  clube       Clube       @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  desbravador Desbravador @relation(fields: [clubeId, dbvId], references: [clubeId, id], onDelete: Restrict)
+  criadoPor   Usuario     @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
+
+  @@unique([clubeId, id])
+  @@index([clubeId, dbvId])
+}
+
 model RefreshToken {
   id              String    @id @default(uuid(7)) @db.Uuid
   usuarioId       String    @db.Uuid
@@ -392,8 +418,10 @@ model Desbravador {
   requisitosConcluidos     RequisitoConcluido[]
   especialidadesConcluidas EspecialidadeConcluida[]
   observacoes              Observacao[]
+  convitesAcesso           ConviteAcesso[]
 
   @@unique([clubeId, id])
+  @@unique([clubeId, usuarioId], where: { usuarioId: { not: null } }, map: "desbravador_conta_por_clube")
   @@index([clubeId, ativo, nome])
   @@index([usuarioId])
 }

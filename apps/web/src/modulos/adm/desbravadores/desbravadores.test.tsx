@@ -16,6 +16,7 @@ import {
   handlerMoverUnidade,
   handlerReativarDesbravador,
 } from '../../../testes/handlers/desbravadores'
+import { handlersConviteAcesso } from '../../../testes/handlers/convite-acesso'
 import { criarConfiguracao, handlerConfiguracao } from '../../../testes/handlers/clube'
 import { uuid } from '../../../testes/handlers/sessao'
 import { renderizarRotas } from '../../../testes/renderizar'
@@ -37,7 +38,7 @@ const bruno = criarDesbravador({ id: uuid(302), nome: 'Bruno Lima', sexo: 'M', i
 const lider = criarDesbravador({ id: uuid(303), nome: 'Carla Dias', tipo: 'LIDER', idade: 17 })
 
 function abrir(desbravadores = [ana, bruno, lider], aoConsultar?: (url: URL) => void) {
-  servidor.use(handlerDesbravadores(desbravadores, aoConsultar), handlerUnidades([aguias]), handlerClasses([amigo]))
+  servidor.use(handlerDesbravadores(desbravadores, aoConsultar), handlerUnidades([aguias]), handlerClasses([amigo]), ...handlersConviteAcesso())
   return renderizarRotas(rotasAdmDesbravadores, '/adm/desbravadores')
 }
 

@@ -41,3 +41,5 @@ export const LIMITE_ESQUECI = {
   porIp: { limit: 10, ttl: HORA_MS },
 }
 export const LIMITE_POR_IP = { porIp: { limit: 10, ttl: HORA_MS } }
+/** Aceite do convite por link: senha errada nao gasta o convite, entao o e-mail tem o limite do login. */
+export const LIMITE_ACEITE_POR_LINK = { porEmail: LIMITE_LOGIN.porEmail, ...LIMITE_POR_IP }

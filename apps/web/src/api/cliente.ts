@@ -75,6 +75,7 @@ const ROTAS_SEM_TOKEN = [
   '/api/auth/logout',
   '/api/auth/convite/',
   '/api/auth/senha/',
+  '/api/acesso/',
 ]
 const ehRotaSemToken = (caminho: string): boolean => ROTAS_SEM_TOKEN.some((rota) => caminho.startsWith(rota))
 

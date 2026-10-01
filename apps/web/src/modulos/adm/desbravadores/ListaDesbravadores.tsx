@@ -13,6 +13,7 @@ import { Selecao } from '../../../ui/Selecao'
 import { Selo } from '../../../ui/Selo'
 import { Tabela } from '../../../ui/Tabela'
 import type { ColunaTabela } from '../../../ui/Tabela'
+import { AcessoAoApp } from './AcessoAoApp'
 import { ChipClasse } from './ChipClasse'
 import { MENSAGEM_GENERICA, lerErroDaApi } from './erros'
 import { FormularioDesbravador } from './FormularioDesbravador'
@@ -226,6 +227,14 @@ export function ListaDesbravadores() {
               fecharPainel()
             }}
             aoCancelar={fecharPainel}
+          />
+        )}
+        {painel?.tipo === 'editar' && (
+          <AcessoAoApp
+            key={painel.desbravador.id}
+            dbvId={painel.desbravador.id}
+            nome={painel.desbravador.nome}
+            sexo={painel.desbravador.sexo}
           />
         )}
         {painel?.tipo === 'inativar' && (

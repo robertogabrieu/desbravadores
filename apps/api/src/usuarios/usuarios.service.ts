@@ -196,6 +196,32 @@ export class UsuariosService {
     await this.email.enviar(emailConvite({ para: usuario.email, nome: usuario.nome, clube: clube.nome, token }))
   }
 
+  /**
+   * Convite por link: papel ja ativo no clube ganha as unidades/classes a mais; papel ausente ou
+   * desativado nasce (ou volta) so com as do convite. Roda na transacao de quem chama.
+   */
+  async acrescentarPapel(
+    tx: Cliente,
+    clubeId: string,
+    usuarioId: string,
+    papel: Papel,
+    relacoes: { unidadeIds: string[]; classeIds: string[] },
+  ): Promise<void> {
+    const ativo = await tx.vinculo.findFirst({ where: { clubeId, usuarioId, papel, ativo: true } })
+    if (!ativo) {
+      await this.aplicarVinculo(tx, clubeId, usuarioId, { papel, ...relacoes, ajustes: [] })
+      return
+    }
+    await tx.vinculoUnidade.createMany({
+      data: [...new Set(relacoes.unidadeIds)].map((unidadeId) => ({ clubeId, vinculoId: ativo.id, unidadeId })),
+      skipDuplicates: true,
+    })
+    await tx.vinculoClasse.createMany({
+      data: [...new Set(relacoes.classeIds)].map((classeId) => ({ vinculoId: ativo.id, classeId })),
+      skipDuplicates: true,
+    })
+  }
+
   /** Usuario alcancavel so por quem tem vinculo (ativo ou nao) neste clube; senao 404. */
   private async carregar(clubeId: string, id: string): Promise<UsuarioComVinculos> {
     const usuario = await this.prisma.usuario.findFirst({
