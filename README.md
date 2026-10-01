@@ -70,12 +70,18 @@ Telas do Adm, sob `LayoutAdm` (menu lateral) e guardadas só para ADM, em `apps/
 |---|---|
 | `/adm` | Visão geral: indicadores, progresso por classe, resumo das unidades, cronogramas enviados aguardando publicação e atividade recente (`GET /api/visao-geral`, `relatorio.geral`) |
 | `/adm/classes` | Abas "Classes" e "Especialidades": ativar/desativar classe, escolher quem monta o cronograma, ajustar requisito (ativo, CAMPO) e acrescentar especialidade do clube |
-| `/adm/calendario` | Calendário do clube por mês: cria, edita e exclui eventos (`GET /api/calendario?ano=`) |
+| `/adm/desbravadores` | Lista com filtros (busca, unidade, classe, situação, tipo) e página no endereço: recarregar ou voltar da ficha mantém a lista como estava. Ficha só de leitura em `/adm/desbravadores/:id` (o `/dbv/:id` redireciona o Adm para ela); cadastro em `/adm/desbravadores/novo` e edição em `/adm/desbravadores/:id/editar`, telas próprias no lugar do painel lateral |
+| `/adm/usuarios` | Lista por papel (`papel`, `busca` e `pagina` no endereço), ficha em `/adm/usuarios/:id` (com último acesso), `/adm/usuarios/novo` e `/adm/usuarios/:id/editar` |
+| `/adm/unidades` | Cards de unidades, ficha em `/adm/unidades/:id` (membros e reuniões do mês, `mes` no endereço), `/adm/unidades/nova` e `/adm/unidades/:id/editar` |
+| `/adm/calendario` | Calendário do clube por mês (`mes` no endereço): ficha do evento em `/adm/calendario/eventos/:id`, criação em `/adm/calendario/eventos/novo` e edição em `/adm/calendario/eventos/:id/editar` (`GET /api/calendario?ano=`) |
+| `/adm/reunioes/:id` | Ficha da reunião, só de leitura. `/adm/reunioes/:id/chamada` é a correção da chamada pelo Adm: envia direto, `PUT /api/sync/reunioes/:uuid`, sem passar pela fila, e por isso só com internet (sem conexão a tela avisa, nada é enviado e as marcas ficam). Só abre para quem a ficha marca com `podeEditar` |
 | `/adm/cronogramas` | Montagem do cronograma de uma classe no computador, com escolha de classe e ano do clube |
 | `/adm/configuracoes` | Dia, hora e local padrão da reunião, alertas de frequência e de progresso, meta de frequência; fuso e início do ano do clube aparecem só para leitura |
 | `/cronograma/montar` | Um endereço, a tela do papel: ADM cai na montagem do computador, instrutor na montagem do celular (só das classes que ele monta). Abre também para instrutor; substituiu a página "Em breve" |
 
-O menu do Adm agora tem link em Visão geral, Classes e especialidades, Calendário do clube, Cronogramas e Configurações do clube; só Relatórios segue "em breve".
+O menu do Adm agora tem link em Visão geral, Classes e especialidades, Calendário do clube, Cronogramas e Configurações do clube; só Relatórios segue "em breve". As telas de ficha e edição abertas a partir de uma lista guardam o endereço (com filtros) de onde vieram, e o "Voltar" do cabeçalho leva de volta a ele; esse helper e os filtros no endereço vivem em `apps/web/src/modulos/adm/navegacao.ts`.
+
+**Componentes de ficha e edição** (`apps/web/src/ui/`): `CabecalhoDaPagina` (voltar, sobretítulo, título, ações), `ListaDePares` (rótulo e valor das fichas), `RodapeDoFormulario` (ações ao fim do formulário de edição) e `EstadoNaoEncontrado` (registro inexistente ou de outro clube, com saída para a lista). Ficha e edição novas do Adm usam esses quatro.
 
 | Endpoint | O que faz | Permissão |
 |---|---|---|
@@ -85,6 +91,9 @@ O menu do Adm agora tem link em Visão geral, Classes e especialidades, Calendá
 | `PATCH /api/requisitos/:id/ajuste` | Ajuste do clube sobre requisito oficial (`ativo`, `campo`); `null` volta ao oficial | `classe.gerenciar` |
 | `POST /api/especialidades` | Especialidade do clube numa área; nome repetido na área (sem distinguir caixa e acento) dá conflito | `classe.gerenciar` |
 | `GET /api/calendario?ano=` | Eventos do ano do clube | logado |
+| `GET /api/calendario/eventos/:id` | Um evento do clube; removido ou de outro clube dá 404, id malformado 400 | logado |
+| `GET /api/usuarios/:id` | Usuário com todos os vínculos do clube (inclusive inativos) e `ultimoAcessoEm` (também presente na lista); sem vínculo no clube dá 404 | `usuario.gerenciar` |
+| `GET /api/unidades/:id` | Uma unidade, no formato da lista. Conselheiro só a sua; inativa só o Adm vê; fora do escopo dá 404 | `dbv.ver` |
 | `POST /api/calendario/eventos` · `PATCH` / `DELETE /api/calendario/eventos/:id` | Cria, edita e exclui. `cancelaReuniao`, `bloqueiaAula` e `bomParaCampo` podem faltar e então valem os padrões do tipo (`MARCACOES_PADRAO`). A resposta traz `aulasAfetadas` | `calendario.gerenciar` |
 
 **Conflito de calendário.** Evento criado ou editado que tira o dia de aula de uma aula já agendada gera a notificação "Aula em conflito com o calendário" (tipo `CONFLITO_CRONOGRAMA`) para os instrutores da classe e, quando o Adm monta aquela classe, para os Adm. Evento criado também entra na atividade recente da visão geral.
