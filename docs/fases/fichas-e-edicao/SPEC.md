@@ -172,7 +172,7 @@ pacote offline (`TelaChamada.tsx:28,165-168`), que vem vazio para quem não é c
 
 - `FolhaLateral` com até 3 campos (aula da montagem, especialidade do clube, requisitos da data,
   materiais) e as confirmações.
-- Barra de navegação inferior fixa do celular (decisão em aberto com o usuário).
+- Barra de navegação inferior fixa do celular: fica como está (decidido pelo usuário, junto com o aviso de troca de papel e a coluna fixa da grade de importação).
 - Telas do conselheiro e do instrutor; o conselheiro continua corrigindo a chamada como hoje.
 
 ## Critério de pronto
