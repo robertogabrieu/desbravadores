@@ -1,12 +1,11 @@
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { hojeDoClube } from '../../../api/desbravadores'
-import { handlerMoverUnidade } from '../../../testes/handlers/desbravadores'
-import { criarMembro, criarUnidade, handlerMembrosUnidade, handlerSemMembros, handlerUnidades } from '../../../testes/handlers/leitura'
+import { describe, expect, it } from 'vitest'
+import { caixa } from '../../../testes/handlers/caixa'
+import { criarUnidade, handlerMembrosUnidade, handlerSemMembros, handlerUnidades } from '../../../testes/handlers/leitura'
 import { uuid } from '../../../testes/handlers/sessao'
-import { handlerCriarUnidade, handlerEditarUnidade, handlerErroEditarUnidade } from '../../../testes/handlers/unidades'
+import { handlerCriarUnidade, handlerEditarUnidade, handlerErroEditarUnidade, handlerUnidade } from '../../../testes/handlers/unidades'
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
 import { rotasAdmUnidades } from './rotas'
@@ -16,25 +15,18 @@ const aguias = criarUnidade({
   nome: 'Águias',
   tipo: 'MASCULINA',
   gritoDeGuerra: 'Voar alto!',
-  conselheiros: [{ usuarioId: uuid(501), nome: 'Paulo Reis' }, { usuarioId: uuid(502), nome: 'Rita Melo' }],
+  conselheiros: [
+    { usuarioId: uuid(501), nome: 'Paulo Reis' },
+    { usuarioId: uuid(502), nome: 'Rita Melo' },
+  ],
   totalMembros: 1,
 })
 const leoes = criarUnidade({ id: uuid(202), nome: 'Leões', tipo: 'FEMININA', totalMembros: 0 })
 const antiga = criarUnidade({ id: uuid(203), nome: 'Falcões', ativa: false })
-const ana = criarMembro({ dbvId: uuid(301), nome: 'Ana Clara Souza' })
-const bruno = criarMembro({ dbvId: uuid(302), nome: 'Bruno Lima', sexo: 'M' })
 
-afterEach(() => {
-  vi.useRealTimers()
-})
-
-function abrir(listaDeUnidades = handlerUnidades([aguias, leoes, antiga])) {
-  servidor.use(
-    listaDeUnidades,
-    handlerMembrosUnidade([ana]),
-    handlerSemMembros([bruno]),
-  )
-  return renderizarRotas(rotasAdmUnidades, '/adm/unidades')
+function abrir(rota = '/adm/unidades', listaDeUnidades = handlerUnidades([aguias, leoes, antiga])) {
+  servidor.use(listaDeUnidades, handlerUnidade(caixa(aguias)), handlerMembrosUnidade([]), handlerSemMembros([]))
+  return renderizarRotas(rotasAdmUnidades, rota)
 }
 
 const cartao = (nome: string) => within(screen.getByRole('article', { name: nome }))
@@ -56,6 +48,7 @@ describe('A3 · cartões', () => {
   it('pede também as inativas ao Adm', async () => {
     let consulta = ''
     abrir(
+      '/adm/unidades',
       http.get('/api/unidades', ({ request }) => {
         consulta = new URL(request.url).search
         return HttpResponse.json([aguias])
@@ -64,127 +57,90 @@ describe('A3 · cartões', () => {
     await screen.findByRole('article', { name: 'Águias' })
     expect(consulta).toBe('?todas=true')
   })
+
+  it('o cartão inteiro é link para a ficha; não há mais painel de membros nem Editar no cartão', async () => {
+    abrir()
+    expect(await screen.findByRole('link', { name: 'Águias' })).toHaveAttribute('href', `/adm/unidades/${uuid(201)}`)
+    expect(screen.queryByRole('button', { name: /Membros de/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Editar/ })).not.toBeInTheDocument()
+  })
+
+  it('"Nova unidade" é link para o formulário', async () => {
+    abrir()
+    expect(await screen.findByRole('link', { name: 'Nova unidade' })).toHaveAttribute('href', '/adm/unidades/nova')
+  })
 })
 
-describe('A3 · nova e editar', () => {
+describe('A3 · nova e editar (telas dedicadas)', () => {
   it('cria com nome, tipo e grito', async () => {
     let corpo: unknown
     servidor.use(handlerCriarUnidade(criarUnidade(), (recebido) => (corpo = recebido)))
-    abrir()
-    await userEvent.click(await screen.findByRole('button', { name: 'Nova unidade' }))
-    const painel = within(await screen.findByRole('dialog', { name: 'Nova unidade' }))
-    expect(painel.queryByLabelText('Unidade ativa')).not.toBeInTheDocument()
-    await userEvent.type(painel.getByLabelText('Nome'), 'Panteras')
-    await userEvent.selectOptions(painel.getByLabelText('Tipo'), 'Feminina')
-    await userEvent.type(painel.getByLabelText('Grito de guerra'), 'Rugir!')
-    await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
+    abrir('/adm/unidades/nova')
+    expect(screen.queryByLabelText('Unidade ativa')).not.toBeInTheDocument()
+    await userEvent.type(await screen.findByLabelText('Nome'), 'Panteras')
+    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'Feminina')
+    await userEvent.type(screen.getByLabelText('Grito de guerra'), 'Rugir!')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(corpo).toEqual({ nome: 'Panteras', tipo: 'FEMININA', gritoDeGuerra: 'Rugir!' }))
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it('exige o nome', async () => {
     let enviou = false
     servidor.use(handlerCriarUnidade(criarUnidade(), () => (enviou = true)))
-    abrir()
-    await userEvent.click(await screen.findByRole('button', { name: 'Nova unidade' }))
-    const painel = within(await screen.findByRole('dialog'))
-    await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
-    expect(await painel.findByText('Informe o nome da unidade')).toBeInTheDocument()
+    abrir('/adm/unidades/nova')
+    await userEvent.click(await screen.findByRole('button', { name: 'Salvar' }))
+    expect(await screen.findByText('Informe o nome da unidade')).toBeInTheDocument()
     expect(enviou).toBe(false)
+  })
+
+  it('Cancelar volta à lista (nova) sem perguntar nada', async () => {
+    const { roteador } = abrir('/adm/unidades/nova')
+    await userEvent.click(await screen.findByRole('link', { name: 'Cancelar' }))
+    expect(roteador.state.location.pathname).toBe('/adm/unidades')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('edita nome, tipo, grito e ativa', async () => {
     let recebido: { id: string; corpo: unknown } | undefined
     servidor.use(handlerEditarUnidade(aguias, (id, corpo) => (recebido = { id, corpo })))
-    abrir()
-    await userEvent.click(await screen.findByRole('button', { name: 'Editar Águias' }))
-    const painel = within(await screen.findByRole('dialog', { name: 'Editar Águias' }))
-    expect(painel.getByLabelText('Nome')).toHaveValue('Águias')
-    expect(painel.getByLabelText('Grito de guerra')).toHaveValue('Voar alto!')
-    expect(painel.getByLabelText('Unidade ativa')).toBeChecked()
-    await userEvent.clear(painel.getByLabelText('Nome'))
-    await userEvent.type(painel.getByLabelText('Nome'), 'Águias Douradas')
-    await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
+    abrir(`/adm/unidades/${uuid(201)}/editar`)
+    expect(await screen.findByLabelText('Nome')).toHaveValue('Águias')
+    expect(screen.getByLabelText('Grito de guerra')).toHaveValue('Voar alto!')
+    expect(screen.getByLabelText('Unidade ativa')).toBeChecked()
+    await userEvent.clear(screen.getByLabelText('Nome'))
+    await userEvent.type(screen.getByLabelText('Nome'), 'Águias Douradas')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() => expect(recebido?.id).toBe(aguias.id))
-    expect(recebido?.corpo).toEqual({ nome: 'Águias Douradas', tipo: 'MASCULINA', gritoDeGuerra: 'Voar alto!', ativa: true })
-  })
-
-  it('desativar unidade com membros mostra a mensagem 422 e mantém o painel aberto', async () => {
-    servidor.use(handlerErroEditarUnidade(422, { codigo: 'REGRA', mensagem: 'Mova os membros antes de desativar' }))
-    abrir()
-    await userEvent.click(await screen.findByRole('button', { name: 'Editar Águias' }))
-    const painel = within(await screen.findByRole('dialog'))
-    await userEvent.click(painel.getByLabelText('Unidade ativa'))
-    await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
-    expect(await painel.findByRole('alert')).toHaveTextContent('Mova os membros antes de desativar')
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-  })
-})
-
-describe('A3 · painel de membros', () => {
-  async function abrirPainel() {
-    abrir()
-    await userEvent.click(await screen.findByRole('button', { name: 'Membros de Águias' }))
-    await screen.findByRole('button', { name: 'Tirar Ana Clara Souza de Águias' })
-  }
-
-  it('mostra as colunas "Na unidade" e "Sem unidade" com a contagem', async () => {
-    await abrirPainel()
-    expect(screen.getByRole('heading', { name: 'Na unidade (1)' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Sem unidade (1)' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Colocar Bruno Lima em Águias' })).toBeInTheDocument()
-  })
-
-  it('tocar em quem está sem unidade move na hora e Desfazer devolve', async () => {
-    const chamadas: Array<{ id: string; unidadeId: string | null; desde: string }> = []
-    servidor.use(handlerMoverUnidade((id, corpo) => chamadas.push({ id, ...corpo })))
-    await abrirPainel()
-    await userEvent.click(screen.getByRole('button', { name: 'Colocar Bruno Lima em Águias' }))
-    await waitFor(() => expect(chamadas).toHaveLength(1))
-    expect(chamadas[0]).toEqual({ id: bruno.dbvId, unidadeId: aguias.id, desde: hojeDoClube() })
-
-    await userEvent.click(await screen.findByRole('button', { name: 'Desfazer' }))
-    await waitFor(() => expect(chamadas).toHaveLength(2))
-    expect(chamadas[1]).toEqual({ id: bruno.dbvId, unidadeId: null, desde: hojeDoClube() })
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Desfazer' })).not.toBeInTheDocument())
-  })
-
-  it('tocar em quem está na unidade tira; Desfazer põe de volta', async () => {
-    const chamadas: Array<{ id: string; unidadeId: string | null }> = []
-    servidor.use(handlerMoverUnidade((id, corpo) => chamadas.push({ id, unidadeId: corpo.unidadeId })))
-    await abrirPainel()
-    await userEvent.click(screen.getByRole('button', { name: 'Tirar Ana Clara Souza de Águias' }))
-    await waitFor(() => expect(chamadas).toEqual([{ id: ana.dbvId, unidadeId: null }]))
-    await userEvent.click(await screen.findByRole('button', { name: 'Desfazer' }))
-    await waitFor(() => expect(chamadas[1]).toEqual({ id: ana.dbvId, unidadeId: aguias.id }))
-  })
-
-  it('o Desfazer some depois de 5 segundos', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    const usuario = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-    servidor.use(handlerMoverUnidade())
-    await abrirPainel()
-    await usuario.click(screen.getByRole('button', { name: 'Colocar Bruno Lima em Águias' }))
-    expect(await screen.findByRole('button', { name: 'Desfazer' })).toBeInTheDocument()
-    act(() => {
-      vi.advanceTimersByTime(4000)
+    expect(recebido?.corpo).toEqual({
+      nome: 'Águias Douradas',
+      tipo: 'MASCULINA',
+      gritoDeGuerra: 'Voar alto!',
+      ativa: true,
     })
-    expect(screen.getByRole('button', { name: 'Desfazer' })).toBeInTheDocument()
-    act(() => {
-      vi.advanceTimersByTime(1500)
-    })
-    expect(screen.queryByRole('button', { name: 'Desfazer' })).not.toBeInTheDocument()
   })
 
-  it('erro ao mover aparece em texto e não oferece Desfazer', async () => {
+  it('Cancelar na edição volta à ficha', async () => {
+    const { roteador } = abrir(`/adm/unidades/${uuid(201)}/editar`)
+    await userEvent.click(await screen.findByRole('link', { name: 'Cancelar' }))
+    expect(roteador.state.location.pathname).toBe(`/adm/unidades/${uuid(201)}`)
+  })
+
+  it('desativar unidade com membros mostra a mensagem 422 e fica na edição', async () => {
     servidor.use(
-      http.put('/api/desbravadores/:id/unidade', () =>
-        HttpResponse.json({ codigo: 'REGRA', mensagem: 'Líder não tem unidade.' }, { status: 422 }),
-      ),
+      handlerErroEditarUnidade(422, {
+        codigo: 'REGRA',
+        mensagem: 'Mova os membros antes de desativar',
+      }),
     )
-    await abrirPainel()
-    await userEvent.click(screen.getByRole('button', { name: 'Colocar Bruno Lima em Águias' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('Líder não tem unidade.')
-    expect(screen.queryByRole('button', { name: 'Desfazer' })).not.toBeInTheDocument()
+    const { roteador } = abrir(`/adm/unidades/${uuid(201)}/editar`)
+    await userEvent.click(await screen.findByLabelText('Unidade ativa'))
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Mova os membros antes de desativar')
+    expect(roteador.state.location.pathname).toBe(`/adm/unidades/${uuid(201)}/editar`)
+  })
+
+  it('editar unidade inexistente: "Não encontramos esta unidade"', async () => {
+    abrir(`/adm/unidades/${uuid(299)}/editar`)
+    expect(await screen.findByRole('heading', { name: 'Não encontramos esta unidade' })).toBeInTheDocument()
   })
 })

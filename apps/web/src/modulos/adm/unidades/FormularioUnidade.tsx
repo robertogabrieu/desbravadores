@@ -3,9 +3,9 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useCriarUnidade, useEditarUnidade } from '../../../api/unidades'
 import type { Unidade } from '../../../api/leitura'
-import { Botao } from '../../../ui/Botao'
 import { CaixaMarcacao } from '../../../ui/CaixaMarcacao'
 import { Campo } from '../../../ui/Campo'
+import { RodapeDoFormulario } from '../../../ui/RodapeDoFormulario'
 import { Selecao } from '../../../ui/Selecao'
 import { lerErroDaApi } from '../desbravadores/erros'
 import { TIPOS_DE_UNIDADE, rotuloDoTipo } from './tipos'
@@ -14,11 +14,11 @@ import type { TipoUnidade } from './tipos'
 interface Propriedades {
   /** Ausente: unidade nova. */
   unidade?: Unidade
-  aoConcluir: () => void
-  aoCancelar: () => void
+  cancelar: { para: string; estado?: object }
+  aoConcluir: (unidade: Unidade) => void
 }
 
-export function FormularioUnidade({ unidade, aoConcluir, aoCancelar }: Propriedades) {
+export function FormularioUnidade({ unidade, cancelar, aoConcluir }: Propriedades) {
   const [nome, setNome] = useState(unidade?.nome ?? '')
   const [tipo, setTipo] = useState<TipoUnidade>(unidade?.tipo ?? 'MISTA')
   const [grito, setGrito] = useState(unidade?.gritoDeGuerra ?? '')
@@ -39,9 +39,8 @@ export function FormularioUnidade({ unidade, aoConcluir, aoCancelar }: Proprieda
       return
     }
     try {
-      if (unidade) await editar.mutateAsync({ id: unidade.id, entrada: { ...entrada, ativa } })
-      else await criar.mutateAsync(entrada)
-      aoConcluir()
+      const gravada = unidade ? await editar.mutateAsync({ id: unidade.id, entrada: { ...entrada, ativa } }) : await criar.mutateAsync(entrada)
+      aoConcluir(gravada)
     } catch (falha) {
       const { campos, geral } = lerErroDaApi(falha)
       setErros(campos)
@@ -66,14 +65,7 @@ export function FormularioUnidade({ unidade, aoConcluir, aoCancelar }: Proprieda
           {erroGeral}
         </p>
       )}
-      <div className="flex justify-end gap-2">
-        <Botao variante="secundario" onClick={aoCancelar}>
-          Cancelar
-        </Botao>
-        <Botao type="submit" carregando={criar.isPending || editar.isPending}>
-          Salvar
-        </Botao>
-      </div>
+      <RodapeDoFormulario cancelar={cancelar} rotuloSalvar={unidade ? 'Salvar alterações' : 'Salvar'} salvando={criar.isPending || editar.isPending} />
     </form>
   )
 }
