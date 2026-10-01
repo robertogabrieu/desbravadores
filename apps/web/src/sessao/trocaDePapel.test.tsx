@@ -101,6 +101,44 @@ describe('troca de papel e a fila', () => {
     outraAba.close()
   })
 
+  it('aviso de outra aba: a fila fica pausada enquanto a sessão desta aba é renovada', async () => {
+    servidor.use(...handlersSessao([CONSELHEIRO, INSTRUTOR], CONSELHEIRO.id))
+    renderizarRotas(rotas, '/')
+    await screen.findByText('papel CONSELHEIRO')
+    await waitFor(() => expect(estadoOffline.sessao?.vinculoId).toBe(CONSELHEIRO.id))
+
+    let soltarRenovacao: () => void = () => undefined
+    const renovacaoPresa = new Promise<void>((resolver) => (soltarRenovacao = resolver))
+    servidor.use(
+      http.post('/api/auth/refresh', async () => {
+        await renovacaoPresa
+        return HttpResponse.json(criarSessao([CONSELHEIRO, INSTRUTOR], INSTRUTOR.id))
+      }),
+      http.get('/api/eu', () => HttpResponse.json(criarEu([CONSELHEIRO, INSTRUTOR], INSTRUTOR.id))),
+    )
+    const outraAba = new BroadcastChannel(CANAL_DA_SESSAO)
+    outraAba.postMessage({ tipo: 'PAPEL_TROCADO', vinculoId: INSTRUTOR.id })
+
+    await waitFor(() => expect(estadoOffline.trocaParaVinculo).toBe(INSTRUTOR.id))
+    soltarRenovacao()
+    await waitFor(() => expect(estadoOffline.sessao?.vinculoId).toBe(INSTRUTOR.id))
+    expect(estadoOffline.trocaParaVinculo).toBeNull()
+    outraAba.close()
+  })
+
+  it('aviso de outra aba com renovação recusada: a pausa sai e a fila volta como estava', async () => {
+    servidor.use(...handlersSessao([CONSELHEIRO, INSTRUTOR], CONSELHEIRO.id))
+    renderizarRotas(rotas, '/')
+    await screen.findByText('papel CONSELHEIRO')
+    servidor.use(http.post('/api/auth/refresh', () => HttpResponse.json({ codigo: 'NAO_AUTENTICADO', mensagem: 'x' }, { status: 401 })))
+    const outraAba = new BroadcastChannel(CANAL_DA_SESSAO)
+    outraAba.postMessage({ tipo: 'PAPEL_TROCADO', vinculoId: INSTRUTOR.id })
+
+    await waitFor(() => expect(estadoOffline.trocaParaVinculo).toBeNull())
+    expect(estadoOffline.sessao?.vinculoId).toBe(CONSELHEIRO.id)
+    outraAba.close()
+  })
+
   it('sair desfaz uma pausa de troca que tenha ficado pendente', async () => {
     servidor.use(...handlersSessao([CONSELHEIRO], CONSELHEIRO.id))
     renderizarRotas(rotas, '/')

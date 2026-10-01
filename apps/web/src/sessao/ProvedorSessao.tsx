@@ -167,15 +167,20 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
   // motor desta aba (que pode ser o dono da fila) passar ao vínculo novo e a tela relê o eu.
   useEffect(
     () =>
-      ouvirOutrasAbas(() => {
+      ouvirOutrasAbas((aviso) => {
         const usuario = estadoAtual.current.eu?.usuario.id
         if (estadoAtual.current.situacao !== 'autenticada' || !usuario) return
+        // Como na troca feita aqui: a fila pausa antes de renovar, senão um item do papel antigo já
+        // escolhido sairia com o token novo e seria recusado de vez. A pausa sai quando o motor recebe
+        // o vínculo da sessão renovada; se a renovação falhar ou vier sem vínculo, sai na hora.
+        pausarParaTrocaDePapel(aviso.vinculoId)
         void (async () => {
           const sessao = await renovarSessao()
           if (sessao.vinculoAtivoId) iniciarMotor({ usuarioId: usuario, vinculoId: sessao.vinculoAtivoId, queryClient: clienteConsultas })
+          liberarTrocaDePapel()
           clienteConsultas.clear()
           await lerEu()
-        })().catch(() => undefined)
+        })().catch(() => liberarTrocaDePapel())
       }),
     [clienteConsultas, lerEu],
   )
