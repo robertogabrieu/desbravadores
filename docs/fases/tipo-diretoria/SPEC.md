@@ -41,6 +41,11 @@ lugares que precisam **incluir** a Diretoria (aulas e progresso, porque ela curs
   (data em que entrou na Diretoria; nula fora dela). A migration só cria o valor e as colunas e **não
   usa** `DIRETORIA` no mesmo arquivo (Postgres 17 aceita `ADD VALUE` em transação, desde que o valor
   não seja usado nela).
+- `Desbravador` ganha também a **véspera da entrada**, que o ranking lê (ver "Ranking e frequência"):
+  `diretoriaVeioDeDbv Boolean @default(false)` (era DBV no momento da troca) e
+  `diretoriaUnidadeAnteriorId String? @db.Uuid` (a unidade aberta no momento da troca; nula se não
+  tinha), com chave composta `(clubeId, diretoriaUnidadeAnteriorId)` para `Unidade`, `RESTRICT` —
+  unidade é desativada, nunca apagada. Migration própria, `20261001200000_diretoria_vespera`.
 - **Transições automáticas só entre DBV e DIRETORIA. Líder nunca muda sozinho** (decisão desta SPEC:
   Líder é escolha do Adm; um Líder que ganhe papel de conselheiro continua Líder — e Líder já fica
   fora de chamada e ranking).
@@ -64,6 +69,12 @@ lugares que precisam **incluir** a Diretoria (aulas e progresso, porque ela curs
   dia (o envio aceita quem tem `fim` depois da data), some da lista de membros e o histórico fica.
   (Líder já não pode ter unidade: mesma regra.)
 - `diretoriaDesde` = data da troca (no fuso do clube).
+- Na mesma gravação, a véspera: `diretoriaVeioDeDbv` = o tipo anterior era DBV, e
+  `diretoriaUnidadeAnteriorId` = a unidade da passagem aberta, **lida antes de encerrá-la** (nula se
+  não havia; também nula vindo de Líder). Vale para os dois caminhos da troca — a escolha do Adm e a
+  sincronização pela regra. Quem já era Diretoria guarda a da entrada. **Ao sair** da Diretoria (para
+  DBV ou Líder) os dois zeram; numa reentrada vale a nova véspera. Cadastro e importação direto como
+  Diretoria ficam com `false`/nula: nunca foram DBV no clube.
 - Matrículas de classe **continuam**: a Diretoria cursa classe.
 - Ao **voltar** a Desbravador, a pessoa fica sem unidade; o Adm escolhe. A tela avisa.
 
@@ -120,12 +131,16 @@ não a incluem.
 - **O ranking de meses anteriores mostra a Diretoria como mostrava na véspera da entrada.** O ranking
   não guarda histórico de unidade: o desbravador comum aparece em todos os meses com a unidade atual.
   Para entrar na Diretoria não mudar o passado, a ficha DIRETORIA conta num mês anterior a
-  `diretoriaDesde` **se e somente se** existe a passagem de unidade que terminou no dia de
-  `diretoriaDesde` (a unidade que tinha na véspera), e conta **com essa unidade em todos esses meses**.
+  `diretoriaDesde` **se e somente se** `diretoriaVeioDeDbv`, e conta **com
+  `diretoriaUnidadeAnteriorId` em todos esses meses** — inclusive nula, como o DBV sem unidade aparece.
   Assim quem esteve na unidade A de janeiro a março, na B desde julho e virou Diretoria em outubro
   aparece na B de janeiro a setembro — antes e depois da entrada —, e a média da B nesses meses é a
-  mesma consultada em setembro ou em outubro. Quem chega de Líder, ou estava sem unidade na véspera,
-  não tinha unidade no ranking da véspera e não aparece em mês nenhum, nem nos meses em que foi DBV.
+  mesma consultada em setembro ou em outubro. Quem chega de Líder não aparecia no ranking da véspera e
+  não aparece em mês nenhum, nem nos meses em que foi DBV.
+- A véspera é **gravada na troca**, não deduzida das passagens de unidade: a dedução pela passagem que
+  terminou no dia da entrada errava quando o Adm mudava ou tirava a unidade no mesmo dia (duas
+  passagens terminam nesse dia), quando a passagem aberta começava no futuro (termina no início dela,
+  não na data da entrada) e no DBV sem unidade (sumia, em vez de continuar sem unidade).
 
 ### Lugares que precisam INCLUIR a Diretoria
 

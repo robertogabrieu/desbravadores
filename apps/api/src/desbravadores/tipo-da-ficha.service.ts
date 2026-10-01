@@ -66,6 +66,23 @@ function colunas(decidido: TipoDecidido) {
   }
 }
 
+/**
+ * A véspera da entrada na Diretoria, que o ranking dos meses anteriores lê: se era DBV e a unidade aberta no
+ * momento da troca (lida antes de a troca encerrá-la). Quem já era Diretoria guarda a da entrada; quem sai, zera.
+ */
+async function vesperaDaDiretoria(
+  tx: Cliente,
+  clubeId: string,
+  ficha: FichaLida,
+  novo: TipoPessoa,
+): Promise<{ diretoriaVeioDeDbv?: boolean; diretoriaUnidadeAnteriorId?: string | null }> {
+  if (novo !== 'DIRETORIA') return { diretoriaVeioDeDbv: false, diretoriaUnidadeAnteriorId: null }
+  if (ficha.tipo === 'DIRETORIA') return {}
+  if (ficha.tipo !== 'DBV') return { diretoriaVeioDeDbv: false, diretoriaUnidadeAnteriorId: null }
+  const aberta = await tx.membroUnidade.findFirst({ where: { clubeId, dbvId: ficha.id, fim: null }, select: { unidadeId: true } })
+  return { diretoriaVeioDeDbv: true, diretoriaUnidadeAnteriorId: aberta?.unidadeId ?? null }
+}
+
 /** Ao entrar na Diretoria ou em Líder, a passagem aberta pela unidade termina no dia da troca; nunca é apagada. */
 async function encerrarUnidade(tx: Cliente, clubeId: string, dbvId: string, dia: string): Promise<void> {
   const aberta = await tx.membroUnidade.findFirst({ where: { clubeId, dbvId, fim: null } })
@@ -138,6 +155,7 @@ export class ServicoTipoDaFicha {
       decidido.diretoriaPeloAdm === atual.diretoriaPeloAdm &&
       decidido.diretoriaDesde === atual.diretoriaDesde
     if (igual) return false
+    const vespera = await vesperaDaDiretoria(tx, clubeId, ficha, decidido.tipo)
     const gravada = await tx.desbravador.updateMany({
       where: {
         clubeId,
@@ -147,7 +165,7 @@ export class ServicoTipoDaFicha {
         nascimento: ficha.nascimento,
         usuarioId: ficha.usuarioId,
       },
-      data: colunas(decidido),
+      data: { ...colunas(decidido), ...vespera },
     })
     if (gravada.count === 0) return false
     if (decidido.tipo !== 'DBV') await encerrarUnidade(tx, clubeId, ficha.id, hoje)
@@ -167,7 +185,8 @@ export class ServicoTipoDaFicha {
     } else {
       decidido = { tipo, diretoriaPeloAdm: false, diretoriaDesde: null }
     }
-    await tx.desbravador.update({ where: { id: ficha.id, clubeId }, data: colunas(decidido) })
+    const vespera = await vesperaDaDiretoria(tx, clubeId, ficha, tipo)
+    await tx.desbravador.update({ where: { id: ficha.id, clubeId }, data: { ...colunas(decidido), ...vespera } })
     if (tipo !== 'DBV') await encerrarUnidade(tx, clubeId, ficha.id, hoje)
   }
 }

@@ -176,42 +176,42 @@ model Clube {
   criadoEm     DateTime @default(now()) @db.Timestamptz
   atualizadoEm DateTime @updatedAt @db.Timestamptz
 
-  configuracao     ConfiguracaoClube?
-  vinculos         Vinculo[]
-  vinculosUnidade  VinculoUnidade[]
-  desbravadores    Desbravador[]
-  unidades         Unidade[]
-  membros          MembroUnidade[]
-  classes          Classe[]
-  classesClube     ClasseClube[]
-  requisitoAjustes RequisitoAjuste[]
-  especialidades   Especialidade[]
-  matriculas       MatriculaClasse[]
-  criterios        CriterioRanking[]
-  reunioes         Reuniao[]
-  chamadas         Chamada[]
-  alteracoes       ChamadaAlteracao[]
-  lancamentos      LancamentoPontos[]
-  arquivos         Arquivo[]
-  albuns           Album[]
-  fotos            Foto[]
-  pedidosAdm       PedidoAoAdm[]
-  enviosProcessados EnvioProcessado[]
-  eventos             EventoCalendario[]
-  cronogramas         Cronograma[]
-  publicacoes         CronogramaPublicacao[]
-  aulasPlanejadas     AulaPlanejada[]
-  aulaRequisitos      AulaRequisito[]
-  registrosAula       RegistroAula[]
-  presencasAula       PresencaAula[]
-  enviosAula          EnvioAulaProcessado[]
-  requisitosConcluidos RequisitoConcluido[]
+  configuracao             ConfiguracaoClube?
+  vinculos                 Vinculo[]
+  vinculosUnidade          VinculoUnidade[]
+  desbravadores            Desbravador[]
+  unidades                 Unidade[]
+  membros                  MembroUnidade[]
+  classes                  Classe[]
+  classesClube             ClasseClube[]
+  requisitoAjustes         RequisitoAjuste[]
+  especialidades           Especialidade[]
+  matriculas               MatriculaClasse[]
+  criterios                CriterioRanking[]
+  reunioes                 Reuniao[]
+  chamadas                 Chamada[]
+  alteracoes               ChamadaAlteracao[]
+  lancamentos              LancamentoPontos[]
+  arquivos                 Arquivo[]
+  albuns                   Album[]
+  fotos                    Foto[]
+  pedidosAdm               PedidoAoAdm[]
+  enviosProcessados        EnvioProcessado[]
+  eventos                  EventoCalendario[]
+  cronogramas              Cronograma[]
+  publicacoes              CronogramaPublicacao[]
+  aulasPlanejadas          AulaPlanejada[]
+  aulaRequisitos           AulaRequisito[]
+  registrosAula            RegistroAula[]
+  presencasAula            PresencaAula[]
+  enviosAula               EnvioAulaProcessado[]
+  requisitosConcluidos     RequisitoConcluido[]
   especialidadesConcluidas EspecialidadeConcluida[]
-  observacoes         Observacao[]
-  materiais           Material[]
-  notificacoes        Notificacao[]
-  atividades          Atividade[]
-  convitesAcesso      ConviteAcesso[]
+  observacoes              Observacao[]
+  materiais                Material[]
+  notificacoes             Notificacao[]
+  atividades               Atividade[]
+  convitesAcesso           ConviteAcesso[]
 }
 
 model ConfiguracaoClube {
@@ -244,34 +244,34 @@ model Usuario {
   criadoEm       DateTime      @default(now()) @db.Timestamptz
   atualizadoEm   DateTime      @updatedAt @db.Timestamptz
 
-  vinculos      Vinculo[]
-  tokens        TokenUsoUnico[]
-  refreshTokens RefreshToken[]
-  desbravadores Desbravador[]
-  convitesAcessoCriados ConviteAcesso[]
-  reunioesRegistradas Reuniao[]          @relation("ReuniaoRegistradaPor")
-  reunioesAtualizadas Reuniao[]          @relation("ReuniaoAtualizadaPor")
-  chamadasAlteradas   Chamada[]
-  alteracoesChamada   ChamadaAlteracao[]
-  lancamentos         LancamentoPontos[]
-  arquivos            Arquivo[]
-  albuns              Album[]
-  fotosEnviadas       Foto[]             @relation("FotoEnviadaPor")
-  fotosRemovidas      Foto[]             @relation("FotoRemovidaPor")
-  pedidosAdm          PedidoAoAdm[]
-  eventosCriados      EventoCalendario[]
-  cronogramasEnviados Cronograma[]           @relation("CronogramaEnviadoPor")
-  publicacoes         CronogramaPublicacao[]
-  registrosAula       RegistroAula[]
-  presencasAlteradas  PresencaAula[]
-  requisitosMarcados  RequisitoConcluido[]   @relation("RequisitoMarcadoPor")
-  requisitosRemovidos RequisitoConcluido[]   @relation("RequisitoRemovidoPor")
-  especialidadesMarcadas EspecialidadeConcluida[] @relation("EspecialidadeMarcadaPor")
+  vinculos                Vinculo[]
+  tokens                  TokenUsoUnico[]
+  refreshTokens           RefreshToken[]
+  desbravadores           Desbravador[]
+  convitesAcessoCriados   ConviteAcesso[]
+  reunioesRegistradas     Reuniao[]                @relation("ReuniaoRegistradaPor")
+  reunioesAtualizadas     Reuniao[]                @relation("ReuniaoAtualizadaPor")
+  chamadasAlteradas       Chamada[]
+  alteracoesChamada       ChamadaAlteracao[]
+  lancamentos             LancamentoPontos[]
+  arquivos                Arquivo[]
+  albuns                  Album[]
+  fotosEnviadas           Foto[]                   @relation("FotoEnviadaPor")
+  fotosRemovidas          Foto[]                   @relation("FotoRemovidaPor")
+  pedidosAdm              PedidoAoAdm[]
+  eventosCriados          EventoCalendario[]
+  cronogramasEnviados     Cronograma[]             @relation("CronogramaEnviadoPor")
+  publicacoes             CronogramaPublicacao[]
+  registrosAula           RegistroAula[]
+  presencasAlteradas      PresencaAula[]
+  requisitosMarcados      RequisitoConcluido[]     @relation("RequisitoMarcadoPor")
+  requisitosRemovidos     RequisitoConcluido[]     @relation("RequisitoRemovidoPor")
+  especialidadesMarcadas  EspecialidadeConcluida[] @relation("EspecialidadeMarcadaPor")
   especialidadesRemovidas EspecialidadeConcluida[] @relation("EspecialidadeRemovidaPor")
-  observacoes         Observacao[]
-  materiais           Material[]
-  notificacoes        Notificacao[]
-  atividades          Atividade[]
+  observacoes             Observacao[]
+  materiais               Material[]
+  notificacoes            Notificacao[]
+  atividades              Atividade[]
 }
 
 model Vinculo {
@@ -389,36 +389,41 @@ model RefreshToken {
 // ───────────────────────── pessoas e unidades ─────────────────────────
 
 model Desbravador {
-  id                  String     @id @default(uuid(7)) @db.Uuid
-  clubeId             String     @db.Uuid
-  nome                String
-  nomePublico         String
-  tipo                TipoPessoa @default(DBV)
-  usuarioId           String?    @db.Uuid
-  nascimento          DateTime   @db.Date
-  sexo                Sexo
-  responsavelNome     String?
-  responsavelTelefone String?
-  responsavelEmail    String?
-  autorizacaoImagem   Boolean    @default(false)
-  autorizacaoImagemEm DateTime?  @db.Date
+  id                         String     @id @default(uuid(7)) @db.Uuid
+  clubeId                    String     @db.Uuid
+  nome                       String
+  nomePublico                String
+  tipo                       TipoPessoa @default(DBV)
+  usuarioId                  String?    @db.Uuid
+  nascimento                 DateTime   @db.Date
+  sexo                       Sexo
+  responsavelNome            String?
+  responsavelTelefone        String?
+  responsavelEmail           String?
+  autorizacaoImagem          Boolean    @default(false)
+  autorizacaoImagemEm        DateTime?  @db.Date
   /// Diretoria marcada pelo Adm (não pela regra de idade ou de papel): a varredura não a desfaz.
-  diretoriaPeloAdm    Boolean    @default(false)
+  diretoriaPeloAdm           Boolean    @default(false)
   /// Data em que entrou na Diretoria; o ranking de meses anteriores ainda a conta como desbravador.
-  diretoriaDesde      DateTime?  @db.Date
-  ativo               Boolean    @default(true)
-  entradaEm           DateTime   @db.Date
-  saidaEm             DateTime?  @db.Date
-  criadoEm            DateTime   @default(now()) @db.Timestamptz
-  atualizadoEm        DateTime   @updatedAt @db.Timestamptz
+  diretoriaDesde             DateTime?  @db.Date
+  /// Gravado na entrada na Diretoria: era DBV na véspera. Só então o ranking dos meses anteriores a conta.
+  diretoriaVeioDeDbv         Boolean    @default(false)
+  /// Gravado na entrada na Diretoria: a unidade aberta na véspera (nula se não tinha). É com ela que o ranking a mostra.
+  diretoriaUnidadeAnteriorId String?    @db.Uuid
+  ativo                      Boolean    @default(true)
+  entradaEm                  DateTime   @db.Date
+  saidaEm                    DateTime?  @db.Date
+  criadoEm                   DateTime   @default(now()) @db.Timestamptz
+  atualizadoEm               DateTime   @updatedAt @db.Timestamptz
 
-  clube      Clube             @relation(fields: [clubeId], references: [id], onDelete: Restrict)
-  usuario    Usuario?          @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
-  membros    MembroUnidade[]
-  matriculas MatriculaClasse[]
-  chamadas    Chamada[]
-  alteracoes  ChamadaAlteracao[]
-  lancamentos LancamentoPontos[]
+  clube                    Clube                    @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  usuario                  Usuario?                 @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  diretoriaUnidadeAnterior Unidade?                 @relation(fields: [clubeId, diretoriaUnidadeAnteriorId], references: [clubeId, id], onDelete: Restrict)
+  membros                  MembroUnidade[]
+  matriculas               MatriculaClasse[]
+  chamadas                 Chamada[]
+  alteracoes               ChamadaAlteracao[]
+  lancamentos              LancamentoPontos[]
   presencasAula            PresencaAula[]
   requisitosConcluidos     RequisitoConcluido[]
   especialidadesConcluidas EspecialidadeConcluida[]
@@ -439,12 +444,13 @@ model Unidade {
   gritoDeGuerra String?
   ativa         Boolean     @default(true)
 
-  clube     Clube            @relation(fields: [clubeId], references: [id], onDelete: Restrict)
-  membros   MembroUnidade[]
-  vinculos  VinculoUnidade[]
-  reunioes  Reuniao[]
-  albuns    Album[]
-  pedidos   PedidoAoAdm[]
+  clube                   Clube            @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  membros                 MembroUnidade[]
+  diretoriasQueSairamDela Desbravador[]
+  vinculos                VinculoUnidade[]
+  reunioes                Reuniao[]
+  albuns                  Album[]
+  pedidos                 PedidoAoAdm[]
 
   @@unique([clubeId, nome])
   @@unique([clubeId, id])
@@ -480,13 +486,13 @@ model Classe {
   ordem        Int
   ativa        Boolean    @default(true)
 
-  clube      Clube?            @relation(fields: [clubeId], references: [id], onDelete: Restrict)
-  classeBase Classe?           @relation("ClasseBase", fields: [classeBaseId], references: [id], onDelete: Restrict)
-  avancadas  Classe[]          @relation("ClasseBase")
-  secoes     SecaoRequisito[]
-  clubes     ClasseClube[]
-  vinculos   VinculoClasse[]
-  matriculas MatriculaClasse[]
+  clube         Clube?            @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  classeBase    Classe?           @relation("ClasseBase", fields: [classeBaseId], references: [id], onDelete: Restrict)
+  avancadas     Classe[]          @relation("ClasseBase")
+  secoes        SecaoRequisito[]
+  clubes        ClasseClube[]
+  vinculos      VinculoClasse[]
+  matriculas    MatriculaClasse[]
   cronogramas   Cronograma[]
   registrosAula RegistroAula[]
   observacoes   Observacao[]
@@ -533,8 +539,8 @@ model Requisito {
   pagina  Int?
   ativo   Boolean @default(true)
 
-  secao   SecaoRequisito    @relation(fields: [secaoId], references: [id], onDelete: Restrict)
-  ajustes RequisitoAjuste[]
+  secao      SecaoRequisito       @relation(fields: [secaoId], references: [id], onDelete: Restrict)
+  ajustes    RequisitoAjuste[]
   aulas      AulaRequisito[]
   concluidos RequisitoConcluido[]
 
@@ -570,8 +576,8 @@ model Especialidade {
   nome    String
   ativa   Boolean @default(true)
 
-  clube Clube?            @relation(fields: [clubeId], references: [id], onDelete: Restrict)
-  area  AreaEspecialidade @relation(fields: [areaId], references: [id], onDelete: Restrict)
+  clube      Clube?                   @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  area       AreaEspecialidade        @relation(fields: [areaId], references: [id], onDelete: Restrict)
   concluidas EspecialidadeConcluida[]
 
   @@unique([areaId, nome], where: { clubeId: null }, map: "especialidade_oficial_area_nome")
@@ -671,10 +677,10 @@ model Chamada {
   alteradaPorId String          @db.Uuid
   envioId       String          @db.Uuid
 
-  clube        Clube       @relation(fields: [clubeId], references: [id], onDelete: Restrict)
-  reuniao      Reuniao     @relation(fields: [clubeId, reuniaoId], references: [clubeId, id], onDelete: Restrict)
-  dbv          Desbravador @relation(fields: [clubeId, dbvId], references: [clubeId, id], onDelete: Restrict)
-  alteradaPor  Usuario     @relation(fields: [alteradaPorId], references: [id], onDelete: Restrict)
+  clube       Clube       @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  reuniao     Reuniao     @relation(fields: [clubeId, reuniaoId], references: [clubeId, id], onDelete: Restrict)
+  dbv         Desbravador @relation(fields: [clubeId, dbvId], references: [clubeId, id], onDelete: Restrict)
+  alteradaPor Usuario     @relation(fields: [alteradaPorId], references: [id], onDelete: Restrict)
 
   @@id([reuniaoId, dbvId])
   @@index([clubeId, dbvId])
@@ -737,8 +743,8 @@ model Arquivo {
   criadoPorId      String   @db.Uuid
   criadoEm         DateTime @default(now()) @db.Timestamptz
 
-  clube     Clube   @relation(fields: [clubeId], references: [id], onDelete: Restrict)
-  criadoPor Usuario @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
+  clube     Clube     @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  criadoPor Usuario   @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
   foto      Foto?
   material  Material?
 
@@ -859,11 +865,11 @@ model Cronograma {
   criadoEm     DateTime         @default(now()) @db.Timestamptz
   atualizadoEm DateTime         @updatedAt @db.Timestamptz
 
-  clube      Clube                  @relation(fields: [clubeId], references: [id], onDelete: Restrict)
-  classe     Classe                 @relation(fields: [classeId], references: [id], onDelete: Restrict)
-  enviadoPor Usuario?               @relation("CronogramaEnviadoPor", fields: [enviadoPorId], references: [id], onDelete: Restrict)
-  aulas      AulaPlanejada[]
-  requisitos AulaRequisito[]
+  clube       Clube                  @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  classe      Classe                 @relation(fields: [classeId], references: [id], onDelete: Restrict)
+  enviadoPor  Usuario?               @relation("CronogramaEnviadoPor", fields: [enviadoPorId], references: [id], onDelete: Restrict)
+  aulas       AulaPlanejada[]
+  requisitos  AulaRequisito[]
   publicacoes CronogramaPublicacao[]
 
   @@unique([clubeId, classeId, anoClube])
@@ -934,10 +940,10 @@ model RegistroAula {
   registradoEm    DateTime @default(now()) @db.Timestamptz
   atualizadoEm    DateTime @db.Timestamptz
 
-  clube         Clube                @relation(fields: [clubeId], references: [id], onDelete: Restrict)
-  classe        Classe               @relation(fields: [classeId], references: [id], onDelete: Restrict)
-  aulaPlanejada AulaPlanejada?       @relation(fields: [clubeId, aulaPlanejadaId], references: [clubeId, id], onDelete: Restrict)
-  registradoPor Usuario              @relation(fields: [registradoPorId], references: [id], onDelete: Restrict)
+  clube         Clube                 @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  classe        Classe                @relation(fields: [classeId], references: [id], onDelete: Restrict)
+  aulaPlanejada AulaPlanejada?        @relation(fields: [clubeId, aulaPlanejadaId], references: [clubeId, id], onDelete: Restrict)
+  registradoPor Usuario               @relation(fields: [registradoPorId], references: [id], onDelete: Restrict)
   presencas     PresencaAula[]
   requisitos    RequisitoConcluido[]
   observacoes   Observacao[]

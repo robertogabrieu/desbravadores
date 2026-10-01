@@ -296,4 +296,82 @@ describe('Tipo DIRETORIA: motivos, filtro, regras do Adm e gatilhos', () => {
       expect((await lerFicha(dbv.id)).tipo).toBe('DBV')
     })
   })
+  describe('véspera da entrada gravada na troca de Tipo', () => {
+    const lerVespera = (id: string) =>
+      prismaDeTeste().desbravador.findUniqueOrThrow({
+        where: { id },
+        select: { diretoriaVeioDeDbv: true, diretoriaUnidadeAnteriorId: true },
+      })
+    const trocar = (id: string, autorizacao: string, tipo: 'DBV' | 'DIRETORIA' | 'LIDER') =>
+      api.patch(`/api/desbravadores/${id}`, autorizacao, { tipo }).expect(200)
+
+    it('DBV na unidade grava que veio de DBV e a unidade aberta; sem unidade, grava só que veio de DBV', async () => {
+      const { clube, adm, unidade } = await cenario()
+      const naUnidadeHoje = await naUnidade(clube.id, unidade.id)
+      const semUnidade = await criarDbv({ clubeId: clube.id, nascimento: crianca() })
+
+      await trocar(naUnidadeHoje.id, adm.autorizacao, 'DIRETORIA')
+      await trocar(semUnidade.id, adm.autorizacao, 'DIRETORIA')
+
+      expect(await lerVespera(naUnidadeHoje.id)).toEqual({ diretoriaVeioDeDbv: true, diretoriaUnidadeAnteriorId: unidade.id })
+      expect(await lerVespera(semUnidade.id)).toEqual({ diretoriaVeioDeDbv: true, diretoriaUnidadeAnteriorId: null })
+    })
+
+    it('a unidade gravada é a da passagem aberta na troca, mesmo que comece no futuro', async () => {
+      const { clube, adm, unidade } = await cenario()
+      const futura = await criarUnidade({ clubeId: clube.id })
+      const dbv = await naUnidade(clube.id, unidade.id)
+      const depois = `${anoDeHoje() + 1}-01-10`
+      await api.put(`/api/desbravadores/${dbv.id}/unidade`, adm.autorizacao, { unidadeId: futura.id, desde: depois }).expect(200)
+
+      await trocar(dbv.id, adm.autorizacao, 'DIRETORIA')
+
+      expect(await lerVespera(dbv.id)).toEqual({ diretoriaVeioDeDbv: true, diretoriaUnidadeAnteriorId: futura.id })
+    })
+
+    it('Líder que passa a Diretoria grava que não veio de DBV', async () => {
+      const { clube, adm, unidade } = await cenario()
+      const dbv = await naUnidade(clube.id, unidade.id)
+      await trocar(dbv.id, adm.autorizacao, 'LIDER')
+      await trocar(dbv.id, adm.autorizacao, 'DIRETORIA')
+      expect(await lerVespera(dbv.id)).toEqual({ diretoriaVeioDeDbv: false, diretoriaUnidadeAnteriorId: null })
+    })
+
+    it('sair da Diretoria zera os dois campos, para Desbravador ou para Líder', async () => {
+      const { clube, adm, unidade } = await cenario()
+      const voltaADbv = await naUnidade(clube.id, unidade.id)
+      const viraLider = await naUnidade(clube.id, unidade.id)
+      for (const dbv of [voltaADbv, viraLider]) await trocar(dbv.id, adm.autorizacao, 'DIRETORIA')
+
+      await trocar(voltaADbv.id, adm.autorizacao, 'DBV')
+      await trocar(viraLider.id, adm.autorizacao, 'LIDER')
+
+      const zerada = { diretoriaVeioDeDbv: false, diretoriaUnidadeAnteriorId: null }
+      expect(await lerVespera(voltaADbv.id)).toEqual(zerada)
+      expect(await lerVespera(viraLider.id)).toEqual(zerada)
+    })
+
+    it('a regra também grava: papel de conselheiro dado à conta; papel tirado zera', async () => {
+      const { clube, adm, unidade } = await cenario()
+      const usuario = await criarUsuario()
+      const dbv = await criarDbv({ clubeId: clube.id, usuarioId: usuario.id, nascimento: crianca() })
+      await criarMembro({ dbvId: dbv.id, unidadeId: unidade.id, inicio: '2026-02-01' })
+      await criarVinculo({ usuarioId: usuario.id, clubeId: clube.id, papel: 'ADM' })
+
+      await api.post(`/api/usuarios/${usuario.id}/vinculos`, adm.autorizacao, { papel: 'CONSELHEIRO', unidadeIds: [unidade.id] }).expect(201)
+      expect(await lerVespera(dbv.id)).toEqual({ diretoriaVeioDeDbv: true, diretoriaUnidadeAnteriorId: unidade.id })
+
+      const vinculo = await prismaDeTeste().vinculo.findFirstOrThrow({ where: { usuarioId: usuario.id, papel: 'CONSELHEIRO' } })
+      await api.put(`/api/vinculos/${vinculo.id}`, adm.autorizacao, { ativo: false }).expect(200)
+      expect(await lerVespera(dbv.id)).toEqual({ diretoriaVeioDeDbv: false, diretoriaUnidadeAnteriorId: null })
+    })
+
+    it('cadastro direto como Diretoria não veio de DBV', async () => {
+      const { adm, unidade } = await cenario()
+      const criado = corpo<ComAvisos>(
+        await api.post('/api/desbravadores', adm.autorizacao, { ...base, nascimento: nasceuNoLimite(), unidadeId: unidade.id }).expect(201),
+      )
+      expect(await lerVespera(criado.dados.id)).toEqual({ diretoriaVeioDeDbv: false, diretoriaUnidadeAnteriorId: null })
+    })
+  })
 })

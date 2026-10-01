@@ -54,33 +54,15 @@ function comparar(a: EntradaDoRanking, b: EntradaDoRanking): number {
   return colador.compare(a.nome, b.nome)
 }
 
-interface FichaDoRanking {
-  diretoriaDesde: Date | null
-  membros: { fim: Date | null; unidade: z.infer<typeof RefUnidade> }[]
-}
-
-type Passagem = FichaDoRanking['membros'][number]
-
-/**
- * A unidade com que a ficha aparece no ranking — qualquer mês, como o desbravador comum, que aparece sempre com a
- * unidade atual. DBV: a unidade aberta. Diretoria (num mês anterior à entrada): a unidade que tinha na véspera,
- * isto é, a passagem que terminou no dia de `diretoriaDesde`; é o que o ranking mostrava antes da entrada. Sem
- * ela (veio de Líder, ou estava sem unidade na véspera) a Diretoria fica de fora de todos os meses.
- */
-function passagemNoRanking(ficha: FichaDoRanking): Passagem | undefined {
-  const { diretoriaDesde } = ficha
-  if (diretoriaDesde === null) return ficha.membros.find((membro) => membro.fim === null)
-  return ficha.membros.find((membro) => membro.fim?.getTime() === diretoriaDesde.getTime())
-}
-
 /** Pontos e frequencia do mes (E13, E14). Nao decide quem pode ver nome ou frequencia: isso e do escopo. */
 @Injectable()
 export class CalculoRanking {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Quem era desbravador no mes, ja na ordem do ranking: DBV ativo, ou Diretoria que so entrou depois do fim
-   * do mes e estava numa unidade na vespera da entrada. `unidadeId` filtra por essa unidade.
+   * Quem era desbravador no mes, ja na ordem do ranking: DBV ativo, com a unidade atual; ou Diretoria que so
+   * entrou depois do fim do mes e era DBV na vespera da entrada, com a unidade que tinha entao (gravada na
+   * troca de Tipo, nula se nao tinha). Aparece como aparecia antes de entrar. `unidadeId` filtra por essa unidade.
    */
   async doMes(clubeId: string, mes: string, anoClube: number, unidadeId?: string): Promise<EntradaDoRanking[]> {
     const { fim: fimDoMes } = limitesDoMes(mes)
@@ -88,28 +70,25 @@ export class CalculoRanking {
       where: {
         clubeId,
         ativo: true,
-        OR: [{ tipo: 'DBV' }, { tipo: 'DIRETORIA', diretoriaDesde: { gte: fimDoMes } }],
+        OR: [{ tipo: 'DBV' }, { tipo: 'DIRETORIA', diretoriaVeioDeDbv: true, diretoriaDesde: { gte: fimDoMes } }],
       },
       select: {
         id: true,
         nome: true,
         nomePublico: true,
-        diretoriaDesde: true,
-        membros: {
-          where: { OR: [{ fim: null }, { fim: { gte: fimDoMes } }] },
-          select: { fim: true, unidade: { select: { id: true, nome: true } } },
-        },
+        tipo: true,
+        diretoriaUnidadeAnterior: { select: { id: true, nome: true } },
+        membros: { where: { fim: null }, select: { unidade: { select: { id: true, nome: true } } } },
         matriculas: {
           where: { anoClube, status: 'CURSANDO', classe: { tipo: 'REGULAR' } },
           select: { classe: { select: SELECAO_REF_CLASSE } },
         },
       },
     })
-    const comUnidade = fichas.flatMap((ficha) => {
-      const passagem = passagemNoRanking(ficha)
-      if (ficha.diretoriaDesde !== null && passagem === undefined) return []
-      return [{ ...ficha, unidade: passagem?.unidade }]
-    })
+    const comUnidade = fichas.map((ficha) => ({
+      ...ficha,
+      unidade: ficha.tipo === 'DIRETORIA' ? ficha.diretoriaUnidadeAnterior : ficha.membros[0]?.unidade,
+    }))
     const dbvs = unidadeId ? comUnidade.filter((dbv) => dbv.unidade?.id === unidadeId) : comUnidade
     const dbvIds = dbvs.map((dbv) => dbv.id)
     const pontos = await this.pontosPorDbv(clubeId, dbvIds, mes)
