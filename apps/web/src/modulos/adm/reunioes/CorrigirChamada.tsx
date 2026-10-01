@@ -58,14 +58,11 @@ function CorrecaoDoAdm({ detalhe, pacote, ficha }: { detalhe: Detalhe; pacote: P
   const corrigir = useCorrigirChamada()
   const semConexao = modo === 'SEM_CONEXAO'
   const [retorno, setRetorno] = useState<Retorno | null>(null)
-  // Congelada ao abrir: a releitura que chega depois não pode trocar as versões que o servidor compara.
+  // Congeladas ao abrir: a releitura que chega depois não pode trocar as versões que o servidor compara nem quem está na lista.
   const [base] = useState(() => baseDoDetalhe(detalhe))
   // Quem era da unidade naquela data: as linhas da reunião, não os membros de hoje.
-  const unidade: UnidadeDaChamada = {
-    id: detalhe.unidade.id,
-    nome: detalhe.unidade.nome,
-    membros: detalhe.chamada.map((linha) => ({ dbvId: linha.dbvId, nome: linha.nome })),
-  }
+  const [membros] = useState(() => detalhe.chamada.map((linha) => ({ dbvId: linha.dbvId, nome: linha.nome })))
+  const unidade: UnidadeDaChamada = { id: detalhe.unidade.id, nome: detalhe.unidade.nome, membros }
 
   function enviar(entrada: EntradaSalvarChamada) {
     setRetorno(null)
@@ -91,12 +88,15 @@ function CorrecaoDoAdm({ detalhe, pacote, ficha }: { detalhe: Detalhe; pacote: P
         enviando: corrigir.isPending,
         // Perder a conexão com o formulário aberto não o desmonta: só impede o envio, e as marcas ficam.
         bloqueado: retorno?.tipo === 'SALVO_COM_AVISOS' || semConexao,
-        retorno: semConexao ? (
-          <p role="alert" className="text-sm font-semibold text-perigo">
-            Corrigir a chamada precisa de internet
-          </p>
-        ) : (
-          retorno && <RetornoDaCorrecao retorno={retorno} ficha={ficha} />
+        retorno: (
+          <>
+            {semConexao && (
+              <p role="alert" className="text-sm font-semibold text-perigo">
+                Corrigir a chamada precisa de internet
+              </p>
+            )}
+            {retorno && <RetornoDaCorrecao retorno={retorno} ficha={ficha} />}
+          </>
         ),
       }}
     />

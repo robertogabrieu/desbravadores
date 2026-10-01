@@ -161,6 +161,30 @@ describe('corrigir chamada (Adm)', () => {
     expect(recebidos[0]?.corpo).toMatchObject({ linhas: [{ dbvId: uuid(303), versaoVista: '2026-09-27T12:03:00.000Z' }] })
   })
 
+  it('a releitura que muda os membros com o formulário aberto não muda a lista nem o que é enviado', async () => {
+    const registro = reuniao()
+    const { clienteConsultas } = abrir(`/adm/reunioes/${uuid(601)}/chamada`, registro, handlerCorrigirChamada((id) => criarSaidaEnvio(id)))
+    await screen.findByRole('button', { name: /Júlia Rocha/ })
+    registro.atual = { ...registro.atual, chamada: [...registro.atual.chamada, linha(4, 'Davi Lima', 'PRESENTE')] }
+    await act(() => clienteConsultas.refetchQueries())
+    expect(screen.getAllByRole('listitem').map((li) => li.getAttribute('aria-label'))).toEqual(['Ana Beatriz Souza', 'Carla Fernandes', 'Júlia Rocha'])
+  })
+
+  it('sem internet depois de salvar com avisos, o aviso de internet vem além do retorno, e o "Ver a reunião" ficam', async () => {
+    abrir(
+      `/adm/reunioes/${uuid(601)}/chamada`,
+      reuniao(),
+      handlerCorrigirChamada((id) => criarSaidaEnvio(id, { conflitos: [{ dbvId: uuid(303), nome: 'Júlia Rocha' }] })),
+    )
+    await userEvent.click(await screen.findByRole('button', { name: /Júlia Rocha/ }))
+    await userEvent.click(screen.getByRole('button', { name: /Salvar chamada/ }))
+    await screen.findByText('Chamada salva, com avisos')
+    act(() => offline.mudar('SEM_CONEXAO'))
+    expect(screen.getByText('Corrigir a chamada precisa de internet')).toBeInTheDocument()
+    expect(screen.getByText('Chamada salva, com avisos')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Ver a reunião' })).toBeInTheDocument()
+  })
+
   it('recusa da API fica na tela', async () => {
     abrir(`/adm/reunioes/${uuid(601)}/chamada`, reuniao(), handlerCorrigirChamada((id) => criarSaidaEnvio(id), [], { status: 422, codigo: 'REGRA', mensagem: 'Reunião de unidade inativa.' }))
     await userEvent.click(await screen.findByRole('button', { name: /Júlia Rocha/ }))

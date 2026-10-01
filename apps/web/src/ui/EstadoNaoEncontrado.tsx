@@ -14,7 +14,7 @@ export function EstadoNaoEncontrado({ registro, lista }: Propriedades) {
   return (
     <EstadoVazio
       titulo={`Não encontramos ${registro}`}
-      descricao="Ele pode ter sido removido, ser de outro clube ou o endereço estar incompleto."
+      descricao="Pode ter sido removido, ser de outro clube, ou o endereço estar incompleto."
       acao={
         <Link to={lista.para} className={estiloDoBotao({ variante: 'secundario' })}>
           {lista.rotulo}

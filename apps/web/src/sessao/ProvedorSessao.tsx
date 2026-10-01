@@ -218,6 +218,15 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
     }
   }, [modo, aplicarEuOnline, clienteConsultas])
 
+  // O navegador avisar que caiu já vale como sem conexão; quem confirma a volta é a API (efeito acima).
+  useEffect(() => {
+    const aoCairInternet = () => {
+      if (estadoAtual.current.situacao === 'autenticada') definirConexao('SEM_CONEXAO')
+    }
+    window.addEventListener('offline', aoCairInternet)
+    return () => window.removeEventListener('offline', aoCairInternet)
+  }, [])
+
   const entrar = useCallback(
     async (sessao: Sessao) => {
       definirTokenAcesso(sessao.accessToken)

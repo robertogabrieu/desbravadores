@@ -86,4 +86,13 @@ describe('EstadoNaoEncontrado', () => {
     expect(screen.getByRole('heading', { name: 'Não encontramos este desbravador' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Ver a lista de desbravadores' })).toHaveAttribute('href', '/adm/desbravadores')
   })
+
+  it('a explicação vale para qualquer registro, sem concordar com um gênero', () => {
+    render(
+      <MemoryRouter>
+        <EstadoNaoEncontrado registro="esta unidade" lista={{ para: '/adm/unidades', rotulo: 'Ver as unidades' }} />
+      </MemoryRouter>,
+    )
+    expect(screen.getByText('Pode ter sido removido, ser de outro clube, ou o endereço estar incompleto.')).toBeInTheDocument()
+  })
 })

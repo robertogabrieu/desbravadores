@@ -1,7 +1,8 @@
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
+import { useConexao } from '../offline'
 import { tempos } from '../offline/tempos'
 import { servidor } from '../testes/servidor'
 import { criarVinculo, handlerSemSessao, handlersSessao } from '../testes/handlers/sessao'
@@ -136,5 +137,18 @@ describe('guarda de rota', () => {
 
     await screen.findByText('tela de conectar')
     expect(roteador.state.location.pathname).toBe('/conectar')
+  })
+
+  it('o navegador avisar que ficou sem internet já vale como sem conexão, sem esperar uma requisição falhar', async () => {
+    function Modo() {
+      return <p>{`modo ${useConexao().modo}`}</p>
+    }
+    servidor.use(...handlersSessao([criarVinculo('ADM')]))
+    renderizarRotas([{ element: <GuardaRota />, children: [{ path: '/privada', element: <Modo /> }] }], '/privada')
+    expect(await screen.findByText('modo ONLINE')).toBeInTheDocument()
+    act(() => {
+      window.dispatchEvent(new Event('offline'))
+    })
+    expect(await screen.findByText('modo SEM_CONEXAO')).toBeInTheDocument()
   })
 })
