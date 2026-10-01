@@ -50,8 +50,8 @@ estrutura, ordem e texto, **nunca CSS**: as classes saem dos tokens e dos compon
   resposta traz `contato`, ou seja, com `dbv.ver_contato`). Rodapé: Inativar ou Reativar.
   Desbravador **inativo** ou de **Diretoria**: sem os três números (não se aplicam,
   `perfil.service.ts:41`) e sem "Gerar link de acesso" para inativo (`convite-acesso.service.ts:32`).
-  Dados: `GET /desbravadores/:id/perfil`, mais `GET /desbravadores/:id` só para o que o perfil não
-  traz (cadastro completo, contato).
+  Dados: `GET /desbravadores/:id/perfil`, que já traz cadastro e contato (`perfil.ts:7`,
+  `perfil.service.ts:37`); `GET /desbravadores/:id` fica só para a tela de edição.
 - **Usuário** (`modelo/FichaUsuario.dc.html`): e-mail, gênero, situação com **último acesso**; um
   cartão por papel ativo no clube, com escopo e "O que pode fazer" nos **rótulos do catálogo**
   (`permissoes.ts`, já com os ajustes do vínculo aplicados). Rodapé: Reenviar convite (só
@@ -129,7 +129,7 @@ pacote offline (`TelaChamada.tsx:28,165-168`), que vem vazio para quem não é c
 - **Ficha da unidade:** sai o número "Frequência no mês" do topo — nenhuma rota o devolve para um
   mês escolhido; cada reunião da lista já mostra presentes/total.
 - **Ficha da reunião:** "Alterações" mostra quem corrigiu e quando, **sem** o antes→depois por nome
-  (o detalhe não traz, `reunioes.ts:131`).
+  (o detalhe não traz, `reunioes.ts:94`).
 - **Ficha do evento:** "Aulas afetadas" aparece só como aviso logo depois de salvar (a API só
   calcula ao gravar, `servico-eventos.ts:103-121`).
 - **Aula da montagem:** fica **fora** desta SPEC e continua no painel lateral — editar tem 3
@@ -141,7 +141,7 @@ pacote offline (`TelaChamada.tsx:28,165-168`), que vem vazio para quem não é c
 - Chaves de consulta novas dentro das famílias existentes, para a invalidação de hoje alcançá-las:
   `['usuarios', id]`, `['unidades', id]`, `['calendario', 'evento', id]`. Gravar desbravador
   invalida também `['perfil', id]` (`api/perfil.ts:9`; hoje só `['desbravadores']`,
-  `api/desbravadores.ts:81-147`). Corrigir chamada invalida `['reunioes']`.
+  `api/desbravadores.ts:81-147`). Corrigir chamada invalida `['reuniao', id]` (`api/reunioes.ts:22`) e as mesmas raízes que a fila invalida ao enviar (`offline/tipos/reuniao.ts:14`).
 - Handlers de teste do web (`testes/handlers/{usuarios,unidades,calendario}.ts`) para as três
   leituras novas; o de `/api/unidades/:id` registrado **depois** do de `sem-membros`. O setup falha
   em rota sem handler (`testes/setup.ts:13`).
@@ -214,7 +214,7 @@ pacote offline (`TelaChamada.tsx:28,165-168`), que vem vazio para quem não é c
 - API unidades                              apps/api/src/unidades/unidades.controller.ts:15-51 ; unidades.service.ts:33,84,89,99,186,202-216
 - API eventos                               apps/api/src/calendario/eventos.controller.ts:20,37-65 ; servico-eventos.ts:77,103-128
 - API perfil / convite de acesso            apps/api/src/desbravadores/perfil.service.ts:41,53 ; convite-acesso.service.ts:32
-- contratos                                 packages/shared/src/contratos/{usuarios.ts:48-56,unidades.ts:15-23,perfil.ts:7-11,reunioes.ts:131}
+- contratos                                 packages/shared/src/contratos/{usuarios.ts:48-56,unidades.ts:15-23,perfil.ts:7-11,reunioes.ts:94}
 - permissões (catálogo)                     packages/shared/src/permissoes.ts:12-18,30
 - coluna de último acesso                   apps/api/prisma/schema.prisma:243
 - padrão de teste de isolamento (API)       apps/api/src/reunioes/reunioes.isolamento.spec.ts ; calendario/eventos.spec.ts:118,128 ; usuarios/usuarios.spec.ts:323-341
