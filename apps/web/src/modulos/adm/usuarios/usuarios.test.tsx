@@ -2,13 +2,13 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import type { Usuario } from '../../../api/usuarios'
+import { caixa } from '../../../testes/handlers/caixa'
 import { criarClasse, criarUnidade, handlerClasses, handlerUnidades } from '../../../testes/handlers/leitura'
 import { handlersSessao, uuid } from '../../../testes/handlers/sessao'
 import {
   criarUsuario,
   criarVinculoUsuario,
   handlerCatalogoUsuarios,
-  handlerConvite,
   handlerCriarUsuario,
   handlerDesativarUsuario,
   handlerEditarUsuario,
@@ -16,6 +16,7 @@ import {
   handlerListaUsuarios,
   handlerNovoVinculo,
   handlerRegra422,
+  handlerUsuario,
 } from '../../../testes/handlers/usuarios'
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
@@ -42,20 +43,16 @@ const priscila = criarUsuario({
 })
 const TRES = [diretoria, thiago, priscila]
 
-function abrir(usuarios: Usuario[] = TRES, consultas: URLSearchParams[] = []) {
+function abrir(usuarios: Usuario[] = TRES, consultas: URLSearchParams[] = [], rota = '/adm/usuarios') {
   servidor.use(
     ...handlersSessao(),
     handlerListaUsuarios(usuarios, consultas),
+    handlerUsuario(...usuarios.map((u) => caixa(u))),
     handlerCatalogoUsuarios(),
     handlerUnidades([AGUIAS, LEOES]),
     handlerClasses([AMIGO, COMPANHEIRO]),
   )
-  return renderizarRotas(rotasAdmUsuarios, '/adm/usuarios')
-}
-
-async function abrirPainel(nome: string) {
-  await userEvent.click(await screen.findByRole('button', { name: nome }))
-  return screen.findByRole('dialog')
+  return renderizarRotas(rotasAdmUsuarios, rota)
 }
 
 describe('lista de usuários', () => {
@@ -80,6 +77,14 @@ describe('lista de usuários', () => {
     expect(screen.getByText('Thiago Mendes')).toBeInTheDocument()
     expect(consultas.at(-1)?.get('papel')).toBe('CONSELHEIRO')
     expect(screen.getByRole('tab', { name: 'Conselheiros · 1' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('abrir com papel e página no endereço pede os dois à API', async () => {
+    const consultas: URLSearchParams[] = []
+    abrir(TRES, consultas, '/adm/usuarios?papel=INSTRUTOR&pagina=2')
+    await waitFor(() => expect(consultas.length).toBeGreaterThan(0))
+    expect(consultas[0]?.get('papel')).toBe('INSTRUTOR')
+    expect(consultas[0]?.get('pagina')).toBe('2')
   })
 
   it('a busca vai para a API', async () => {
@@ -108,25 +113,25 @@ describe('lista de usuários', () => {
 describe('novo usuário', () => {
   it('salva usuário e vínculos de uma vez, mandando só as permissões que diferem do padrão', async () => {
     const corpos: unknown[] = []
-    abrir()
-    servidor.use(handlerCriarUsuario(criarUsuario({ nome: 'Novo' }), corpos))
-    await userEvent.click(await screen.findByRole('button', { name: 'Convidar usuário' }))
-    const painel = await screen.findByRole('dialog', { name: 'Novo usuário' })
-    await userEvent.type(within(painel).getByLabelText('Nome'), 'Novo Líder')
-    await userEvent.type(within(painel).getByLabelText('E-mail'), 'novo@clube.test')
-    await userEvent.selectOptions(within(painel).getByLabelText('Gênero'), 'F')
+    abrir(TRES, [], '/adm/usuarios/novo')
+    const novo = criarUsuario({ id: uuid(730), nome: 'Novo' })
+    servidor.use(handlerCriarUsuario(novo, corpos), handlerUsuario(caixa(novo)))
+    await screen.findByLabelText('Nome')
+    await userEvent.type(screen.getByLabelText('Nome'), 'Novo Líder')
+    await userEvent.type(screen.getByLabelText('E-mail'), 'novo@clube.test')
+    await userEvent.selectOptions(screen.getByLabelText('Gênero'), 'F')
 
-    const primeiro = within(painel).getByRole('group', { name: 'Vínculo 1' })
+    const primeiro = screen.getByRole('group', { name: 'Vínculo 1' })
     await userEvent.selectOptions(within(primeiro).getByLabelText('Papel'), 'CONSELHEIRO')
     await userEvent.click(await within(primeiro).findByRole('checkbox', { name: 'Águias' }))
     await userEvent.click(within(primeiro).getByRole('checkbox', { name: 'Editar dados dos desbravadores' }))
 
-    await userEvent.click(within(painel).getByRole('button', { name: '+ Acrescentar papel' }))
-    const segundo = within(painel).getByRole('group', { name: 'Vínculo 2' })
+    await userEvent.click(screen.getByRole('button', { name: '+ Acrescentar papel' }))
+    const segundo = screen.getByRole('group', { name: 'Vínculo 2' })
     await userEvent.selectOptions(within(segundo).getByLabelText('Papel'), 'INSTRUTOR')
     await userEvent.click(await within(segundo).findByRole('checkbox', { name: 'Amigo' }))
 
-    await userEvent.click(within(painel).getByRole('button', { name: 'Salvar' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(corpos).toHaveLength(1))
     expect(corpos[0]).toEqual({
       nome: 'Novo Líder',
@@ -137,12 +142,11 @@ describe('novo usuário', () => {
         { papel: 'INSTRUTOR', unidadeIds: [], classeIds: [AMIGO.id], ajustes: [] },
       ],
     })
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await screen.findByRole('heading', { level: 1, name: 'Novo' })
   })
 
   it('cada papel mostra só as permissões que se aplicam a ele, e Adm nenhuma', async () => {
-    abrir()
-    await userEvent.click(await screen.findByRole('button', { name: 'Convidar usuário' }))
+    abrir(TRES, [], '/adm/usuarios/novo')
     const bloco = within(await screen.findByRole('group', { name: 'Vínculo 1' }))
     const papel = bloco.getByLabelText('Papel')
 
@@ -161,116 +165,103 @@ describe('novo usuário', () => {
   })
 })
 
-describe('usuário existente', () => {
-  it('trava e-mail, e nome e gênero quando não está convidado', async () => {
-    abrir()
-    const painel = within(await abrirPainel('Thiago Mendes'))
-    expect(painel.getByLabelText('E-mail')).toBeDisabled()
-    expect(painel.getByLabelText('Nome')).toBeDisabled()
-    expect(painel.getByLabelText('Gênero')).toBeDisabled()
-    expect(painel.queryByRole('button', { name: 'Salvar dados' })).not.toBeInTheDocument()
+describe('lista → telas dedicadas', () => {
+  it('"Convidar usuário" leva ao formulário de novo usuário', async () => {
+    const { roteador } = abrir()
+    await userEvent.click(await screen.findByRole('link', { name: 'Convidar usuário' }))
+    expect(roteador.state.location.pathname).toBe('/adm/usuarios/novo')
+  })
+})
+
+describe('edição de usuário existente', () => {
+  it('trava e-mail, e nome e gênero quando não está convidado; sem botões de salvar parcial', async () => {
+    abrir(TRES, [], `/adm/usuarios/${thiago.id}/editar`)
+    expect(await screen.findByLabelText('E-mail')).toBeDisabled()
+    expect(screen.getByLabelText('Nome')).toBeDisabled()
+    expect(screen.getByLabelText('Gênero')).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Salvar dados' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Salvar vínculo' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Salvar alterações' })).toBeInTheDocument()
   })
 
-  it('convidado edita nome e gênero e pode reenviar o convite', async () => {
+  it('convidado edita nome e gênero com o Salvar único', async () => {
     const corposEdicao: unknown[] = []
-    const convites: string[] = []
-    abrir()
-    servidor.use(handlerEditarUsuario(priscila, corposEdicao), handlerConvite(convites))
-    const painel = within(await abrirPainel('Priscila Andrade'))
-    expect(painel.getByLabelText('E-mail')).toBeDisabled()
-    const nome = painel.getByLabelText('Nome')
+    abrir(TRES, [], `/adm/usuarios/${priscila.id}/editar`)
+    servidor.use(handlerEditarUsuario(priscila, corposEdicao))
+    expect(await screen.findByLabelText('E-mail')).toBeDisabled()
+    const nome = screen.getByLabelText('Nome')
     await userEvent.clear(nome)
     await userEvent.type(nome, 'Priscila A. Lima')
-    await userEvent.click(painel.getByRole('button', { name: 'Salvar dados' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() => expect(corposEdicao).toEqual([{ nome: 'Priscila A. Lima', genero: 'F' }]))
-    await userEvent.click(painel.getByRole('button', { name: 'Reenviar convite' }))
-    await waitFor(() => expect(convites).toEqual([priscila.id]))
   })
 
-  it('reenviar convite só existe para convidado', async () => {
-    abrir()
-    const painel = within(await abrirPainel('Thiago Mendes'))
-    expect(painel.queryByRole('button', { name: 'Reenviar convite' })).not.toBeInTheDocument()
-  })
-
-  it('cada bloco salva sozinho pelo PUT do vínculo, com as permissões marcadas', async () => {
+  it('o Salvar único grava o vínculo alterado pelo PUT, com as permissões marcadas', async () => {
     const corpos: unknown[] = []
-    abrir()
+    abrir(TRES, [], `/adm/usuarios/${thiago.id}/editar`)
     servidor.use(handlerEditarVinculo(thiago, corpos))
-    const painel = within(await abrirPainel('Thiago Mendes'))
-    const bloco = within(painel.getByRole('group', { name: 'Vínculo 1' }))
+    const bloco = within(await screen.findByRole('group', { name: 'Vínculo 1' }))
     expect(await bloco.findByRole('checkbox', { name: 'Águias' })).toBeChecked()
     expect(bloco.getByRole('checkbox', { name: 'Leões' })).not.toBeChecked()
     expect(bloco.getByRole('checkbox', { name: 'Editar dados dos desbravadores' })).toBeChecked()
-    expect(bloco.queryByLabelText('Papel')).toBeDisabled()
+    expect(bloco.getByLabelText('Papel')).toBeDisabled()
     await userEvent.click(bloco.getByRole('checkbox', { name: 'Leões' }))
     await userEvent.click(bloco.getByRole('checkbox', { name: 'Editar dados dos desbravadores' }))
-    await userEvent.click(bloco.getByRole('button', { name: 'Salvar vínculo' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() => expect(corpos).toHaveLength(1))
     expect(corpos[0]).toEqual({ unidadeIds: [AGUIAS.id, LEOES.id], ajustes: [] })
   })
 
   it('acrescenta um papel com POST do vínculo novo', async () => {
     const corpos: unknown[] = []
-    abrir()
+    abrir(TRES, [], `/adm/usuarios/${thiago.id}/editar`)
     servidor.use(handlerNovoVinculo(thiago, corpos))
-    const painel = within(await abrirPainel('Thiago Mendes'))
-    await userEvent.click(painel.getByRole('button', { name: '+ Acrescentar papel' }))
-    const bloco = within(painel.getByRole('group', { name: 'Vínculo 2' }))
+    await userEvent.click(await screen.findByRole('button', { name: '+ Acrescentar papel' }))
+    const bloco = within(screen.getByRole('group', { name: 'Vínculo 2' }))
     await userEvent.selectOptions(bloco.getByLabelText('Papel'), 'INSTRUTOR')
     await userEvent.click(await bloco.findByRole('checkbox', { name: 'Companheiro' }))
-    await userEvent.click(bloco.getByRole('button', { name: 'Salvar vínculo' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() => expect(corpos).toEqual([{ papel: 'INSTRUTOR', unidadeIds: [], classeIds: [COMPANHEIRO.id], ajustes: [] }]))
   })
 
-  it('desativar pede confirmação: um toque não chama a API, cancelar volta ao botão', async () => {
+  it('mostra no bloco o erro de permissão inválida', async () => {
+    abrir(TRES, [], `/adm/usuarios/${thiago.id}/editar`)
+    servidor.use(handlerRegra422('put', '/api/vinculos/:id', 'AJUSTE_INVALIDO'))
+    const bloco = within(await screen.findByRole('group', { name: 'Vínculo 1' }))
+    await userEvent.click(await bloco.findByRole('checkbox', { name: 'Editar dados dos desbravadores' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    expect(await bloco.findByRole('alert')).toHaveTextContent('Alguma permissão não vale para este papel.')
+  })
+})
+
+describe('desativar na ficha', () => {
+  it('desativar pede confirmação: um toque não chama a API, cancelar fecha a janela', async () => {
     const chamadas: string[] = []
-    abrir()
+    abrir(TRES, [], `/adm/usuarios/${thiago.id}`)
     servidor.use(handlerDesativarUsuario({ ...thiago, situacao: 'INATIVO' }, chamadas))
-    const painel = within(await abrirPainel('Thiago Mendes'))
-    await userEvent.click(painel.getByRole('button', { name: 'Desativar neste clube' }))
-    expect(painel.getByText('Desativar Thiago Mendes neste clube? A pessoa perde o acesso a este clube na hora.')).toBeInTheDocument()
-    expect(painel.queryByRole('button', { name: 'Desativar neste clube' })).not.toBeInTheDocument()
+    await userEvent.click(await screen.findByRole('button', { name: 'Desativar neste clube' }))
+    const janela = within(screen.getByRole('dialog'))
+    expect(janela.getByText('A pessoa perde o acesso a este clube na hora.')).toBeInTheDocument()
     expect(chamadas).toEqual([])
-    await userEvent.click(painel.getByRole('button', { name: 'Cancelar' }))
-    expect(painel.getByRole('button', { name: 'Desativar neste clube' })).toBeInTheDocument()
+    await userEvent.click(janela.getByRole('button', { name: 'Cancelar' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(chamadas).toEqual([])
   })
 
   it('desativa neste clube depois de confirmar', async () => {
     const chamadas: string[] = []
-    abrir()
+    abrir(TRES, [], `/adm/usuarios/${thiago.id}`)
     servidor.use(handlerDesativarUsuario({ ...thiago, situacao: 'INATIVO' }, chamadas))
-    const painel = within(await abrirPainel('Thiago Mendes'))
-    await userEvent.click(painel.getByRole('button', { name: 'Desativar neste clube' }))
-    await userEvent.click(painel.getByRole('button', { name: 'Desativar' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Desativar neste clube' }))
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Desativar' }))
     await waitFor(() => expect(chamadas).toEqual([thiago.id]))
   })
 
-  it('mostra no bloco o erro de último Adm', async () => {
-    abrir()
-    servidor.use(handlerRegra422('put', '/api/vinculos/:id', 'ULTIMO_ADM'))
-    const painel = within(await abrirPainel('Diretoria'))
-    await userEvent.click(painel.getByRole('button', { name: 'Salvar vínculo' }))
-    const bloco = within(painel.getByRole('group', { name: 'Vínculo 1' }))
-    expect(await bloco.findByRole('alert')).toHaveTextContent('O clube precisa de pelo menos um Adm ativo.')
-  })
-
-  it('mostra no bloco o erro de permissão inválida', async () => {
-    abrir()
-    servidor.use(handlerRegra422('put', '/api/vinculos/:id', 'AJUSTE_INVALIDO'))
-    const painel = within(await abrirPainel('Thiago Mendes'))
-    await userEvent.click(await painel.findByRole('button', { name: 'Salvar vínculo' }))
-    const bloco = within(painel.getByRole('group', { name: 'Vínculo 1' }))
-    expect(await bloco.findByRole('alert')).toHaveTextContent('Alguma permissão não vale para este papel.')
-  })
-
   it('mostra o erro de último Adm ao desativar', async () => {
-    abrir()
+    abrir(TRES, [], `/adm/usuarios/${diretoria.id}`)
     servidor.use(handlerRegra422('post', '/api/usuarios/:id/desativar', 'ULTIMO_ADM'))
-    const painel = within(await abrirPainel('Diretoria'))
-    await userEvent.click(painel.getByRole('button', { name: 'Desativar neste clube' }))
-    await userEvent.click(painel.getByRole('button', { name: 'Desativar' }))
-    expect(await painel.findByRole('alert')).toHaveTextContent('O clube precisa de pelo menos um Adm ativo.')
+    await userEvent.click(await screen.findByRole('button', { name: 'Desativar neste clube' }))
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Desativar' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('O clube precisa de pelo menos um Adm ativo.')
   })
 })
