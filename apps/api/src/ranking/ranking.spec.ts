@@ -168,7 +168,7 @@ describe('ranking do mes', () => {
     expect(abril.itens.map((i) => i.dbvId)).toEqual([ana.id])
   })
 
-  it('Lider que vira Diretoria nao aparece nos meses passados; a unidade antiga conta so nos meses dela', async () => {
+  it('Diretoria que veio de Lider nao aparece em mes nenhum, nem nos meses em que tinha sido DBV', async () => {
     const { clube, unidade, adm } = await clubeComUnidade()
     const ana = await dbvNaUnidade(clube.id, unidade.id, 'Ana Costa')
     const lider = await criarDbv({ clubeId: clube.id, nome: 'Lia Lider', tipo: 'DIRETORIA' })
@@ -178,18 +178,15 @@ describe('ranking do mes', () => {
     await criarMembro({ dbvId: exDbv.id, unidadeId: unidade.id, inicio: '2026-01-01', fim: '2026-02-15' })
     await criarLancamento({ clubeId: clube.id, dbvId: exDbv.id, pontos: 5, data: '2026-02-05' })
 
-    const fevereiro = corpo<Ranking>(await api.get(`/api/ranking?mes=2026-02`, adm.autorizacao))
-    expect(fevereiro.itens.map((i) => [i.dbvId, i.unidade?.id])).toEqual([
-      [exDbv.id, unidade.id],
-      [ana.id, unidade.id],
-    ])
-    const marco = corpo<Ranking>(await api.get(`/api/ranking?mes=2026-03`, adm.autorizacao))
-    expect(marco.itens.map((i) => i.dbvId)).toEqual([ana.id])
-    const unidades = corpo<Unidades>(await api.get(`/api/ranking/unidades?mes=2026-03`, adm.autorizacao))
+    for (const mes of ['2026-01', '2026-02', '2026-03']) {
+      const saida = corpo<Ranking>(await api.get(`/api/ranking?mes=${mes}`, adm.autorizacao))
+      expect(saida.itens.map((i) => i.dbvId)).toEqual([ana.id])
+    }
+    const unidades = corpo<Unidades>(await api.get(`/api/ranking/unidades?mes=2026-02`, adm.autorizacao))
     expect(unidades.map((u) => [u.unidade.id, u.totalDbvs])).toEqual([[unidade.id, 1]])
   })
 
-  it('saiu e voltou a Diretoria: contam os meses em que estava numa unidade, nunca os meses sem unidade', async () => {
+  it('Diretoria sem unidade na vespera da entrada nao aparece em mes nenhum; com unidade, aparece nela em todos os meses anteriores', async () => {
     const { clube, unidade, adm } = await clubeComUnidade()
     const outra = await criarUnidade({ clubeId: clube.id })
     const volta = await criarDbv({ clubeId: clube.id, nome: 'Vera Volta', tipo: 'DIRETORIA' })
@@ -202,42 +199,59 @@ describe('ranking do mes', () => {
 
     const doMes = async (mes: string) =>
       corpo<Ranking>(await api.get(`/api/ranking?mes=${mes}`, adm.autorizacao)).itens.map((i) => [i.dbvId, i.unidade?.id])
-    expect(await doMes('2026-01')).toEqual([
-      [semUnidade.id, unidade.id],
-      [volta.id, unidade.id],
-    ])
-    expect(await doMes('2026-02')).toEqual([
-      [semUnidade.id, unidade.id],
-      [volta.id, unidade.id],
-    ])
-    expect(await doMes('2026-03')).toEqual([[volta.id, outra.id]])
-    expect(await doMes('2026-04')).toEqual([[volta.id, outra.id]])
+    for (const mes of ['2026-01', '2026-02', '2026-03', '2026-04']) expect(await doMes(mes)).toEqual([[volta.id, outra.id]])
     expect(await doMes('2026-05')).toEqual([])
   })
 
-  it('DBV que trocou de unidade e virou Diretoria conta em cada mes com a unidade de entao, e so neles', async () => {
+  it('entrar na Diretoria nao muda o passado: A (jan-mar), B (jul), Diretoria em out mostra a pessoa na B de jan a set, antes e depois', async () => {
     const { clube, unidade, adm } = await clubeComUnidade()
     const outra = await criarUnidade({ clubeId: clube.id })
     const ana = await criarDbv({ clubeId: clube.id, nome: 'Ana Costa' })
     await criarMembro({ dbvId: ana.id, unidadeId: unidade.id, inicio: '2026-01-01' })
-    const bia = await criarDbv({ clubeId: clube.id, nome: 'Bia Trocou', tipo: 'DIRETORIA' })
-    await prismaDeTeste().desbravador.update({ where: { id: bia.id }, data: { diretoriaDesde: new Date('2026-10-05T00:00:00Z') } })
+    const caio = await criarDbv({ clubeId: clube.id, nome: 'Caio Alves' })
+    await criarMembro({ dbvId: caio.id, unidadeId: outra.id, inicio: '2026-01-01' })
+    const bia = await criarDbv({ clubeId: clube.id, nome: 'Bia Trocou' })
     await criarMembro({ dbvId: bia.id, unidadeId: unidade.id, inicio: '2026-01-01', fim: '2026-03-20' })
-    await criarMembro({ dbvId: bia.id, unidadeId: outra.id, inicio: '2026-07-01', fim: '2026-10-05' })
+    await criarMembro({ dbvId: bia.id, unidadeId: outra.id, inicio: '2026-07-01' })
     await criarLancamento({ clubeId: clube.id, dbvId: ana.id, pontos: 10, data: '2026-02-05' })
+    await criarLancamento({ clubeId: clube.id, dbvId: caio.id, pontos: 20, data: '2026-02-05' })
     await criarLancamento({ clubeId: clube.id, dbvId: bia.id, pontos: 30, data: '2026-02-05' })
+    await criarLancamento({ clubeId: clube.id, dbvId: bia.id, pontos: 40, data: '2026-08-05' })
 
-    const unidadeDaBia = async (mes: string) =>
-      corpo<Ranking>(await api.get(`/api/ranking?mes=${mes}`, adm.autorizacao)).itens.find((i) => i.dbvId === bia.id)?.unidade?.id ?? null
-    for (const mes of ['2026-01', '2026-02', '2026-03']) expect(await unidadeDaBia(mes)).toBe(unidade.id)
-    for (const mes of ['2026-04', '2026-05', '2026-06']) expect(await unidadeDaBia(mes)).toBeNull()
-    for (const mes of ['2026-07', '2026-08', '2026-09']) expect(await unidadeDaBia(mes)).toBe(outra.id)
-    expect(await unidadeDaBia('2026-10')).toBeNull()
+    const meses = ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09']
+    const retrato = async () => {
+      const fotos: unknown[] = []
+      for (const mes of meses) {
+        const ranking = corpo<Ranking>(await api.get(`/api/ranking?mes=${mes}`, adm.autorizacao))
+        const unidades = corpo<Unidades>(await api.get(`/api/ranking/unidades?mes=${mes}`, adm.autorizacao))
+        fotos.push({
+          mes,
+          itens: ranking.itens.map((i) => [i.dbvId, i.unidade?.id, i.pontos]),
+          medias: unidades.map((u) => [u.unidade.id, u.mediaPontos, u.totalDbvs]),
+        })
+      }
+      return fotos
+    }
 
-    const daUnidade = corpo<Ranking>(await api.get(`/api/ranking?mes=2026-02&unidadeId=${unidade.id}`, adm.autorizacao))
-    expect(daUnidade.itens.map((i) => i.dbvId)).toEqual([bia.id, ana.id])
-    const unidades = corpo<Unidades>(await api.get(`/api/ranking/unidades?mes=2026-02`, adm.autorizacao))
-    expect(unidades.map((u) => [u.unidade.id, u.mediaPontos, u.totalDbvs])).toEqual([[unidade.id, 20, 2]])
+    const emSetembro = await retrato()
+    for (const mes of meses) {
+      const daBia = corpo<Ranking>(await api.get(`/api/ranking?mes=${mes}`, adm.autorizacao)).itens.find((i) => i.dbvId === bia.id)
+      expect(daBia?.unidade?.id).toBe(outra.id)
+    }
+    const fevereiro = corpo<Unidades>(await api.get(`/api/ranking/unidades?mes=2026-02`, adm.autorizacao))
+    expect(fevereiro.find((u) => u.unidade.id === outra.id)?.mediaPontos).toBe(25)
+
+    await prismaDeTeste().desbravador.update({
+      where: { id: bia.id },
+      data: { tipo: 'DIRETORIA', diretoriaDesde: new Date('2026-10-05T00:00:00Z') },
+    })
+    await prismaDeTeste().membroUnidade.updateMany({ where: { dbvId: bia.id, fim: null }, data: { fim: new Date('2026-10-05T00:00:00Z') } })
+
+    expect(await retrato()).toEqual(emSetembro)
+    const outubro = corpo<Ranking>(await api.get(`/api/ranking?mes=2026-10`, adm.autorizacao))
+    expect(outubro.itens.map((i) => i.dbvId)).not.toContain(bia.id)
+    const daUnidade = corpo<Ranking>(await api.get(`/api/ranking?mes=2026-02&unidadeId=${outra.id}`, adm.autorizacao))
+    expect(daUnidade.itens.map((i) => i.dbvId)).toEqual([bia.id, caio.id])
   })
 
   it('sem mes, usa o mes corrente no fuso do clube (02:00 UTC de 1o de maio ainda e abril)', async () => {

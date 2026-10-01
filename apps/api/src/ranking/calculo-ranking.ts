@@ -56,21 +56,21 @@ function comparar(a: EntradaDoRanking, b: EntradaDoRanking): number {
 
 interface FichaDoRanking {
   diretoriaDesde: Date | null
-  membros: { inicio: Date; fim: Date | null; unidade: z.infer<typeof RefUnidade> }[]
+  membros: { fim: Date | null; unidade: z.infer<typeof RefUnidade> }[]
 }
 
 type Passagem = FichaDoRanking['membros'][number]
 
 /**
- * DBV: a unidade aberta. Diretoria (num mês anterior à entrada): a passagem de unidade que cruza o mês — a mais
- * recente, se trocou de unidade nele. Sem passagem no mês, a Diretoria não era desbravador nele e fica de fora:
- * quem chega de Líder, ou os meses em que esteve sem unidade.
+ * A unidade com que a ficha aparece no ranking — qualquer mês, como o desbravador comum, que aparece sempre com a
+ * unidade atual. DBV: a unidade aberta. Diretoria (num mês anterior à entrada): a unidade que tinha na véspera,
+ * isto é, a passagem que terminou no dia de `diretoriaDesde`; é o que o ranking mostrava antes da entrada. Sem
+ * ela (veio de Líder, ou estava sem unidade na véspera) a Diretoria fica de fora de todos os meses.
  */
-function passagemNoMes(ficha: FichaDoRanking, inicioDoMes: Date, fimDoMes: Date): Passagem | undefined {
-  if (ficha.diretoriaDesde === null) return ficha.membros.find((membro) => membro.fim === null)
-  return ficha.membros
-    .filter((membro) => membro.inicio < fimDoMes && (membro.fim === null || membro.fim >= inicioDoMes))
-    .sort((a, b) => b.inicio.getTime() - a.inicio.getTime())[0]
+function passagemNoRanking(ficha: FichaDoRanking): Passagem | undefined {
+  const { diretoriaDesde } = ficha
+  if (diretoriaDesde === null) return ficha.membros.find((membro) => membro.fim === null)
+  return ficha.membros.find((membro) => membro.fim?.getTime() === diretoriaDesde.getTime())
 }
 
 /** Pontos e frequencia do mes (E13, E14). Nao decide quem pode ver nome ou frequencia: isso e do escopo. */
@@ -80,10 +80,10 @@ export class CalculoRanking {
 
   /**
    * Quem era desbravador no mes, ja na ordem do ranking: DBV ativo, ou Diretoria que so entrou depois do fim
-   * do mes e estava, nele, numa unidade. `unidadeId` filtra por essa unidade.
+   * do mes e estava numa unidade na vespera da entrada. `unidadeId` filtra por essa unidade.
    */
   async doMes(clubeId: string, mes: string, anoClube: number, unidadeId?: string): Promise<EntradaDoRanking[]> {
-    const { inicio: inicioDoMes, fim: fimDoMes } = limitesDoMes(mes)
+    const { fim: fimDoMes } = limitesDoMes(mes)
     const fichas = await this.prisma.desbravador.findMany({
       where: {
         clubeId,
@@ -96,8 +96,8 @@ export class CalculoRanking {
         nomePublico: true,
         diretoriaDesde: true,
         membros: {
-          where: { OR: [{ fim: null }, { fim: { gte: inicioDoMes } }] },
-          select: { inicio: true, fim: true, unidade: { select: { id: true, nome: true } } },
+          where: { OR: [{ fim: null }, { fim: { gte: fimDoMes } }] },
+          select: { fim: true, unidade: { select: { id: true, nome: true } } },
         },
         matriculas: {
           where: { anoClube, status: 'CURSANDO', classe: { tipo: 'REGULAR' } },
@@ -106,7 +106,7 @@ export class CalculoRanking {
       },
     })
     const comUnidade = fichas.flatMap((ficha) => {
-      const passagem = passagemNoMes(ficha, inicioDoMes, fimDoMes)
+      const passagem = passagemNoRanking(ficha)
       if (ficha.diretoriaDesde !== null && passagem === undefined) return []
       return [{ ...ficha, unidade: passagem?.unidade }]
     })

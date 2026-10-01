@@ -117,14 +117,15 @@ não a incluem.
   ranking de um mês inclui a ficha se ela era DBV naquele mês — `tipo = 'DBV'` **ou**
   (`tipo = 'DIRETORIA'` e `diretoriaDesde` depois do fim do mês). Meses anteriores à entrada na
   Diretoria ficam como estavam.
-- **Só conta quem era desbravador no mês.** A Diretoria entra num mês anterior a `diretoriaDesde`
-  apenas se tem **alguma** passagem de unidade que cruze aquele mês (começou antes do fim do mês e
-  não tinha terminado antes do início dele), e aparece nele com a unidade dessa passagem — a mais
-  recente, se trocou de unidade no mês. Assim quem esteve na unidade A de janeiro a março, na B desde
-  julho e virou Diretoria em outubro conta em janeiro–março pela A e em julho–setembro pela B, e a
-  média de cada unidade nesses meses fica como era. Quem chega de Líder não tem passagem e não aparece
-  em mês nenhum do passado; quem sai e volta à Diretoria conta nos meses em que estava numa unidade,
-  nunca nos meses em que esteve sem unidade.
+- **O ranking de meses anteriores mostra a Diretoria como mostrava na véspera da entrada.** O ranking
+  não guarda histórico de unidade: o desbravador comum aparece em todos os meses com a unidade atual.
+  Para entrar na Diretoria não mudar o passado, a ficha DIRETORIA conta num mês anterior a
+  `diretoriaDesde` **se e somente se** existe a passagem de unidade que terminou no dia de
+  `diretoriaDesde` (a unidade que tinha na véspera), e conta **com essa unidade em todos esses meses**.
+  Assim quem esteve na unidade A de janeiro a março, na B desde julho e virou Diretoria em outubro
+  aparece na B de janeiro a setembro — antes e depois da entrada —, e a média da B nesses meses é a
+  mesma consultada em setembro ou em outubro. Quem chega de Líder, ou estava sem unidade na véspera,
+  não tinha unidade no ranking da véspera e não aparece em mês nenhum, nem nos meses em que foi DBV.
 
 ### Lugares que precisam INCLUIR a Diretoria
 
