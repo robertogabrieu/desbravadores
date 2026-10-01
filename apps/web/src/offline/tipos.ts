@@ -131,6 +131,8 @@ export type RegistrarTipo = <P, S extends z.ZodType>(def: TipoFila<P, S>) => voi
 export type Enfileirar = <P>(entrada: EntradaFila<P>) => Promise<string>
 export type UseFila = () => EstadoFila
 export type ItensDaChave = (chave: string) => Promise<ItemFila[]>
+/** NA_FILA, ENVIANDO e ERRO do vínculo, em `criadoEm` (aviso de envios do papel que ficou para trás). */
+export type NaoEnviadosDoVinculo = (usuarioId: string, vinculoId: string) => Promise<ItemFila[]>
 export type UseConexao = () => { modo: ModoConexao }
 export type UseModoSessao = () => ModoSessao
 export type LimparDadosDoUsuario = (usuarioId: string, opcoes: { manterFila: true }) => Promise<void>

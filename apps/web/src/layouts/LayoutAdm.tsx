@@ -9,6 +9,7 @@ import { FaixaSessaoExpirada } from './FaixaSessaoExpirada'
 import { ItemNavegacao } from './ItemNavegacao'
 import type { ItemDeNavegacao } from './ItemNavegacao'
 import { MenuUsuario } from './MenuUsuario'
+import { SeloPapel } from './SeloPapel'
 import { useLarguraMenorQue } from './useLarguraMenorQue'
 
 const ITENS_ADM: ItemDeNavegacao[] = [
@@ -73,7 +74,8 @@ export function LayoutAdm() {
               <Marca className="text-texto" classeDoNome="max-sm:sr-only" />
             </>
           )}
-          <div className="ml-auto flex shrink-0 items-center gap-1">
+          <div className="ml-auto flex min-w-0 items-center gap-1">
+            <SeloPapel />
             <SinoNotificacoes />
             <MenuUsuario />
           </div>

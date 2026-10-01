@@ -5,14 +5,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import { configurarCliente } from '../api/cliente'
 import { servidor } from '../testes/servidor'
-import { criarEu, criarVinculo } from '../testes/handlers/sessao'
+import { criarEu, criarSessao, criarVinculo, uuid } from '../testes/handlers/sessao'
 import { banco } from './banco'
 import { definirConexao } from './conexao'
 import { dependencias } from './dependencias'
-import { enfileirar, itensDaChave, registrarTipo, useFila } from './index'
+import { enfileirar, itensDaChave, naoEnviadosDoVinculo, registrarTipo, useFila } from './index'
 import type { ItemFila, TipoFila } from './index'
 import { limparFilaDeAbertura } from './limpeza'
-import { aguardarMotorPronto, iniciarMotor } from './motor'
+import { estadoOffline } from './estado'
+import { aguardarMotorPronto, iniciarMotor, liberarTrocaDePapel, pararMotor, pausarParaTrocaDePapel } from './motor'
 import { tempos } from './tempos'
 
 const USUARIO = 'usuario-1'
@@ -193,6 +194,99 @@ describe('fila: envio', () => {
     await waitFor(async () => expect((await ler(primeiro))?.estado).toBe('ENVIADO'))
     expect(vistos).toEqual(['true:1'])
     await waitFor(async () => expect((await ler(seguinte.id))?.payload).toEqual({ valor: 'atualizado' }))
+  })
+})
+
+describe('fila: troca de papel', () => {
+  it('pausada durante a troca: nada sai até a sessão chegar ao vínculo novo', async () => {
+    let enviados = 0
+    servidor.use(http.put('/api/falso', () => ((enviados += 1), respostaOk())))
+    iniciar()
+    pausarParaTrocaDePapel('vinculo-2')
+    const id = await pedirCarga('k-troca', 'x')
+    await new Promise((resolver) => setTimeout(resolver, 200))
+    expect(enviados).toBe(0)
+    expect((await ler(id))?.estado).toBe('NA_FILA')
+
+    // A sessão ainda no vínculo antigo não solta a pausa.
+    iniciarMotor({ usuarioId: USUARIO, vinculoId: VINCULO, queryClient: new QueryClient() })
+    await new Promise((resolver) => setTimeout(resolver, 200))
+    expect(enviados).toBe(0)
+
+    // Chegou ao vínculo novo: a pausa sai (o item é do vínculo antigo e espera a volta a ele).
+    iniciarMotor({ usuarioId: USUARIO, vinculoId: 'vinculo-2', queryClient: new QueryClient() })
+    iniciarMotor({ usuarioId: USUARIO, vinculoId: VINCULO, queryClient: new QueryClient() })
+    await waitFor(async () => expect((await ler(id))?.estado).toBe('ENVIADO'))
+  })
+
+  it('troca recusada: liberar a pausa volta a enviar no vínculo de sempre', async () => {
+    servidor.use(http.put('/api/falso', respostaOk))
+    iniciar()
+    pausarParaTrocaDePapel('vinculo-2')
+    const id = await pedirCarga('k-recusa', 'x')
+    liberarTrocaDePapel()
+    await waitFor(async () => expect((await ler(id))?.estado).toBe('ENVIADO'))
+  })
+
+  it('parar o motor (sair) desfaz a pausa da troca', async () => {
+    iniciar()
+    pausarParaTrocaDePapel('vinculo-2')
+    await pararMotor()
+    expect(estadoOffline.trocaParaVinculo).toBeNull()
+  })
+
+  it('renovação no meio do envio que cai noutro vínculo (troca em outra aba): o item volta à fila sem ERRO, sem gastar tentativa e sem reenvio', async () => {
+    let chamadas = 0
+    servidor.use(
+      http.put('/api/falso', () => ((chamadas += 1), recusa(401, 'NAO_AUTENTICADO'))),
+      http.post('/api/auth/refresh', () => HttpResponse.json(criarSessao([criarVinculo('INSTRUTOR', 2)]))),
+    )
+    iniciar()
+    const id = await pedirCarga('k-outra-aba', 'x')
+
+    await waitFor(() => expect(estadoOffline.sessao?.vinculoId).toBe(uuid(2)))
+    await new Promise((resolver) => setTimeout(resolver, 60))
+    const item = await ler(id)
+    expect([item?.estado, item?.tentativas, item?.proximaTentativaEm, item?.erro]).toEqual(['NA_FILA', 0, null, undefined])
+    expect(chamadas).toBe(1)
+    expect(estadoOffline.pausadaPorSessao).toBe(false)
+  })
+})
+
+describe('fila: troca de papel no envio de arquivo', () => {
+  class XhrQueExpirou {
+    static enviados = 0
+    upload = { onprogress: null }
+    onload: (() => void) | null = null
+    status = 401
+    responseText = JSON.stringify({ codigo: 'NAO_AUTENTICADO', mensagem: 'expirou' })
+    open() {}
+    setRequestHeader() {}
+    send() {
+      XhrQueExpirou.enviados += 1
+      this.onload?.()
+    }
+  }
+
+  it('renovação que cai noutro vínculo não reenvia o arquivo e devolve o item à fila sem gastar tentativa', async () => {
+    XhrQueExpirou.enviados = 0
+    vi.spyOn(dependencias, 'criarXhr').mockImplementation(() => new XhrQueExpirou() as unknown as XMLHttpRequest)
+    servidor.use(http.post('/api/auth/refresh', () => HttpResponse.json(criarSessao([criarVinculo('INSTRUTOR', 2)]))))
+    registrarTipo<Carga, typeof saidaOk>({
+      ...tipoFalso,
+      tipo: 'ARQUIVO_FALSO',
+      enviar: (_item, ctx) =>
+        ctx.enviarArquivo('/api/arquivo', { metodo: 'POST', campos: {}, campoArquivo: 'arquivo', arquivo: new Blob(['x']), nomeArquivo: 'x.jpg' }, () => undefined),
+    })
+    iniciar()
+
+    const id = await enfileirar<Carga>({ tipo: 'ARQUIVO_FALSO', chave: 'foto:troca', payload: { valor: 'f' } })
+
+    await waitFor(() => expect(estadoOffline.sessao?.vinculoId).toBe(uuid(2)))
+    await new Promise((resolver) => setTimeout(resolver, 60))
+    const item = await ler(id)
+    expect([item?.estado, item?.tentativas, item?.erro]).toEqual(['NA_FILA', 0, undefined])
+    expect(XhrQueExpirou.enviados).toBe(1)
   })
 })
 
@@ -481,6 +575,21 @@ describe('fila: arquivo por XHR', () => {
     await waitFor(async () => expect((await ler(id))?.estado).toBe('ENVIADO'))
     expect(progressos).toContain(50)
     expect(enviados).toEqual([{ metodo: 'POST', url: '/api/arquivo', campos: ['dados', 'arquivo'] }])
+  })
+})
+
+describe('fila: envios de outro papel', () => {
+  it('naoEnviadosDoVinculo conta só o que falta enviar daquele vínculo, do usuário', async () => {
+    await semear({ estado: 'NA_FILA', criadoEm: 2 })
+    await semear({ estado: 'ERRO', criadoEm: 1 })
+    await semear({ estado: 'ENVIADO' })
+    await semear({ vinculoId: 'vinculo-2' })
+    await semear({ usuarioId: 'usuario-2' })
+
+    const itens = await naoEnviadosDoVinculo(USUARIO, VINCULO)
+
+    expect(itens.map((item) => item.estado)).toEqual(['ERRO', 'NA_FILA'])
+    expect(await naoEnviadosDoVinculo(USUARIO, 'vinculo-2')).toHaveLength(1)
   })
 })
 
