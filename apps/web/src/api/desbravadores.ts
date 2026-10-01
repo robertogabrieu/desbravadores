@@ -21,6 +21,7 @@ export type Aviso = z.infer<typeof AvisoContrato>
 export type NovoDesbravador = z.input<typeof DesbravadorCriarEntrada>
 export type EdicaoDesbravador = z.input<typeof DesbravadorEditarEntrada>
 export type SituacaoDesbravador = z.input<typeof DesbravadorFiltro>['ativo']
+export type FiltroDiretoria = NonNullable<z.input<typeof DesbravadorFiltro>['diretoria']>
 
 export interface FiltroDesbravadores {
   busca?: string
@@ -28,6 +29,7 @@ export interface FiltroDesbravadores {
   semUnidade?: boolean
   classeId?: string
   ativo: SituacaoDesbravador
+  diretoria?: FiltroDiretoria
   pagina: number
 }
 
@@ -53,6 +55,7 @@ export function useDesbravadores(filtro: FiltroDesbravadores) {
           semUnidade: filtro.semUnidade || undefined,
           classeId: filtro.classeId,
           ativo: filtro.ativo,
+          diretoria: filtro.diretoria,
           pagina: filtro.pagina,
           porPagina: POR_PAGINA,
         })}`,

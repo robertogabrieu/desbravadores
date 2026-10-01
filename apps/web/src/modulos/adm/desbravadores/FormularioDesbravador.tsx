@@ -1,6 +1,7 @@
-import { DesbravadorCriarEntrada, DesbravadorEditarEntrada } from '@desbravadores/shared'
+import { DesbravadorCriarEntrada, DesbravadorEditarEntrada, type MotivoDiretoria } from '@desbravadores/shared'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import type { z } from 'zod'
 import { hojeDoClube, useCriarDesbravador, useEditarDesbravador, useMoverUnidade } from '../../../api/desbravadores'
 import type { Aviso, Desbravador } from '../../../api/desbravadores'
 import { useClasses, useUnidades, useUsuariosResumo } from '../../../api/leitura'
@@ -36,6 +37,22 @@ interface Propriedades {
 }
 
 const textoOuNulo = (texto: string): string | null => texto.trim() || null
+
+const TEXTO_DO_MOTIVO: Record<z.infer<typeof MotivoDiretoria>, string> = {
+  IDADE: 'pela idade (16 anos até junho)',
+  CONSELHEIRO: 'conselheiro',
+  INSTRUTOR: 'instrutor',
+}
+
+function LinhaDiretoria({ diretoria }: { diretoria: Desbravador['diretoria'] }) {
+  if (!diretoria.membro) return null
+  return (
+    <div className="rounded-cartao bg-marca-suave px-3 py-2">
+      <p className="text-base font-semibold text-texto">Membro da Diretoria</p>
+      <p className="text-sm text-texto-2">{diretoria.motivos.map((motivo) => TEXTO_DO_MOTIVO[motivo]).join(', ')}</p>
+    </div>
+  )
+}
 
 function valoresIniciais(desbravador: Desbravador | undefined): Valores {
   return {
@@ -170,6 +187,7 @@ export function FormularioDesbravador({ desbravador, aoConcluir, aoCancelar }: P
 
   return (
     <form noValidate onSubmit={(evento) => void enviar(evento)} className="flex flex-col gap-4">
+      {desbravador && <LinhaDiretoria diretoria={desbravador.diretoria} />}
       <Selecao rotulo="Tipo" value={valores.tipo} disabled={editando} onChange={(e) => definir('tipo', e.target.value === 'LIDER' ? 'LIDER' : 'DBV')}>
         <option value="DBV">Desbravador</option>
         <option value="LIDER">Líder em formação</option>

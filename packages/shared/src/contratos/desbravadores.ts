@@ -49,6 +49,9 @@ export const ContatoResponsavel = z.object({
   responsavelTelefone: z.string().nullable(),
   responsavelEmail: z.string().nullable(),
 })
+/** Por que a pessoa é da Diretoria; a marca é calculada a cada leitura, nunca gravada. */
+export const MotivoDiretoria = z.enum(['IDADE', 'CONSELHEIRO', 'INSTRUTOR'])
+export const DiretoriaSaida = z.object({ membro: z.boolean(), motivos: z.array(MotivoDiretoria) })
 export const DesbravadorSaida = z.object({
   id: Uuid,
   nome: z.string(),
@@ -66,6 +69,7 @@ export const DesbravadorSaida = z.object({
   unidade: RefUnidade.nullable(),
   classeAtual: RefClasse.nullable(),   // matrícula CURSANDO na REGULAR do ano do clube
   avancadaAtual: RefClasse.nullable(), // matrícula CURSANDO na AVANCADA do ano do clube
+  diretoria: DiretoriaSaida,
   /** Ausente (não null) quando quem pede não tem `dbv.ver_contato`. O serviço omite a chave. */
   contato: ContatoResponsavel.optional(),
 })
@@ -76,6 +80,7 @@ export const DesbravadorFiltro = Paginacao.extend({
   classeId: Uuid.optional(),
   tipo: TipoPessoa.optional(),
   ativo: z.enum(['true', 'false', 'todos']).default('true'),
+  diretoria: z.enum(['sim', 'nao']).optional(),
 })
 export const DesbravadorLista = pagina(DesbravadorSaida) // ordem: nome ascendente
 

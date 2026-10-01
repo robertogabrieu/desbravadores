@@ -2,7 +2,7 @@ import { FileSpreadsheet, Plus } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { POR_PAGINA, useDesbravadores, useReativarDesbravador } from '../../../api/desbravadores'
-import type { Aviso, Desbravador, SituacaoDesbravador } from '../../../api/desbravadores'
+import type { Aviso, Desbravador, FiltroDiretoria, SituacaoDesbravador } from '../../../api/desbravadores'
 import { useClasses, useUnidades } from '../../../api/leitura'
 import { Botao } from '../../../ui/Botao'
 import { Campo } from '../../../ui/Campo'
@@ -10,6 +10,7 @@ import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { FaixaAviso } from '../../../ui/FaixaAviso'
 import { FolhaLateral } from '../../../ui/FolhaLateral'
 import { Selecao } from '../../../ui/Selecao'
+import { Selo } from '../../../ui/Selo'
 import { Tabela } from '../../../ui/Tabela'
 import type { ColunaTabela } from '../../../ui/Tabela'
 import { ChipClasse } from './ChipClasse'
@@ -31,6 +32,7 @@ export function ListaDesbravadores() {
   const [unidade, setUnidade] = useState('')
   const [classeId, setClasseId] = useState('')
   const [situacao, setSituacao] = useState<SituacaoDesbravador>('true')
+  const [diretoria, setDiretoria] = useState<FiltroDiretoria | ''>('')
   const [pagina, setPagina] = useState(1)
   const [painel, setPainel] = useState<Painel>(null)
   const [avisos, setAvisos] = useState<Aviso[]>([])
@@ -54,6 +56,7 @@ export function ListaDesbravadores() {
     semUnidade: unidade === SEM_UNIDADE || undefined,
     classeId: classeId || undefined,
     ativo: situacao,
+    diretoria: diretoria || undefined,
     pagina,
   })
 
@@ -74,7 +77,16 @@ export function ListaDesbravadores() {
   }
 
   const colunas: ColunaTabela<Desbravador>[] = [
-    { chave: 'nome', titulo: 'Nome', celula: (d) => <span className="font-semibold">{d.nome}</span> },
+    {
+      chave: 'nome',
+      titulo: 'Nome',
+      celula: (d) => (
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="font-semibold">{d.nome}</span>
+          {d.diretoria.membro && <Selo>Diretoria</Selo>}
+        </span>
+      ),
+    },
     { chave: 'idade', titulo: 'Idade', celula: (d) => d.idade },
     { chave: 'unidade', titulo: 'Unidade', celula: (d) => (d.tipo === 'LIDER' ? '—' : (d.unidade?.nome ?? 'Sem unidade')) },
     { chave: 'classe', titulo: 'Classe', celula: (d) => (d.classeAtual ? <ChipClasse classe={d.classeAtual} /> : '—') },
@@ -146,7 +158,7 @@ export function ListaDesbravadores() {
         </p>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Campo rotulo="Buscar por nome" type="search" value={busca} onChange={(e) => filtrar(setBusca)(e.target.value)} />
         <Selecao rotulo="Unidade" value={unidade} onChange={(e) => filtrar(setUnidade)(e.target.value)}>
           <option value="">Todas as unidades</option>
@@ -173,6 +185,15 @@ export function ListaDesbravadores() {
           <option value="true">Ativos</option>
           <option value="false">Inativos</option>
           <option value="todos">Todos</option>
+        </Selecao>
+        <Selecao
+          rotulo="Diretoria"
+          value={diretoria}
+          onChange={(e) => filtrar(setDiretoria)(e.target.value === 'sim' ? 'sim' : e.target.value === 'nao' ? 'nao' : '')}
+        >
+          <option value="">Todos</option>
+          <option value="sim">Só Diretoria</option>
+          <option value="nao">Fora da Diretoria</option>
         </Selecao>
       </div>
 
