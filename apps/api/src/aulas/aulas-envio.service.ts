@@ -11,6 +11,7 @@ import { ServicoEscopo } from '../desbravadores/escopo.service'
 import { Prisma } from '../generated/prisma/client.js'
 import type { ConfiguracaoClube, RegistroAula, TipoPessoa } from '../generated/prisma/client.js'
 import { ServicoPontos } from '../pontos/servico-pontos'
+import { exigirFichaDeOutraPessoa } from '../progresso/conclusoes'
 import {
   DIAS_DE_CORRECAO,
   DIAS_DE_ENVIO_TARDIO,
@@ -25,7 +26,7 @@ type Saida = z.infer<typeof AulaEnvioSaida>
 type Marca = Envio['requisitosMarcados'][number]
 type SemEfeito = Saida['requisitosSemEfeito'][number]
 type Tx = Prisma.TransactionClient
-type Membros = Map<string, { nome: string; tipo: TipoPessoa }>
+type Membros = Map<string, { nome: string; tipo: TipoPessoa; usuarioId: string | null }>
 
 interface Contexto {
   sessao: SessaoLogada
@@ -213,9 +214,9 @@ export class AulasEnvioService {
         status: 'CURSANDO',
         dbv: { clubeId, ativo: true, tipo: { in: ['DBV', 'LIDER'] } },
       },
-      select: { dbvId: true, dbv: { select: { nome: true, tipo: true } } },
+      select: { dbvId: true, dbv: { select: { nome: true, tipo: true, usuarioId: true } } },
     })
-    return new Map(matriculas.map((matricula) => [matricula.dbvId, { nome: matricula.dbv.nome, tipo: matricula.dbv.tipo }]))
+    return new Map(matriculas.map(({ dbvId, dbv }) => [dbvId, { nome: dbv.nome, tipo: dbv.tipo, usuarioId: dbv.usuarioId }]))
   }
 
   /** Presenca com conflito por `versao`: a ultima gravacao vale, a versao vista velha vira conflito. */
@@ -275,6 +276,9 @@ export class AulasEnvioService {
   private async aplicarRequisitos(tx: Tx, contexto: Contexto) {
     const { sessao, registro, envio, membros } = contexto
     const { clubeId } = sessao
+    for (const marca of [...envio.requisitosMarcados, ...envio.requisitosDesmarcados]) {
+      exigirFichaDeOutraPessoa(sessao, membros.get(marca.dbvId)?.usuarioId ?? null)
+    }
     const foraDaAula = new Set<string>()
     let gravou = false
 

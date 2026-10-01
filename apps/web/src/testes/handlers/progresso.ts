@@ -9,7 +9,7 @@ export const CLASSE_AMIGO = { id: uuid(301), nome: 'Amigo', tipo: 'REGULAR', tri
 export const CLASSE_AMIGO_AVANCADA = { id: uuid(302), nome: 'Amigo da Natureza', tipo: 'AVANCADA', trilha: 'INDIVIDUAL', corToken: '--classe-amigo' } as const
 
 const item = (n: number, nome: string, percentual: number, concluidos: number, total = 50): ProgressoClasse['itens'][number] => ({
-  dbvId: uuid(n), nome, tipo: 'DBV', status: 'CURSANDO', concluidos, percentual, faltam: total - concluidos,
+  dbvId: uuid(n), nome, tipo: 'DBV', status: 'CURSANDO', concluidos, percentual, faltam: total - concluidos, voce: false,
 })
 
 export function criarProgressoClasse(parcial: Partial<ProgressoClasse> = {}): ProgressoClasse {

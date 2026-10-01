@@ -63,7 +63,18 @@ const CAMPOS_DO_CONSELHEIRO = [
 
 function relacoesDoAno(clubeId: string, anoClube: number) {
   return {
-    usuario: { select: { vinculos: { where: vinculosDaDiretoria(clubeId), select: { papel: true } } } },
+    usuario: {
+      select: {
+        vinculos: {
+          where: { clubeId, ativo: true },
+          select: {
+            papel: true,
+            classes: { select: { classe: { select: { ...SELECAO_REF_CLASSE, ordem: true } } } },
+            unidades: { where: { clubeId }, select: { unidade: { select: { id: true, nome: true } } } },
+          },
+        },
+      },
+    },
     membros: {
       where: { fim: null },
       include: { unidade: { select: { id: true, nome: true, tipo: true } } },
@@ -84,6 +95,20 @@ function diretoria(dbv: DesbravadorCompleto, hoje: string): Saida['diretoria'] {
   if (diretoriaPelaIdade(paraDataCivil(dbv.nascimento), hoje)) motivos.push('IDADE')
   for (const papel of PAPEIS_DA_DIRETORIA) if (papeis.has(papel)) motivos.push(papel)
   return { membro: motivos.length > 0, motivos }
+}
+
+/** O que a conta ligada à ficha conduz no clube: classes que instrui e unidades que aconselha. */
+function conduz(dbv: DesbravadorCompleto): Pick<Saida, 'instrui' | 'aconselha'> {
+  const vinculos = dbv.usuario?.vinculos ?? []
+  const classes = vinculos
+    .filter((vinculo) => vinculo.papel === 'INSTRUTOR')
+    .flatMap((vinculo) => vinculo.classes.map((ligacao) => ligacao.classe))
+    .sort((a, b) => a.ordem - b.ordem)
+  const unidades = vinculos
+    .filter((vinculo) => vinculo.papel === 'CONSELHEIRO')
+    .flatMap((vinculo) => vinculo.unidades.map((ligacao) => ligacao.unidade))
+    .sort((a, b) => colador.compare(a.nome, b.nome))
+  return { instrui: classes.map(refClasse), aconselha: unidades.map((unidade) => ({ id: unidade.id, nome: unidade.nome })) }
 }
 
 function classeRegularAtual(dbv: DesbravadorCompleto): DesbravadorCompleto['matriculas'][number]['classe'] | undefined {
@@ -112,6 +137,7 @@ export function montarSaida(dbv: DesbravadorCompleto, relogio: RelogioDoClube, c
     classeAtual: regular ? refClasse(regular) : null,
     avancadaAtual: avancada ? refClasse(avancada) : null,
     diretoria: diretoria(dbv, relogio.hoje),
+    ...conduz(dbv),
   }
   if (comContato) {
     saida.contato = {

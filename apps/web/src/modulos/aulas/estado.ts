@@ -20,6 +20,8 @@ export interface Membro {
   concluidos: string[]
   /** Quando e em que aula cada requisito foi concluído (`registroAulaId` `null` = fora de aula); ausente em pacote guardado antes de o servidor mandá-las. */
   conclusoes?: { requisitoId: string; concluidoEm: string; registroAulaId: string | null }[]
+  /** Ficha ligada à conta de quem registra: aparece como "você" e outro instrutor ou o Adm marca os requisitos dela. */
+  voce?: boolean
 }
 
 /** A aula como o servidor a tem (online ou no pacote), com as versões que o aparelho viu. */

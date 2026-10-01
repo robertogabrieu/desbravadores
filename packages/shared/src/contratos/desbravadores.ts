@@ -70,6 +70,9 @@ export const DesbravadorSaida = z.object({
   classeAtual: RefClasse.nullable(),   // matrícula CURSANDO na REGULAR do ano do clube
   avancadaAtual: RefClasse.nullable(), // matrícula CURSANDO na AVANCADA do ano do clube
   diretoria: DiretoriaSaida,
+  /** Classes que a conta ligada instrui e unidades que aconselha, dos vínculos ativos do clube; sem conta, vazias. */
+  instrui: z.array(RefClasse),
+  aconselha: z.array(RefUnidade),
   /** Ausente (não null) quando quem pede não tem `dbv.ver_contato`. O serviço omite a chave. */
   contato: ContatoResponsavel.optional(),
 })

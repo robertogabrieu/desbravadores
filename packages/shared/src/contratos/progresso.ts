@@ -16,6 +16,8 @@ export const ProgressoClasseSaida = z.object({
   itens: z.array(z.object({
     dbvId: Uuid, nome: z.string(), tipo: TipoPessoa, status: StatusMatricula,
     concluidos: z.number().int(), percentual: z.number().int(), faltam: z.number().int(),
+    /** Ficha ligada à conta da sessão: a tela mostra "você" e não oferece marcação. */
+    voce: z.boolean(),
   })), // matrículas CURSANDO, CONCLUIDA e INVESTIDA; ordem: percentual ↓, nome ↑
 })
 export const RequisitoDoDbv = RequisitoResumo.extend({

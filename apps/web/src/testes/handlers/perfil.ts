@@ -25,6 +25,8 @@ export function criarPerfil(parcial: Partial<PerfilDbv> = {}): PerfilDbv {
       classeAtual: CLASSE_COMPANHEIRO,
       avancadaAtual: null,
       diretoria: { membro: false, motivos: [] },
+      instrui: [],
+      aconselha: [],
     },
     mes: '2030-09',
     posicaoMes: 1,

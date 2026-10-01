@@ -53,8 +53,8 @@ const PLANEJADA = uuid(50)
 const HOJE = '2030-03-15'
 const DATA = '2030-03-10'
 
-const membro = (dbvId: string, nome: string, tipo: 'DBV' | 'LIDER' = 'DBV', concluidos: string[] = [], conclusoes?: { requisitoId: string; concluidoEm: string; registroAulaId: string | null }[]) => ({
-  dbvId, nome, nomePublico: nome, sexo: 'F' as const, idade: 11, classeAtual: null, autorizacaoImagem: true, tipo, concluidos,
+const membro = (dbvId: string, nome: string, tipo: 'DBV' | 'LIDER' = 'DBV', concluidos: string[] = [], conclusoes?: { requisitoId: string; concluidoEm: string; registroAulaId: string | null }[], voce = false) => ({
+  dbvId, nome, nomePublico: nome, sexo: 'F' as const, idade: 11, classeAtual: null, autorizacaoImagem: true, tipo, concluidos, voce,
   conclusoes: conclusoes ?? concluidos.map((requisitoId) => ({ requisitoId, concluidoEm: '2030-02-20', registroAulaId: null })),
 })
 const requisito = (id: string, codigo: string) => ({ id, codigo, texto: `Texto de ${codigo}`, campo: false, secaoCodigo: 'DE' })
@@ -246,6 +246,17 @@ describe('Registro de aula nova', () => {
     await userEvent.click(celula('Ana Clara', 'R2'))
     await userEvent.click(celula('Lia Dias', 'R2'))
     expect(within(faltas).getAllByText(/Todos concluíram/)).toHaveLength(2)
+  })
+
+  it('a ficha do próprio instrutor aparece como "você", sem marcação de requisito', async () => {
+    const IVO = uuid(304)
+    guardar([classe({ membros: [membro(ANA, 'Ana Clara'), membro(IVO, 'Ivo Instrutor', 'DBV', [R2], undefined, true)] })])
+    montar(`/aulas/nova?classe=${CLASSE_COMPANHEIRO.id}&data=${HOJE}`)
+    await screen.findByText('Ana Clara')
+    expect(linha('Ivo Instrutor').getByText('você')).toBeInTheDocument()
+    expect(linha('Ivo Instrutor').queryAllByRole('button', { name: /^R\d · / })).toHaveLength(0)
+    expect(linha('Ivo Instrutor').getByText('Outro instrutor ou o Adm registra os seus requisitos.')).toBeInTheDocument()
+    expect(celula('Ana Clara', 'R1')).toBeEnabled()
   })
 
   it('pontos provisórios contam só requisito novo de DBV; LIDER não pontua', async () => {
