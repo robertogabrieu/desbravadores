@@ -73,7 +73,13 @@ export function TelaClasses() {
   if (consulta.data && consulta.data.classes.length === 0) {
     corpo = <EstadoVazio titulo="Você ainda não tem classes. O Adm do clube as atribui." />
   } else if (consulta.data) {
-    corpo = consulta.data.classes.map((item) => <CartaoDaClasse key={item.classe.id} item={item} idade={idades.get(item.classe.id)} />)
+    corpo = (
+      <div className="grid gap-4 md:grid-cols-2">
+        {consulta.data.classes.map((item) => (
+          <CartaoDaClasse key={item.classe.id} item={item} idade={idades.get(item.classe.id)} />
+        ))}
+      </div>
+    )
   } else if (modo === 'SEM_CONEXAO') {
     corpo = <ClassesSemConexao />
   } else if (consulta.isError) {

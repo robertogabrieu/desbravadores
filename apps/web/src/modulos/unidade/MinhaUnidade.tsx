@@ -81,7 +81,7 @@ export function MinhaUnidade() {
       ) : (
         <>
           <Campo rotulo="Buscar desbravador" type="search" value={busca} onChange={(evento) => setBusca(evento.target.value)} />
-          <ul className="flex flex-col gap-2">
+          <ul className="grid gap-2 md:grid-cols-2">
             {filtrados.map((membro) => (
               <li key={membro.dbvId}>
                 <Link to={`/dbv/${membro.dbvId}`} className="flex items-center gap-3 rounded-cartao border border-borda bg-superficie p-3">

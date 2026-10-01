@@ -52,7 +52,7 @@ function CorpoDoAlbum({ album }: { album: DetalheAlbum }) {
         />
       ) : (
         <>
-          <ul className="grid grid-cols-3 gap-2">
+          <ul className="grid grid-cols-3 gap-2 md:grid-cols-4 lg:grid-cols-6">
             {album.fotos.map((foto, posicao) => (
               <li key={foto.id}>
                 <button type="button" aria-label={`Abrir foto ${posicao + 1}`} onClick={() => setAberta(posicao)} className="block aspect-square w-full overflow-hidden rounded-botao bg-marca-suave">

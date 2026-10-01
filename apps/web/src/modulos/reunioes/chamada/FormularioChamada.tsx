@@ -176,7 +176,7 @@ function CorpoChamada({ pacote, baixadoEm, unidade, data, base, chave, reuniaoId
         <span>{`${resumo.biblias} Bíblias`}</span>
       </div>
       <p className="text-sm text-texto-2">Toque no nome para marcar presença. Depois marque atraso, uniforme e Bíblia.</p>
-      <ul className="flex flex-col gap-2">
+      <ul className="grid gap-2 md:grid-cols-2">
         {unidade.membros.map((membro) => (
           <LinhaDbv
             key={membro.dbvId}
