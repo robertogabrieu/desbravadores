@@ -159,7 +159,7 @@ export function Ranking() {
       </div>
 
       {opcoesDeUnidade.length >= 2 && (
-        <div className="flex gap-2 overflow-x-auto">
+        <div className="flex gap-2 overflow-x-auto md:flex-wrap">
           <Chip selecionado={unidadeId === undefined} aoAlternar={() => setUnidadeId(undefined)}>
             Todas as unidades
           </Chip>

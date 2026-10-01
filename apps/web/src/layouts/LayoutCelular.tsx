@@ -29,7 +29,7 @@ export function LayoutCelular() {
   const comSeloDoPapel = vinculosDoClube(vinculos, vinculoAtivo).length >= 2
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-[480px] flex-col bg-fundo">
+    <div className="flex min-h-dvh flex-col bg-fundo">
       <FaixaSessaoExpirada />
       <FaixaSemConexao />
       <header className="flex items-center justify-between gap-2 bg-marca px-4 py-2 text-white">
@@ -41,16 +41,19 @@ export function LayoutCelular() {
           <MenuUsuario />
         </div>
       </header>
-      <main className="flex-1 pb-[var(--bottom-nav-h)]">
+      {/* Pensado para o celular, mas há instrutor no tablet: a tela usa a largura dele até onde a leitura aguenta. */}
+      <main className="mx-auto w-full max-w-5xl flex-1 pb-[var(--bottom-nav-h)]">
         <Outlet />
       </main>
       <nav
         aria-label="Navegação principal"
-        className="fixed inset-x-0 bottom-0 mx-auto flex h-[var(--bottom-nav-h)] max-w-[480px] items-stretch border-t border-borda bg-superficie"
+        className="fixed inset-x-0 bottom-0 h-[var(--bottom-nav-h)] border-t border-borda bg-superficie"
       >
-        {itens.map((item) => (
-          <ItemNavegacao key={item.rotulo} item={item} layout="barra" />
-        ))}
+        <div className="mx-auto flex h-full max-w-xl items-stretch">
+          {itens.map((item) => (
+            <ItemNavegacao key={item.rotulo} item={item} layout="barra" />
+          ))}
+        </div>
       </nav>
     </div>
   )
