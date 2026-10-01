@@ -133,6 +133,23 @@ describe('LayoutCelular', () => {
   })
 })
 
+describe('marca do app', () => {
+  it('celular e Adm mostram o emblema e o nome "App do Desbravador"', async () => {
+    servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO')]))
+    const { unmount } = renderizarRotas(rotasCelular, '/inicio')
+    await esperarSessao()
+    expect(screen.getByRole('img', { name: 'Emblema dos Desbravadores' })).toHaveAttribute('src', '/emblema.png')
+    expect(screen.getByText('App do Desbravador')).toBeInTheDocument()
+    unmount()
+
+    servidor.use(...handlersSessao([criarVinculo('ADM')]))
+    renderizarRotas(rotasAdm, '/adm/desbravadores')
+    await screen.findByText('lista')
+    expect(screen.getByRole('img', { name: 'Emblema dos Desbravadores' })).toBeInTheDocument()
+    expect(screen.getByText('App do Desbravador')).toBeInTheDocument()
+  })
+})
+
 describe('LayoutAdm', () => {
   it('habilita todos os itens do menu, menos Relatórios, que fica "em breve"', async () => {
     servidor.use(...handlersSessao([criarVinculo('ADM')]))

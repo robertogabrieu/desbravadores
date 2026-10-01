@@ -1,4 +1,4 @@
-# Aplicativo do Desbravador
+# App do Desbravador
 
 Monorepo do aplicativo de gestão de clubes de Desbravadores.
 

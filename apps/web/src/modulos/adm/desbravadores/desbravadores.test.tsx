@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
+import { anoClube, hojeNoFuso } from '@desbravadores/shared'
 import { describe, expect, it } from 'vitest'
 import { hojeDoClube } from '../../../api/desbravadores'
 import { criarClasse, criarUnidade, criarListaUsuarios, handlerClasses, handlerUnidades, handlerUsuarios } from '../../../testes/handlers/leitura'
@@ -11,10 +12,12 @@ import {
   handlerEditarDesbravador,
   handlerErroDesbravador,
   handlerInativarDesbravador,
+  handlerMatricular,
   handlerMoverUnidade,
   handlerReativarDesbravador,
 } from '../../../testes/handlers/desbravadores'
 import { handlersConviteAcesso } from '../../../testes/handlers/convite-acesso'
+import { criarConfiguracao, handlerConfiguracao } from '../../../testes/handlers/clube'
 import { uuid } from '../../../testes/handlers/sessao'
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
@@ -249,6 +252,65 @@ describe('A1 · editar', () => {
     await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(moveu).toBe(false)
+  })
+})
+
+describe('A1 · editar a classe do ano', () => {
+  const configuracao = criarConfiguracao()
+  const anoEsperado = anoClube(hojeNoFuso(configuracao.fuso, new Date()), configuracao.inicioAnoClube)
+
+  it('desbravador sem classe: escolher a classe na edição matricula no ano do clube, com a avançada', async () => {
+    let matricula: { id: string; classeId: string; anoClube: number; incluirAvancada: boolean } | undefined
+    servidor.use(handlerConfiguracao(configuracao), handlerEditarDesbravador(bruno), handlerMatricular((id, corpo) => (matricula = { id, ...corpo })))
+    abrir([bruno])
+    await userEvent.click(await screen.findByRole('button', { name: 'Editar Bruno Lima' }))
+    const painel = within(await screen.findByRole('dialog', { name: 'Editar Bruno Lima' }))
+    expect(painel.getByLabelText('Classe do ano')).toHaveValue('')
+    await userEvent.selectOptions(painel.getByLabelText('Classe do ano'), 'Amigo')
+    expect(painel.getByRole('checkbox', { name: 'Matricular também na avançada' })).toBeChecked()
+    await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
+    await waitFor(() => expect(matricula).toEqual({ id: bruno.id, classeId: amigo.id, anoClube: anoEsperado, incluirAvancada: true }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('com classe atual: o campo vem preenchido, sem "Sem classe", e não matricula se a classe não mudou', async () => {
+    let matriculou = false
+    servidor.use(handlerConfiguracao(configuracao), handlerEditarDesbravador(ana), handlerMatricular(() => (matriculou = true)))
+    abrir([ana])
+    await userEvent.click(await screen.findByRole('button', { name: 'Editar Ana Clara Souza' }))
+    const painel = within(await screen.findByRole('dialog', { name: 'Editar Ana Clara Souza' }))
+    expect(painel.getByLabelText('Classe do ano')).toHaveValue(amigo.id)
+    expect(within(painel.getByLabelText('Classe do ano')).queryByRole('option', { name: 'Sem classe' })).not.toBeInTheDocument()
+    await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(matriculou).toBe(false)
+  })
+
+  it('o aviso da troca acompanha a trilha: mesma trilha é desistência, outra trilha cursa as duas', async () => {
+    const companheiro = criarClasse({ id: uuid(102), nome: 'Companheiro', corToken: '--classe-companheiro' })
+    const agrupada = criarClasse({ id: uuid(103), nome: 'Agrupadas (Amigo a Guia)', trilha: 'AGRUPADAS', corToken: '--classe-guia' })
+    servidor.use(handlerDesbravadores([ana]), handlerUnidades([aguias]), handlerClasses([amigo, companheiro, agrupada]))
+    renderizarRotas(rotasAdmDesbravadores, '/adm/desbravadores')
+    await userEvent.click(await screen.findByRole('button', { name: 'Editar Ana Clara Souza' }))
+    const painel = within(await screen.findByRole('dialog', { name: 'Editar Ana Clara Souza' }))
+    await userEvent.selectOptions(painel.getByLabelText('Classe do ano'), 'Companheiro')
+    expect(painel.getByText('A classe atual fica registrada como desistência.')).toBeInTheDocument()
+    await userEvent.selectOptions(painel.getByLabelText('Classe do ano'), 'Agrupadas (Amigo a Guia)')
+    expect(painel.getByText('A classe atual continua: o desbravador passa a cursar as duas.')).toBeInTheDocument()
+  })
+
+  it('matrícula recusada: os dados ficam salvos e o painel diz que a classe não mudou', async () => {
+    servidor.use(
+      handlerConfiguracao(configuracao),
+      handlerEditarDesbravador(bruno),
+      http.post('/api/desbravadores/:id/matriculas', () => HttpResponse.json({ codigo: 'REGRA', mensagem: 'Reative o desbravador antes de matricular.' }, { status: 422 })),
+    )
+    abrir([bruno])
+    await userEvent.click(await screen.findByRole('button', { name: 'Editar Bruno Lima' }))
+    const painel = within(await screen.findByRole('dialog', { name: 'Editar Bruno Lima' }))
+    await userEvent.selectOptions(painel.getByLabelText('Classe do ano'), 'Amigo')
+    await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
+    expect(await painel.findByText('Dados salvos. A classe não foi alterada: Reative o desbravador antes de matricular.')).toBeInTheDocument()
   })
 })
 

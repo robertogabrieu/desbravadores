@@ -1,4 +1,4 @@
-export const NOME_SISTEMA = 'Desbravadores'
+export const NOME_SISTEMA = 'App do Desbravador'
 
 export * from './enums'
 export * from './permissoes'

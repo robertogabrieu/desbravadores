@@ -8,11 +8,14 @@ export type EdicaoConfiguracao = z.input<typeof ConfiguracaoClubeEntrada>
 
 export const chavesClube = { configuracao: ['clube', 'configuracao'] as const }
 
+/** Também serve a `fetchQuery`, para quem só precisa da configuração na hora de uma ação. */
+export const consultaConfiguracaoClube = {
+  queryKey: chavesClube.configuracao,
+  queryFn: () => requisitar('/api/clube/configuracao', ConfiguracaoClubeSaida),
+}
+
 export function useConfiguracaoClube() {
-  return useQuery({
-    queryKey: chavesClube.configuracao,
-    queryFn: () => requisitar('/api/clube/configuracao', ConfiguracaoClubeSaida),
-  })
+  return useQuery(consultaConfiguracaoClube)
 }
 
 export function useSalvarConfiguracao() {

@@ -1,7 +1,9 @@
-import { DesbravadorCriarEntrada, DesbravadorEditarEntrada } from '@desbravadores/shared'
+import { DesbravadorCriarEntrada, DesbravadorEditarEntrada, anoClube, hojeNoFuso } from '@desbravadores/shared'
+import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { hojeDoClube, useCriarDesbravador, useEditarDesbravador, useMoverUnidade } from '../../../api/desbravadores'
+import { consultaConfiguracaoClube } from '../../../api/clube'
+import { hojeDoClube, useCriarDesbravador, useEditarDesbravador, useMatricular, useMoverUnidade } from '../../../api/desbravadores'
 import type { Aviso, Desbravador } from '../../../api/desbravadores'
 import { useClasses, useUnidades, useUsuariosResumo } from '../../../api/leitura'
 import { Botao } from '../../../ui/Botao'
@@ -46,7 +48,7 @@ function valoresIniciais(desbravador: Desbravador | undefined): Valores {
     sexo: desbravador?.sexo ?? '',
     entradaEm: hojeDoClube(),
     unidadeId: desbravador?.unidade?.id ?? '',
-    classeId: '',
+    classeId: desbravador?.classeAtual?.id ?? '',
     incluirAvancada: true,
     usuarioId: desbravador?.usuarioId ?? '',
     responsavelNome: desbravador?.contato?.responsavelNome ?? '',
@@ -81,11 +83,23 @@ export function FormularioDesbravador({ desbravador, aoConcluir, aoCancelar }: P
   const criar = useCriarDesbravador()
   const editar = useEditarDesbravador()
   const mover = useMoverUnidade()
+  const matricular = useMatricular()
+  const cliente = useQueryClient()
 
   const ehLider = valores.tipo === 'LIDER'
   const mostraUnidade = !ehLider && (!editando || desbravador.ativo)
   const mostraResponsavel = !editando || desbravador.contato !== undefined
-  const salvando = criar.isPending || editar.isPending || mover.isPending
+  const salvando = criar.isPending || editar.isPending || mover.isPending || matricular.isPending
+  const classeAtualId = desbravador?.classeAtual?.id ?? ''
+  // A API só registra desistência da regular anterior quando a nova é da mesma trilha (individual ou
+  // agrupada); de uma trilha para a outra, o desbravador passa a cursar as duas.
+  const trilhaEscolhida = classes.data?.find((classe) => classe.id === valores.classeId)?.trilha
+  const trocandoClasse = editando && classeAtualId !== '' && valores.classeId !== '' && valores.classeId !== classeAtualId
+  const avisoDaTroca = !trocandoClasse
+    ? undefined
+    : trilhaEscolhida === desbravador?.classeAtual?.trilha
+      ? 'A classe atual fica registrada como desistência.'
+      : 'A classe atual continua: o desbravador passa a cursar as duas.'
 
   const definir = <K extends keyof Valores>(chave: K, valor: Valores[K]) => setValores((atual) => ({ ...atual, [chave]: valor }))
 
@@ -150,6 +164,19 @@ export function FormularioDesbravador({ desbravador, aoConcluir, aoCancelar }: P
         return null
       }
     }
+    // A classe só é escolhida na edição para quem está na unidade (DBV ativo); trocar matricula de novo.
+    if (mostraUnidade && valores.classeId && valores.classeId !== classeAtualId) {
+      try {
+        // A matrícula é no ano do clube, que depende do fuso e do início do ano configurados.
+        const configuracao = await cliente.fetchQuery(consultaConfiguracaoClube)
+        const ano = anoClube(hojeNoFuso(configuracao.fuso, new Date()), configuracao.inicioAnoClube)
+        await matricular.mutateAsync({ id: atual.id, classeId: valores.classeId, anoClube: ano, incluirAvancada: valores.incluirAvancada })
+      } catch (falha) {
+        const motivo = lerErroDaApi(falha).geral ?? MENSAGEM_GENERICA
+        setParcial({ mensagem: `Dados salvos. A classe não foi alterada: ${motivo}`, avisos })
+        return null
+      }
+    }
     return avisos
   }
 
@@ -208,24 +235,27 @@ export function FormularioDesbravador({ desbravador, aoConcluir, aoCancelar }: P
               </option>
             ))}
           </Selecao>
-          {!editando && (
-            <>
-              <Selecao rotulo="Classe do ano" value={valores.classeId} erro={erros['classeId']} onChange={(e) => definir('classeId', e.target.value)}>
-                <option value="">Sem classe</option>
-                {classes.data?.map((classe) => (
-                  <option key={classe.id} value={classe.id}>
-                    {classe.nome}
-                  </option>
-                ))}
-              </Selecao>
-              {valores.classeId && (
-                <CaixaMarcacao
-                  rotulo="Matricular também na avançada"
-                  checked={valores.incluirAvancada}
-                  onChange={(e) => definir('incluirAvancada', e.target.checked)}
-                />
-              )}
-            </>
+          {/* Na edição, "Sem classe" só existe para quem ainda não tem: matrícula não se desfaz por aqui. */}
+          <Selecao
+            rotulo="Classe do ano"
+            value={valores.classeId}
+            erro={erros['classeId']}
+            ajuda={avisoDaTroca}
+            onChange={(e) => definir('classeId', e.target.value)}
+          >
+            {(!editando || !classeAtualId) && <option value="">Sem classe</option>}
+            {classes.data?.map((classe) => (
+              <option key={classe.id} value={classe.id}>
+                {classe.nome}
+              </option>
+            ))}
+          </Selecao>
+          {valores.classeId && (!editando || valores.classeId !== classeAtualId) && (
+            <CaixaMarcacao
+              rotulo="Matricular também na avançada"
+              checked={valores.incluirAvancada}
+              onChange={(e) => definir('incluirAvancada', e.target.checked)}
+            />
           )}
         </>
       ) : null}
