@@ -69,7 +69,7 @@ export class PacoteInstrutorService {
   private async membros(sessao: SessaoLogada, classeId: string, ano: number, hoje: string): Promise<ClasseDoPacote['membros']> {
     const { clubeId } = sessao
     const matriculas = await this.prisma.matriculaClasse.findMany({
-      where: { clubeId, classeId, anoClube: ano, status: 'CURSANDO', dbv: { clubeId, ativo: true, tipo: { in: ['DBV', 'LIDER'] } } },
+      where: { clubeId, classeId, anoClube: ano, status: 'CURSANDO', dbv: { clubeId, ativo: true, tipo: { in: ['DBV', 'DIRETORIA', 'LIDER'] } } },
       select: {
         dbv: {
           select: {

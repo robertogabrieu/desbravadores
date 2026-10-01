@@ -31,6 +31,7 @@ import { ReunioesModule } from './reunioes/reunioes.module'
 import { SaudeModule } from './saude/saude.module'
 import { SessaoModule } from './sessao/sessao.module'
 import { SyncModule } from './sync/sync.module'
+import { TarefasModule } from './tarefas/tarefas.module'
 import { UnidadesModule } from './unidades/unidades.module'
 import { UsuariosModule } from './usuarios/usuarios.module'
 import { VisaoGeralModule } from './visao-geral/visao-geral.module'
@@ -73,6 +74,7 @@ import { VisaoGeralModule } from './visao-geral/visao-geral.module'
     ObservacoesModule,
     MateriaisModule,
     InstrutorModule,
+    TarefasModule,
   ],
 })
 export class AppModule {}

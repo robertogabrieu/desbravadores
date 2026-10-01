@@ -8,7 +8,7 @@ import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { colador, daDataCivil, paraDataCivil } from '../desbravadores/apoio'
 import { ServicoEscopo, type RelogioDoClube } from '../desbravadores/escopo.service'
-import type { StatusMatricula } from '../generated/prisma/client.js'
+import type { StatusMatricula, TipoPessoa } from '../generated/prisma/client.js'
 import { ehFichaDaSessao } from './conclusoes'
 
 type ProgressoClasse = z.infer<typeof ProgressoClasseSaida>
@@ -44,7 +44,7 @@ export class ServicoProgresso {
     sessao: SessaoLogada,
     relogio: RelogioDoClube,
     dbvId: string,
-  ): Promise<{ id: string; tipo: 'DBV' | 'LIDER'; usuarioId: string | null }> {
+  ): Promise<{ id: string; tipo: TipoPessoa; usuarioId: string | null }> {
     const doPapel = await this.escopo.filtroDesbravadores(sessao, relogio)
     const dbv = await this.prisma.desbravador.findFirst({
       where: { clubeId: sessao.clubeId, AND: [doPapel, { id: dbvId }] },

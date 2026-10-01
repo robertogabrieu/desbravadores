@@ -1,16 +1,20 @@
 import { Injectable } from '@nestjs/common'
 import {
+  AVISOS_IMPORTACAO,
   avisoDeSexoDaUnidade,
-  diretoriaPelaIdade,
   idade,
-  nascimentoLimiteDaDiretoria,
+  MENSAGEM_DIRETORIA_SEM_UNIDADE,
+  motivosDiretoria,
   nomePublico as calcularNomePublico,
+  PAPEIS_DA_DIRETORIA,
+  regraDaDiretoria,
+  tipoDaFicha,
   type Aviso as AvisoContrato,
   type DesbravadorCriarEntrada,
   type DesbravadorEditarEntrada,
   type DesbravadorFiltro,
   type DesbravadorSaida,
-  type MotivoDiretoria,
+  type Papel,
   type InativarEntrada,
   type MatriculaEntrada,
   type MatriculaSaida,
@@ -24,11 +28,11 @@ import { PrismaService } from '../comum/prisma/prisma.service'
 import { Prisma } from '../generated/prisma/client.js'
 import { colador, daDataCivil, paginar, paraDataCivil, semAcento } from './apoio'
 import { ServicoEscopo, type RelogioDoClube } from './escopo.service'
+import { ServicoTipoDaFicha } from './tipo-da-ficha.service'
 
 type Saida = z.infer<typeof DesbravadorSaida>
 type Matricula = z.infer<typeof MatriculaSaida>
 type Aviso = z.infer<typeof AvisoContrato>
-type Motivo = z.infer<typeof MotivoDiretoria>
 type Cliente = Prisma.TransactionClient
 export type ClasseParaMatricula = { id: string; tipo: 'REGULAR' | 'AVANCADA'; trilha: 'INDIVIDUAL' | 'AGRUPADAS' }
 
@@ -42,22 +46,6 @@ function recusarContaJaLigada(falha: unknown): never {
 
 /** O caderno das Agrupadas e para 16 anos ou mais: uma turma so, sem divisao por idade. */
 const IDADE_MINIMA_AGRUPADAS = 16
-
-/** Papéis que fazem da conta ligada à ficha membro da Diretoria; ADM não conta. */
-const PAPEIS_DA_DIRETORIA = ['CONSELHEIRO', 'INSTRUTOR'] satisfies Motivo[]
-
-function vinculosDaDiretoria(clubeId: string) {
-  return { clubeId, ativo: true, papel: { in: PAPEIS_DA_DIRETORIA } } satisfies Prisma.VinculoWhereInput
-}
-
-/** Mesma regra de `diretoriaPelaIdade` e dos vínculos, no banco, para o filtro paginar sobre o resultado. */
-function ondeDiretoria(clubeId: string, hoje: string, membro: boolean): Prisma.DesbravadorWhereInput {
-  const limite = daDataCivil(nascimentoLimiteDaDiretoria(hoje))
-  const vinculos = vinculosDaDiretoria(clubeId)
-  if (membro) return { OR: [{ nascimento: { lte: limite } }, { usuario: { vinculos: { some: vinculos } } }] }
-  // Sem usuário ligado o NOT de uma relação vira NULL no SQL e some da lista: o "fora" é escrito por extenso.
-  return { nascimento: { gt: limite }, OR: [{ usuarioId: null }, { usuario: { vinculos: { none: vinculos } } }] }
-}
 
 const CAMPOS_DO_CONSELHEIRO = [
   'nome',
@@ -97,12 +85,15 @@ function relacoesDoAno(clubeId: string, anoClube: number) {
 
 type DesbravadorCompleto = Prisma.DesbravadorGetPayload<{ include: ReturnType<typeof relacoesDoAno> }>
 
-function diretoria(dbv: DesbravadorCompleto, hoje: string): Saida['diretoria'] {
-  const papeis = new Set(dbv.usuario?.vinculos.map((vinculo) => vinculo.papel))
-  const motivos: Motivo[] = []
-  if (diretoriaPelaIdade(paraDataCivil(dbv.nascimento), hoje)) motivos.push('IDADE')
-  for (const papel of PAPEIS_DA_DIRETORIA) if (papeis.has(papel)) motivos.push(papel)
-  return { membro: motivos.length > 0, motivos }
+function motivos(dbv: DesbravadorCompleto, hoje: string): Saida['motivosDiretoria'] {
+  const ficha = {
+    tipo: dbv.tipo,
+    diretoriaPeloAdm: dbv.diretoriaPeloAdm,
+    diretoriaDesde: dbv.diretoriaDesde ? paraDataCivil(dbv.diretoriaDesde) : null,
+    nascimento: paraDataCivil(dbv.nascimento),
+    papeis: dbv.usuario?.vinculos.map((vinculo) => vinculo.papel) ?? [],
+  }
+  return motivosDiretoria(ficha, hoje)
 }
 
 /** O que a conta ligada à ficha conduz no clube: classes que instrui e unidades que aconselha. */
@@ -144,7 +135,7 @@ export function montarSaida(dbv: DesbravadorCompleto, relogio: RelogioDoClube, c
     unidade: unidade ? { id: unidade.id, nome: unidade.nome } : null,
     classeAtual: regular ? refClasse(regular) : null,
     avancadaAtual: avancada ? refClasse(avancada) : null,
-    diretoria: diretoria(dbv, relogio.hoje),
+    motivosDiretoria: motivos(dbv, relogio.hoje),
     ...conduz(dbv),
   }
   if (comContato) {
@@ -178,6 +169,7 @@ export class DesbravadoresService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly escopo: ServicoEscopo,
+    private readonly tipo: ServicoTipoDaFicha,
   ) {}
 
   async listar(sessao: SessaoLogada, filtro: z.infer<typeof DesbravadorFiltro>) {
@@ -190,7 +182,6 @@ export class DesbravadoresService {
     if (filtro.tipo) condicoes.push({ tipo: filtro.tipo })
     if (filtro.unidadeId) condicoes.push({ membros: { some: { clubeId, unidadeId: filtro.unidadeId, fim: null } } })
     if (filtro.semUnidade) condicoes.push({ membros: { none: { fim: null } } })
-    if (filtro.diretoria) condicoes.push(ondeDiretoria(clubeId, relogio.hoje, filtro.diretoria === 'sim'))
     if (filtro.classeId) {
       condicoes.push({
         matriculas: { some: { clubeId, classeId: filtro.classeId, anoClube: relogio.anoClube, status: 'CURSANDO' } },
@@ -233,6 +224,7 @@ export class DesbravadoresService {
     if (entrada.tipo === 'LIDER' && entrada.unidadeId) {
       throw new ErroApp('REGRA', 'Líder não pertence a uma unidade.')
     }
+    if (entrada.tipo === 'DIRETORIA' && entrada.unidadeId) throw new ErroApp('REGRA', MENSAGEM_DIRETORIA_SEM_UNIDADE)
     if (entrada.unidadeId) await this.exigirUnidade(clubeId, entrada.unidadeId)
     if (entrada.usuarioId) await this.exigirUsuarioDoClube(clubeId, entrada.usuarioId)
     const classe = entrada.classeId ? await this.exigirClasse(clubeId, entrada.classeId) : undefined
@@ -241,28 +233,49 @@ export class DesbravadoresService {
     }
 
     const criado = await this.prisma
-      .$transaction((tx) => this.gravarNovo(tx, { clubeId, anoClube: relogio.anoClube, entrada, classe }))
+      .$transaction((tx) => this.gravarNovo(tx, { clubeId, anoClube: relogio.anoClube, hoje: relogio.hoje, entrada, classe }))
       .catch(recusarContaJaLigada)
-    return this.saidaComAvisos(sessao, criado.id, relogio)
+    const resposta = await this.saidaComAvisos(sessao, criado.id, relogio)
+    if (criado.unidadeIgnorada) {
+      resposta.avisos.push({ codigo: AVISOS_IMPORTACAO.diretoriaSemUnidade, mensagem: MENSAGEM_DIRETORIA_SEM_UNIDADE })
+    }
+    return resposta
   }
 
-  /** Miolo do cadastro: pessoa, membro da unidade e matrícula (regular + avançada), no cliente da transação. */
+  /**
+   * Miolo do cadastro: pessoa, membro da unidade e matrícula (regular + avançada), no cliente da transação.
+   * O Tipo é decidido antes de gravar: quem já tem a regra da Diretoria entra nela, sem unidade.
+   */
   async gravarNovo(
     tx: Cliente,
     dados: {
       clubeId: string
       anoClube: number
+      hoje: string
       entrada: z.infer<typeof DesbravadorCriarEntrada>
       classe: ClasseParaMatricula | undefined
     },
-  ): Promise<{ id: string }> {
-    const { clubeId, anoClube, entrada, classe } = dados
+  ): Promise<{ id: string; unidadeIgnorada: boolean }> {
+    const { clubeId, anoClube, hoje, entrada, classe } = dados
+    const papeis = entrada.usuarioId ? await this.papeisDaDiretoria(tx, clubeId, entrada.usuarioId) : []
+    const pedido = {
+      tipo: entrada.tipo,
+      diretoriaPeloAdm: entrada.tipo === 'DIRETORIA' && !regraDaDiretoria(entrada.nascimento, papeis, hoje),
+      diretoriaDesde: null,
+      nascimento: entrada.nascimento,
+      papeis,
+    }
+    const { tipo, diretoriaPeloAdm } = tipoDaFicha(pedido, hoje)
+    // Quem nunca foi desbravador no clube está na Diretoria desde que entrou.
+    const diretoriaDesde = tipo === 'DIRETORIA' ? daDataCivil(entrada.entradaEm) : null
     const dbv = await tx.desbravador.create({
       data: {
         clubeId,
         nome: entrada.nome,
         nomePublico: entrada.nomePublico ?? calcularNomePublico(entrada.nome),
-        tipo: entrada.tipo,
+        tipo,
+        diretoriaPeloAdm,
+        diretoriaDesde,
         usuarioId: entrada.usuarioId ?? null,
         nascimento: daDataCivil(entrada.nascimento),
         sexo: entrada.sexo,
@@ -274,7 +287,7 @@ export class DesbravadoresService {
         entradaEm: daDataCivil(entrada.entradaEm),
       },
     })
-    if (entrada.unidadeId) {
+    if (entrada.unidadeId && tipo === 'DBV') {
       await tx.membroUnidade.create({
         data: { clubeId, dbvId: dbv.id, unidadeId: entrada.unidadeId, inicio: daDataCivil(entrada.entradaEm) },
       })
@@ -288,7 +301,7 @@ export class DesbravadoresService {
         incluirAvancada: entrada.incluirAvancada,
       })
     }
-    return dbv
+    return { id: dbv.id, unidadeIgnorada: Boolean(entrada.unidadeId) && tipo !== 'DBV' }
   }
 
   async editar(sessao: SessaoLogada, id: string, entrada: z.infer<typeof DesbravadorEditarEntrada>) {
@@ -301,27 +314,29 @@ export class DesbravadoresService {
         throw new ErroApp('REGRA', 'Você só pode alterar nome, responsável e autorização de imagem.')
       }
     }
-    const tipoFinal = entrada.tipo ?? atual.tipo
-    if (tipoFinal === 'LIDER' && atual.membros.length > 0) {
-      throw new ErroApp('REGRA', 'Tire o desbravador da unidade antes de torná-lo líder.')
-    }
+    // O formulário manda o Tipo sempre; só conta como escolha do Adm quando muda.
+    const tipoEscolhido = entrada.tipo !== undefined && entrada.tipo !== atual.tipo ? entrada.tipo : undefined
     if (entrada.usuarioId) await this.exigirUsuarioDoClube(clubeId, entrada.usuarioId)
 
-    await this.prisma.desbravador.update({
-      where: { id, clubeId },
-      data: {
-        nome: entrada.nome,
-        nomePublico: entrada.nomePublico,
-        tipo: entrada.tipo,
-        usuarioId: entrada.usuarioId,
-        nascimento: entrada.nascimento ? daDataCivil(entrada.nascimento) : undefined,
-        sexo: entrada.sexo,
-        responsavelNome: entrada.responsavelNome,
-        responsavelTelefone: entrada.responsavelTelefone,
-        responsavelEmail: entrada.responsavelEmail,
-        autorizacaoImagem: entrada.autorizacaoImagem,
-        autorizacaoImagemEm: entrada.autorizacaoImagemEm ? daDataCivil(entrada.autorizacaoImagemEm) : entrada.autorizacaoImagemEm,
-      },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.desbravador.update({
+        where: { id, clubeId },
+        data: {
+          nome: entrada.nome,
+          nomePublico: entrada.nomePublico,
+          usuarioId: entrada.usuarioId,
+          nascimento: entrada.nascimento ? daDataCivil(entrada.nascimento) : undefined,
+          sexo: entrada.sexo,
+          responsavelNome: entrada.responsavelNome,
+          responsavelTelefone: entrada.responsavelTelefone,
+          responsavelEmail: entrada.responsavelEmail,
+          autorizacaoImagem: entrada.autorizacaoImagem,
+          autorizacaoImagemEm: entrada.autorizacaoImagemEm ? daDataCivil(entrada.autorizacaoImagemEm) : entrada.autorizacaoImagemEm,
+        },
+      })
+      const ficha = await this.tipo.lerFicha(tx, clubeId, id)
+      if (tipoEscolhido) await this.tipo.escolhaDoAdm(tx, clubeId, ficha, tipoEscolhido, relogio.hoje)
+      else await this.tipo.aplicar(tx, clubeId, ficha, relogio.hoje)
     }).catch(recusarContaJaLigada)
     return this.saidaComAvisos(sessao, id, relogio)
   }
@@ -363,6 +378,7 @@ export class DesbravadoresService {
     const relogio = await this.escopo.relogio(clubeId)
     const dbv = await this.carregarNoEscopo(sessao, id, relogio)
     if (dbv.tipo === 'LIDER') throw new ErroApp('REGRA', 'Líder não pertence a uma unidade.')
+    if (dbv.tipo === 'DIRETORIA') throw new ErroApp('REGRA', MENSAGEM_DIRETORIA_SEM_UNIDADE)
     if (!dbv.ativo) throw new ErroApp('REGRA', 'Reative o desbravador antes de mudar a unidade.')
     if (entrada.unidadeId) await this.exigirUnidade(clubeId, entrada.unidadeId)
     const aberto = dbv.membros[0]
@@ -406,6 +422,14 @@ export class DesbravadoresService {
     })
     if (!dbv) throw new ErroApp('NAO_ENCONTRADO', 'Desbravador não encontrado.')
     return dbv
+  }
+
+  private async papeisDaDiretoria(tx: Cliente, clubeId: string, usuarioId: string): Promise<Papel[]> {
+    const vinculos = await tx.vinculo.findMany({
+      where: { clubeId, usuarioId, ativo: true, papel: { in: [...PAPEIS_DA_DIRETORIA] } },
+      select: { papel: true },
+    })
+    return vinculos.map((vinculo) => vinculo.papel)
   }
 
   private async exigirUnidade(clubeId: string, unidadeId: string): Promise<void> {

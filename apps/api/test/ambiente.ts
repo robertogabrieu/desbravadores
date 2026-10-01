@@ -10,10 +10,10 @@ const ENV_TESTE = resolve(RAIZ, '.env.teste')
 export function carregarAmbienteTeste(): void {
   if (!existsSync(ENV_TESTE)) {
     const segredo = randomBytes(32).toString('hex')
-    const conteudo = readFileSync(ENV_EXEMPLO, 'utf8').replace(
-      /^JWT_SEGREDO=.*$/m,
-      `JWT_SEGREDO=${segredo}`,
-    )
+    // A varredura periódica fica desligada nos testes: eles chamam `sincronizarTodos` com a data que querem.
+    const conteudo = readFileSync(ENV_EXEMPLO, 'utf8')
+      .replace(/^JWT_SEGREDO=.*$/m, `JWT_SEGREDO=${segredo}`)
+      .replace(/^TAREFAS_PERIODICAS=.*$/m, 'TAREFAS_PERIODICAS=0')
     writeFileSync(ENV_TESTE, conteudo)
   }
   dotenv.config({ path: ENV_TESTE, quiet: true })

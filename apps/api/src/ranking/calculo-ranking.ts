@@ -54,38 +54,57 @@ function comparar(a: EntradaDoRanking, b: EntradaDoRanking): number {
   return colador.compare(a.nome, b.nome)
 }
 
+/** DBV: a unidade aberta. Diretoria: a que ela deixou ao entrar (passagem encerrada no dia da entrada). */
+function unidadeDoRanking(ficha: {
+  diretoriaDesde: Date | null
+  membros: { fim: Date | null; unidade: z.infer<typeof RefUnidade> }[]
+}): z.infer<typeof RefUnidade> | undefined {
+  const entrada = ficha.diretoriaDesde?.getTime()
+  const passagem = ficha.membros.find((membro) => (entrada === undefined ? membro.fim === null : membro.fim?.getTime() === entrada))
+  return passagem?.unidade
+}
+
 /** Pontos e frequencia do mes (E13, E14). Nao decide quem pode ver nome ou frequencia: isso e do escopo. */
 @Injectable()
 export class CalculoRanking {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** DBVs ativos do clube, ja na ordem do ranking; `unidadeId` filtra pelos membros atuais. */
+  /**
+   * Quem era desbravador no mes, ja na ordem do ranking: DBV ativo, ou Diretoria que so entrou depois do fim
+   * do mes (com a unidade que deixou ao entrar). `unidadeId` filtra por essa unidade.
+   */
   async doMes(clubeId: string, mes: string, anoClube: number, unidadeId?: string): Promise<EntradaDoRanking[]> {
-    const dbvs = await this.prisma.desbravador.findMany({
+    const { fim: fimDoMes } = limitesDoMes(mes)
+    const fichas = await this.prisma.desbravador.findMany({
       where: {
         clubeId,
-        tipo: 'DBV',
         ativo: true,
-        ...(unidadeId ? { membros: { some: { clubeId, unidadeId, fim: null } } } : {}),
+        OR: [{ tipo: 'DBV' }, { tipo: 'DIRETORIA', diretoriaDesde: { gte: fimDoMes } }],
       },
       select: {
         id: true,
         nome: true,
         nomePublico: true,
-        membros: { where: { fim: null }, select: { unidade: { select: { id: true, nome: true } } } },
+        diretoriaDesde: true,
+        membros: {
+          where: { OR: [{ fim: null }, { fim: { gte: fimDoMes } }] },
+          select: { fim: true, unidade: { select: { id: true, nome: true } } },
+        },
         matriculas: {
           where: { anoClube, status: 'CURSANDO', classe: { tipo: 'REGULAR' } },
           select: { classe: { select: SELECAO_REF_CLASSE } },
         },
       },
     })
+    const comUnidade = fichas.map((ficha) => ({ ...ficha, unidade: unidadeDoRanking(ficha) }))
+    const dbvs = unidadeId ? comUnidade.filter((dbv) => dbv.unidade?.id === unidadeId) : comUnidade
     const dbvIds = dbvs.map((dbv) => dbv.id)
     const pontos = await this.pontosPorDbv(clubeId, dbvIds, mes)
     const chamadas = await this.situacoesPorDbv(clubeId, dbvIds, mes)
 
     return dbvs
       .map((dbv): EntradaDoRanking => {
-        const unidade = dbv.membros[0]?.unidade
+        const { unidade } = dbv
         const classe = dbv.matriculas[0]?.classe
         return {
           dbvId: dbv.id,

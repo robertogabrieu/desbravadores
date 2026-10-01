@@ -5,7 +5,7 @@ import { join, relative, resolve, sep } from 'node:path'
 const RAIZ_API = resolve(__dirname, '../../..')
 const RAIZ_REPO = resolve(RAIZ_API, '../..')
 const SRC = join(RAIZ_API, 'src')
-const PASTAS_PERMITIDAS = ['sessao', 'auth', 'scripts', join('comum', 'prisma')]
+const PASTAS_PERMITIDAS = ['sessao', 'auth', 'scripts', 'tarefas', join('comum', 'prisma')]
 
 function arquivosTs(pasta: string): string[] {
   return readdirSync(pasta, { withFileTypes: true }).flatMap((entrada) => {
@@ -20,7 +20,7 @@ function permitido(caminho: string): boolean {
   return PASTAS_PERMITIDAS.some((pasta) => rel.startsWith(pasta + sep))
 }
 
-describe('PrismaSistema so vive em sessao/, auth/ e scripts/', () => {
+describe('PrismaSistema so vive em sessao/, auth/, scripts/ e tarefas/', () => {
   it('nenhum arquivo de producao fora dessas pastas importa o PrismaSistema', () => {
     const infratores = arquivosTs(SRC)
       .filter((arq) => !arq.endsWith('.spec.ts') && !permitido(arq))
@@ -47,8 +47,8 @@ describe('PrismaSistema so vive em sessao/, auth/ e scripts/', () => {
     }
   })
 
-  it('o lint libera o import em sessao, auth e scripts', () => {
-    for (const pasta of ['sessao', 'auth', 'scripts']) {
+  it('o lint libera o import em sessao, auth, scripts e tarefas', () => {
+    for (const pasta of ['sessao', 'auth', 'scripts', 'tarefas']) {
       expect(regraPara(`apps/api/src/${pasta}/x.ts`)).not.toContain('prisma-sistema')
     }
   })

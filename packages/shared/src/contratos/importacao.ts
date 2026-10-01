@@ -78,7 +78,11 @@ export const AVISOS_IMPORTACAO = {
   classeInexistente: 'AVISO_CLASSE_INEXISTENTE',
   classeSugerida: 'AVISO_CLASSE_SUGERIDA',
   sexoUnidade: 'AVISO_SEXO_UNIDADE',
+  diretoriaSemUnidade: 'AVISO_DIRETORIA_SEM_UNIDADE',
 } as const
+
+/** Quem entra como Diretoria (16 até junho) não entra em unidade: a unidade da linha é ignorada. */
+export const MENSAGEM_DIRETORIA_SEM_UNIDADE = 'Diretoria não entra em unidade.'
 
 type CamposDaLinha = Omit<z.infer<typeof LinhaImportada>, 'linha' | 'unidadeId' | 'classeId'>
 type CampoDaLinha = z.infer<typeof CampoDaLinhaImportada>

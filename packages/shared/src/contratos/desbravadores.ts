@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { Sexo, StatusMatricula, TipoPessoa } from '../enums'
+import { MOTIVOS_DIRETORIA } from '../formulas/diretoria'
 import { DataCivil, Email, Paginacao, Uuid, pagina } from './comum'
 import { RefClasse, RefUnidade } from './auth'
 
@@ -49,9 +50,8 @@ export const ContatoResponsavel = z.object({
   responsavelTelefone: z.string().nullable(),
   responsavelEmail: z.string().nullable(),
 })
-/** Por que a pessoa é da Diretoria; a marca é calculada a cada leitura, nunca gravada. */
-export const MotivoDiretoria = z.enum(['IDADE', 'CONSELHEIRO', 'INSTRUTOR'])
-export const DiretoriaSaida = z.object({ membro: z.boolean(), motivos: z.array(MotivoDiretoria) })
+/** Por que a pessoa é da Diretoria (o Tipo é gravado; o motivo é calculado a cada leitura). */
+export const MotivoDiretoria = z.enum(MOTIVOS_DIRETORIA)
 export const DesbravadorSaida = z.object({
   id: Uuid,
   nome: z.string(),
@@ -69,7 +69,8 @@ export const DesbravadorSaida = z.object({
   unidade: RefUnidade.nullable(),
   classeAtual: RefClasse.nullable(),   // matrícula CURSANDO na REGULAR do ano do clube
   avancadaAtual: RefClasse.nullable(), // matrícula CURSANDO na AVANCADA do ano do clube
-  diretoria: DiretoriaSaida,
+  /** Vazio quando o Tipo não é DIRETORIA. */
+  motivosDiretoria: z.array(MotivoDiretoria),
   /** Classes que a conta ligada instrui e unidades que aconselha, dos vínculos ativos do clube; sem conta, vazias. */
   instrui: z.array(RefClasse),
   aconselha: z.array(RefUnidade),
@@ -83,7 +84,6 @@ export const DesbravadorFiltro = Paginacao.extend({
   classeId: Uuid.optional(),
   tipo: TipoPessoa.optional(),
   ativo: z.enum(['true', 'false', 'todos']).default('true'),
-  diretoria: z.enum(['sim', 'nao']).optional(),
 })
 export const DesbravadorLista = pagina(DesbravadorSaida) // ordem: nome ascendente
 

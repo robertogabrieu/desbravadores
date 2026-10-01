@@ -22,7 +22,7 @@ import {
   prismaDeTeste,
 } from '../../test/fabricas'
 import { testarIsolamento } from '../../test/isolamento'
-import { clienteHttp, corpo, criarClasseDoClube } from '../../test/p6'
+import { clienteHttp, corpo, criarClasseDoClube, hoje } from '../../test/p6'
 import type { Clube } from '../generated/prisma/client.js'
 import { hashDoToken } from '../sessao/tokens'
 
@@ -214,7 +214,7 @@ describe('convidado abre e aceita o link', () => {
     expect(sessao.vinculos.map((v) => v.id)).toContain(vinculo.id)
     const ficha = await prisma.desbravador.findUniqueOrThrow({ where: { id: c.dbv.id } })
     expect(ficha.usuarioId).toBe(usuario.id)
-    expect(ficha.tipo).toBe('DBV')
+    expect(ficha.tipo).toBe('DIRETORIA')
     const convite = await prisma.conviteAcesso.findFirstOrThrow({ where: { clubeId: c.clube.id, dbvId: c.dbv.id } })
     expect(convite.usadoEm).not.toBeNull()
     await login(email, SENHA_NOVA).expect(200)
@@ -326,6 +326,25 @@ describe('convidado abre e aceita o link', () => {
     const resposta = await aceitar(token, email).expect(422)
     expect(resposta.body).toMatchObject({ codigo: 'REGRA' })
     expect(await prismaDeTeste().usuario.count({ where: { email } })).toBe(0)
+  })
+})
+
+describe('aceite do convite e o Tipo da ficha', () => {
+  it('menor que aceita convite de conselheiro vira Diretoria e sai da unidade no dia', async () => {
+    const c = await cenario()
+    const prisma = prismaDeTeste()
+    const menor = await criarDbv({ clubeId: c.clube.id, nome: 'Lia Menor', sexo: 'F', nascimento: '2014-05-10' })
+    await prisma.membroUnidade.create({ data: { clubeId: c.clube.id, dbvId: menor.id, unidadeId: c.unidade.id, inicio: new Date('2026-02-01') } })
+    const token = tokenDoLink((await gerar({ ...c, dbv: menor })).link)
+
+    await aceitar(token, emailNovo()).expect(200)
+
+    const hojeCivil = new Date(`${hoje()}T00:00:00Z`)
+    const ficha = await prisma.desbravador.findUniqueOrThrow({
+      where: { id: menor.id },
+      select: { tipo: true, diretoriaDesde: true, membros: { select: { fim: true } } },
+    })
+    expect(ficha).toEqual({ tipo: 'DIRETORIA', diretoriaDesde: hojeCivil, membros: [{ fim: hojeCivil }] })
   })
 })
 
