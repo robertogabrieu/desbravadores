@@ -1,5 +1,7 @@
 import { HttpResponse, http } from 'msw'
 import type { AulaAfetada, Calendario, EventoCalendario } from '../../api/calendario'
+import { lerPorId } from './caixa'
+import type { Caixa } from './caixa'
 import { uuid } from './sessao'
 
 export function criarEvento(n: number, parcial: Partial<EventoCalendario> = {}): EventoCalendario {
@@ -61,3 +63,6 @@ export const handlerErroGravarEvento = (status: number, erro: { codigo: string; 
   http.post('/api/calendario/eventos', () => HttpResponse.json(erro, { status })),
   http.patch('/api/calendario/eventos/:id', () => HttpResponse.json(erro, { status })),
 ]
+
+export const handlerEvento = (...caixas: Caixa<EventoCalendario>[]) =>
+  http.get('/api/calendario/eventos/:id', ({ params }) => lerPorId(String(params['id']), caixas, 'Evento não encontrado.'))

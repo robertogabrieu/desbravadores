@@ -2,6 +2,8 @@ import { HttpResponse, http } from 'msw'
 import type { JsonBodyType } from 'msw'
 import type { Aviso, Desbravador, ListaDesbravadores } from '../../api/desbravadores'
 import type { LinhaDaPreviaImportacao } from '../../api/importacao'
+import { lerPorId } from './caixa'
+import type { Caixa } from './caixa'
 import { uuid } from './sessao'
 
 export function criarDesbravador(parcial: Partial<Desbravador> = {}): Desbravador {
@@ -128,3 +130,6 @@ export const handlerConfirmarImportacao = (resposta: JsonBodyType, status = 201,
     aoReceber?.(await request.json())
     return HttpResponse.json(resposta, { status })
   })
+
+export const handlerDesbravador = (...caixas: Caixa<Desbravador>[]) =>
+  http.get('/api/desbravadores/:id', ({ params }) => lerPorId(String(params['id']), caixas, 'Desbravador não encontrado.'))

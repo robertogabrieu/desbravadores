@@ -3,6 +3,7 @@ import { LayoutAdm } from './layouts/LayoutAdm'
 import { LayoutCelular } from './layouts/LayoutCelular'
 import { rotasAcessoPapel, rotasAcessoPublicas } from './modulos/acesso/rotas'
 import { rotasAdmCalendario } from './modulos/adm/calendario/rotas'
+import { rotasAdmReunioes } from './modulos/adm/reunioes/rotas'
 import { rotasAdmClasses } from './modulos/adm/classes/rotas'
 import { rotasAdmConfiguracoes } from './modulos/adm/configuracoes/rotas'
 import { rotasAdmDesbravadores } from './modulos/adm/desbravadores/rotas'
@@ -91,6 +92,7 @@ export const rotas: RouteObject[] = [
           ...rotasAdmUsuarios,
           ...rotasAdmClasses,
           ...rotasAdmCalendario,
+          ...rotasAdmReunioes,
           ...rotasAdmCronogramas,
           ...rotasAdmConfiguracoes,
         ],
