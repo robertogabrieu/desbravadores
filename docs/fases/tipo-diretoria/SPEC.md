@@ -118,10 +118,13 @@ não a incluem.
   (`tipo = 'DIRETORIA'` e `diretoriaDesde` depois do fim do mês). Meses anteriores à entrada na
   Diretoria ficam como estavam.
 - **Só conta quem era desbravador no mês.** A Diretoria entra num mês anterior a `diretoriaDesde`
-  apenas se existe a passagem de unidade que terminou no dia de `diretoriaDesde` (a que a entrada
-  encerrou) e o mês está dentro dela — a passagem começou antes do fim do mês. Quem chega de Líder não
-  tem essa passagem e não aparece em mês nenhum do passado; quem sai e volta à Diretoria conta só nos
-  meses da unidade que a volta encerrou, nunca nos meses em que esteve sem unidade.
+  apenas se tem **alguma** passagem de unidade que cruze aquele mês (começou antes do fim do mês e
+  não tinha terminado antes do início dele), e aparece nele com a unidade dessa passagem — a mais
+  recente, se trocou de unidade no mês. Assim quem esteve na unidade A de janeiro a março, na B desde
+  julho e virou Diretoria em outubro conta em janeiro–março pela A e em julho–setembro pela B, e a
+  média de cada unidade nesses meses fica como era. Quem chega de Líder não tem passagem e não aparece
+  em mês nenhum do passado; quem sai e volta à Diretoria conta nos meses em que estava numa unidade,
+  nunca nos meses em que esteve sem unidade.
 
 ### Lugares que precisam INCLUIR a Diretoria
 

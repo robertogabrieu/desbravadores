@@ -41,7 +41,7 @@ interface Propriedades {
 const textoOuNulo = (texto: string): string | null => texto.trim() || null
 
 const AVISO_SAIDA_DA_UNIDADE = 'Sai da unidade e da chamada; continua cursando a classe.'
-const AVISO_VOLTA_SEM_UNIDADE = 'Volta para a chamada quando tiver uma unidade: escolha abaixo.'
+const AVISO_ENTRA_SEM_UNIDADE = 'Entra na chamada quando tiver uma unidade: escolha abaixo.'
 
 /** "Diretoria pela idade (16 anos até junho) e porque é conselheiro"; nada fora da Diretoria. */
 function textoDosMotivos(motivos: Desbravador['motivosDiretoria']): string | undefined {
@@ -59,7 +59,7 @@ function textoDosMotivos(motivos: Desbravador['motivosDiretoria']): string | und
 function ajudaDoTipo(atual: Desbravador | undefined, escolhido: TipoDesbravador): string | undefined {
   if (!atual) return undefined
   if (atual.tipo === 'DBV' && escolhido !== 'DBV') return AVISO_SAIDA_DA_UNIDADE
-  if (atual.tipo !== 'DBV' && escolhido === 'DBV') return AVISO_VOLTA_SEM_UNIDADE
+  if (atual.tipo !== 'DBV' && escolhido === 'DBV') return AVISO_ENTRA_SEM_UNIDADE
   if (atual.tipo === 'DIRETORIA' && escolhido === 'DIRETORIA') return textoDosMotivos(atual.motivosDiretoria)
   return undefined
 }
@@ -129,7 +129,7 @@ export function FormularioDesbravador({ desbravador, aoConcluir, aoCancelar }: P
   const mostraClasse = !ehLider && ativoOuNovo
   // Desbravador sem unidade (inclusive quem voltou sozinho da Diretoria) fica fora da chamada até ganhar uma.
   const avisoSemUnidade =
-    desbravador?.tipo === 'DBV' && !desbravador.unidade && valores.unidadeId === '' ? AVISO_VOLTA_SEM_UNIDADE : undefined
+    desbravador?.tipo === 'DBV' && !desbravador.unidade && valores.unidadeId === '' ? AVISO_ENTRA_SEM_UNIDADE : undefined
   const mostraResponsavel = !editando || desbravador.contato !== undefined
   const salvando = criar.isPending || editar.isPending || mover.isPending || matricular.isPending
   const classeAtualId = desbravador?.classeAtual?.id ?? ''
