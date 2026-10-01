@@ -23,7 +23,7 @@ export type Aviso = z.infer<typeof AvisoContrato>
 export type NovoDesbravador = z.input<typeof DesbravadorCriarEntrada>
 export type EdicaoDesbravador = z.input<typeof DesbravadorEditarEntrada>
 export type SituacaoDesbravador = z.input<typeof DesbravadorFiltro>['ativo']
-export type FiltroDiretoria = NonNullable<z.input<typeof DesbravadorFiltro>['diretoria']>
+export type TipoDesbravador = Desbravador['tipo']
 
 export interface FiltroDesbravadores {
   busca?: string
@@ -31,7 +31,7 @@ export interface FiltroDesbravadores {
   semUnidade?: boolean
   classeId?: string
   ativo: SituacaoDesbravador
-  diretoria?: FiltroDiretoria
+  tipo?: TipoDesbravador
   pagina: number
 }
 
@@ -57,7 +57,7 @@ export function useDesbravadores(filtro: FiltroDesbravadores) {
           semUnidade: filtro.semUnidade || undefined,
           classeId: filtro.classeId,
           ativo: filtro.ativo,
-          diretoria: filtro.diretoria,
+          tipo: filtro.tipo,
           pagina: filtro.pagina,
           porPagina: POR_PAGINA,
         })}`,
@@ -90,7 +90,9 @@ export function useEditarDesbravador() {
         metodo: 'PATCH',
         corpo: DesbravadorEditarEntrada.parse(entrada),
       }),
-    onSuccess: () => cliente.invalidateQueries({ queryKey: chavesDesbravadores.todos }),
+    // Trocar o Tipo para Diretoria ou Líder encerra a unidade: a contagem das unidades muda.
+    onSuccess: () =>
+      Promise.all([cliente.invalidateQueries({ queryKey: chavesDesbravadores.todos }), invalidarUnidades(cliente)]),
   })
 }
 

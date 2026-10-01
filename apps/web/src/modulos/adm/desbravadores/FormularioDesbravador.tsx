@@ -1,11 +1,11 @@
-import { DesbravadorCriarEntrada, DesbravadorEditarEntrada, anoClube, hojeNoFuso, type MotivoDiretoria } from '@desbravadores/shared'
+import { DesbravadorCriarEntrada, DesbravadorEditarEntrada, TipoPessoa, anoClube, hojeNoFuso } from '@desbravadores/shared'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import type { z } from 'zod'
+import { ErroDaApi } from '../../../api/cliente'
 import { consultaConfiguracaoClube } from '../../../api/clube'
 import { hojeDoClube, useCriarDesbravador, useEditarDesbravador, useMatricular, useMoverUnidade } from '../../../api/desbravadores'
-import type { Aviso, Desbravador } from '../../../api/desbravadores'
+import type { Aviso, Desbravador, TipoDesbravador } from '../../../api/desbravadores'
 import { useClasses, useUnidades, useUsuariosResumo } from '../../../api/leitura'
 import { Botao } from '../../../ui/Botao'
 import { CaixaMarcacao } from '../../../ui/CaixaMarcacao'
@@ -15,7 +15,7 @@ import { Selecao } from '../../../ui/Selecao'
 import { MENSAGEM_GENERICA, errosDoContrato, lerErroDaApi } from './erros'
 
 interface Valores {
-  tipo: 'DBV' | 'LIDER'
+  tipo: TipoDesbravador
   nome: string
   nomePublico: string
   nascimento: string
@@ -40,20 +40,26 @@ interface Propriedades {
 
 const textoOuNulo = (texto: string): string | null => texto.trim() || null
 
-const TEXTO_DO_MOTIVO: Record<z.infer<typeof MotivoDiretoria>, string> = {
-  IDADE: 'pela idade (16 anos até junho)',
-  CONSELHEIRO: 'conselheiro',
-  INSTRUTOR: 'instrutor',
+const AVISO_SAIDA_DA_UNIDADE = 'Sai da unidade e da chamada; continua cursando a classe.'
+
+/** "Diretoria pela idade (16 anos até junho) e porque é conselheiro"; nada fora da Diretoria. */
+function textoDosMotivos(motivos: Desbravador['motivosDiretoria']): string | undefined {
+  if (motivos.length === 0) return undefined
+  const papeis = motivos.flatMap((motivo) => (motivo === 'CONSELHEIRO' ? ['conselheiro'] : motivo === 'INSTRUTOR' ? ['instrutor'] : []))
+  const partes = [
+    ...(motivos.includes('IDADE') ? ['pela idade (16 anos até junho)'] : []),
+    ...(papeis.length > 0 ? [`porque é ${papeis.join(' e ')}`] : []),
+    ...(motivos.includes('ADM') ? ['porque foi marcado pelo Adm'] : []),
+  ]
+  return `Diretoria ${partes.join(' e ')}`
 }
 
-function LinhaDiretoria({ diretoria }: { diretoria: Desbravador['diretoria'] }) {
-  if (!diretoria.membro) return null
-  return (
-    <div className="rounded-cartao bg-marca-suave px-3 py-2">
-      <p className="text-base font-semibold text-texto">Membro da Diretoria</p>
-      <p className="text-sm text-texto-2">{diretoria.motivos.map((motivo) => TEXTO_DO_MOTIVO[motivo]).join(', ')}</p>
-    </div>
-  )
+/** A ajuda do campo Tipo: o aviso a quem deixa de ser Desbravador, ou por que a pessoa é Diretoria. */
+function ajudaDoTipo(atual: Desbravador | undefined, escolhido: TipoDesbravador): string | undefined {
+  if (!atual) return undefined
+  if (atual.tipo === 'DBV' && escolhido !== 'DBV') return AVISO_SAIDA_DA_UNIDADE
+  if (atual.tipo === 'DIRETORIA' && escolhido === 'DIRETORIA') return textoDosMotivos(atual.motivosDiretoria)
+  return undefined
 }
 
 /** O que a conta ligada à ficha conduz no clube, ao lado do que ela cursa. */
@@ -115,7 +121,10 @@ export function FormularioDesbravador({ desbravador, aoConcluir, aoCancelar }: P
   const cliente = useQueryClient()
 
   const ehLider = valores.tipo === 'LIDER'
-  const mostraUnidade = !ehLider && (!editando || desbravador.ativo)
+  const ativoOuNovo = !editando || desbravador.ativo
+  // Diretoria e Líder não ficam em unidade; a Diretoria continua cursando a classe.
+  const mostraUnidade = valores.tipo === 'DBV' && ativoOuNovo
+  const mostraClasse = !ehLider && ativoOuNovo
   const mostraResponsavel = !editando || desbravador.contato !== undefined
   const salvando = criar.isPending || editar.isPending || mover.isPending || matricular.isPending
   const classeAtualId = desbravador?.classeAtual?.id ?? ''
@@ -158,7 +167,7 @@ export function FormularioDesbravador({ desbravador, aoConcluir, aoCancelar }: P
       tipo: valores.tipo,
       entradaEm: valores.entradaEm,
       usuarioId: ehLider ? textoOuNulo(valores.usuarioId) : undefined,
-      unidadeId: ehLider ? undefined : textoOuNulo(valores.unidadeId),
+      unidadeId: mostraUnidade ? textoOuNulo(valores.unidadeId) : undefined,
       classeId: ehLider ? undefined : textoOuNulo(valores.classeId),
       incluirAvancada: valores.incluirAvancada,
     }
@@ -175,13 +184,24 @@ export function FormularioDesbravador({ desbravador, aoConcluir, aoCancelar }: P
       ...camposDaPessoa(),
       ...(mostraResponsavel ? camposDoResponsavel() : {}),
       ...(ehLider ? { usuarioId: textoOuNulo(valores.usuarioId) } : {}),
+      ...(valores.tipo !== atual.tipo ? { tipo: valores.tipo } : {}),
     }
     const lido = DesbravadorEditarEntrada.safeParse(entrada)
     if (!lido.success) {
       setErros(errosDoContrato(lido.error.issues))
       return null
     }
-    const { avisos } = await editar.mutateAsync({ id: atual.id, entrada: lido.data })
+    const voltandoADesbravador = valores.tipo === 'DBV' && atual.tipo !== 'DBV'
+    const resposta = await editar.mutateAsync({ id: atual.id, entrada: lido.data }).catch((falha: unknown) => {
+      // A API recusa voltar a Desbravador quem está na regra da Diretoria: a recusa é do campo Tipo.
+      if (voltandoADesbravador && falha instanceof ErroDaApi && falha.status === 422) {
+        setErros({ tipo: falha.erro.mensagem })
+        return null
+      }
+      throw falha
+    })
+    if (!resposta) return null
+    const { avisos } = resposta
     const unidadeAtual = atual.unidade?.id ?? ''
     if (mostraUnidade && valores.unidadeId !== unidadeAtual) {
       try {
@@ -192,8 +212,8 @@ export function FormularioDesbravador({ desbravador, aoConcluir, aoCancelar }: P
         return null
       }
     }
-    // A classe só é escolhida na edição para quem está na unidade (DBV ativo); trocar matricula de novo.
-    if (mostraUnidade && valores.classeId && valores.classeId !== classeAtualId) {
+    // A classe só é escolhida na edição para quem está ativo e não é Líder; trocar matricula de novo.
+    if (mostraClasse && valores.classeId && valores.classeId !== classeAtualId) {
       try {
         // A matrícula é no ano do clube, que depende do fuso e do início do ano configurados.
         const configuracao = await cliente.fetchQuery(consultaConfiguracaoClube)
@@ -225,10 +245,16 @@ export function FormularioDesbravador({ desbravador, aoConcluir, aoCancelar }: P
 
   return (
     <form noValidate onSubmit={(evento) => void enviar(evento)} className="flex flex-col gap-4">
-      {desbravador && <LinhaDiretoria diretoria={desbravador.diretoria} />}
       {desbravador && <LinhaConduz instrui={desbravador.instrui} aconselha={desbravador.aconselha} />}
-      <Selecao rotulo="Tipo" value={valores.tipo} disabled={editando} onChange={(e) => definir('tipo', e.target.value === 'LIDER' ? 'LIDER' : 'DBV')}>
+      <Selecao
+        rotulo="Tipo"
+        value={valores.tipo}
+        erro={erros['tipo']}
+        ajuda={ajudaDoTipo(desbravador, valores.tipo)}
+        onChange={(e) => definir('tipo', TipoPessoa.catch('DBV').parse(e.target.value))}
+      >
         <option value="DBV">Desbravador</option>
+        <option value="DIRETORIA">Diretoria</option>
         <option value="LIDER">Líder em formação</option>
       </Selecao>
       <Campo rotulo="Nome completo" value={valores.nome} erro={erros['nome']} onChange={(e) => definir('nome', e.target.value)} />
@@ -253,18 +279,19 @@ export function FormularioDesbravador({ desbravador, aoConcluir, aoCancelar }: P
       {!editando && (
         <Campo rotulo="Entrada no clube" type="date" value={valores.entradaEm} erro={erros['entradaEm']} onChange={(e) => definir('entradaEm', e.target.value)} />
       )}
-      {ehLider ? (
-        <CampoContaDeUsuario valor={valores.usuarioId} aoMudar={(id) => definir('usuarioId', id)} />
-      ) : mostraUnidade ? (
+      {ehLider && <CampoContaDeUsuario valor={valores.usuarioId} aoMudar={(id) => definir('usuarioId', id)} />}
+      {mostraUnidade && (
+        <Selecao rotulo="Unidade" value={valores.unidadeId} erro={erros['unidadeId']} onChange={(e) => definir('unidadeId', e.target.value)}>
+          <option value="">Sem unidade</option>
+          {unidades.data?.map((unidade) => (
+            <option key={unidade.id} value={unidade.id}>
+              {unidade.nome}
+            </option>
+          ))}
+        </Selecao>
+      )}
+      {mostraClasse && (
         <>
-          <Selecao rotulo="Unidade" value={valores.unidadeId} erro={erros['unidadeId']} onChange={(e) => definir('unidadeId', e.target.value)}>
-            <option value="">Sem unidade</option>
-            {unidades.data?.map((unidade) => (
-              <option key={unidade.id} value={unidade.id}>
-                {unidade.nome}
-              </option>
-            ))}
-          </Selecao>
           {/* Na edição, "Sem classe" só existe para quem ainda não tem: matrícula não se desfaz por aqui. */}
           <Selecao
             rotulo="Classe do ano"
@@ -288,7 +315,7 @@ export function FormularioDesbravador({ desbravador, aoConcluir, aoCancelar }: P
             />
           )}
         </>
-      ) : null}
+      )}
       {mostraResponsavel && (
         <>
           <Campo rotulo="Responsável" value={valores.responsavelNome} erro={erros['responsavelNome']} onChange={(e) => definir('responsavelNome', e.target.value)} />
