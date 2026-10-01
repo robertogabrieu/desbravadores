@@ -29,6 +29,21 @@ export class ErroDaApi extends Error {
 export interface OpcoesRequisicao {
   metodo?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   corpo?: unknown
+  /** Vínculo em nome do qual o pedido sai (a fila): se a sessão renovada for de outro, o pedido não é repetido. */
+  vinculoEsperado?: string
+}
+
+/** A sessão renovada no meio de um pedido é de outro vínculo (o papel foi trocado em outra aba). */
+export class SessaoDeOutroVinculo extends Error {
+  constructor(readonly vinculoId: string | null) {
+    super('A sessão renovada é de outro vínculo')
+    this.name = 'SessaoDeOutroVinculo'
+  }
+}
+
+/** Repetir o pedido com a sessão de outro vínculo o mandaria com o papel errado: lança antes. */
+export function conferirVinculoDaSessao(sessao: Sessao, vinculoEsperado: string | undefined): void {
+  if (vinculoEsperado !== undefined && sessao.vinculoAtivoId !== vinculoEsperado) throw new SessaoDeOutroVinculo(sessao.vinculoAtivoId)
 }
 
 interface Ouvintes {
@@ -169,13 +184,15 @@ async function executar(caminho: string, opcoes: OpcoesRequisicao): Promise<Resp
 
   if (resposta.status === 401 && !ehRotaSemToken(caminho)) {
     const erroOriginal = await lerErro(resposta)
+    let renovada: Sessao
     try {
-      await renovarSessao()
+      renovada = await renovarSessao()
     } catch (erroRefresh) {
       if (erroRefresh instanceof ErroDaApi && erroRefresh.classe !== 'RECUSA') throw erroRefresh
       avisarSeRefreshRecusado(erroRefresh)
       throw erroOriginal
     }
+    conferirVinculoDaSessao(renovada, opcoes.vinculoEsperado)
     resposta = await enviar(caminho, opcoes)
     if (resposta.status === 401) {
       avisarSessaoPerdida()

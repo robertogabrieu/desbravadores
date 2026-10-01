@@ -20,6 +20,7 @@ import { limparFilaDeAbertura } from '../offline/limpeza'
 import { iniciarMotor, liberarTrocaDePapel, pararMotor, pausarParaTrocaDePapel } from '../offline/motor'
 import { baixarPacoteAoVoltarConexao, baixarPacoteSeVelho } from '../offline/pacote'
 import { VALIDADE_DO_MODO_SEM_CONEXAO_MS, tempos } from '../offline/tempos'
+import { avisarTrocaDePapel, ouvirOutrasAbas } from './abasDaSessao'
 import { ContextoDaSessao } from './useSessao'
 import type { ContextoSessao, Eu } from './useSessao'
 import type { z } from 'zod'
@@ -83,6 +84,7 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
   const descartarSessao = useCallback(() => {
     geracao.current += 1
     definirTokenAcesso(null)
+    estadoOffline.trocaParaVinculo = null
     clienteConsultas.clear()
     definirConexao('ONLINE')
     definirExpirada(false)
@@ -161,6 +163,23 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
     [],
   )
 
+  // Outra aba trocou de papel: o cookie de refresh já é do vínculo novo. Renova aqui também, para o
+  // motor desta aba (que pode ser o dono da fila) passar ao vínculo novo e a tela relê o eu.
+  useEffect(
+    () =>
+      ouvirOutrasAbas(() => {
+        const usuario = estadoAtual.current.eu?.usuario.id
+        if (estadoAtual.current.situacao !== 'autenticada' || !usuario) return
+        void (async () => {
+          const sessao = await renovarSessao()
+          if (sessao.vinculoAtivoId) iniciarMotor({ usuarioId: usuario, vinculoId: sessao.vinculoAtivoId, queryClient: clienteConsultas })
+          clienteConsultas.clear()
+          await lerEu()
+        })().catch(() => undefined)
+      }),
+    [clienteConsultas, lerEu],
+  )
+
   // Sem conexão: tenta renovar a cada evento `online` e a cada intervalo com a aba visível.
   useEffect(() => {
     if (modo !== 'SEM_CONEXAO') return
@@ -206,9 +225,8 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
     async (vinculoId: string) => {
       const entrada: z.infer<typeof PapelAtivoEntrada> = { vinculoId }
       // A fila não envia durante a troca: um item do papel antigo sairia com o token do novo e seria
-      // recusado de vez. A pausa sai quando o motor recebe a sessão do vínculo novo; se a troca for
-      // recusada, volta como estava. Se a troca passar e a leitura seguinte falhar, a fila fica
-      // pausada (nada sai com a sessão errada) até a próxima leitura chegar.
+      // recusado de vez. Aceita a troca, o motor passa na hora à sessão do vínculo novo (o que tira a
+      // pausa, inclusive quando o papel escolhido é o que já estava em uso); recusada, volta como estava.
       pausarParaTrocaDePapel(vinculoId)
       let sessao
       try {
@@ -218,6 +236,9 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
         throw falha
       }
       definirTokenAcesso(sessao.accessToken)
+      const usuario = estadoAtual.current.eu?.usuario.id
+      if (usuario) iniciarMotor({ usuarioId: usuario, vinculoId, queryClient: clienteConsultas })
+      avisarTrocaDePapel(vinculoId)
       clienteConsultas.clear()
       await lerEu()
     },

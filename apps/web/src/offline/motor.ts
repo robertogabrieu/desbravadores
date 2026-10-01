@@ -1,4 +1,4 @@
-import { ErroDaApi } from '../api/cliente'
+import { ErroDaApi, SessaoDeOutroVinculo } from '../api/cliente'
 import { desligarAbas, ligarAbas } from './abas'
 import { banco } from './banco'
 import { criarContextoEnvio, ehFalhaEnvio, ErroDeEnvio, paraFalhaEnvio } from './contexto'
@@ -80,7 +80,6 @@ export function iniciarMotor(sessao: SessaoMotor): void {
   execucao = nova
 }
 
-/** Desliga o motor (sair, fim do componente). Espera o envio em andamento terminar. */
 /** Pausa o envio até a sessão do motor chegar a `vinculoId` (troca de papel em andamento). */
 export function pausarParaTrocaDePapel(vinculoId: string): void {
   estadoOffline.trocaParaVinculo = vinculoId
@@ -92,10 +91,12 @@ export function liberarTrocaDePapel(): void {
   acordarMotor()
 }
 
+/** Desliga o motor (sair, fim do componente). Espera o envio em andamento terminar. */
 export async function pararMotor(): Promise<void> {
   const atual = execucao
   execucao = null
   estadoOffline.sessao = null
+  estadoOffline.trocaParaVinculo = null
   if (!atual) return
   atual.parada.valor = true
   atual.desassinar()
@@ -169,7 +170,7 @@ async function enviarItem(candidato: ItemFila, sessao: SessaoMotor): Promise<voi
 
   try {
     let ultimoPercentual = -1
-    const contexto = criarContextoEnvio(sessao.queryClient, (percentual) => {
+    const contexto = criarContextoEnvio(sessao.queryClient, item.vinculoId, (percentual) => {
       if (percentual === ultimoPercentual) return
       ultimoPercentual = percentual
       void banco.fila.update(item.id, { progresso: percentual }).then(() => recarregarFila())
@@ -224,7 +225,23 @@ async function marcarErro(id: string, erro: { codigo: string; mensagem: string }
   await banco.fila.update(id, { estado: 'ERRO', erro, proximaTentativaEm: null, atualizadoEm: Date.now() })
 }
 
+/**
+ * O papel foi trocado em outra aba e a renovação trouxe a sessão de outro vínculo: o item não falhou,
+ * espera a volta ao vínculo dele sem gastar tentativa, e o motor passa à sessão nova.
+ */
+async function devolverPorTrocaDeVinculo(item: ItemFila, vinculoNovo: string | null): Promise<void> {
+  const sessao = estadoOffline.sessao
+  if (sessao && vinculoNovo !== null) estadoOffline.sessao = { ...sessao, vinculoId: vinculoNovo }
+  // Sem vínculo escolhido na sessão nova não há papel em nome do qual enviar.
+  if (vinculoNovo === null) estadoOffline.pausadaPorSessao = true
+  await banco.fila.update(item.id, { estado: 'NA_FILA', progresso: 0, atualizadoEm: Date.now() })
+}
+
 async function registrarFalha(item: ItemFila, erro: unknown): Promise<void> {
+  if (erro instanceof SessaoDeOutroVinculo) {
+    await devolverPorTrocaDeVinculo(item, erro.vinculoId)
+    return
+  }
   const falha: FalhaEnvio | null = erro instanceof ErroDaApi ? paraFalhaEnvio(erro) : ehFalhaEnvio(erro) ? erro : null
   if (!falha) {
     console.error('Falha inesperada ao enviar', erro)

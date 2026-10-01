@@ -5,14 +5,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import { configurarCliente } from '../api/cliente'
 import { servidor } from '../testes/servidor'
-import { criarEu, criarVinculo } from '../testes/handlers/sessao'
+import { criarEu, criarSessao, criarVinculo, uuid } from '../testes/handlers/sessao'
 import { banco } from './banco'
 import { definirConexao } from './conexao'
 import { dependencias } from './dependencias'
 import { enfileirar, itensDaChave, naoEnviadosDoVinculo, registrarTipo, useFila } from './index'
 import type { ItemFila, TipoFila } from './index'
 import { limparFilaDeAbertura } from './limpeza'
-import { aguardarMotorPronto, iniciarMotor, liberarTrocaDePapel, pausarParaTrocaDePapel } from './motor'
+import { estadoOffline } from './estado'
+import { aguardarMotorPronto, iniciarMotor, liberarTrocaDePapel, pararMotor, pausarParaTrocaDePapel } from './motor'
 import { tempos } from './tempos'
 
 const USUARIO = 'usuario-1'
@@ -225,6 +226,67 @@ describe('fila: troca de papel', () => {
     const id = await pedirCarga('k-recusa', 'x')
     liberarTrocaDePapel()
     await waitFor(async () => expect((await ler(id))?.estado).toBe('ENVIADO'))
+  })
+
+  it('parar o motor (sair) desfaz a pausa da troca', async () => {
+    iniciar()
+    pausarParaTrocaDePapel('vinculo-2')
+    await pararMotor()
+    expect(estadoOffline.trocaParaVinculo).toBeNull()
+  })
+
+  it('renovação no meio do envio que cai noutro vínculo (troca em outra aba): o item volta à fila sem ERRO, sem gastar tentativa e sem reenvio', async () => {
+    let chamadas = 0
+    servidor.use(
+      http.put('/api/falso', () => ((chamadas += 1), recusa(401, 'NAO_AUTENTICADO'))),
+      http.post('/api/auth/refresh', () => HttpResponse.json(criarSessao([criarVinculo('INSTRUTOR', 2)]))),
+    )
+    iniciar()
+    const id = await pedirCarga('k-outra-aba', 'x')
+
+    await waitFor(() => expect(estadoOffline.sessao?.vinculoId).toBe(uuid(2)))
+    await new Promise((resolver) => setTimeout(resolver, 60))
+    const item = await ler(id)
+    expect([item?.estado, item?.tentativas, item?.proximaTentativaEm, item?.erro]).toEqual(['NA_FILA', 0, null, undefined])
+    expect(chamadas).toBe(1)
+    expect(estadoOffline.pausadaPorSessao).toBe(false)
+  })
+})
+
+describe('fila: troca de papel no envio de arquivo', () => {
+  class XhrQueExpirou {
+    static enviados = 0
+    upload = { onprogress: null }
+    onload: (() => void) | null = null
+    status = 401
+    responseText = JSON.stringify({ codigo: 'NAO_AUTENTICADO', mensagem: 'expirou' })
+    open() {}
+    setRequestHeader() {}
+    send() {
+      XhrQueExpirou.enviados += 1
+      this.onload?.()
+    }
+  }
+
+  it('renovação que cai noutro vínculo não reenvia o arquivo e devolve o item à fila sem gastar tentativa', async () => {
+    XhrQueExpirou.enviados = 0
+    vi.spyOn(dependencias, 'criarXhr').mockImplementation(() => new XhrQueExpirou() as unknown as XMLHttpRequest)
+    servidor.use(http.post('/api/auth/refresh', () => HttpResponse.json(criarSessao([criarVinculo('INSTRUTOR', 2)]))))
+    registrarTipo<Carga, typeof saidaOk>({
+      ...tipoFalso,
+      tipo: 'ARQUIVO_FALSO',
+      enviar: (_item, ctx) =>
+        ctx.enviarArquivo('/api/arquivo', { metodo: 'POST', campos: {}, campoArquivo: 'arquivo', arquivo: new Blob(['x']), nomeArquivo: 'x.jpg' }, () => undefined),
+    })
+    iniciar()
+
+    const id = await enfileirar<Carga>({ tipo: 'ARQUIVO_FALSO', chave: 'foto:troca', payload: { valor: 'f' } })
+
+    await waitFor(() => expect(estadoOffline.sessao?.vinculoId).toBe(uuid(2)))
+    await new Promise((resolver) => setTimeout(resolver, 60))
+    const item = await ler(id)
+    expect([item?.estado, item?.tentativas, item?.erro]).toEqual(['NA_FILA', 0, undefined])
+    expect(XhrQueExpirou.enviados).toBe(1)
   })
 })
 
