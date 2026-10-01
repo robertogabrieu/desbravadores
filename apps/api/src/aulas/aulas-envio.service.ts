@@ -11,7 +11,7 @@ import { ServicoEscopo } from '../desbravadores/escopo.service'
 import { Prisma } from '../generated/prisma/client.js'
 import type { ConfiguracaoClube, RegistroAula, TipoPessoa } from '../generated/prisma/client.js'
 import { ServicoPontos } from '../pontos/servico-pontos'
-import { exigirFichaDeOutraPessoa } from '../progresso/conclusoes'
+import { ehFichaDaSessao } from '../progresso/conclusoes'
 import {
   DIAS_DE_CORRECAO,
   DIAS_DE_ENVIO_TARDIO,
@@ -272,17 +272,25 @@ export class AulasEnvioService {
     return publicada ? { id: envio.aulaPlanejadaId, aviso: null } : { id: null, aviso: AVISO_FORA_DO_PUBLICADO }
   }
 
-  /** F3, F4 e F6: desmarca so o desta aula (estorna), marca o que vale, e o resto vai para `requisitosSemEfeito`. */
+  /**
+   * F3, F4 e F6: desmarca so o desta aula (estorna), marca o que vale, e o resto vai para `requisitosSemEfeito`.
+   * A marca na propria ficha fica sem efeito em vez de recusar a aula: envio antigo da fila nao pode travar a presenca dos outros.
+   */
   private async aplicarRequisitos(tx: Tx, contexto: Contexto) {
     const { sessao, registro, envio, membros } = contexto
     const { clubeId } = sessao
-    for (const marca of [...envio.requisitosMarcados, ...envio.requisitosDesmarcados]) {
-      exigirFichaDeOutraPessoa(sessao, membros.get(marca.dbvId)?.usuarioId ?? null)
+    const semEfeito: SemEfeito[] = []
+    const daPropriaFicha = (marca: Marca): boolean => {
+      if (!ehFichaDaSessao(sessao, membros.get(marca.dbvId)?.usuarioId ?? null)) return false
+      semEfeito.push({ dbvId: marca.dbvId, requisitoId: marca.requisitoId, motivo: 'PROPRIA_FICHA', concluidoEm: null })
+      return true
     }
+    const desmarcadas = semRepetidos(envio.requisitosDesmarcados).filter((marca) => !daPropriaFicha(marca))
+    const marcadas = semRepetidos(envio.requisitosMarcados).filter((marca) => !daPropriaFicha(marca))
     const foraDaAula = new Set<string>()
     let gravou = false
 
-    for (const marca of semRepetidos(envio.requisitosDesmarcados)) {
+    for (const marca of desmarcadas) {
       const membro = membros.get(marca.dbvId)
       if (!membro) {
         foraDaAula.add(marca.dbvId)
@@ -297,7 +305,6 @@ export class AulasEnvioService {
       if (membro.tipo === 'DBV') await this.sincronizarPontos(tx, contexto, marca, [])
     }
 
-    const marcadas = semRepetidos(envio.requisitosMarcados)
     const validos = await this.requisitosValidos(tx, clubeId, envio.classeId, marcadas.map((m) => m.requisitoId))
     const jaConcluidos = new Map(
       (
@@ -313,7 +320,6 @@ export class AulasEnvioService {
     )
     const ausentes = new Set(envio.presencas.filter((p) => !p.presente).map((p) => p.dbvId))
     const criterio = await tx.criterioRanking.findFirst({ where: { clubeId, gatilho: 'REQUISITO', padrao: true } })
-    const semEfeito: SemEfeito[] = []
 
     for (const marca of marcadas) {
       const membro = membros.get(marca.dbvId)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { alternarPresenca, alternarRequisito, chavePar, comporEstado, concluidosComFila, concluidoEm, concluidosDoServidor, montarEntrada, pontosProvisorios, requisitosVisiveis } from './estado'
+import { alternarPresenca, alternarRequisito, chavePar, comporEstado, concluidosComFila, concluidoEm, concluidosDoServidor, montarEntrada, pontosProvisorios, quemFalta, requisitosVisiveis } from './estado'
 import type { BaseAula, ItemPendente, Membro, Requisito } from './estado'
 
 const uuid = (n: number): string => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
@@ -93,6 +93,20 @@ describe('estado da aula', () => {
     const entrada = { membros, estado, servidor: vazio, comFila: vazio, requisitos }
     expect(pontosProvisorios({ ...entrada, pontosRequisito: { pontos: 5, ativo: true } })).toBe(5)
     expect(pontosProvisorios({ ...entrada, pontosRequisito: { pontos: 5, ativo: false } })).toBe(0)
+  })
+
+  it('a ficha do próprio instrutor ("você") não entra no envio, nos pontos nem no que falta', () => {
+    const IVO = uuid(4)
+    const comVoce: Membro[] = [...membros, { dbvId: IVO, nome: 'Ivo', tipo: 'DBV', concluidos: [], conclusoes: [], voce: true }]
+    let estado = comporEstado({ ...sem, membros: comVoce })
+    for (const dbvId of [ANA, IVO]) estado = alternarRequisito(estado, new Set(), dbvId, R1)
+    const entrada = montarEntrada({ ...contexto, membros: comVoce, estado, base: null })
+    expect(entrada?.requisitosMarcados).toEqual([{ dbvId: ANA, requisitoId: R1 }])
+    expect(entrada?.presencas.map((p) => p.dbvId)).toContain(IVO)
+    const vazio = new Set<string>()
+    expect(pontosProvisorios({ membros: comVoce, estado, servidor: vazio, comFila: vazio, requisitos, pontosRequisito: { pontos: 5, ativo: true } })).toBe(5)
+    const faltam = quemFalta(comVoce, comporEstado({ ...sem, membros: comVoce }), vazio, requisitos)
+    expect(faltam.flatMap((linha) => linha.nomes)).not.toContain('Ivo')
   })
 
   it('requisitos visíveis: os planejados e os acrescentados, na ordem da classe', () => {

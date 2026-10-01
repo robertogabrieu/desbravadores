@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { INestApplication } from '@nestjs/common'
+import { AulaEnvioSaida } from '@desbravadores/shared'
 import type { PacoteSaida, ProgressoClasseSaida, ProgressoDbvSaida } from '@desbravadores/shared'
 import request from 'supertest'
 import type { z } from 'zod'
@@ -97,22 +98,55 @@ describe('instrutor que cursa a classe que instrui não marca os próprios requi
     expect(membros.find((m) => m.dbvId === ana.id)?.voce).toBe(false)
   })
 
-  it('no envio da aula, marcar requisito da própria ficha é recusado com 422', async () => {
+  const enviarAula = (classeId: string, autorizacao: string, dados: { presencas: string[]; marcados?: { dbvId: string; requisitoId: string }[]; desmarcados?: { dbvId: string; requisitoId: string }[] }) =>
+    api.put(`/api/sync/aulas/${randomUUID()}`, autorizacao, {
+      versaoPayload: 1,
+      envioId: randomUUID(),
+      classeId,
+      data: hoje(),
+      feitaNoAparelhoEm: new Date().toISOString(),
+      aulaPlanejadaId: null,
+      presencas: dados.presencas.map((dbvId) => ({ dbvId, presente: true, versaoVista: null })),
+      requisitosMarcados: dados.marcados ?? [],
+      requisitosDesmarcados: dados.desmarcados ?? [],
+    })
+
+  it('no envio da aula, a marcação da própria ficha fica sem efeito e o resto da aula grava', async () => {
     const { amigo, requisito, instrutor, propria, ana } = await cenario()
-    const resposta = await api
-      .put(`/api/sync/aulas/${randomUUID()}`, instrutor.autorizacao, {
-        versaoPayload: 1,
-        envioId: randomUUID(),
-        classeId: amigo.id,
-        data: hoje(),
-        feitaNoAparelhoEm: new Date().toISOString(),
-        aulaPlanejadaId: null,
-        presencas: [propria.id, ana.id].map((dbvId) => ({ dbvId, presente: true, versaoVista: null })),
-        requisitosMarcados: [{ dbvId: propria.id, requisitoId: requisito.id }],
-        requisitosDesmarcados: [],
-      })
-      .expect(422)
-    expect(resposta.body).toMatchObject({ mensagem: MENSAGEM })
+    const saida = corpo<z.infer<typeof AulaEnvioSaida>>(
+      await enviarAula(amigo.id, instrutor.autorizacao, {
+        presencas: [propria.id, ana.id],
+        marcados: [
+          { dbvId: propria.id, requisitoId: requisito.id },
+          { dbvId: ana.id, requisitoId: requisito.id },
+        ],
+      }).expect(200),
+    )
+    expect(saida.requisitosSemEfeito).toEqual([{ dbvId: propria.id, requisitoId: requisito.id, motivo: 'PROPRIA_FICHA', concluidoEm: null }])
     expect(await prismaDeTeste().requisitoConcluido.count({ where: { dbvId: propria.id } })).toBe(0)
+    expect(await prismaDeTeste().requisitoConcluido.count({ where: { dbvId: ana.id, removidoEm: null } })).toBe(1)
+    expect(await prismaDeTeste().presencaAula.count({ where: { registroAulaId: saida.registroAulaId, presente: true } })).toBe(2)
+  })
+
+  it('envio antigo da fila que desmarca a própria ficha sobe sem erro e a conclusão continua', async () => {
+    const { clube, amigo, requisito, instrutor, propria, ana } = await cenario()
+    await criarRequisitoConcluido({ clubeId: clube.id, dbvId: propria.id, requisitoId: requisito.id })
+    const saida = corpo<z.infer<typeof AulaEnvioSaida>>(
+      await enviarAula(amigo.id, instrutor.autorizacao, {
+        presencas: [propria.id, ana.id],
+        desmarcados: [{ dbvId: propria.id, requisitoId: requisito.id }],
+      }).expect(200),
+    )
+    expect(saida.requisitosSemEfeito).toEqual([{ dbvId: propria.id, requisitoId: requisito.id, motivo: 'PROPRIA_FICHA', concluidoEm: null }])
+    expect(await prismaDeTeste().requisitoConcluido.count({ where: { dbvId: propria.id, removidoEm: null } })).toBe(1)
+  })
+
+  it('no envio da aula, o Adm marca a ficha do instrutor', async () => {
+    const { amigo, requisito, adm, propria } = await cenario()
+    const saida = corpo<z.infer<typeof AulaEnvioSaida>>(
+      await enviarAula(amigo.id, adm.autorizacao, { presencas: [propria.id], marcados: [{ dbvId: propria.id, requisitoId: requisito.id }] }).expect(200),
+    )
+    expect(saida.requisitosSemEfeito).toEqual([])
+    expect(await prismaDeTeste().requisitoConcluido.count({ where: { dbvId: propria.id, removidoEm: null } })).toBe(1)
   })
 })

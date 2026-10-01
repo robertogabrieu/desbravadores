@@ -272,7 +272,7 @@ function LinhaDbv({ membro, presente, situacao, requisitos, estado, comFila, aoA
         </span>
       </button>
       {membro.voce ? (
-        <span className="text-xs text-texto-2">Outro instrutor ou o Adm registra os seus requisitos.</span>
+        presente && <span className="text-xs text-texto-2">Outro instrutor ou o Adm registra os seus requisitos.</span>
       ) : (
         requisitos.map((requisito) => {
           const antes = concluidoAntes(membro, comFila, requisito.id)

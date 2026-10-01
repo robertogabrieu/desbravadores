@@ -259,6 +259,16 @@ describe('Registro de aula nova', () => {
     expect(celula('Ana Clara', 'R1')).toBeEnabled()
   })
 
+  it('instrutor ausente não vê a frase sobre os próprios requisitos', async () => {
+    const IVO = uuid(304)
+    guardar([classe({ membros: [membro(ANA, 'Ana Clara'), membro(IVO, 'Ivo Instrutor', 'DBV', [], undefined, true)] })])
+    montar(`/aulas/nova?classe=${CLASSE_COMPANHEIRO.id}&data=${HOJE}`)
+    await screen.findByText('Ana Clara')
+    await userEvent.click(linha('Ivo Instrutor').getByRole('button', { pressed: true }))
+    expect(linha('Ivo Instrutor').getByText('Faltou')).toBeInTheDocument()
+    expect(linha('Ivo Instrutor').queryByText('Outro instrutor ou o Adm registra os seus requisitos.')).not.toBeInTheDocument()
+  })
+
   it('pontos provisórios contam só requisito novo de DBV; LIDER não pontua', async () => {
     montar(`/aulas/nova?classe=${CLASSE_COMPANHEIRO.id}&data=${HOJE}`)
     await screen.findByText('Ana Clara')

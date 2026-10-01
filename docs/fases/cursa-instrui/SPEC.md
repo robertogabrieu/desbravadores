@@ -11,9 +11,14 @@ Faltam: mostrar os dois juntos e impedir autoaprovação.
    "Instrui: Amigo, Companheiro" e/ou "Aconselha: Águias", vinda da conta ligada (vínculos ativos do
    clube). Sem conta ligada, a linha não aparece.
 2. **Instrutor não marca os próprios requisitos:** quando o instrutor também cursa a classe que
-   instrui, na aula e no progresso a ficha dele aparece com o rótulo "você" e **sem** marcação; a API
+   instrui, na aula e no progresso a ficha dele aparece com o rótulo "você" e **sem** marcação (e fica
+   fora do quadro "O que falta fazer" e dos pontos provisórios). Na marcação avulsa do progresso, a API
    recusa (422 "Outro instrutor ou o Adm registra os seus requisitos.") marcar ou desmarcar requisito
-   da ficha ligada à conta da sessão. O Adm continua podendo marcar de qualquer um.
+   da ficha ligada à conta da sessão. **No envio da aula** não há recusa: o par (própria ficha,
+   requisito) é ignorado e volta em `requisitosSemEfeito` com motivo `PROPRIA_FICHA`, e o resto da aula
+   (presenças e marcações dos outros) grava normalmente — assim um envio antigo da fila, feito antes
+   do rótulo "você", não trava a aula inteira. O cliente já não manda ações da ficha "você". O Adm
+   continua podendo marcar de qualquer um.
 
 ## Regras
 
@@ -30,7 +35,8 @@ Faltam: mostrar os dois juntos e impedir autoaprovação.
 
 ## Critério de pronto
 
-- API: instrutor recusado ao marcar e ao desmarcar a própria ficha (fora e dentro da aula) e
+- API: instrutor recusado ao marcar e ao desmarcar a própria ficha fora da aula; dentro da aula o par
+  fica sem efeito (`PROPRIA_FICHA`) e o resto grava; e
   permitido para outra; Adm pode; saída da ficha com instrui/aconselha (só vínculos ativos do clube).
 - Web: linha "Instrui/Aconselha" na ficha; "você" sem marcação na aula/progresso.
 - Lint, tipos e suítes passam.
