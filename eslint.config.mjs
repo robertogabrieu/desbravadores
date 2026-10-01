@@ -21,10 +21,11 @@ export default tseslint.config(
     },
   },
   {
-    // PrismaSistema e o client sem a guarda de clube: so sessao/, auth/ e scripts/ o importam (SPEC D22).
+    // PrismaSistema e o client sem a guarda de clube: so sessao/, auth/, scripts/ e tarefas/ o importam
+    // (SPEC D22; tarefas/ pela SPEC tipo-diretoria, so para listar os clubes).
     files: ['apps/api/src/**/*.ts'],
     ignores: [
-      'apps/api/src/{sessao,auth,scripts}/**',
+      'apps/api/src/{sessao,auth,scripts,tarefas}/**',
       'apps/api/src/comum/prisma/**',
       'apps/api/src/**/*.spec.ts',
     ],
@@ -35,7 +36,7 @@ export default tseslint.config(
           patterns: [
             {
               group: ['**/prisma-sistema', '**/prisma-sistema.js'],
-              message: 'PrismaSistema (client sem a guarda de clube) so pode ser importado em sessao/, auth/ e scripts/.',
+              message: 'PrismaSistema (client sem a guarda de clube) so pode ser importado em sessao/, auth/, scripts/ e tarefas/.',
             },
           ],
         },

@@ -41,6 +41,7 @@ enum Sexo {
 
 enum TipoPessoa {
   DBV
+  DIRETORIA
   LIDER
 }
 
@@ -401,6 +402,10 @@ model Desbravador {
   responsavelEmail    String?
   autorizacaoImagem   Boolean    @default(false)
   autorizacaoImagemEm DateTime?  @db.Date
+  /// Diretoria marcada pelo Adm (não pela regra de idade ou de papel): a varredura não a desfaz.
+  diretoriaPeloAdm    Boolean    @default(false)
+  /// Data em que entrou na Diretoria; o ranking de meses anteriores ainda a conta como desbravador.
+  diretoriaDesde      DateTime?  @db.Date
   ativo               Boolean    @default(true)
   entradaEm           DateTime   @db.Date
   saidaEm             DateTime?  @db.Date
