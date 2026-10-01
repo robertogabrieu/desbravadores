@@ -174,6 +174,7 @@ describe('ficha da unidade', () => {
     await userEvent.type(await screen.findByLabelText('Nome'), 'Leões')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(roteador.state.location.pathname).toBe(`/adm/unidades/${uuid(209)}`))
+    expect(roteador.state.historyAction).toBe('REPLACE')
   })
 
   it.each([`/adm/unidades/${uuid(299)}`, '/adm/unidades/abc'])('%s → "Não encontramos esta unidade"', async (rota) => {

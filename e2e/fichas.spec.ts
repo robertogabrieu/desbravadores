@@ -10,6 +10,11 @@ const DATA_DA_REUNIAO = '2026-03-01'
 const LARGURAS = [390, 820, 1280]
 const POR_PAGINA = 25
 
+interface Medida {
+  rolagemLateral: number
+  presos: number
+}
+
 async function entrar(page: Page, email: string): Promise<void> {
   await page.goto('/login')
   await page.getByLabel('E-mail').fill(email)
@@ -138,6 +143,8 @@ test.describe('fichas e telas de edição do Adm', () => {
     await expect(page).toHaveURL(new RegExp(`/adm/reunioes/${reuniao.id}$`))
     await expect(page.getByText(/^Corrigida por .+ em /)).toBeVisible()
     await expect(page.getByRole('link', { name: `Voltar para ${unidade.nome}` })).toBeVisible()
+    const corrigida = page.getByRole('region', { name: 'Chamada' }).getByRole('listitem').filter({ hasText: 'Dani Falcão' })
+    await expect(corrigida.getByText('Uniforme')).not.toHaveClass(/line-through/)
   })
 
   test('links diretos para ficha e edição abrem; id malformado diz "Não encontramos"', async ({ page }) => {
@@ -189,33 +196,40 @@ test.describe('fichas e telas de edição do Adm', () => {
     const evento = await criarEvento({ clubeId, tipo: 'ACAMPAMENTO', inicio: DATA_DO_EVENTO })
     const reuniao = await criarReuniao({ unidadeId: unidade.id, data: DATA_DA_REUNIAO, chamada: [{ dbvId: dbv.id }] })
 
-    const caminhos = [
-      `/adm/desbravadores/${dbv.id}`,
-      `/adm/desbravadores/${dbv.id}/editar`,
-      '/adm/desbravadores/novo',
-      `/adm/usuarios/${usuario.id}`,
-      `/adm/usuarios/${usuario.id}/editar`,
-      '/adm/usuarios/novo',
-      `/adm/unidades/${unidade.id}`,
-      `/adm/unidades/${unidade.id}/editar`,
-      '/adm/unidades/nova',
-      `/adm/calendario/eventos/${evento.id}`,
-      `/adm/calendario/eventos/${evento.id}/editar`,
-      '/adm/calendario/eventos/novo',
-      `/adm/reunioes/${reuniao.id}`,
-      `/adm/reunioes/${reuniao.id}/chamada`,
+    const salvarChamada = (p: Page) => p.getByRole('button', { name: /Salvar chamada/ })
+    const membrosEReunioes = async (p: Page) => {
+      await expect(p.getByRole('region', { name: 'Membros' }).getByText('Nenhum desbravador nesta unidade')).toBeVisible()
+      await expect(p.getByRole('region', { name: /^Reuniões de/ }).getByText(/Nenhuma reunião em|presentes/)).toBeVisible()
+    }
+    // Cada caminho mede só depois do conteúdo final: o esqueleto de carga é mais estreito e esconde a rolagem.
+    const caminhos: { caminho: string; carregado?: (p: Page) => Promise<void> }[] = [
+      { caminho: `/adm/desbravadores/${dbv.id}` },
+      { caminho: `/adm/desbravadores/${dbv.id}/editar` },
+      { caminho: '/adm/desbravadores/novo' },
+      { caminho: `/adm/usuarios/${usuario.id}` },
+      { caminho: `/adm/usuarios/${usuario.id}/editar` },
+      { caminho: '/adm/usuarios/novo' },
+      { caminho: `/adm/unidades/${unidade.id}`, carregado: membrosEReunioes },
+      { caminho: `/adm/unidades/${unidade.id}/editar` },
+      { caminho: '/adm/unidades/nova' },
+      { caminho: `/adm/calendario/eventos/${evento.id}` },
+      { caminho: `/adm/calendario/eventos/${evento.id}/editar` },
+      { caminho: '/adm/calendario/eventos/novo' },
+      { caminho: `/adm/reunioes/${reuniao.id}` },
+      { caminho: `/adm/reunioes/${reuniao.id}/chamada`, carregado: (p) => expect(salvarChamada(p)).toBeVisible() },
     ]
 
     const falhas: string[] = []
     for (const largura of LARGURAS) {
       await page.setViewportSize({ width: largura, height: 900 })
-      for (const caminho of caminhos) {
+      for (const { caminho, carregado } of caminhos) {
         await page.goto(caminho)
         await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
-        const medida = await page.evaluate(() => ({
+        await carregado?.(page)
+        const medida = await page.evaluate<Medida>(`(() => ({
           rolagemLateral: document.documentElement.scrollWidth - document.documentElement.clientWidth,
           presos: [...document.querySelectorAll('body *')].filter((e) => ['fixed', 'sticky'].includes(getComputedStyle(e).position)).length,
-        }))
+        }))()`)
         if (medida.rolagemLateral !== 0 || medida.presos !== 0) falhas.push(`${caminho} em ${largura}px: ${JSON.stringify(medida)}`)
       }
     }

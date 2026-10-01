@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -19,15 +19,17 @@ vi.mock('../../../offline', async (importarOriginal) => ({
   useConexao: () => ({ modo: estado.modo }),
 }))
 
+let diaReuniao = 0
 beforeEach(() => {
   estado.modo = 'ONLINE'
+  diaReuniao = 0
 })
 
 const acampamento = () =>
   caixa(criarEvento(1, { nome: 'Acampamento de primavera', tipo: 'ACAMPAMENTO', inicio: '2026-10-16', fim: '2026-10-18', horario: '07:00', local: 'Sítio Recanto Verde', cancelaReuniao: true, bloqueiaAula: true, bomParaCampo: true }))
 
 function abrir(rota: string, evento = acampamento(), ...outros: Caixa<EventoCalendario>[]) {
-  servidor.use(handlerEvento(evento, ...outros), handlerCalendario({ eventos: [evento.atual] }), handlerConfiguracao(criarConfiguracao()))
+  servidor.use(handlerEvento(evento, ...outros), handlerCalendario({ eventos: [evento.atual] }), handlerConfiguracao(criarConfiguracao({ diaReuniao })))
   return { ...renderizarRotas(rotasAdmCalendario, rota), evento }
 }
 
@@ -48,13 +50,27 @@ describe('ficha do evento', () => {
     expect(screen.getByText('7h')).toBeInTheDocument()
     expect(screen.getByText('Sítio Recanto Verde')).toBeInTheDocument()
     const muda = within(screen.getByRole('region', { name: 'O que muda no calendário' }))
-    expect(muda.getByText('Cancela a reunião de domingo 18', { selector: 'dt' }).nextElementSibling).toHaveTextContent('Sim')
+    expect((await muda.findByText('Cancela a reunião de domingo 18', { selector: 'dt' })).nextElementSibling).toHaveTextContent('Sim')
   })
 
   it('cancelar a reunião diz o dia de cada domingo dentro do período', async () => {
     abrir(`/adm/calendario/eventos/${uuid(803)}`, caixa(criarEvento(3, { inicio: '2026-10-10', fim: '2026-10-18', cancelaReuniao: true })))
     const muda = within(await screen.findByRole('region', { name: 'O que muda no calendário' }))
-    expect(muda.getByText('Cancela as reuniões de domingo 11 e 18', { selector: 'dt' })).toBeInTheDocument()
+    expect(await muda.findByText('Cancela as reuniões de domingo 11 e 18', { selector: 'dt' })).toBeInTheDocument()
+  })
+
+  it('com a reunião no sábado, o rótulo usa o sábado e não o domingo', async () => {
+    diaReuniao = 6
+    abrir(`/adm/calendario/eventos/${uuid(801)}`)
+    const muda = within(await screen.findByRole('region', { name: 'O que muda no calendário' }))
+    expect(await muda.findByText('Cancela a reunião de sábado 17', { selector: 'dt' })).toBeInTheDocument()
+  })
+
+  it('com a reunião no sábado e dois sábados no período, lista os dois', async () => {
+    diaReuniao = 6
+    abrir(`/adm/calendario/eventos/${uuid(803)}`, caixa(criarEvento(3, { inicio: '2026-10-10', fim: '2026-10-18', cancelaReuniao: true })))
+    const muda = within(await screen.findByRole('region', { name: 'O que muda no calendário' }))
+    expect(await muda.findByText('Cancela as reuniões de sábado 10 e 17', { selector: 'dt' })).toBeInTheDocument()
   })
 
   it('cancelar sem domingo no período não inventa dia', async () => {
@@ -103,6 +119,15 @@ describe('ficha do evento', () => {
     await userEvent.click(within(screen.getByRole('dialog', { name: 'Excluir Acampamento de primavera?' })).getByRole('button', { name: 'Excluir' }))
     await waitFor(() => expect(roteador.state.location.search).toBe('?mes=2026-10'))
     expect(excluidos).toEqual([uuid(801)])
+  })
+
+  it('Excluir volta para onde o Voltar levaria, e no mês do evento se não veio de lugar nenhum', async () => {
+    servidor.use(handlerExcluirEvento())
+    const { roteador } = abrir(`/adm/calendario/eventos/${uuid(801)}`)
+    await act(() => roteador.navigate(`/adm/calendario/eventos/${uuid(801)}`, { state: { voltarPara: '/adm/calendario?mes=2026-11' } }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Excluir' }))
+    await userEvent.click(within(screen.getByRole('dialog', { name: 'Excluir Acampamento de primavera?' })).getByRole('button', { name: 'Excluir' }))
+    await waitFor(() => expect(roteador.state.location.search).toBe('?mes=2026-11'))
   })
 
   it('excluir tira o evento do cache em vez de reler o que acabou de sumir', async () => {

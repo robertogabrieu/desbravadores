@@ -44,7 +44,7 @@ function RetornoDaCorrecao({ retorno, ficha }: { retorno: Retorno; ficha: string
           <p>{`${saida.conflitos.length} linhas tinham sido alteradas por outra pessoa; a sua versão valeu e a anterior ficou registrada: ${nomes(saida.conflitos)}.`}</p>
         )}
         {saida.ignorados.length > 0 && <p>{`${nomes(saida.ignorados)} não eram da unidade nessa data e ficaram fora.`}</p>}
-        <Link to={ficha} className={estiloDoBotao({ variante: 'primario' })}>
+        <Link to={ficha} replace className={estiloDoBotao({ variante: 'primario' })}>
           Ver a reunião
         </Link>
       </div>
@@ -56,7 +56,10 @@ function CorrecaoDoAdm({ detalhe, pacote, ficha }: { detalhe: Detalhe; pacote: P
   const navegar = useNavigate()
   const { modo } = useConexao()
   const corrigir = useCorrigirChamada()
+  const semConexao = modo === 'SEM_CONEXAO'
   const [retorno, setRetorno] = useState<Retorno | null>(null)
+  // Congelada ao abrir: a releitura que chega depois não pode trocar as versões que o servidor compara.
+  const [base] = useState(() => baseDoDetalhe(detalhe))
   // Quem era da unidade naquela data: as linhas da reunião, não os membros de hoje.
   const unidade: UnidadeDaChamada = {
     id: detalhe.unidade.id,
@@ -82,13 +85,19 @@ function CorrecaoDoAdm({ detalhe, pacote, ficha }: { detalhe: Detalhe; pacote: P
       baixadoEm={null}
       unidade={unidade}
       data={detalhe.data}
-      base={baseDoDetalhe(detalhe)}
+      base={base}
       envioDireto={{
         enviar,
         enviando: corrigir.isPending,
         // Perder a conexão com o formulário aberto não o desmonta: só impede o envio, e as marcas ficam.
-        bloqueado: retorno?.tipo === 'SALVO_COM_AVISOS' || modo === 'SEM_CONEXAO',
-        retorno: retorno && <RetornoDaCorrecao retorno={retorno} ficha={ficha} />,
+        bloqueado: retorno?.tipo === 'SALVO_COM_AVISOS' || semConexao,
+        retorno: semConexao ? (
+          <p role="alert" className="text-sm font-semibold text-perigo">
+            Corrigir a chamada precisa de internet
+          </p>
+        ) : (
+          retorno && <RetornoDaCorrecao retorno={retorno} ficha={ficha} />
+        ),
       }}
     />
   )
@@ -112,7 +121,7 @@ export function CorrigirChamada() {
         titulo="Esta reunião não pode ser corrigida"
         descricao="Você não tem permissão para corrigir esta chamada."
         acao={
-          <Link to={ficha} className={estiloDoBotao({ variante: 'secundario' })}>
+          <Link to={ficha} replace className={estiloDoBotao({ variante: 'secundario' })}>
             Voltar à ficha
           </Link>
         }

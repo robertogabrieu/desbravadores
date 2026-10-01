@@ -136,6 +136,31 @@ describe('corrigir chamada (Adm)', () => {
     expect(screen.getByRole('link', { name: 'Ver a reunião' })).toHaveAttribute('href', `/adm/reunioes/${uuid(601)}`)
   })
 
+  it('"Ver a reunião" depois de salvar com avisos troca a tela em vez de empilhar', async () => {
+    const { roteador } = abrir(
+      `/adm/reunioes/${uuid(601)}/chamada`,
+      reuniao(),
+      handlerCorrigirChamada((id) => criarSaidaEnvio(id, { conflitos: [{ dbvId: uuid(303), nome: 'Júlia Rocha' }] })),
+    )
+    await userEvent.click(await screen.findByRole('button', { name: /Júlia Rocha/ }))
+    await userEvent.click(screen.getByRole('button', { name: /Salvar chamada/ }))
+    await userEvent.click(await screen.findByRole('link', { name: 'Ver a reunião' }))
+    await waitFor(() => expect(roteador.state.location.pathname).toBe(`/adm/reunioes/${uuid(601)}`))
+    expect(roteador.state.historyAction).toBe('REPLACE')
+  })
+
+  it('a releitura que chega com o formulário aberto não muda a versão enviada', async () => {
+    const recebidos: { uuid: string; corpo: unknown }[] = []
+    const registro = reuniao()
+    const { clienteConsultas } = abrir(`/adm/reunioes/${uuid(601)}/chamada`, registro, handlerCorrigirChamada((id) => criarSaidaEnvio(id), recebidos))
+    await userEvent.click(await screen.findByRole('button', { name: /Júlia Rocha/ }))
+    registro.atual = { ...registro.atual, chamada: registro.atual.chamada.map((l) => (l.dbvId === uuid(303) ? { ...l, versao: '2026-09-27T15:30:00.000Z' } : l)) }
+    await act(() => clienteConsultas.refetchQueries())
+    await userEvent.click(screen.getByRole('button', { name: /Salvar chamada/ }))
+    await waitFor(() => expect(recebidos).toHaveLength(1))
+    expect(recebidos[0]?.corpo).toMatchObject({ linhas: [{ dbvId: uuid(303), versaoVista: '2026-09-27T12:03:00.000Z' }] })
+  })
+
   it('recusa da API fica na tela', async () => {
     abrir(`/adm/reunioes/${uuid(601)}/chamada`, reuniao(), handlerCorrigirChamada((id) => criarSaidaEnvio(id), [], { status: 422, codigo: 'REGRA', mensagem: 'Reunião de unidade inativa.' }))
     await userEvent.click(await screen.findByRole('button', { name: /Júlia Rocha/ }))
@@ -158,8 +183,10 @@ describe('corrigir chamada (Adm)', () => {
     expect(screen.getByRole('button', { name: /Júlia Rocha/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Salvar chamada/ })).toBeDisabled()
     expect(screen.queryByRole('heading', { name: 'Corrigir a chamada precisa de internet' })).not.toBeInTheDocument()
+    expect(screen.getByText('Corrigir a chamada precisa de internet')).toBeInTheDocument()
     act(() => offline.mudar('ONLINE'))
     expect(screen.getByRole('button', { name: /Salvar chamada/ })).toBeEnabled()
+    expect(screen.queryByText('Corrigir a chamada precisa de internet')).not.toBeInTheDocument()
   })
 
   it('sem permissão de corrigir, mostra o bloqueio no lugar do formulário, com Voltar à ficha', async () => {

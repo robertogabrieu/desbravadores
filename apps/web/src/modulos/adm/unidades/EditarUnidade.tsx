@@ -12,7 +12,7 @@ export function NovaUnidade() {
   return (
     <div className="flex flex-col gap-5 p-4">
       <CabecalhoDaPagina voltar={{ para: LISTA, rotulo: 'Unidades' }} titulo="Nova unidade" />
-      <FormularioUnidade cancelar={{ para: LISTA }} aoConcluir={(criada) => void navegar(`${LISTA}/${criada.id}`, { state: { voltarPara: LISTA } })} />
+      <FormularioUnidade cancelar={{ para: LISTA }} aoConcluir={(criada) => void navegar(`${LISTA}/${criada.id}`, { replace: true, state: { voltarPara: LISTA } })} />
     </div>
   )
 }

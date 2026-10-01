@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useConfiguracaoClube } from '../../../api/clube'
 import { useEvento, useExcluirEvento } from '../../../api/calendario'
 import type { EventoCalendario } from '../../../api/calendario'
 import { useConexao } from '../../../offline'
@@ -23,24 +24,25 @@ const TRACO = '—'
 
 const simOuNao = (valor: boolean): string => (valor ? 'Sim' : 'Não')
 
-/** Os domingos de `inicio` a `fim` (AAAA-MM-DD), como número do dia: sex 16 a dom 18 → [18]. */
-function domingosDoPeriodo(inicio: string, fim: string): number[] {
-  const domingos: number[] = []
+const NOMES_DO_DIA = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado']
+
+/** Os dias de `inicio` a `fim` (AAAA-MM-DD) que caem em `diaDaSemana` (0 = domingo), como número do dia: sex 16 a dom 18, domingo → [18]. */
+function diasDaSemanaNoPeriodo(inicio: string, fim: string, diaDaSemana: number): number[] {
+  const dias: number[] = []
   const dia = new Date(`${inicio}T00:00:00Z`)
   const ultimo = new Date(`${fim}T00:00:00Z`)
   for (; dia <= ultimo; dia.setUTCDate(dia.getUTCDate() + 1)) {
-    if (dia.getUTCDay() === 0) domingos.push(dia.getUTCDate())
+    if (dia.getUTCDay() === diaDaSemana) dias.push(dia.getUTCDate())
   }
-  return domingos
+  return dias
 }
 
-/** "Cancela a reunião de domingo 18"; sem domingo no período (ou sem cancelar), o rótulo simples. */
-function rotuloDoCancelamento(evento: EventoCalendario): string {
-  const domingos = evento.cancelaReuniao ? domingosDoPeriodo(evento.inicio, evento.fim) : []
-  if (domingos.length === 0) return 'Cancela a reunião'
-  return domingos.length === 1
-    ? `Cancela a reunião de domingo ${domingos[0]}`
-    : `Cancela as reuniões de domingo ${juntarNomes(domingos.map(String))}`
+/** "Cancela a reunião de sábado 17"; sem dia de reunião no período (ou sem cancelar, ou sem saber o dia), o rótulo simples. */
+function rotuloDoCancelamento(evento: EventoCalendario, diaReuniao: number | undefined): string {
+  const dias = evento.cancelaReuniao && diaReuniao !== undefined ? diasDaSemanaNoPeriodo(evento.inicio, evento.fim, diaReuniao) : []
+  if (dias.length === 0) return 'Cancela a reunião'
+  const nome = NOMES_DO_DIA[diaReuniao ?? 0]
+  return dias.length === 1 ? `Cancela a reunião de ${nome} ${dias[0]}` : `Cancela as reuniões de ${nome} ${juntarNomes(dias.map(String))}`
 }
 
 function Conteudo({ evento }: { evento: EventoCalendario }) {
@@ -49,6 +51,7 @@ function Conteudo({ evento }: { evento: EventoCalendario }) {
   const { avisos, dispensar } = useAvisosDaFicha()
   const navegar = useNavigate()
   const excluir = useExcluirEvento()
+  const configuracao = useConfiguracaoClube()
   const [confirmando, setConfirmando] = useState(false)
   const [erroDaExclusao, setErroDaExclusao] = useState<string | null>(null)
 
@@ -57,7 +60,7 @@ function Conteudo({ evento }: { evento: EventoCalendario }) {
     setConfirmando(false)
     try {
       await excluir.mutateAsync(evento.id)
-      void navegar(mes, { replace: true })
+      void navegar(voltarPara, { replace: true })
     } catch (falha) {
       setErroDaExclusao(lerErroDaApi(falha).geral)
     }
@@ -117,7 +120,7 @@ function Conteudo({ evento }: { evento: EventoCalendario }) {
           <h2 className="font-titulo text-lg font-bold text-texto">O que muda no calendário</h2>
           <ListaDePares
             pares={[
-              { rotulo: rotuloDoCancelamento(evento), valor: simOuNao(evento.cancelaReuniao) },
+              { rotulo: rotuloDoCancelamento(evento, configuracao.data?.diaReuniao), valor: simOuNao(evento.cancelaReuniao) },
               { rotulo: 'Bloqueia aulas nessas datas', valor: simOuNao(evento.bloqueiaAula) },
               { rotulo: 'Bom para requisitos de campo', valor: simOuNao(evento.bomParaCampo) },
             ]}
