@@ -12,6 +12,7 @@ import { FolhaLateral } from '../../../ui/FolhaLateral'
 import { Selecao } from '../../../ui/Selecao'
 import { Tabela } from '../../../ui/Tabela'
 import type { ColunaTabela } from '../../../ui/Tabela'
+import { AcessoAoApp } from './AcessoAoApp'
 import { ChipClasse } from './ChipClasse'
 import { MENSAGEM_GENERICA, lerErroDaApi } from './erros'
 import { FormularioDesbravador } from './FormularioDesbravador'
@@ -207,6 +208,7 @@ export function ListaDesbravadores() {
             aoCancelar={fecharPainel}
           />
         )}
+        {painel?.tipo === 'editar' && <AcessoAoApp key={painel.desbravador.id} dbvId={painel.desbravador.id} nome={painel.desbravador.nome} />}
         {painel?.tipo === 'inativar' && (
           <FormularioInativar desbravador={painel.desbravador} aoConcluir={fecharPainel} aoCancelar={fecharPainel} />
         )}

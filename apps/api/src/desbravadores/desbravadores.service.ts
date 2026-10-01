@@ -168,9 +168,6 @@ export class DesbravadoresService {
     if (entrada.tipo === 'LIDER' && entrada.unidadeId) {
       throw new ErroApp('REGRA', 'Líder não pertence a uma unidade.')
     }
-    if (entrada.tipo === 'DBV' && entrada.usuarioId) {
-      throw new ErroApp('REGRA', 'Só líder pode ter conta de usuário.')
-    }
     if (entrada.unidadeId) await this.exigirUnidade(clubeId, entrada.unidadeId)
     if (entrada.usuarioId) await this.exigirUsuarioDoClube(clubeId, entrada.usuarioId)
     const classe = entrada.classeId ? await this.exigirClasse(clubeId, entrada.classeId) : undefined
@@ -240,8 +237,6 @@ export class DesbravadoresService {
       }
     }
     const tipoFinal = entrada.tipo ?? atual.tipo
-    const usuarioFinal = entrada.usuarioId === undefined ? atual.usuarioId : entrada.usuarioId
-    if (tipoFinal === 'DBV' && usuarioFinal) throw new ErroApp('REGRA', 'Só líder pode ter conta de usuário.')
     if (tipoFinal === 'LIDER' && atual.membros.length > 0) {
       throw new ErroApp('REGRA', 'Tire o desbravador da unidade antes de torná-lo líder.')
     }

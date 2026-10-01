@@ -65,6 +65,11 @@ export class AuthService {
     return this.sessaoDe(await this.refresh.criarFamilia(usuarioId, { aparelho }))
   }
 
+  /** Sessao nova para quem acabou de provar quem e (aceite de convite por link). */
+  async abrirSessao(usuarioId: string, aparelho?: string): Promise<SessaoEmitida> {
+    return this.sessaoDe(await this.refresh.criarFamilia(usuarioId, { aparelho }))
+  }
+
   /** Nunca revela se o e-mail existe: quem chama responde 204 de qualquer jeito. */
   async esqueciSenha(email: string): Promise<void> {
     const usuario = await this.prisma.usuario.findUnique({ where: { email } })
