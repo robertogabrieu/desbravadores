@@ -3,6 +3,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { SinoNotificacoes } from '../modulos/notificacoes/SinoNotificacoes'
 import { FaixaAviso } from '../ui/FaixaAviso'
+import { Marca } from '../ui/Marca'
 import { FaixaSemConexao } from './FaixaSemConexao'
 import { FaixaSessaoExpirada } from './FaixaSessaoExpirada'
 import { ItemNavegacao } from './ItemNavegacao'
@@ -47,7 +48,7 @@ export function LayoutAdm() {
     <div className="min-h-dvh bg-fundo min-[900px]:flex">
       {!telaPequena && (
         <aside className="min-h-dvh w-[var(--sidebar-w)] shrink-0 bg-marca text-white">
-          <p className="px-5 py-5 font-titulo text-xl font-bold">Desbravadores</p>
+          <Marca className="px-5 py-5" />
           <MenuDoAdm rotulo="Menu do Adm" />
         </aside>
       )}
@@ -69,7 +70,7 @@ export function LayoutAdm() {
               >
                 <Menu aria-hidden className="size-6" />
               </button>
-              <span className="min-w-0 truncate font-titulo text-lg font-bold text-texto max-[359px]:hidden">Desbravadores</span>
+              <Marca className="text-texto" classeDoNome="max-sm:sr-only" />
             </>
           )}
           <div className="ml-auto flex shrink-0 items-center gap-1">
@@ -158,7 +159,7 @@ function GavetaDoMenu({ id, aoFechar }: PropriedadesGaveta) {
         className="relative flex h-full w-[min(20rem,85vw)] flex-col overflow-y-auto overscroll-contain bg-marca text-white shadow-xl outline-none"
       >
         <div className="flex items-center justify-between py-2 pr-2 pl-5">
-          <p className="font-titulo text-xl font-bold">Desbravadores</p>
+          <Marca />
           <button
             type="button"
             aria-label="Fechar o menu"

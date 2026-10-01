@@ -91,6 +91,14 @@ export const handlerMoverUnidade = (aoReceber?: (id: string, corpo: { unidadeId:
     return HttpResponse.json(criarDesbravador())
   })
 
+/** `aoReceber` recebe o id do desbravador e o corpo `{ classeId, anoClube, incluirAvancada }`. */
+export const handlerMatricular = (aoReceber?: (id: string, corpo: { classeId: string; anoClube: number; incluirAvancada: boolean }) => void) =>
+  http.post('/api/desbravadores/:id/matriculas', async ({ request, params }) => {
+    const corpo = (await request.json()) as { classeId: string; anoClube: number; incluirAvancada: boolean }
+    aoReceber?.(String(params['id']), corpo)
+    return HttpResponse.json([], { status: 201 })
+  })
+
 export const handlerErroDesbravador = (metodo: 'get' | 'post' | 'patch', caminho: string, status: number, erro: { codigo: string; mensagem: string; campos?: Record<string, string> }) =>
   http[metodo](caminho, () => HttpResponse.json(erro, { status }))
 

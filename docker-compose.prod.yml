@@ -42,7 +42,7 @@ services:
       SMTP_PORTA: ${SMTP_PORTA:-587}
       SMTP_USUARIO: ${SMTP_USUARIO:-}
       SMTP_SENHA: ${SMTP_SENHA:-}
-      SMTP_FROM: ${SMTP_FROM:-Desbravadores <nao-responda@localhost>}
+      SMTP_FROM: ${SMTP_FROM:-App do Desbravador <nao-responda@localhost>}
       VERSAO_APP: ${VERSAO_APP:-0.0.0}
     volumes:
       - arquivos:/app/arquivos

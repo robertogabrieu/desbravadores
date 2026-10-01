@@ -6,12 +6,14 @@ import {
   DesbravadorLista,
   DesbravadorSaida,
   InativarEntrada,
+  MatriculaEntrada,
+  MatriculaSaida,
   MoverUnidadeEntrada,
   comAvisos,
   hojeNoFuso,
 } from '@desbravadores/shared'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { z } from 'zod'
+import { z } from 'zod'
 import { montarConsulta, requisitar } from './cliente'
 import { invalidarUnidades } from './unidades'
 
@@ -110,6 +112,23 @@ export function useReativarDesbravador() {
   return useMutation({
     mutationFn: (id: string) => requisitar(`/api/desbravadores/${id}/reativar`, DesbravadorSaida, { metodo: 'POST' }),
     onSuccess: () => cliente.invalidateQueries({ queryKey: chavesDesbravadores.todos }),
+  })
+}
+
+/**
+ * Matricula na classe regular do ano do clube (e na avançada ligada, com `incluirAvancada`). A API
+ * encerra como desistência a regular que estava em curso na mesma trilha.
+ */
+export function useMatricular() {
+  const cliente = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...entrada }: { id: string; classeId: string; anoClube: number; incluirAvancada: boolean }) =>
+      requisitar(`/api/desbravadores/${id}/matriculas`, z.array(MatriculaSaida), {
+        metodo: 'POST',
+        corpo: MatriculaEntrada.parse(entrada),
+      }),
+    onSuccess: () =>
+      Promise.all([cliente.invalidateQueries({ queryKey: chavesDesbravadores.todos }), invalidarUnidades(cliente)]),
   })
 }
 
