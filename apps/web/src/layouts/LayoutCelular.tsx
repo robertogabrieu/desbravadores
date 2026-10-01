@@ -1,6 +1,7 @@
 import { CalendarDays, GraduationCap, House, Trophy, Users } from 'lucide-react'
 import { Outlet } from 'react-router-dom'
 import { SinoNotificacoes } from '../modulos/notificacoes/SinoNotificacoes'
+import { Marca } from '../ui/Marca'
 import { useSessao } from '../sessao/useSessao'
 import { FaixaSemConexao } from './FaixaSemConexao'
 import { FaixaSessaoExpirada } from './FaixaSessaoExpirada'
@@ -28,7 +29,7 @@ export function LayoutCelular() {
       <FaixaSessaoExpirada />
       <FaixaSemConexao />
       <header className="flex items-center justify-between gap-2 bg-marca px-4 text-white">
-        <span className="font-titulo text-lg font-bold">Desbravadores</span>
+        <Marca />
         <div className="flex items-center gap-1">
           <SeloAguardandoEnvio />
           {papel === 'INSTRUTOR' && <SinoNotificacoes />}

@@ -57,7 +57,7 @@ SMTP_HOST=smtp.exemplo.org
 SMTP_PORTA=587
 SMTP_USUARIO=
 SMTP_SENHA=
-SMTP_FROM="Desbravadores <nao-responda@exemplo.org>"
+SMTP_FROM="App do Desbravador <nao-responda@exemplo.org>"
 BACKUP_AGE_DESTINATARIO=
 RCLONE_REMOTO=
 ENV

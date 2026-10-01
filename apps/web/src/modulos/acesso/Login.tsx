@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { LoginEntrada } from '@desbravadores/shared'
+import { LoginEntrada, NOME_SISTEMA } from '@desbravadores/shared'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
@@ -37,7 +37,7 @@ export function Login() {
   })
 
   return (
-    <TelaAcesso titulo="Aplicativo do Desbravador" subtitulo="Secretaria de unidade, classes e ranking em um só lugar.">
+    <TelaAcesso titulo={NOME_SISTEMA} subtitulo="Secretaria de unidade, classes e ranking em um só lugar.">
       <form onSubmit={(evento) => void enviar(evento)} noValidate className="flex flex-col gap-4">
         <Campo rotulo="E-mail" type="email" autoComplete="username" erro={errors.email?.message} {...register('email')} />
         <Campo rotulo="Senha" type="password" autoComplete="current-password" erro={errors.senha?.message} {...register('senha')} />
