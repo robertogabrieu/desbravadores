@@ -56,6 +56,17 @@ function LinhaDiretoria({ diretoria }: { diretoria: Desbravador['diretoria'] }) 
   )
 }
 
+/** O que a conta ligada à ficha conduz no clube, ao lado do que ela cursa. */
+function LinhaConduz({ instrui, aconselha }: Pick<Desbravador, 'instrui' | 'aconselha'>) {
+  if (instrui.length === 0 && aconselha.length === 0) return null
+  return (
+    <div className="flex flex-col gap-1 text-sm text-texto">
+      {instrui.length > 0 && <p>{`Instrui: ${instrui.map((classe) => classe.nome).join(', ')}`}</p>}
+      {aconselha.length > 0 && <p>{`Aconselha: ${aconselha.map((unidade) => unidade.nome).join(', ')}`}</p>}
+    </div>
+  )
+}
+
 function valoresIniciais(desbravador: Desbravador | undefined): Valores {
   return {
     tipo: desbravador?.tipo ?? 'DBV',
@@ -215,6 +226,7 @@ export function FormularioDesbravador({ desbravador, aoConcluir, aoCancelar }: P
   return (
     <form noValidate onSubmit={(evento) => void enviar(evento)} className="flex flex-col gap-4">
       {desbravador && <LinhaDiretoria diretoria={desbravador.diretoria} />}
+      {desbravador && <LinhaConduz instrui={desbravador.instrui} aconselha={desbravador.aconselha} />}
       <Selecao rotulo="Tipo" value={valores.tipo} disabled={editando} onChange={(e) => definir('tipo', e.target.value === 'LIDER' ? 'LIDER' : 'DBV')}>
         <option value="DBV">Desbravador</option>
         <option value="LIDER">Líder em formação</option>

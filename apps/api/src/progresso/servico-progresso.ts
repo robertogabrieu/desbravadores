@@ -9,6 +9,7 @@ import { PrismaService } from '../comum/prisma/prisma.service'
 import { colador, daDataCivil, paraDataCivil } from '../desbravadores/apoio'
 import { ServicoEscopo, type RelogioDoClube } from '../desbravadores/escopo.service'
 import type { StatusMatricula } from '../generated/prisma/client.js'
+import { ehFichaDaSessao } from './conclusoes'
 
 type ProgressoClasse = z.infer<typeof ProgressoClasseSaida>
 type ProgressoDbv = z.infer<typeof ProgressoDbvSaida>
@@ -28,7 +29,7 @@ export interface SecaoDaClasse {
 export interface ProgressoCalculado {
   totalRequisitos: number
   limiarAlerta: number
-  itens: (ProgressoClasse['itens'][number] & { percentualExato: number })[]
+  itens: (Omit<ProgressoClasse['itens'][number], 'voce'> & { percentualExato: number; usuarioId: string | null })[]
 }
 
 @Injectable()
@@ -39,11 +40,15 @@ export class ServicoProgresso {
   ) {}
 
   /** Quem pede alcanca o desbravador (perfil, ranking e progresso usam a mesma regra); senao, 404. */
-  async exigirDbvNoEscopo(sessao: SessaoLogada, relogio: RelogioDoClube, dbvId: string): Promise<{ id: string; tipo: 'DBV' | 'LIDER' }> {
+  async exigirDbvNoEscopo(
+    sessao: SessaoLogada,
+    relogio: RelogioDoClube,
+    dbvId: string,
+  ): Promise<{ id: string; tipo: 'DBV' | 'LIDER'; usuarioId: string | null }> {
     const doPapel = await this.escopo.filtroDesbravadores(sessao, relogio)
     const dbv = await this.prisma.desbravador.findFirst({
       where: { clubeId: sessao.clubeId, AND: [doPapel, { id: dbvId }] },
-      select: { id: true, tipo: true },
+      select: { id: true, tipo: true, usuarioId: true },
     })
     if (!dbv) throw new ErroApp('NAO_ENCONTRADO', DBV_NAO_ENCONTRADO)
     return dbv
@@ -86,7 +91,7 @@ export class ServicoProgresso {
     const total = requisitoIds.length
     const matriculas = await this.prisma.matriculaClasse.findMany({
       where: { clubeId, classeId, anoClube, status: { in: STATUS_NO_PROGRESSO }, dbv: { ativo: true } },
-      select: { status: true, dbv: { select: { id: true, nome: true, tipo: true } } },
+      select: { status: true, dbv: { select: { id: true, nome: true, tipo: true, usuarioId: true } } },
     })
     const concluidas = await this.prisma.requisitoConcluido.findMany({
       where: { clubeId, dbvId: { in: matriculas.map((matricula) => matricula.dbv.id) }, requisitoId: { in: requisitoIds }, removidoEm: null },
@@ -109,6 +114,7 @@ export class ServicoProgresso {
           percentual: Math.round(percentualExato),
           faltam: total - concluidos,
           percentualExato,
+          usuarioId: matricula.dbv.usuarioId,
         }
       })
       .sort((a, b) => b.percentual - a.percentual || colador.compare(a.nome, b.nome))
@@ -146,6 +152,7 @@ export class ServicoProgresso {
         concluidos: item.concluidos,
         percentual: item.percentual,
         faltam: item.faltam,
+        voce: ehFichaDaSessao(sessao, item.usuarioId),
       })),
     }
   }
@@ -153,7 +160,7 @@ export class ServicoProgresso {
   async progressoDoDbv(sessao: SessaoLogada, dbvId: string): Promise<ProgressoDbv> {
     const { clubeId } = sessao
     const relogio = await this.escopo.relogio(clubeId)
-    await this.exigirDbvNoEscopo(sessao, relogio, dbvId)
+    const dbv = await this.exigirDbvNoEscopo(sessao, relogio, dbvId)
 
     const matriculas = await this.prisma.matriculaClasse.findMany({
       where: { clubeId, dbvId, anoClube: relogio.anoClube, status: { in: STATUS_NO_PROGRESSO } },
@@ -170,7 +177,7 @@ export class ServicoProgresso {
     const conclusaoPorRequisito = new Map(conclusoes.map((conclusao) => [conclusao.requisitoId, conclusao]))
     const permissoes = await this.escopo.permissoes(sessao)
     const classesDoInstrutor = sessao.papel === 'INSTRUTOR' ? await this.escopo.classesDoInstrutor(sessao) : []
-    const temPermissao = permissoes.includes('requisito.marcar')
+    const temPermissao = permissoes.includes('requisito.marcar') && !ehFichaDaSessao(sessao, dbv.usuarioId)
 
     const saida: ProgressoDbv['matriculas'] = []
     for (const matricula of matriculas) {
