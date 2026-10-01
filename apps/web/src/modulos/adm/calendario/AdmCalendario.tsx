@@ -1,65 +1,50 @@
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
-import { useCallback, useState } from 'react'
 import type { ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { hojeDoClube } from '../../../api/desbravadores'
-import { useCalendario, useExcluirEvento } from '../../../api/calendario'
-import type { AulaAfetada, EventoCalendario } from '../../../api/calendario'
+import { useCalendario } from '../../../api/calendario'
+import type { EventoCalendario } from '../../../api/calendario'
 import { useConfiguracaoClube } from '../../../api/clube'
 import { useConexao } from '../../../offline'
 import { Abas } from '../../../ui/Abas'
-import { Botao } from '../../../ui/Botao'
+import { Botao, estiloDoBotao } from '../../../ui/Botao'
 import { Cartao } from '../../../ui/Cartao'
-import { Confirmacao } from '../../../ui/Confirmacao'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { Esqueleto } from '../../../ui/Esqueleto'
-import { FaixaAviso } from '../../../ui/FaixaAviso'
-import { FolhaLateral } from '../../../ui/FolhaLateral'
 import { cn } from '../../../ui/cn'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/EstadosDeCarga'
-import { lerErroDaApi } from '../desbravadores/erros'
+import { useEstadoDeVolta, useFiltrosNaUrl } from '../navegacao'
 import {
   DIAS_DA_SEMANA,
   MESES,
   MESES_CURTOS,
   chaveDoDia,
+  chaveDoMes,
   dataBrasileira,
-  diaEMes,
   diasDaGrade,
   eventosDoDia,
   eventosDoMes,
+  mesDoEndereco,
 } from './datas'
-import { FormularioEvento } from './FormularioEvento'
 import { COR_DA_REUNIAO, CORES_DO_TIPO, ROTULOS_DO_TIPO } from './tipos'
-
-type Painel = { tipo: 'novo' } | { tipo: 'editar'; evento: EventoCalendario } | null
 
 const ABAS_DE_MES = MESES_CURTOS.map((rotulo, indice) => ({ id: String(indice), rotulo }))
 const MAXIMO_POR_DIA = 2
-
-/** "Isto afeta 2 aulas (Amigo 18/10, Pioneiro 19/10). Os instrutores foram avisados." */
-export function textoDasAulasAfetadas(aulas: AulaAfetada[]): string {
-  const lista = aulas.map((aula) => `${aula.classe.nome} ${diaEMes(aula.data)}`).join(', ')
-  return `Isto afeta ${aulas.length} ${aulas.length === 1 ? 'aula' : 'aulas'} (${lista}). Os instrutores foram avisados.`
-}
 
 const periodo = (evento: EventoCalendario): string =>
   evento.inicio === evento.fim
     ? dataBrasileira(evento.inicio)
     : `${dataBrasileira(evento.inicio)} a ${dataBrasileira(evento.fim)}`
 
+const fichaDoEvento = (evento: EventoCalendario): string => `/adm/calendario/eventos/${evento.id}`
+
 export function AdmCalendario() {
-  const hoje = hojeDoClube()
-  const [ano, setAno] = useState(Number(hoje.slice(0, 4)))
-  const [mes, setMes] = useState(Number(hoje.slice(5, 7)) - 1)
-  const [painel, setPainel] = useState<Painel>(null)
-  const [excluindo, setExcluindo] = useState<EventoCalendario | null>(null)
-  const [aulasAfetadas, setAulasAfetadas] = useState<AulaAfetada[]>([])
-  const [erroDeExclusao, setErroDeExclusao] = useState<string | null>(null)
+  const { ler, mudar } = useFiltrosNaUrl()
+  const { ano, mes } = mesDoEndereco(ler('mes'), hojeDoClube())
+  const estadoDeVolta = useEstadoDeVolta()
   const calendario = useCalendario(ano)
   const configuracao = useConfiguracaoClube()
-  const excluir = useExcluirEvento()
   const { modo } = useConexao()
-  const fecharPainel = useCallback(() => setPainel(null), [])
 
   const eventos = calendario.data?.eventos ?? []
   const diasDeReuniao = new Set(calendario.data?.diasDeReuniao ?? [])
@@ -69,26 +54,7 @@ export function AdmCalendario() {
   /** Anda de mês em mês; passar de dezembro ou de janeiro vira o ano. */
   function andarMeses(passo: number) {
     const total = ano * 12 + mes + passo
-    setAno(Math.floor(total / 12))
-    setMes(((total % 12) + 12) % 12)
-  }
-
-  function abrirPainel(novo: Painel) {
-    setAulasAfetadas([])
-    setErroDeExclusao(null)
-    setPainel(novo)
-  }
-
-  async function confirmarExclusao() {
-    if (!excluindo) return
-    setErroDeExclusao(null)
-    try {
-      await excluir.mutateAsync(excluindo.id)
-      setPainel(null)
-    } catch (falha) {
-      setErroDeExclusao(lerErroDaApi(falha).geral)
-    }
-    setExcluindo(null)
+    mudar({ mes: chaveDoMes(Math.floor(total / 12), ((total % 12) + 12) % 12) })
   }
 
   let corpo: ReactNode
@@ -131,7 +97,7 @@ export function AdmCalendario() {
                 eventos={eventos}
                 ehReuniao={dia !== null && diasDeReuniao.has(chaveDoDia(ano, mes, dia))}
                 horaDaReuniao={horaDaReuniao}
-                aoEscolher={(evento) => abrirPainel({ tipo: 'editar', evento })}
+                estadoDeVolta={estadoDeVolta}
               />
             ))}
           </div>
@@ -145,22 +111,21 @@ export function AdmCalendario() {
           <ul aria-label={`Eventos de ${MESES[mes]}`} className="flex flex-col gap-2">
             {eventosDesteMes.map((evento) => (
               <li key={evento.id}>
-                <Cartao className="flex flex-wrap items-center justify-between gap-2">
+                <Cartao className="relative flex flex-col gap-0.5">
+                  <Link
+                    to={fichaDoEvento(evento)}
+                    state={estadoDeVolta}
+                    className="text-base font-bold text-texto after:absolute after:inset-0 focus-visible:outline-2 focus-visible:outline-marca"
+                  >
+                    {evento.nome}
+                  </Link>
                   <div className="flex flex-col gap-0.5">
-                    <span className="text-base font-bold text-texto">{evento.nome}</span>
                     <span className="text-sm text-texto-2">
                       {ROTULOS_DO_TIPO[evento.tipo]} · {periodo(evento)}
                       {evento.horario && ` · ${evento.horario}`}
                       {evento.local && ` · ${evento.local}`}
                     </span>
                   </div>
-                  <Botao
-                    variante="texto"
-                    aria-label={`Editar ${evento.nome}`}
-                    onClick={() => abrirPainel({ tipo: 'editar', evento })}
-                  >
-                    Editar
-                  </Botao>
                 </Cartao>
               </li>
             ))}
@@ -187,18 +152,11 @@ export function AdmCalendario() {
           </p>
           <h1 className="font-titulo text-2xl font-extrabold text-texto">Calendário do clube</h1>
         </div>
-        <Botao onClick={() => abrirPainel({ tipo: 'novo' })}>
+        <Link to={`/adm/calendario/eventos/novo?data=${chaveDoDia(ano, mes, 1)}`} state={estadoDeVolta} className={estiloDoBotao()}>
           <Plus aria-hidden className="size-5" />
           Novo evento
-        </Botao>
+        </Link>
       </header>
-
-      {aulasAfetadas.length > 0 && <FaixaAviso>{textoDasAulasAfetadas(aulasAfetadas)}</FaixaAviso>}
-      {erroDeExclusao && (
-        <p role="alert" className="text-base font-medium text-perigo">
-          {erroDeExclusao}
-        </p>
-      )}
 
       {/* A faixa é atalho para saltar meses no computador; no celular, as setas bastam e a faixa não cabe. */}
       <div className="hidden sm:block">
@@ -206,7 +164,7 @@ export function AdmCalendario() {
           rotulo="Mês"
           abas={ABAS_DE_MES}
           ativa={String(mes)}
-          aoMudar={(id) => setMes(Number(id))}
+          aoMudar={(id) => mudar({ mes: chaveDoMes(ano, Number(id)) })}
         />
       </div>
       <div className="flex items-center gap-2">
@@ -222,38 +180,6 @@ export function AdmCalendario() {
       </div>
 
       {corpo}
-
-      <FolhaLateral
-        aberta={painel !== null}
-        titulo={
-          painel?.tipo === 'editar' ? `Editar ${painel.evento.nome}` : 'Novo evento no calendário'
-        }
-        aoFechar={fecharPainel}
-      >
-        {painel && (
-          <FormularioEvento
-            key={painel.tipo === 'editar' ? painel.evento.id : 'novo'}
-            evento={painel.tipo === 'editar' ? painel.evento : undefined}
-            dataInicial={chaveDoDia(ano, mes, 1)}
-            aoGravar={(gravado) => {
-              setAulasAfetadas(gravado.aulasAfetadas)
-              fecharPainel()
-            }}
-            aoCancelar={fecharPainel}
-            aoExcluir={painel.tipo === 'editar' ? () => setExcluindo(painel.evento) : undefined}
-          />
-        )}
-      </FolhaLateral>
-      <Confirmacao
-        aberta={excluindo !== null}
-        titulo={`Excluir ${excluindo?.nome ?? ''}?`}
-        rotuloConfirmar="Excluir"
-        perigo
-        aoConfirmar={() => void confirmarExclusao()}
-        aoCancelar={() => setExcluindo(null)}
-      >
-        O evento sai do calendário do clube.
-      </Confirmacao>
     </div>
   )
 }
@@ -264,7 +190,7 @@ interface PropriedadesDaCelula {
   eventos: EventoCalendario[]
   ehReuniao: boolean
   horaDaReuniao: string | undefined
-  aoEscolher: (evento: EventoCalendario) => void
+  estadoDeVolta: { voltarPara?: string }
 }
 
 function CelulaDoDia({
@@ -273,7 +199,7 @@ function CelulaDoDia({
   eventos,
   ehReuniao,
   horaDaReuniao,
-  aoEscolher,
+  estadoDeVolta,
 }: PropriedadesDaCelula) {
   if (dia === null || data === null)
     return <div aria-hidden className="min-h-24 rounded-controle bg-superficie-suave/50" />
@@ -301,17 +227,17 @@ function CelulaDoDia({
         </span>
       )}
       {doDia.slice(0, MAXIMO_POR_DIA).map((evento) => (
-        <button
+        <Link
           key={evento.id}
-          type="button"
-          onClick={() => aoEscolher(evento)}
+          to={fichaDoEvento(evento)}
+          state={estadoDeVolta}
           className={cn(
             'truncate rounded-controle px-1.5 py-0.5 text-left text-sm font-semibold focus-visible:outline-2 focus-visible:outline-marca max-sm:h-2 max-sm:p-0',
             CORES_DO_TIPO[evento.tipo],
           )}
         >
           <span className="max-sm:sr-only">{evento.nome}</span>
-        </button>
+        </Link>
       ))}
       {doDia.length > MAXIMO_POR_DIA && (
         <span className="text-sm font-semibold text-texto-2">+{doDia.length - MAXIMO_POR_DIA}</span>

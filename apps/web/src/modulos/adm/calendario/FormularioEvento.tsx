@@ -3,10 +3,10 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useCriarEvento, useEditarEvento } from '../../../api/calendario'
 import type { EventoCalendario, EventoGravado } from '../../../api/calendario'
-import { Botao } from '../../../ui/Botao'
 import { CaixaMarcacao } from '../../../ui/CaixaMarcacao'
 import { Campo } from '../../../ui/Campo'
 import { CampoData } from '../../../ui/CampoData'
+import { RodapeDoFormulario } from '../../../ui/RodapeDoFormulario'
 import { Selecao } from '../../../ui/Selecao'
 import { lerErroDaApi } from '../desbravadores/erros'
 import { ROTULOS_DO_TIPO } from './tipos'
@@ -18,8 +18,7 @@ interface Propriedades {
   /** Data que abre preenchida num evento novo. */
   dataInicial: string
   aoGravar: (gravado: EventoGravado) => void
-  aoCancelar: () => void
-  aoExcluir?: () => void
+  cancelar: { para: string; estado?: object }
 }
 
 const MENSAGENS_DE_CAMPO: Record<string, string> = {
@@ -32,7 +31,7 @@ const MENSAGENS_DE_CAMPO: Record<string, string> = {
 
 const tipoConhecido = (valor: string): TipoDeEvento => TIPOS_EVENTO.find((t) => t === valor) ?? 'EVENTO'
 
-export function FormularioEvento({ evento, dataInicial, aoGravar, aoCancelar, aoExcluir }: Propriedades) {
+export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar }: Propriedades) {
   const [nome, setNome] = useState(evento?.nome ?? '')
   const [tipo, setTipo] = useState<TipoDeEvento>(evento?.tipo ?? 'EVENTO')
   const [inicio, setInicio] = useState(evento?.inicio ?? dataInicial)
@@ -88,11 +87,11 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, aoCancelar, ao
           </option>
         ))}
       </Selecao>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <CampoData rotulo="Início" value={inicio} erro={erros['inicio']} onChange={(e) => setInicio(e.target.value)} />
         <CampoData rotulo="Fim" value={fim} erro={erros['fim']} onChange={(e) => setFim(e.target.value)} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Campo rotulo="Horário" type="time" value={horario} erro={erros['horario']} onChange={(e) => setHorario(e.target.value)} />
         <Campo rotulo="Local" value={local} erro={erros['local']} onChange={(e) => setLocal(e.target.value)} />
       </div>
@@ -108,23 +107,7 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, aoCancelar, ao
           {erroGeral}
         </p>
       )}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        {aoExcluir ? (
-          <Botao variante="texto" className="text-perigo" onClick={aoExcluir}>
-            Excluir evento
-          </Botao>
-        ) : (
-          <span />
-        )}
-        <div className="flex gap-2">
-          <Botao variante="secundario" onClick={aoCancelar}>
-            Cancelar
-          </Botao>
-          <Botao type="submit" carregando={criar.isPending || editar.isPending}>
-            Salvar
-          </Botao>
-        </div>
-      </div>
+      <RodapeDoFormulario cancelar={cancelar} rotuloSalvar={evento ? 'Salvar alterações' : 'Salvar'} salvando={criar.isPending || editar.isPending} />
     </form>
   )
 }
