@@ -285,6 +285,19 @@ describe('A1 · editar a classe do ano', () => {
     expect(matriculou).toBe(false)
   })
 
+  it('o aviso da troca acompanha a trilha: mesma trilha é desistência, outra trilha cursa as duas', async () => {
+    const companheiro = criarClasse({ id: uuid(102), nome: 'Companheiro', corToken: '--classe-companheiro' })
+    const agrupada = criarClasse({ id: uuid(103), nome: 'Agrupadas (Amigo a Guia)', trilha: 'AGRUPADAS', corToken: '--classe-guia' })
+    servidor.use(handlerDesbravadores([ana]), handlerUnidades([aguias]), handlerClasses([amigo, companheiro, agrupada]))
+    renderizarRotas(rotasAdmDesbravadores, '/adm/desbravadores')
+    await userEvent.click(await screen.findByRole('button', { name: 'Editar Ana Clara Souza' }))
+    const painel = within(await screen.findByRole('dialog', { name: 'Editar Ana Clara Souza' }))
+    await userEvent.selectOptions(painel.getByLabelText('Classe do ano'), 'Companheiro')
+    expect(painel.getByText('A classe atual fica registrada como desistência.')).toBeInTheDocument()
+    await userEvent.selectOptions(painel.getByLabelText('Classe do ano'), 'Agrupadas (Amigo a Guia)')
+    expect(painel.getByText('A classe atual continua: o desbravador passa a cursar as duas.')).toBeInTheDocument()
+  })
+
   it('matrícula recusada: os dados ficam salvos e o painel diz que a classe não mudou', async () => {
     servidor.use(
       handlerConfiguracao(configuracao),

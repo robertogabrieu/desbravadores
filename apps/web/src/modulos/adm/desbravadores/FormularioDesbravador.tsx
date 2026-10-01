@@ -91,6 +91,15 @@ export function FormularioDesbravador({ desbravador, aoConcluir, aoCancelar }: P
   const mostraResponsavel = !editando || desbravador.contato !== undefined
   const salvando = criar.isPending || editar.isPending || mover.isPending || matricular.isPending
   const classeAtualId = desbravador?.classeAtual?.id ?? ''
+  // A API só registra desistência da regular anterior quando a nova é da mesma trilha (individual ou
+  // agrupada); de uma trilha para a outra, o desbravador passa a cursar as duas.
+  const trilhaEscolhida = classes.data?.find((classe) => classe.id === valores.classeId)?.trilha
+  const trocandoClasse = editando && classeAtualId !== '' && valores.classeId !== '' && valores.classeId !== classeAtualId
+  const avisoDaTroca = !trocandoClasse
+    ? undefined
+    : trilhaEscolhida === desbravador?.classeAtual?.trilha
+      ? 'A classe atual fica registrada como desistência.'
+      : 'A classe atual continua: o desbravador passa a cursar as duas.'
 
   const definir = <K extends keyof Valores>(chave: K, valor: Valores[K]) => setValores((atual) => ({ ...atual, [chave]: valor }))
 
@@ -231,7 +240,7 @@ export function FormularioDesbravador({ desbravador, aoConcluir, aoCancelar }: P
             rotulo="Classe do ano"
             value={valores.classeId}
             erro={erros['classeId']}
-            ajuda={editando && classeAtualId && valores.classeId !== classeAtualId ? 'A classe atual fica registrada como desistência.' : undefined}
+            ajuda={avisoDaTroca}
             onChange={(e) => definir('classeId', e.target.value)}
           >
             {(!editando || !classeAtualId) && <option value="">Sem classe</option>}

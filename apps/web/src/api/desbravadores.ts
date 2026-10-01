@@ -124,7 +124,8 @@ export function useMatricular() {
         metodo: 'POST',
         corpo: MatriculaEntrada.parse(entrada),
       }),
-    onSuccess: () => cliente.invalidateQueries({ queryKey: chavesDesbravadores.todos }),
+    onSuccess: () =>
+      Promise.all([cliente.invalidateQueries({ queryKey: chavesDesbravadores.todos }), invalidarUnidades(cliente)]),
   })
 }
 
