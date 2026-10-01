@@ -6,7 +6,9 @@ import { defineConfig, minimal2023Preset } from '@vite-pwa/assets-generator/conf
 export default defineConfig({
   preset: {
     ...minimal2023Preset,
-    maskable: { ...minimal2023Preset.maskable, resizeOptions: { background: '#FFFFFF', fit: 'contain' } },
+    // No Android o ícone adaptável é recortado num círculo de 80%: com 45% de margem, as pontas de cima
+    // do triângulo ficam dentro dele.
+    maskable: { ...minimal2023Preset.maskable, padding: 0.45, resizeOptions: { background: '#FFFFFF', fit: 'contain' } },
     apple: { ...minimal2023Preset.apple, resizeOptions: { background: '#FFFFFF', fit: 'contain' } },
   },
   images: ['public/icone-fonte.png'],
