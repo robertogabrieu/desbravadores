@@ -88,6 +88,13 @@ describe('perfil do DBV', () => {
     expect(await screen.findByText('tela do ranking')).toBeInTheDocument()
   })
 
+  it('o Adm em /dbv/:id vai para a ficha do desbravador no painel', async () => {
+    servidor.use(...handlersSessao([criarVinculo('ADM')]), handlerPerfil(), handlerProgressoDbv())
+    const { roteador } = renderizarRotas([...rotasPerfil, { path: '/adm/desbravadores/:id', element: <p>ficha do adm</p> }], `/dbv/${ID}`)
+    expect(await screen.findByText('ficha do adm')).toBeInTheDocument()
+    expect(roteador.state.location.pathname).toBe(`/adm/desbravadores/${ID}`)
+  })
+
   it('carregando: esqueleto acessível', async () => {
     servidor.use(http.get('/api/desbravadores/:id/perfil', async () => new Promise<Response>(() => {})))
     abrir()

@@ -3,19 +3,22 @@ import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { anoClube, hojeNoFuso } from '@desbravadores/shared'
 import { describe, expect, it } from 'vitest'
+import type { RequestHandler } from 'msw'
 import { hojeDoClube } from '../../../api/desbravadores'
 import type { Desbravador } from '../../../api/desbravadores'
+import { caixa } from '../../../testes/handlers/caixa'
+import { handlerPerfilDe } from '../../../testes/handlers/perfil'
+import { handlerProgressoDbv } from '../../../testes/handlers/progresso'
 import { criarClasse, criarUnidade, criarListaUsuarios, handlerClasses, handlerUnidades, handlerUsuarios } from '../../../testes/handlers/leitura'
 import {
   criarDesbravador,
   handlerCriarDesbravador,
+  handlerDesbravador,
   handlerDesbravadores,
   handlerEditarDesbravador,
   handlerErroDesbravador,
-  handlerInativarDesbravador,
   handlerMatricular,
   handlerMoverUnidade,
-  handlerReativarDesbravador,
 } from '../../../testes/handlers/desbravadores'
 import { handlersConviteAcesso } from '../../../testes/handlers/convite-acesso'
 import { criarConfiguracao, handlerConfiguracao } from '../../../testes/handlers/clube'
@@ -41,6 +44,50 @@ const lider = criarDesbravador({ id: uuid(303), nome: 'Carla Dias', tipo: 'LIDER
 function abrir(desbravadores = [ana, bruno, lider], aoConsultar?: (url: URL) => void) {
   servidor.use(handlerDesbravadores(desbravadores, aoConsultar), handlerUnidades([aguias]), handlerClasses([amigo]), ...handlersConviteAcesso())
   return renderizarRotas(rotasAdmDesbravadores, '/adm/desbravadores')
+}
+
+const REGIAO_DA_FICHA = { name: 'Cadastro' }
+const esperarFicha = () => screen.findByRole('region', REGIAO_DA_FICHA)
+
+/** A ficha que abre depois de gravar precisa de perfil e progresso; `handlers` do teste têm prioridade. */
+const handlersDaFicha = (...dbvs: Desbravador[]) => {
+  const caixas = dbvs.map((d) => caixa(d))
+  return [handlerDesbravador(...caixas), handlerPerfilDe(caixas), handlerProgressoDbv(), ...handlersConviteAcesso()]
+}
+
+async function abrirNovo(...handlers: RequestHandler[]) {
+  servidor.use(
+    ...handlers,
+    ...handlersDaFicha(criarDesbravador()),
+    handlerUnidades([aguias]),
+    handlerClasses([amigo]),
+    handlerUsuarios(criarListaUsuarios()),
+    handlerConfiguracao(criarConfiguracao()),
+  )
+  const tela = renderizarRotas(rotasAdmDesbravadores, '/adm/desbravadores/novo')
+  await screen.findByRole('heading', { level: 1, name: 'Novo desbravador' })
+  return tela
+}
+
+async function abrirEdicao(dbv: Desbravador, ...handlers: RequestHandler[]) {
+  servidor.use(
+    ...handlers,
+    ...handlersDaFicha(dbv),
+    handlerUnidades([aguias]),
+    handlerClasses([amigo]),
+    handlerUsuarios(criarListaUsuarios()),
+    handlerConfiguracao(criarConfiguracao()),
+  )
+  const tela = renderizarRotas(rotasAdmDesbravadores, `/adm/desbravadores/${dbv.id}/editar`)
+  await screen.findByRole('heading', { level: 1, name: dbv.nome })
+  // Unidades e classes chegam depois do registro; sem elas a seleção ainda não mostra o valor do cadastro.
+  await waitFor(() => {
+    const unidade = screen.queryByLabelText('Unidade')
+    if (unidade) expect(unidade).toHaveTextContent('Águias')
+    const classe = screen.queryByLabelText('Classe do ano')
+    if (classe) expect(classe).toHaveTextContent('Amigo')
+  })
+  return tela
 }
 
 const linhaDe = (nome: string) => screen.getByRole('row', { name: new RegExp(nome) })
@@ -103,6 +150,25 @@ describe('A1 · lista', () => {
     expect(consultas[consultas.length - 1]?.searchParams.get('pagina')).toBe('2')
   })
 
+  it('filtros e página moram no endereço: abrir com ?unidade=sem&pagina=2 pede isso à API', async () => {
+    const urls: URL[] = []
+    servidor.use(
+      handlerDesbravadores(Array.from({ length: 30 }, (_, n) => criarDesbravador({ id: uuid(400 + n), nome: `Dbv ${n}` })), (url) => urls.push(url)),
+      handlerUnidades([aguias]),
+      handlerClasses([amigo]),
+    )
+    renderizarRotas(rotasAdmDesbravadores, '/adm/desbravadores?unidade=sem&pagina=2')
+    await waitFor(() => expect(urls.at(-1)?.searchParams.get('pagina')).toBe('2'))
+    expect(urls.at(-1)?.searchParams.get('semUnidade')).toBe('true')
+    expect(screen.getByLabelText('Unidade')).toHaveValue('sem')
+  })
+
+  it('a lista não tem mais coluna de ações: inativar e reativar moram na ficha', async () => {
+    abrir([criarDesbravador()])
+    await screen.findByRole('link', { name: 'Ana Clara Souza' })
+    expect(screen.queryByRole('columnheader', { name: 'Ações' })).not.toBeInTheDocument()
+  })
+
   it('lista vazia ensina o próximo passo', async () => {
     abrir([])
     expect(await screen.findByText('Nenhum desbravador encontrado')).toBeInTheDocument()
@@ -116,25 +182,19 @@ describe('A1 · lista', () => {
 })
 
 describe('A1 · novo desbravador', () => {
-  async function abrirNovo() {
-    abrir([])
-    await userEvent.click(await screen.findByRole('button', { name: 'Novo desbravador' }))
-    return within(await screen.findByRole('dialog', { name: 'Novo desbravador' }))
-  }
-
   it('cria com os campos do contrato, classe do ano e avançada marcada por padrão', async () => {
     let corpo: unknown
     servidor.use(handlerCriarDesbravador(criarDesbravador(), [], (recebido) => (corpo = recebido)))
-    const painel = await abrirNovo()
-    await userEvent.type(painel.getByLabelText('Nome completo'), 'Davi Rocha')
-    fireEvent.change(painel.getByLabelText('Nascimento'), { target: { value: '2015-05-20' } })
-    await userEvent.selectOptions(painel.getByLabelText('Sexo'), 'Masculino')
-    await userEvent.selectOptions(painel.getByLabelText('Unidade'), 'Águias')
-    await userEvent.selectOptions(painel.getByLabelText('Classe do ano'), 'Amigo')
-    expect(painel.getByLabelText('Matricular também na avançada')).toBeChecked()
-    await userEvent.type(painel.getByLabelText('Responsável'), 'Marta Rocha')
-    await userEvent.click(painel.getByLabelText('Autorizou o uso de imagem'))
-    await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
+    await abrirNovo()
+    await userEvent.type(screen.getByLabelText('Nome completo'), 'Davi Rocha')
+    fireEvent.change(screen.getByLabelText('Nascimento'), { target: { value: '2015-05-20' } })
+    await userEvent.selectOptions(screen.getByLabelText('Sexo'), 'Masculino')
+    await userEvent.selectOptions(screen.getByLabelText('Unidade'), 'Águias')
+    await userEvent.selectOptions(screen.getByLabelText('Classe do ano'), 'Amigo')
+    expect(screen.getByLabelText('Matricular também na avançada')).toBeChecked()
+    await userEvent.type(screen.getByLabelText('Responsável'), 'Marta Rocha')
+    await userEvent.click(screen.getByLabelText('Autorizou o uso de imagem'))
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
 
     await waitFor(() => expect(corpo).toBeDefined())
     expect(corpo).toMatchObject({
@@ -150,75 +210,74 @@ describe('A1 · novo desbravador', () => {
       autorizacaoImagemEm: hojeDoClube(),
       entradaEm: hojeDoClube(),
     })
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await esperarFicha()
   })
 
   it('desmarcar a avançada é enviado', async () => {
     let corpo: unknown
     servidor.use(handlerCriarDesbravador(criarDesbravador(), [], (recebido) => (corpo = recebido)))
-    const painel = await abrirNovo()
-    await userEvent.type(painel.getByLabelText('Nome completo'), 'Davi Rocha')
-    fireEvent.change(painel.getByLabelText('Nascimento'), { target: { value: '2015-05-20' } })
-    await userEvent.selectOptions(painel.getByLabelText('Sexo'), 'Masculino')
-    await userEvent.selectOptions(painel.getByLabelText('Classe do ano'), 'Amigo')
-    await userEvent.click(painel.getByLabelText('Matricular também na avançada'))
-    await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
+    await abrirNovo()
+    await userEvent.type(screen.getByLabelText('Nome completo'), 'Davi Rocha')
+    fireEvent.change(screen.getByLabelText('Nascimento'), { target: { value: '2015-05-20' } })
+    await userEvent.selectOptions(screen.getByLabelText('Sexo'), 'Masculino')
+    await userEvent.selectOptions(screen.getByLabelText('Classe do ano'), 'Amigo')
+    await userEvent.click(screen.getByLabelText('Matricular também na avançada'))
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(corpo).toMatchObject({ classeId: amigo.id, incluirAvancada: false }))
   })
 
   it('valida com os contratos antes de enviar', async () => {
     let enviou = false
     servidor.use(handlerCriarDesbravador(criarDesbravador(), [], () => (enviou = true)))
-    const painel = await abrirNovo()
-    await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
-    expect(await painel.findByText('Informe o nome completo')).toBeInTheDocument()
-    expect(painel.getByText('Informe a data de nascimento')).toBeInTheDocument()
-    expect(painel.getByText('Escolha o sexo')).toBeInTheDocument()
+    await abrirNovo()
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    expect(await screen.findByText('Informe o nome completo')).toBeInTheDocument()
+    expect(screen.getByText('Informe a data de nascimento')).toBeInTheDocument()
+    expect(screen.getByText('Escolha o sexo')).toBeInTheDocument()
     expect(enviou).toBe(false)
   })
 
   it('líder esconde a unidade e a classe e mostra a conta de usuário (opcional)', async () => {
     servidor.use(handlerUsuarios(criarListaUsuarios()))
-    const painel = await abrirNovo()
-    expect(painel.getByLabelText('Unidade')).toBeInTheDocument()
-    expect(painel.queryByLabelText('Conta de usuário (opcional)')).not.toBeInTheDocument()
-    await userEvent.selectOptions(painel.getByLabelText('Tipo'), 'Líder em formação')
-    expect(painel.queryByLabelText('Unidade')).not.toBeInTheDocument()
-    expect(painel.queryByLabelText('Classe do ano')).not.toBeInTheDocument()
-    expect(painel.getByLabelText('Conta de usuário (opcional)')).toBeInTheDocument()
+    await abrirNovo()
+    expect(screen.getByLabelText('Unidade')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Conta de usuário (opcional)')).not.toBeInTheDocument()
+    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'Líder em formação')
+    expect(screen.queryByLabelText('Unidade')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Classe do ano')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Conta de usuário (opcional)')).toBeInTheDocument()
   })
 
   it('mostra os avisos da API em faixa amarela sem impedir o cadastro', async () => {
     servidor.use(handlerCriarDesbravador(criarDesbravador(), [{ codigo: 'AVISO_SEXO_UNIDADE', mensagem: 'A unidade Águias é masculina.' }]))
-    const painel = await abrirNovo()
-    await userEvent.type(painel.getByLabelText('Nome completo'), 'Davi Rocha')
-    fireEvent.change(painel.getByLabelText('Nascimento'), { target: { value: '2015-05-20' } })
-    await userEvent.selectOptions(painel.getByLabelText('Sexo'), 'Feminino')
-    await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
-    const faixa = await screen.findByRole('status')
-    expect(faixa).toHaveTextContent('A unidade Águias é masculina.')
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await abrirNovo()
+    await userEvent.type(screen.getByLabelText('Nome completo'), 'Davi Rocha')
+    fireEvent.change(screen.getByLabelText('Nascimento'), { target: { value: '2015-05-20' } })
+    await userEvent.selectOptions(screen.getByLabelText('Sexo'), 'Feminino')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    expect(await screen.findByText('A unidade Águias é masculina.')).toBeInTheDocument()
+    await esperarFicha()
   })
 
-  it('erro da API fica no painel, que continua aberto', async () => {
+  it('erro da API fica na tela, que continua aberta', async () => {
     servidor.use(handlerErroDesbravador('post', '/api/desbravadores', 422, { codigo: 'REGRA', mensagem: 'Classe de outro clube.' }))
-    const painel = await abrirNovo()
-    await userEvent.type(painel.getByLabelText('Nome completo'), 'Davi Rocha')
-    fireEvent.change(painel.getByLabelText('Nascimento'), { target: { value: '2015-05-20' } })
-    await userEvent.selectOptions(painel.getByLabelText('Sexo'), 'Masculino')
-    await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
-    expect(await painel.findByRole('alert')).toHaveTextContent('Classe de outro clube.')
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    await abrirNovo()
+    await userEvent.type(screen.getByLabelText('Nome completo'), 'Davi Rocha')
+    fireEvent.change(screen.getByLabelText('Nascimento'), { target: { value: '2015-05-20' } })
+    await userEvent.selectOptions(screen.getByLabelText('Sexo'), 'Masculino')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Classe de outro clube.')
+    expect(screen.getByRole('heading', { level: 1, name: 'Novo desbravador' })).toBeInTheDocument()
   })
 
   it('erro de campo da API (400) aparece no campo', async () => {
     servidor.use(handlerErroDesbravador('post', '/api/desbravadores', 400, { codigo: 'VALIDACAO', mensagem: 'Campos inválidos', campos: { nome: 'Nome já usado' } }))
-    const painel = await abrirNovo()
-    await userEvent.type(painel.getByLabelText('Nome completo'), 'Davi Rocha')
-    fireEvent.change(painel.getByLabelText('Nascimento'), { target: { value: '2015-05-20' } })
-    await userEvent.selectOptions(painel.getByLabelText('Sexo'), 'Masculino')
-    await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
-    expect(await painel.findByText('Nome já usado')).toBeInTheDocument()
+    await abrirNovo()
+    await userEvent.type(screen.getByLabelText('Nome completo'), 'Davi Rocha')
+    fireEvent.change(screen.getByLabelText('Nascimento'), { target: { value: '2015-05-20' } })
+    await userEvent.selectOptions(screen.getByLabelText('Sexo'), 'Masculino')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    expect(await screen.findByText('Nome já usado')).toBeInTheDocument()
   })
 })
 
@@ -230,16 +289,14 @@ describe('A1 · editar', () => {
       handlerEditarDesbravador(ana, [], (recebido) => (corpo = recebido)),
       handlerMoverUnidade((id, c) => (movido = { id, unidadeId: c.unidadeId })),
     )
-    abrir([ana])
-    await userEvent.click(await screen.findByRole('button', { name: 'Editar Ana Clara Souza' }))
-    const painel = within(await screen.findByRole('dialog', { name: 'Editar Ana Clara Souza' }))
-    expect(painel.getByLabelText('Nome completo')).toHaveValue('Ana Clara Souza')
-    expect(painel.getByLabelText('Unidade')).toHaveValue(aguias.id)
-    expect(painel.queryByLabelText('Entrada no clube')).not.toBeInTheDocument()
-    await userEvent.clear(painel.getByLabelText('Nome público'))
-    await userEvent.type(painel.getByLabelText('Nome público'), 'Aninha')
-    await userEvent.selectOptions(painel.getByLabelText('Unidade'), 'Sem unidade')
-    await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
+    await abrirEdicao(ana)
+    expect(screen.getByLabelText('Nome completo')).toHaveValue('Ana Clara Souza')
+    expect(screen.getByLabelText('Unidade')).toHaveValue(aguias.id)
+    expect(screen.queryByLabelText('Entrada no clube')).not.toBeInTheDocument()
+    await userEvent.clear(screen.getByLabelText('Nome público'))
+    await userEvent.type(screen.getByLabelText('Nome público'), 'Aninha')
+    await userEvent.selectOptions(screen.getByLabelText('Unidade'), 'Sem unidade')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() => expect(corpo).toMatchObject({ nome: 'Ana Clara Souza', nomePublico: 'Aninha', nascimento: '2015-03-10' }))
     expect(corpo).not.toHaveProperty('unidadeId')
     await waitFor(() => expect(movido).toEqual({ id: ana.id, unidadeId: null }))
@@ -248,10 +305,9 @@ describe('A1 · editar', () => {
   it('não move de unidade quando a unidade não mudou', async () => {
     let moveu = false
     servidor.use(handlerEditarDesbravador(ana), handlerMoverUnidade(() => (moveu = true)))
-    abrir([ana])
-    await userEvent.click(await screen.findByRole('button', { name: 'Editar Ana Clara Souza' }))
-    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Salvar' }))
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await abrirEdicao(ana)
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await esperarFicha()
     expect(moveu).toBe(false)
   })
 })
@@ -263,112 +319,70 @@ describe('A1 · editar a classe do ano', () => {
   it('desbravador sem classe: escolher a classe na edição matricula no ano do clube, com a avançada', async () => {
     let matricula: { id: string; classeId: string; anoClube: number; incluirAvancada: boolean } | undefined
     servidor.use(handlerConfiguracao(configuracao), handlerEditarDesbravador(bruno), handlerMatricular((id, corpo) => (matricula = { id, ...corpo })))
-    abrir([bruno])
-    await userEvent.click(await screen.findByRole('button', { name: 'Editar Bruno Lima' }))
-    const painel = within(await screen.findByRole('dialog', { name: 'Editar Bruno Lima' }))
-    expect(painel.getByLabelText('Classe do ano')).toHaveValue('')
-    await userEvent.selectOptions(painel.getByLabelText('Classe do ano'), 'Amigo')
-    expect(painel.getByRole('checkbox', { name: 'Matricular também na avançada' })).toBeChecked()
-    await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
+    await abrirEdicao(bruno)
+    expect(screen.getByLabelText('Classe do ano')).toHaveValue('')
+    await userEvent.selectOptions(screen.getByLabelText('Classe do ano'), 'Amigo')
+    expect(screen.getByRole('checkbox', { name: 'Matricular também na avançada' })).toBeChecked()
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() => expect(matricula).toEqual({ id: bruno.id, classeId: amigo.id, anoClube: anoEsperado, incluirAvancada: true }))
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await esperarFicha()
   })
 
   it('com classe atual: o campo vem preenchido, sem "Sem classe", e não matricula se a classe não mudou', async () => {
     let matriculou = false
     servidor.use(handlerConfiguracao(configuracao), handlerEditarDesbravador(ana), handlerMatricular(() => (matriculou = true)))
-    abrir([ana])
-    await userEvent.click(await screen.findByRole('button', { name: 'Editar Ana Clara Souza' }))
-    const painel = within(await screen.findByRole('dialog', { name: 'Editar Ana Clara Souza' }))
-    expect(painel.getByLabelText('Classe do ano')).toHaveValue(amigo.id)
-    expect(within(painel.getByLabelText('Classe do ano')).queryByRole('option', { name: 'Sem classe' })).not.toBeInTheDocument()
-    await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await abrirEdicao(ana)
+    expect(screen.getByLabelText('Classe do ano')).toHaveValue(amigo.id)
+    expect(within(screen.getByLabelText('Classe do ano')).queryByRole('option', { name: 'Sem classe' })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await esperarFicha()
     expect(matriculou).toBe(false)
   })
 
   it('o aviso da troca acompanha a trilha: mesma trilha é desistência, outra trilha cursa as duas', async () => {
     const companheiro = criarClasse({ id: uuid(102), nome: 'Companheiro', corToken: '--classe-companheiro' })
     const agrupada = criarClasse({ id: uuid(103), nome: 'Agrupadas (Amigo a Guia)', trilha: 'AGRUPADAS', corToken: '--classe-guia' })
-    servidor.use(handlerDesbravadores([ana]), handlerUnidades([aguias]), handlerClasses([amigo, companheiro, agrupada]))
-    renderizarRotas(rotasAdmDesbravadores, '/adm/desbravadores')
-    await userEvent.click(await screen.findByRole('button', { name: 'Editar Ana Clara Souza' }))
-    const painel = within(await screen.findByRole('dialog', { name: 'Editar Ana Clara Souza' }))
-    await userEvent.selectOptions(painel.getByLabelText('Classe do ano'), 'Companheiro')
-    expect(painel.getByText('A classe atual fica registrada como desistência.')).toBeInTheDocument()
-    await userEvent.selectOptions(painel.getByLabelText('Classe do ano'), 'Agrupadas (Amigo a Guia)')
-    expect(painel.getByText('A classe atual continua: o desbravador passa a cursar as duas.')).toBeInTheDocument()
+    await abrirEdicao(ana, handlerClasses([amigo, companheiro, agrupada]))
+    await userEvent.selectOptions(screen.getByLabelText('Classe do ano'), 'Companheiro')
+    expect(screen.getByText('A classe atual fica registrada como desistência.')).toBeInTheDocument()
+    await userEvent.selectOptions(screen.getByLabelText('Classe do ano'), 'Agrupadas (Amigo a Guia)')
+    expect(screen.getByText('A classe atual continua: o desbravador passa a cursar as duas.')).toBeInTheDocument()
   })
 
-  it('matrícula recusada: os dados ficam salvos e o painel diz que a classe não mudou', async () => {
+  it('matrícula recusada: os dados ficam salvos e a tela diz que a classe não mudou', async () => {
     servidor.use(
       handlerConfiguracao(configuracao),
       handlerEditarDesbravador(bruno),
       http.post('/api/desbravadores/:id/matriculas', () => HttpResponse.json({ codigo: 'REGRA', mensagem: 'Reative o desbravador antes de matricular.' }, { status: 422 })),
     )
-    abrir([bruno])
-    await userEvent.click(await screen.findByRole('button', { name: 'Editar Bruno Lima' }))
-    const painel = within(await screen.findByRole('dialog', { name: 'Editar Bruno Lima' }))
-    await userEvent.selectOptions(painel.getByLabelText('Classe do ano'), 'Amigo')
-    await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
-    expect(await painel.findByText('Dados salvos. A classe não foi alterada: Reative o desbravador antes de matricular.')).toBeInTheDocument()
+    await abrirEdicao(bruno)
+    await userEvent.selectOptions(screen.getByLabelText('Classe do ano'), 'Amigo')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    expect(await screen.findByText('Dados salvos. A classe não foi alterada: Reative o desbravador antes de matricular.')).toBeInTheDocument()
   })
 })
 
 describe('A1 · editar com salvamento parcial', () => {
   it('desbravador inativo não mostra o campo Unidade', async () => {
     const inativo = criarDesbravador({ id: uuid(311), nome: 'Elisa Prado', ativo: false, saidaEm: '2026-08-01' })
-    abrir([inativo])
-    await userEvent.selectOptions(await screen.findByLabelText('Situação'), 'Inativos')
-    await userEvent.click(await screen.findByRole('button', { name: 'Editar Elisa Prado' }))
-    const painel = within(await screen.findByRole('dialog', { name: 'Editar Elisa Prado' }))
-    expect(painel.getByLabelText('Nome completo')).toBeInTheDocument()
-    expect(painel.queryByLabelText('Unidade')).not.toBeInTheDocument()
+    await abrirEdicao(inativo)
+    expect(screen.getByLabelText('Nome completo')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Unidade')).not.toBeInTheDocument()
   })
 
-  it('PATCH ok e PUT recusado: painel fica aberto, diz o que salvou e mostra os avisos', async () => {
+  it('PATCH ok e PUT recusado: a tela fica na edição, diz o que salvou e mostra os avisos', async () => {
     servidor.use(
       handlerEditarDesbravador(ana, [{ codigo: 'AVISO_SEXO_UNIDADE', mensagem: 'A unidade Leões é feminina.' }]),
       http.put('/api/desbravadores/:id/unidade', () =>
         HttpResponse.json({ codigo: 'REGRA', mensagem: 'Reative o desbravador antes de mudar a unidade.' }, { status: 422 }),
       ),
     )
-    abrir([ana])
-    await userEvent.click(await screen.findByRole('button', { name: 'Editar Ana Clara Souza' }))
-    const painel = within(await screen.findByRole('dialog'))
-    await userEvent.selectOptions(painel.getByLabelText('Unidade'), 'Sem unidade')
-    await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
-    expect(await painel.findByText('Dados salvos. A unidade não foi alterada: Reative o desbravador antes de mudar a unidade.')).toBeInTheDocument()
-    expect(painel.getByText('A unidade Leões é feminina.')).toBeInTheDocument()
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-  })
-})
-
-describe('A1 · inativar e reativar', () => {
-  it('inativar pede a data de saída (hoje por padrão) e envia', async () => {
-    let recebido: unknown
-    servidor.use(handlerInativarDesbravador((corpo) => (recebido = corpo)))
-    abrir([ana])
-    await userEvent.click(await screen.findByRole('button', { name: 'Inativar Ana Clara Souza' }))
-    const painel = within(await screen.findByRole('dialog', { name: 'Inativar Ana Clara Souza' }))
-    expect(painel.getByLabelText('Data de saída')).toHaveValue(hojeDoClube())
-    fireEvent.change(painel.getByLabelText('Data de saída'), { target: { value: '2026-09-20' } })
-    await userEvent.click(painel.getByRole('button', { name: 'Inativar' }))
-    await waitFor(() => expect(recebido).toEqual({ id: ana.id, saidaEm: '2026-09-20' }))
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-  })
-
-  it('ativos não têm Reativar; no filtro inativos, sim, e ele chama a API', async () => {
-    const inativa = criarDesbravador({ id: uuid(310), nome: 'Elisa Prado', ativo: false, saidaEm: '2026-08-01' })
-    let reativado: string | undefined
-    servidor.use(handlerReativarDesbravador((id) => (reativado = id)))
-    abrir([ana, inativa])
-    await screen.findByRole('row', { name: /Ana Clara/ })
-    expect(screen.queryByRole('button', { name: /Reativar/ })).not.toBeInTheDocument()
-    await userEvent.selectOptions(screen.getByLabelText('Situação'), 'Inativos')
-    await userEvent.click(await screen.findByRole('button', { name: 'Reativar Elisa Prado' }))
-    await waitFor(() => expect(reativado).toBe(inativa.id))
-    expect(screen.queryByRole('button', { name: /Inativar/ })).not.toBeInTheDocument()
+    await abrirEdicao(ana)
+    await userEvent.selectOptions(screen.getByLabelText('Unidade'), 'Sem unidade')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    expect(await screen.findByText('Dados salvos. A unidade não foi alterada: Reative o desbravador antes de mudar a unidade.')).toBeInTheDocument()
+    expect(screen.getByText('A unidade Leões é feminina.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Salvar alterações' })).toBeInTheDocument()
   })
 })
 
@@ -384,12 +398,6 @@ describe('Tipo: Desbravador, Diretoria e Líder', () => {
   const instrutora = criarDesbravador({ id: uuid(502), nome: 'Eva Prado', tipo: 'DIRETORIA', idade: 14, motivosDiretoria: ['INSTRUTOR'] })
   const marcada = criarDesbravador({ id: uuid(504), nome: 'Gil Matos', tipo: 'DIRETORIA', idade: 13, motivosDiretoria: ['ADM'] })
   const liderConselheira = criarDesbravador({ id: uuid(505), nome: 'Hana Reis', tipo: 'LIDER', idade: 17, motivosDiretoria: [] })
-
-  async function editar(desbravador: Desbravador, outros: Desbravador[] = []) {
-    abrir([desbravador, ...outros])
-    await userEvent.click(await screen.findByRole('button', { name: `Editar ${desbravador.nome}` }))
-    return within(await screen.findByRole('dialog', { name: `Editar ${desbravador.nome}` }))
-  }
 
   it('a coluna Tipo mostra Diretoria, sem selo ao lado do nome, e a unidade fica "—" para Diretoria e Líder', async () => {
     abrir([ana, diretor, lider])
@@ -430,31 +438,31 @@ describe('Tipo: Desbravador, Diretoria e Líder', () => {
     expect(await screen.findByText('Nenhum desbravador encontrado')).toBeInTheDocument()
   })
 
-  it('no painel, o Tipo é editável e a ajuda diz todos os motivos da Diretoria; a linha "Membro da Diretoria" saiu', async () => {
-    const painel = await editar(diretor)
-    const tipo = painel.getByLabelText('Tipo')
+  it('na edição, o Tipo é editável e a ajuda diz todos os motivos da Diretoria; a linha "Membro da Diretoria" saiu', async () => {
+    await abrirEdicao(diretor)
+    const tipo = screen.getByLabelText('Tipo')
     expect(tipo).toBeEnabled()
     expect(tipo).toHaveValue('DIRETORIA')
     expect(tipo).toHaveAccessibleDescription('Diretoria pela idade (16 anos até junho) e porque é conselheiro')
-    expect(painel.queryByText('Membro da Diretoria')).not.toBeInTheDocument()
-    expect(painel.queryByLabelText('Unidade')).not.toBeInTheDocument()
-    expect(painel.getByLabelText('Classe do ano')).toHaveValue(amigo.id)
+    expect(screen.queryByText('Membro da Diretoria')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Unidade')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Classe do ano')).toHaveValue(amigo.id)
   })
 
   it('a ajuda diz o motivo instrutor', async () => {
-    const painelEva = await editar(instrutora)
-    expect(painelEva.getByLabelText('Tipo')).toHaveAccessibleDescription('Diretoria porque é instrutor')
+    await abrirEdicao(instrutora)
+    expect(screen.getByLabelText('Tipo')).toHaveAccessibleDescription('Diretoria porque é instrutor')
   })
 
   it('a ajuda diz quando foi o Adm que marcou', async () => {
-    const painel = await editar(marcada)
-    expect(painel.getByLabelText('Tipo')).toHaveAccessibleDescription('Diretoria porque foi marcado pelo Adm')
+    await abrirEdicao(marcada)
+    expect(screen.getByLabelText('Tipo')).toHaveAccessibleDescription('Diretoria porque foi marcado pelo Adm')
   })
 
   it('Líder não mostra motivo de Diretoria', async () => {
-    const painel = await editar(liderConselheira)
-    expect(painel.getByLabelText('Tipo')).toHaveValue('LIDER')
-    expect(painel.getByLabelText('Tipo')).not.toHaveAccessibleDescription()
+    await abrirEdicao(liderConselheira)
+    expect(screen.getByLabelText('Tipo')).toHaveValue('LIDER')
+    expect(screen.getByLabelText('Tipo')).not.toHaveAccessibleDescription()
   })
 
   it('trocar Desbravador para Diretoria avisa a saída da unidade, esconde a Unidade, mantém a classe e envia o Tipo', async () => {
@@ -464,41 +472,41 @@ describe('Tipo: Desbravador, Diretoria e Líder', () => {
       handlerEditarDesbravador(ana, [], (recebido) => (corpo = recebido)),
       handlerMoverUnidade(() => (moveu = true)),
     )
-    const painel = await editar(ana)
-    expect(painel.getByLabelText('Tipo')).not.toHaveAccessibleDescription()
-    await userEvent.selectOptions(painel.getByLabelText('Tipo'), 'Diretoria')
-    expect(painel.getByLabelText('Tipo')).toHaveAccessibleDescription('Sai da unidade e da chamada; continua cursando a classe.')
-    expect(painel.queryByLabelText('Unidade')).not.toBeInTheDocument()
-    expect(painel.getByLabelText('Classe do ano')).toBeInTheDocument()
-    await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
+    await abrirEdicao(ana)
+    expect(screen.getByLabelText('Tipo')).not.toHaveAccessibleDescription()
+    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'Diretoria')
+    expect(screen.getByLabelText('Tipo')).toHaveAccessibleDescription('Sai da unidade e da chamada; continua cursando a classe.')
+    expect(screen.queryByLabelText('Unidade')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Classe do ano')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() => expect(corpo).toMatchObject({ tipo: 'DIRETORIA' }))
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await esperarFicha()
     expect(moveu).toBe(false)
   })
 
   it('trocar Desbravador para Líder também avisa a saída da unidade', async () => {
-    const painel = await editar(ana)
-    await userEvent.selectOptions(painel.getByLabelText('Tipo'), 'Líder em formação')
-    expect(painel.getByLabelText('Tipo')).toHaveAccessibleDescription('Sai da unidade e da chamada; continua cursando a classe.')
-    expect(painel.queryByLabelText('Unidade')).not.toBeInTheDocument()
+    await abrirEdicao(ana)
+    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'Líder em formação')
+    expect(screen.getByLabelText('Tipo')).toHaveAccessibleDescription('Sai da unidade e da chamada; continua cursando a classe.')
+    expect(screen.queryByLabelText('Unidade')).not.toBeInTheDocument()
   })
 
   it.each([
     ['Diretoria', marcada],
     ['Líder', liderConselheira],
   ])('voltar %s a Desbravador avisa que a chamada depende da unidade', async (_rotulo, quem) => {
-    const painel = await editar(quem)
-    await userEvent.selectOptions(painel.getByLabelText('Tipo'), 'Desbravador')
-    expect(painel.getByLabelText('Tipo')).toHaveAccessibleDescription('Entra na chamada quando tiver uma unidade: escolha abaixo.')
-    expect(painel.getByLabelText('Unidade')).toHaveValue('')
+    await abrirEdicao(quem)
+    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'Desbravador')
+    expect(screen.getByLabelText('Tipo')).toHaveAccessibleDescription('Entra na chamada quando tiver uma unidade: escolha abaixo.')
+    expect(screen.getByLabelText('Unidade')).toHaveValue('')
   })
 
   it('Desbravador sem unidade mostra o aviso junto à Unidade; escolhida a unidade, o aviso sai', async () => {
     const semUnidade = criarDesbravador({ id: uuid(506), nome: 'Ivo Lopes', unidade: null })
-    const painel = await editar(semUnidade)
-    const unidade = painel.getByLabelText('Unidade')
+    await abrirEdicao(semUnidade)
+    const unidade = screen.getByLabelText('Unidade')
     expect(unidade).toHaveAccessibleDescription('Entra na chamada quando tiver uma unidade: escolha abaixo.')
-    expect(painel.getByLabelText('Tipo')).not.toHaveAccessibleDescription()
+    expect(screen.getByLabelText('Tipo')).not.toHaveAccessibleDescription()
     await userEvent.selectOptions(unidade, aguias.id)
     expect(unidade).not.toHaveAccessibleDescription()
   })
@@ -506,8 +514,8 @@ describe('Tipo: Desbravador, Diretoria e Líder', () => {
   it('o Tipo só vai no corpo quando muda', async () => {
     let corpo: unknown
     servidor.use(handlerEditarDesbravador(ana, [], (recebido) => (corpo = recebido)))
-    const painel = await editar(ana)
-    await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
+    await abrirEdicao(ana)
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() => expect(corpo).toBeDefined())
     expect(corpo).not.toHaveProperty('tipo')
   })
@@ -519,27 +527,25 @@ describe('Tipo: Desbravador, Diretoria e Líder', () => {
         mensagem: 'Tem 16 anos até junho: é Diretoria automaticamente.',
       }),
     )
-    const painel = await editar(diretor)
-    await userEvent.selectOptions(painel.getByLabelText('Tipo'), 'Desbravador')
-    await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
-    await waitFor(() => expect(painel.getByLabelText('Tipo')).toHaveAttribute('aria-invalid', 'true'))
-    expect(painel.getByLabelText('Tipo')).toHaveAccessibleDescription(expect.stringContaining('Tem 16 anos até junho: é Diretoria automaticamente.'))
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    await abrirEdicao(diretor)
+    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'Desbravador')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await waitFor(() => expect(screen.getByLabelText('Tipo')).toHaveAttribute('aria-invalid', 'true'))
+    expect(screen.getByLabelText('Tipo')).toHaveAccessibleDescription(expect.stringContaining('Tem 16 anos até junho: é Diretoria automaticamente.'))
+    expect(screen.getByRole('button', { name: 'Salvar alterações' })).toBeInTheDocument()
   })
 
   it('no cadastro, Diretoria esconde a Unidade, mantém a classe e envia o Tipo', async () => {
     let corpo: unknown
     servidor.use(handlerCriarDesbravador(criarDesbravador(), [], (recebido) => (corpo = recebido)))
-    abrir([])
-    await userEvent.click(await screen.findByRole('button', { name: 'Novo desbravador' }))
-    const painel = within(await screen.findByRole('dialog', { name: 'Novo desbravador' }))
-    await userEvent.selectOptions(painel.getByLabelText('Tipo'), 'Diretoria')
-    expect(painel.queryByLabelText('Unidade')).not.toBeInTheDocument()
-    expect(painel.getByLabelText('Classe do ano')).toBeInTheDocument()
-    await userEvent.type(painel.getByLabelText('Nome completo'), 'Davi Rocha')
-    fireEvent.change(painel.getByLabelText('Nascimento'), { target: { value: '2014-05-20' } })
-    await userEvent.selectOptions(painel.getByLabelText('Sexo'), 'Masculino')
-    await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
+    await abrirNovo()
+    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'Diretoria')
+    expect(screen.queryByLabelText('Unidade')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Classe do ano')).toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText('Nome completo'), 'Davi Rocha')
+    fireEvent.change(screen.getByLabelText('Nascimento'), { target: { value: '2014-05-20' } })
+    await userEvent.selectOptions(screen.getByLabelText('Sexo'), 'Masculino')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(corpo).toMatchObject({ tipo: 'DIRETORIA' }))
     expect(corpo).not.toHaveProperty('unidadeId')
   })
@@ -548,19 +554,17 @@ describe('Tipo: Desbravador, Diretoria e Líder', () => {
     servidor.use(
       handlerCriarDesbravador(diretor, [{ codigo: 'AVISO_DIRETORIA_SEM_UNIDADE', mensagem: 'Diretoria não entra em unidade.' }]),
     )
-    abrir([])
-    await userEvent.click(await screen.findByRole('button', { name: 'Novo desbravador' }))
-    const painel = within(await screen.findByRole('dialog', { name: 'Novo desbravador' }))
-    await userEvent.type(painel.getByLabelText('Nome completo'), 'Davi Rocha')
-    fireEvent.change(painel.getByLabelText('Nascimento'), { target: { value: '2009-05-20' } })
-    await userEvent.selectOptions(painel.getByLabelText('Sexo'), 'Masculino')
-    await userEvent.selectOptions(painel.getByLabelText('Unidade'), 'Águias')
-    await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
-    expect(await screen.findByRole('status')).toHaveTextContent('Diretoria não entra em unidade.')
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await abrirNovo(...handlersDaFicha(diretor))
+    await userEvent.type(screen.getByLabelText('Nome completo'), 'Davi Rocha')
+    fireEvent.change(screen.getByLabelText('Nascimento'), { target: { value: '2009-05-20' } })
+    await userEvent.selectOptions(screen.getByLabelText('Sexo'), 'Masculino')
+    await userEvent.selectOptions(screen.getByLabelText('Unidade'), 'Águias')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    expect(await screen.findByText('Diretoria não entra em unidade.')).toBeInTheDocument()
+    await esperarFicha()
   })
 
-  it('o painel mostra o que a conta ligada instrui e aconselha', async () => {
+  it('a edição mostra o que a conta ligada instrui e aconselha', async () => {
     const duplo = criarDesbravador({
       id: uuid(503),
       nome: 'Rui Duplo',
@@ -573,15 +577,15 @@ describe('Tipo: Desbravador, Diretoria e Líder', () => {
       ],
       aconselha: [{ id: uuid(701), nome: 'Águias' }],
     })
-    const painel = await editar(duplo)
-    expect(painel.getByText('Instrui: Amigo, Companheiro')).toBeInTheDocument()
-    expect(painel.getByText('Aconselha: Águias')).toBeInTheDocument()
-    expect(painel.getByLabelText('Tipo')).toHaveAccessibleDescription('Diretoria porque é conselheiro e instrutor')
+    await abrirEdicao(duplo)
+    expect(screen.getByText('Instrui: Amigo, Companheiro')).toBeInTheDocument()
+    expect(screen.getByText('Aconselha: Águias')).toBeInTheDocument()
+    expect(screen.getByLabelText('Tipo')).toHaveAccessibleDescription('Diretoria porque é conselheiro e instrutor')
   })
 
-  it('sem vínculo de instrutor ou conselheiro, o painel não tem as linhas Instrui/Aconselha', async () => {
-    const painel = await editar(ana)
-    expect(painel.queryByText(/^Instrui:/)).not.toBeInTheDocument()
-    expect(painel.queryByText(/^Aconselha:/)).not.toBeInTheDocument()
+  it('sem vínculo de instrutor ou conselheiro, a edição não tem as linhas Instrui/Aconselha', async () => {
+    await abrirEdicao(ana)
+    expect(screen.queryByText(/^Instrui:/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/^Aconselha:/)).not.toBeInTheDocument()
   })
 })

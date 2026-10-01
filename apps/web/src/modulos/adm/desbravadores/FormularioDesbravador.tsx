@@ -7,10 +7,11 @@ import { consultaConfiguracaoClube } from '../../../api/clube'
 import { hojeDoClube, useCriarDesbravador, useEditarDesbravador, useMatricular, useMoverUnidade } from '../../../api/desbravadores'
 import type { Aviso, Desbravador, TipoDesbravador } from '../../../api/desbravadores'
 import { useClasses, useUnidades, useUsuariosResumo } from '../../../api/leitura'
-import { Botao } from '../../../ui/Botao'
 import { CaixaMarcacao } from '../../../ui/CaixaMarcacao'
 import { Campo } from '../../../ui/Campo'
+import { Cartao } from '../../../ui/Cartao'
 import { FaixaAviso } from '../../../ui/FaixaAviso'
+import { RodapeDoFormulario } from '../../../ui/RodapeDoFormulario'
 import { Selecao } from '../../../ui/Selecao'
 import { MENSAGEM_GENERICA, errosDoContrato, lerErroDaApi } from './erros'
 
@@ -34,8 +35,9 @@ interface Valores {
 interface Propriedades {
   /** Ausente: cadastro novo. */
   desbravador?: Desbravador
-  aoConcluir: (avisos: Aviso[]) => void
-  aoCancelar: () => void
+  /** Para onde o Cancelar leva, e o estado que a navegação carrega. */
+  cancelar: { para: string; estado?: object }
+  aoConcluir: (resultado: { id: string; avisos: Aviso[] }) => void
 }
 
 const textoOuNulo = (texto: string): string | null => texto.trim() || null
@@ -108,7 +110,7 @@ function CampoContaDeUsuario({ valor, aoMudar }: { valor: string; aoMudar: (id: 
   )
 }
 
-export function FormularioDesbravador({ desbravador, aoConcluir, aoCancelar }: Propriedades) {
+export function FormularioDesbravador({ desbravador, cancelar, aoConcluir }: Propriedades) {
   const editando = desbravador !== undefined
   const [valores, setValores] = useState<Valores>(() => valoresIniciais(desbravador))
   const [erros, setErros] = useState<Record<string, string>>({})
@@ -165,7 +167,7 @@ export function FormularioDesbravador({ desbravador, aoConcluir, aoCancelar }: P
     responsavelEmail: textoOuNulo(valores.responsavelEmail),
   })
 
-  async function criarNovo(): Promise<Aviso[] | null> {
+  async function criarNovo(): Promise<{ id: string; avisos: Aviso[] } | null> {
     const entrada = {
       ...camposDaPessoa(),
       ...camposDoResponsavel(),
@@ -181,10 +183,11 @@ export function FormularioDesbravador({ desbravador, aoConcluir, aoCancelar }: P
       setErros(errosDoContrato(lido.error.issues))
       return null
     }
-    return (await criar.mutateAsync(lido.data)).avisos
+    const resposta = await criar.mutateAsync(lido.data)
+    return { id: resposta.dados.id, avisos: resposta.avisos }
   }
 
-  async function editarExistente(atual: Desbravador): Promise<Aviso[] | null> {
+  async function editarExistente(atual: Desbravador): Promise<{ id: string; avisos: Aviso[] } | null> {
     const entrada = {
       ...camposDaPessoa(),
       ...(mostraResponsavel ? camposDoResponsavel() : {}),
@@ -230,7 +233,7 @@ export function FormularioDesbravador({ desbravador, aoConcluir, aoCancelar }: P
         return null
       }
     }
-    return avisos
+    return { id: atual.id, avisos }
   }
 
   async function enviar(evento: FormEvent) {
@@ -239,8 +242,8 @@ export function FormularioDesbravador({ desbravador, aoConcluir, aoCancelar }: P
     setErroGeral(null)
     setParcial(null)
     try {
-      const avisos = desbravador ? await editarExistente(desbravador) : await criarNovo()
-      if (avisos) aoConcluir(avisos)
+      const resultado = desbravador ? await editarExistente(desbravador) : await criarNovo()
+      if (resultado) aoConcluir(resultado)
     } catch (falha) {
       const { campos, geral } = lerErroDaApi(falha)
       setErros(campos)
@@ -248,105 +251,125 @@ export function FormularioDesbravador({ desbravador, aoConcluir, aoCancelar }: P
     }
   }
 
+  const mostraNoClube = mostraUnidade || mostraClasse
+
   return (
     <form noValidate onSubmit={(evento) => void enviar(evento)} className="flex flex-col gap-4">
-      {desbravador && <LinhaConduz instrui={desbravador.instrui} aconselha={desbravador.aconselha} />}
-      <Selecao
-        rotulo="Tipo"
-        value={valores.tipo}
-        erro={erros['tipo']}
-        ajuda={ajudaDoTipo(desbravador, valores.tipo)}
-        onChange={(e) => definir('tipo', TipoPessoa.catch('DBV').parse(e.target.value))}
-      >
-        <option value="DBV">Desbravador</option>
-        <option value="DIRETORIA">Diretoria</option>
-        <option value="LIDER">Líder em formação</option>
-      </Selecao>
-      <Campo rotulo="Nome completo" value={valores.nome} erro={erros['nome']} onChange={(e) => definir('nome', e.target.value)} />
-      <Campo
-        rotulo="Nome público"
-        ajuda="Aparece nas telas dos conselheiros. Em branco, o sistema escolhe."
-        value={valores.nomePublico}
-        erro={erros['nomePublico']}
-        onChange={(e) => definir('nomePublico', e.target.value)}
-      />
-      <Campo rotulo="Nascimento" type="date" value={valores.nascimento} erro={erros['nascimento']} onChange={(e) => definir('nascimento', e.target.value)} />
-      <Selecao
-        rotulo="Sexo"
-        value={valores.sexo}
-        erro={erros['sexo']}
-        onChange={(e) => definir('sexo', e.target.value === 'F' ? 'F' : e.target.value === 'M' ? 'M' : '')}
-      >
-        <option value="">Escolha</option>
-        <option value="F">Feminino</option>
-        <option value="M">Masculino</option>
-      </Selecao>
-      {!editando && (
-        <Campo rotulo="Entrada no clube" type="date" value={valores.entradaEm} erro={erros['entradaEm']} onChange={(e) => definir('entradaEm', e.target.value)} />
-      )}
-      {ehLider && <CampoContaDeUsuario valor={valores.usuarioId} aoMudar={(id) => definir('usuarioId', id)} />}
-      {mostraUnidade && (
-        <Selecao
-          rotulo="Unidade"
-          value={valores.unidadeId}
-          ajuda={avisoSemUnidade}
-          erro={erros['unidadeId']}
-          onChange={(e) => definir('unidadeId', e.target.value)}
-        >
-          <option value="">Sem unidade</option>
-          {unidades.data?.map((unidade) => (
-            <option key={unidade.id} value={unidade.id}>
-              {unidade.nome}
-            </option>
-          ))}
-        </Selecao>
-      )}
-      {mostraClasse && (
-        <>
-          {/* Na edição, "Sem classe" só existe para quem ainda não tem: matrícula não se desfaz por aqui. */}
+      <Cartao className="flex flex-col gap-4">
+        <h2 className="font-titulo text-lg font-bold text-texto">Quem é</h2>
+        {desbravador && <LinhaConduz instrui={desbravador.instrui} aconselha={desbravador.aconselha} />}
+        <div className="grid gap-4 sm:grid-cols-2">
           <Selecao
-            rotulo="Classe do ano"
-            value={valores.classeId}
-            erro={erros['classeId']}
-            ajuda={avisoDaTroca}
-            onChange={(e) => definir('classeId', e.target.value)}
+            rotulo="Tipo"
+            value={valores.tipo}
+            erro={erros['tipo']}
+            ajuda={ajudaDoTipo(desbravador, valores.tipo)}
+            onChange={(e) => definir('tipo', TipoPessoa.catch('DBV').parse(e.target.value))}
           >
-            {(!editando || !classeAtualId) && <option value="">Sem classe</option>}
-            {classes.data?.map((classe) => (
-              <option key={classe.id} value={classe.id}>
-                {classe.nome}
-              </option>
-            ))}
+            <option value="DBV">Desbravador</option>
+            <option value="DIRETORIA">Diretoria</option>
+            <option value="LIDER">Líder em formação</option>
           </Selecao>
-          {valores.classeId && (!editando || valores.classeId !== classeAtualId) && (
-            <CaixaMarcacao
-              rotulo="Matricular também na avançada"
-              checked={valores.incluirAvancada}
-              onChange={(e) => definir('incluirAvancada', e.target.checked)}
-            />
+          <Campo rotulo="Nome completo" value={valores.nome} erro={erros['nome']} onChange={(e) => definir('nome', e.target.value)} />
+          <Campo
+            rotulo="Nome público"
+            ajuda="Aparece nas telas dos conselheiros. Em branco, o sistema escolhe."
+            value={valores.nomePublico}
+            erro={erros['nomePublico']}
+            onChange={(e) => definir('nomePublico', e.target.value)}
+          />
+          <Campo rotulo="Nascimento" type="date" value={valores.nascimento} erro={erros['nascimento']} onChange={(e) => definir('nascimento', e.target.value)} />
+          <Selecao
+            rotulo="Sexo"
+            value={valores.sexo}
+            erro={erros['sexo']}
+            onChange={(e) => definir('sexo', e.target.value === 'F' ? 'F' : e.target.value === 'M' ? 'M' : '')}
+          >
+            <option value="">Escolha</option>
+            <option value="F">Feminino</option>
+            <option value="M">Masculino</option>
+          </Selecao>
+          {!editando && (
+            <Campo rotulo="Entrada no clube" type="date" value={valores.entradaEm} erro={erros['entradaEm']} onChange={(e) => definir('entradaEm', e.target.value)} />
           )}
-        </>
+          {ehLider && <CampoContaDeUsuario valor={valores.usuarioId} aoMudar={(id) => definir('usuarioId', id)} />}
+        </div>
+      </Cartao>
+
+      {mostraNoClube && (
+        <Cartao className="flex flex-col gap-4">
+          <h2 className="font-titulo text-lg font-bold text-texto">No clube</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {mostraUnidade && (
+              <Selecao
+                rotulo="Unidade"
+                value={valores.unidadeId}
+                ajuda={avisoSemUnidade}
+                erro={erros['unidadeId']}
+                onChange={(e) => definir('unidadeId', e.target.value)}
+              >
+                <option value="">Sem unidade</option>
+                {unidades.data?.map((unidade) => (
+                  <option key={unidade.id} value={unidade.id}>
+                    {unidade.nome}
+                  </option>
+                ))}
+              </Selecao>
+            )}
+            {mostraClasse && (
+              <>
+                {/* Na edição, "Sem classe" só existe para quem ainda não tem: matrícula não se desfaz por aqui. */}
+                <Selecao
+                  rotulo="Classe do ano"
+                  value={valores.classeId}
+                  erro={erros['classeId']}
+                  ajuda={avisoDaTroca}
+                  onChange={(e) => definir('classeId', e.target.value)}
+                >
+                  {(!editando || !classeAtualId) && <option value="">Sem classe</option>}
+                  {classes.data?.map((classe) => (
+                    <option key={classe.id} value={classe.id}>
+                      {classe.nome}
+                    </option>
+                  ))}
+                </Selecao>
+                {valores.classeId && (!editando || valores.classeId !== classeAtualId) && (
+                  <CaixaMarcacao
+                    rotulo="Matricular também na avançada"
+                    checked={valores.incluirAvancada}
+                    onChange={(e) => definir('incluirAvancada', e.target.checked)}
+                  />
+                )}
+              </>
+            )}
+          </div>
+        </Cartao>
       )}
-      {mostraResponsavel && (
-        <>
-          <Campo rotulo="Responsável" value={valores.responsavelNome} erro={erros['responsavelNome']} onChange={(e) => definir('responsavelNome', e.target.value)} />
-          <Campo
-            rotulo="Telefone do responsável"
-            type="tel"
-            value={valores.responsavelTelefone}
-            erro={erros['responsavelTelefone']}
-            onChange={(e) => definir('responsavelTelefone', e.target.value)}
-          />
-          <Campo
-            rotulo="E-mail do responsável"
-            type="email"
-            value={valores.responsavelEmail}
-            erro={erros['responsavelEmail']}
-            onChange={(e) => definir('responsavelEmail', e.target.value)}
-          />
-        </>
-      )}
-      <CaixaMarcacao rotulo="Autorizou o uso de imagem" checked={valores.autorizacaoImagem} onChange={(e) => definir('autorizacaoImagem', e.target.checked)} />
+
+      <Cartao className="flex flex-col gap-4">
+        <h2 className="font-titulo text-lg font-bold text-texto">Responsável</h2>
+        {mostraResponsavel && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Campo rotulo="Responsável" value={valores.responsavelNome} erro={erros['responsavelNome']} onChange={(e) => definir('responsavelNome', e.target.value)} />
+            <Campo
+              rotulo="Telefone do responsável"
+              type="tel"
+              value={valores.responsavelTelefone}
+              erro={erros['responsavelTelefone']}
+              onChange={(e) => definir('responsavelTelefone', e.target.value)}
+            />
+            <Campo
+              rotulo="E-mail do responsável"
+              type="email"
+              value={valores.responsavelEmail}
+              erro={erros['responsavelEmail']}
+              onChange={(e) => definir('responsavelEmail', e.target.value)}
+            />
+          </div>
+        )}
+        <CaixaMarcacao rotulo="Autorizou o uso de imagem" checked={valores.autorizacaoImagem} onChange={(e) => definir('autorizacaoImagem', e.target.checked)} />
+      </Cartao>
+
       {parcial && (
         <div className="flex flex-col gap-2">
           <FaixaAviso>{parcial.mensagem}</FaixaAviso>
@@ -360,14 +383,7 @@ export function FormularioDesbravador({ desbravador, aoConcluir, aoCancelar }: P
           {erroGeral}
         </p>
       )}
-      <div className="flex justify-end gap-2">
-        <Botao variante="secundario" onClick={aoCancelar}>
-          Cancelar
-        </Botao>
-        <Botao type="submit" carregando={salvando}>
-          Salvar
-        </Botao>
-      </div>
+      <RodapeDoFormulario cancelar={cancelar} rotuloSalvar={editando ? 'Salvar alterações' : 'Salvar'} salvando={salvando} />
     </form>
   )
 }
