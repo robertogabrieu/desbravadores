@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, Logger } from '@nestjs/common'
 import {
   PAPEIS_DA_DIRETORIA,
   recusaDeVoltarADesbravador,
@@ -16,13 +16,14 @@ import { ServicoEscopo } from './escopo.service'
 
 type Cliente = Prisma.TransactionClient
 
-/** O que a sincronização lê da ficha; a gravação só vale se `tipo` e `diretoriaPeloAdm` ainda forem estes. */
+/** O que a sincronização lê da ficha; a gravação só vale se `tipo`, `diretoriaPeloAdm`, `nascimento` e `usuarioId` ainda forem estes. */
 export interface FichaLida {
   id: string
   tipo: TipoPessoa
   diretoriaPeloAdm: boolean
   diretoriaDesde: Date | null
   nascimento: Date
+  usuarioId: string | null
   papeis: Papel[]
 }
 
@@ -33,6 +34,7 @@ function selecaoDaFicha(clubeId: string) {
     diretoriaPeloAdm: true,
     diretoriaDesde: true,
     nascimento: true,
+    usuarioId: true,
     usuario: {
       select: { vinculos: { where: { clubeId, ativo: true, papel: { in: [...PAPEIS_DA_DIRETORIA] } }, select: { papel: true } } },
     },
@@ -78,6 +80,8 @@ async function encerrarUnidade(tx: Cliente, clubeId: string, dbvId: string, dia:
  */
 @Injectable()
 export class ServicoTipoDaFicha {
+  private readonly logger = new Logger(ServicoTipoDaFicha.name)
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly escopo: ServicoEscopo,
@@ -101,7 +105,10 @@ export class ServicoTipoDaFicha {
     for (const ficha of fichas) await this.aplicar(tx, clubeId, lida(ficha), hoje)
   }
 
-  /** Varredura de um clube; cada ficha que muda grava na própria transação. Devolve quantas mudaram. */
+  /**
+   * Varredura de um clube; cada ficha que muda grava na própria transação. Erro numa ficha vai para o log e
+   * não para as outras. Devolve quantas mudaram.
+   */
   async sincronizarClube(clubeId: string, hoje?: string): Promise<number> {
     const dia = hoje ?? (await this.hoje(clubeId))
     const fichas = await this.prisma.desbravador.findMany({
@@ -110,14 +117,18 @@ export class ServicoTipoDaFicha {
     })
     let mudaram = 0
     for (const ficha of fichas) {
-      if (await this.prisma.$transaction((tx) => this.aplicar(tx, clubeId, lida(ficha), dia))) mudaram++
+      try {
+        if (await this.prisma.$transaction((tx) => this.aplicar(tx, clubeId, lida(ficha), dia))) mudaram++
+      } catch (erro) {
+        this.logger.error(`Clube ${clubeId}, ficha ${ficha.id}: Tipo não recalculado: ${erro instanceof Error ? erro.message : String(erro)}`)
+      }
     }
     return mudaram
   }
 
   /**
-   * Grava o Tipo que a regra pede. A gravação é condicional ao `tipo` e ao `diretoriaPeloAdm` lidos: se o
-   * Adm mudou a ficha depois da leitura, nada é gravado. Devolve se gravou.
+   * Grava o Tipo que a regra pede. A gravação é condicional ao que a regra leu (`tipo`, `diretoriaPeloAdm`,
+   * `nascimento` e a conta ligada): se o Adm mudou a ficha depois da leitura, nada é gravado. Devolve se gravou.
    */
   async aplicar(tx: Cliente, clubeId: string, ficha: FichaLida, hoje: string): Promise<boolean> {
     const atual = paraFormula(ficha)
@@ -128,7 +139,14 @@ export class ServicoTipoDaFicha {
       decidido.diretoriaDesde === atual.diretoriaDesde
     if (igual) return false
     const gravada = await tx.desbravador.updateMany({
-      where: { clubeId, id: ficha.id, tipo: ficha.tipo, diretoriaPeloAdm: ficha.diretoriaPeloAdm },
+      where: {
+        clubeId,
+        id: ficha.id,
+        tipo: ficha.tipo,
+        diretoriaPeloAdm: ficha.diretoriaPeloAdm,
+        nascimento: ficha.nascimento,
+        usuarioId: ficha.usuarioId,
+      },
       data: colunas(decidido),
     })
     if (gravada.count === 0) return false

@@ -41,6 +41,7 @@ interface Propriedades {
 const textoOuNulo = (texto: string): string | null => texto.trim() || null
 
 const AVISO_SAIDA_DA_UNIDADE = 'Sai da unidade e da chamada; continua cursando a classe.'
+const AVISO_VOLTA_SEM_UNIDADE = 'Volta para a chamada quando tiver uma unidade: escolha abaixo.'
 
 /** "Diretoria pela idade (16 anos até junho) e porque é conselheiro"; nada fora da Diretoria. */
 function textoDosMotivos(motivos: Desbravador['motivosDiretoria']): string | undefined {
@@ -54,10 +55,11 @@ function textoDosMotivos(motivos: Desbravador['motivosDiretoria']): string | und
   return `Diretoria ${partes.join(' e ')}`
 }
 
-/** A ajuda do campo Tipo: o aviso a quem deixa de ser Desbravador, ou por que a pessoa é Diretoria. */
+/** A ajuda do campo Tipo: o aviso a quem deixa de ser ou volta a ser Desbravador, ou por que a pessoa é Diretoria. */
 function ajudaDoTipo(atual: Desbravador | undefined, escolhido: TipoDesbravador): string | undefined {
   if (!atual) return undefined
   if (atual.tipo === 'DBV' && escolhido !== 'DBV') return AVISO_SAIDA_DA_UNIDADE
+  if (atual.tipo !== 'DBV' && escolhido === 'DBV') return AVISO_VOLTA_SEM_UNIDADE
   if (atual.tipo === 'DIRETORIA' && escolhido === 'DIRETORIA') return textoDosMotivos(atual.motivosDiretoria)
   return undefined
 }
@@ -125,6 +127,9 @@ export function FormularioDesbravador({ desbravador, aoConcluir, aoCancelar }: P
   // Diretoria e Líder não ficam em unidade; a Diretoria continua cursando a classe.
   const mostraUnidade = valores.tipo === 'DBV' && ativoOuNovo
   const mostraClasse = !ehLider && ativoOuNovo
+  // Desbravador sem unidade (inclusive quem voltou sozinho da Diretoria) fica fora da chamada até ganhar uma.
+  const avisoSemUnidade =
+    desbravador?.tipo === 'DBV' && !desbravador.unidade && valores.unidadeId === '' ? AVISO_VOLTA_SEM_UNIDADE : undefined
   const mostraResponsavel = !editando || desbravador.contato !== undefined
   const salvando = criar.isPending || editar.isPending || mover.isPending || matricular.isPending
   const classeAtualId = desbravador?.classeAtual?.id ?? ''
@@ -281,7 +286,13 @@ export function FormularioDesbravador({ desbravador, aoConcluir, aoCancelar }: P
       )}
       {ehLider && <CampoContaDeUsuario valor={valores.usuarioId} aoMudar={(id) => definir('usuarioId', id)} />}
       {mostraUnidade && (
-        <Selecao rotulo="Unidade" value={valores.unidadeId} erro={erros['unidadeId']} onChange={(e) => definir('unidadeId', e.target.value)}>
+        <Selecao
+          rotulo="Unidade"
+          value={valores.unidadeId}
+          ajuda={avisoSemUnidade}
+          erro={erros['unidadeId']}
+          onChange={(e) => definir('unidadeId', e.target.value)}
+        >
           <option value="">Sem unidade</option>
           {unidades.data?.map((unidade) => (
             <option key={unidade.id} value={unidade.id}>

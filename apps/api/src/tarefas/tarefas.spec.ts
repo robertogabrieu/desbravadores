@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { Logger } from '@nestjs/common'
 import { criarBancoIsolado, type BancoIsolado } from '../../test/banco-isolado'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { ServicoTipoDaFicha } from '../desbravadores/tipo-da-ficha.service'
@@ -108,13 +109,44 @@ describe('tarefas periodicas: varredura do Tipo', () => {
   it('gravação condicional: se o Adm mudou a ficha depois da leitura, a varredura não sobrescreve', async () => {
     const { clube, unidade } = await clubeComUnidade()
     const dbv = await ficha(clube.id, { nascimento: '2009-03-03', unidadeId: unidade.id })
-    const lida = { id: dbv.id, tipo: 'DBV' as const, diretoriaPeloAdm: false, diretoriaDesde: null, nascimento: dbv.nascimento, papeis: [] }
+    const lida = { id: dbv.id, tipo: 'DBV' as const, diretoriaPeloAdm: false, diretoriaDesde: null, nascimento: dbv.nascimento, usuarioId: null, papeis: [] }
     await banco.prisma.desbravador.update({ where: { id: dbv.id }, data: { tipo: 'LIDER' } })
 
     const gravou = await prisma.$transaction((tx) => tipo.aplicar(tx, clube.id, lida, '2026-09-30'))
 
     expect(gravou).toBe(false)
     expect(await lerFicha(dbv.id)).toEqual({ tipo: 'LIDER', diretoriaPeloAdm: false, diretoriaDesde: null, membros: [{ fim: null }] })
+  })
+
+  it('gravação condicional: nascimento corrigido ou conta trocada depois da leitura não grava a Diretoria velha', async () => {
+    const { clube, unidade } = await clubeComUnidade()
+    const corrigida = await ficha(clube.id, { nascimento: '2009-03-03', unidadeId: unidade.id })
+    const lidaCorrigida = { id: corrigida.id, tipo: 'DBV' as const, diretoriaPeloAdm: false, diretoriaDesde: null, nascimento: corrigida.nascimento, usuarioId: null, papeis: [] }
+    await banco.prisma.desbravador.update({ where: { id: corrigida.id }, data: { nascimento: data('2015-03-03') } })
+    const outraConta = await ficha(clube.id, { nascimento: '2015-03-03', unidadeId: unidade.id })
+    const lidaComConta = { id: outraConta.id, tipo: 'DBV' as const, diretoriaPeloAdm: false, diretoriaDesde: null, nascimento: outraConta.nascimento, usuarioId: randomUUID(), papeis: ['CONSELHEIRO' as const] }
+
+    expect(await prisma.$transaction((tx) => tipo.aplicar(tx, clube.id, lidaCorrigida, '2026-09-30'))).toBe(false)
+    expect(await prisma.$transaction((tx) => tipo.aplicar(tx, clube.id, lidaComConta, '2026-09-30'))).toBe(false)
+
+    for (const id of [corrigida.id, outraConta.id]) {
+      expect(await lerFicha(id)).toEqual({ tipo: 'DBV', diretoriaPeloAdm: false, diretoriaDesde: null, membros: [{ fim: null }] })
+    }
+  })
+
+  it('erro numa ficha fica no log e a varredura segue com as outras do clube', async () => {
+    const { clube, unidade } = await clubeComUnidade()
+    const a = await ficha(clube.id, { nascimento: '2009-03-03', unidadeId: unidade.id })
+    const b = await ficha(clube.id, { nascimento: '2009-04-04', unidadeId: unidade.id })
+    jest.spyOn(tipo, 'aplicar').mockRejectedValueOnce(new Error('falha simulada'))
+    const registro = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
+
+    const mudaram = await tipo.sincronizarClube(clube.id, '2026-09-30')
+
+    expect(mudaram).toBe(1)
+    const tipos = [(await lerFicha(a.id)).tipo, (await lerFicha(b.id)).tipo].sort()
+    expect(tipos).toEqual(['DBV', 'DIRETORIA'])
+    expect(registro).toHaveBeenCalledWith(expect.stringContaining('falha simulada'))
   })
 
   it('trava: duas varreduras ao mesmo tempo no processo rodam uma vez só', async () => {

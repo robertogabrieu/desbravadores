@@ -117,6 +117,11 @@ não a incluem.
   ranking de um mês inclui a ficha se ela era DBV naquele mês — `tipo = 'DBV'` **ou**
   (`tipo = 'DIRETORIA'` e `diretoriaDesde` depois do fim do mês). Meses anteriores à entrada na
   Diretoria ficam como estavam.
+- **Só conta quem era desbravador no mês.** A Diretoria entra num mês anterior a `diretoriaDesde`
+  apenas se existe a passagem de unidade que terminou no dia de `diretoriaDesde` (a que a entrada
+  encerrou) e o mês está dentro dela — a passagem começou antes do fim do mês. Quem chega de Líder não
+  tem essa passagem e não aparece em mês nenhum do passado; quem sai e volta à Diretoria conta só nos
+  meses da unidade que a volta encerrou, nunca nos meses em que esteve sem unidade.
 
 ### Lugares que precisam INCLUIR a Diretoria
 

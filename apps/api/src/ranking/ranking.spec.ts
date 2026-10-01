@@ -168,6 +168,44 @@ describe('ranking do mes', () => {
     expect(abril.itens.map((i) => i.dbvId)).toEqual([ana.id])
   })
 
+  it('Lider que vira Diretoria nao aparece nos meses passados, nem com uma unidade antiga que terminou antes', async () => {
+    const { clube, unidade, adm } = await clubeComUnidade()
+    const ana = await dbvNaUnidade(clube.id, unidade.id, 'Ana Costa')
+    const lider = await criarDbv({ clubeId: clube.id, nome: 'Lia Lider', tipo: 'DIRETORIA' })
+    await prismaDeTeste().desbravador.update({ where: { id: lider.id }, data: { diretoriaDesde: new Date('2026-04-10T00:00:00Z') } })
+    const exDbv = await criarDbv({ clubeId: clube.id, nome: 'Rui Antigo', tipo: 'DIRETORIA' })
+    await prismaDeTeste().desbravador.update({ where: { id: exDbv.id }, data: { diretoriaDesde: new Date('2026-04-10T00:00:00Z') } })
+    await criarMembro({ dbvId: exDbv.id, unidadeId: unidade.id, inicio: '2026-01-01', fim: '2026-02-15' })
+    await criarLancamento({ clubeId: clube.id, dbvId: exDbv.id, pontos: 5, data: '2026-02-05' })
+
+    for (const mes of ['2026-02', '2026-03']) {
+      const saida = corpo<Ranking>(await api.get(`/api/ranking?mes=${mes}`, adm.autorizacao))
+      expect(saida.itens.map((i) => i.dbvId)).toEqual([ana.id])
+    }
+    const unidades = corpo<Unidades>(await api.get(`/api/ranking/unidades?mes=2026-03`, adm.autorizacao))
+    expect(unidades.map((u) => [u.unidade.id, u.totalDbvs])).toEqual([[unidade.id, 1]])
+  })
+
+  it('saiu e voltou a Diretoria: so os meses da unidade que terminou na reentrada contam', async () => {
+    const { clube, unidade, adm } = await clubeComUnidade()
+    const outra = await criarUnidade({ clubeId: clube.id })
+    const volta = await criarDbv({ clubeId: clube.id, nome: 'Vera Volta', tipo: 'DIRETORIA' })
+    await prismaDeTeste().desbravador.update({ where: { id: volta.id }, data: { diretoriaDesde: new Date('2026-05-05T00:00:00Z') } })
+    await criarMembro({ dbvId: volta.id, unidadeId: unidade.id, inicio: '2026-01-01', fim: '2026-02-10' })
+    await criarMembro({ dbvId: volta.id, unidadeId: outra.id, inicio: '2026-03-20', fim: '2026-05-05' })
+    const semUnidade = await criarDbv({ clubeId: clube.id, nome: 'Sem Volta', tipo: 'DIRETORIA' })
+    await prismaDeTeste().desbravador.update({ where: { id: semUnidade.id }, data: { diretoriaDesde: new Date('2026-05-05T00:00:00Z') } })
+    await criarMembro({ dbvId: semUnidade.id, unidadeId: unidade.id, inicio: '2026-01-01', fim: '2026-02-10' })
+
+    const doMes = async (mes: string) =>
+      corpo<Ranking>(await api.get(`/api/ranking?mes=${mes}`, adm.autorizacao)).itens.map((i) => [i.dbvId, i.unidade?.id])
+    expect(await doMes('2026-01')).toEqual([])
+    expect(await doMes('2026-02')).toEqual([])
+    expect(await doMes('2026-03')).toEqual([[volta.id, outra.id]])
+    expect(await doMes('2026-04')).toEqual([[volta.id, outra.id]])
+    expect(await doMes('2026-05')).toEqual([])
+  })
+
   it('sem mes, usa o mes corrente no fuso do clube (02:00 UTC de 1o de maio ainda e abril)', async () => {
     congelarRelogio('2026-05-01T02:00:00Z')
     const { clube, unidade, adm } = await clubeComUnidade()

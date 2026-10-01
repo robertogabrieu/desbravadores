@@ -54,14 +54,26 @@ function comparar(a: EntradaDoRanking, b: EntradaDoRanking): number {
   return colador.compare(a.nome, b.nome)
 }
 
-/** DBV: a unidade aberta. Diretoria: a que ela deixou ao entrar (passagem encerrada no dia da entrada). */
-function unidadeDoRanking(ficha: {
+interface FichaDoRanking {
   diretoriaDesde: Date | null
-  membros: { fim: Date | null; unidade: z.infer<typeof RefUnidade> }[]
-}): z.infer<typeof RefUnidade> | undefined {
+  membros: { inicio: Date; fim: Date | null; unidade: z.infer<typeof RefUnidade> }[]
+}
+
+/** DBV: a unidade aberta. Diretoria: a que ela deixou ao entrar (passagem encerrada no dia da entrada). */
+function unidadeDoRanking(ficha: FichaDoRanking): z.infer<typeof RefUnidade> | undefined {
   const entrada = ficha.diretoriaDesde?.getTime()
   const passagem = ficha.membros.find((membro) => (entrada === undefined ? membro.fim === null : membro.fim?.getTime() === entrada))
   return passagem?.unidade
+}
+
+/**
+ * Diretoria só conta num mês anterior à entrada se era desbravador nele: a passagem que a entrada encerrou já
+ * tinha começado. Quem chega de Líder, ou volta à Diretoria sem unidade, não tem essa passagem.
+ */
+function eraDesbravadorNoMes(ficha: FichaDoRanking, fimDoMes: Date): boolean {
+  const entrada = ficha.diretoriaDesde?.getTime()
+  if (entrada === undefined) return true
+  return ficha.membros.some((membro) => membro.fim?.getTime() === entrada && membro.inicio < fimDoMes)
 }
 
 /** Pontos e frequencia do mes (E13, E14). Nao decide quem pode ver nome ou frequencia: isso e do escopo. */
@@ -71,7 +83,7 @@ export class CalculoRanking {
 
   /**
    * Quem era desbravador no mes, ja na ordem do ranking: DBV ativo, ou Diretoria que so entrou depois do fim
-   * do mes (com a unidade que deixou ao entrar). `unidadeId` filtra por essa unidade.
+   * do mes e estava, nele, na unidade que deixou ao entrar. `unidadeId` filtra por essa unidade.
    */
   async doMes(clubeId: string, mes: string, anoClube: number, unidadeId?: string): Promise<EntradaDoRanking[]> {
     const { fim: fimDoMes } = limitesDoMes(mes)
@@ -88,7 +100,7 @@ export class CalculoRanking {
         diretoriaDesde: true,
         membros: {
           where: { OR: [{ fim: null }, { fim: { gte: fimDoMes } }] },
-          select: { fim: true, unidade: { select: { id: true, nome: true } } },
+          select: { inicio: true, fim: true, unidade: { select: { id: true, nome: true } } },
         },
         matriculas: {
           where: { anoClube, status: 'CURSANDO', classe: { tipo: 'REGULAR' } },
@@ -96,7 +108,9 @@ export class CalculoRanking {
         },
       },
     })
-    const comUnidade = fichas.map((ficha) => ({ ...ficha, unidade: unidadeDoRanking(ficha) }))
+    const comUnidade = fichas
+      .filter((ficha) => eraDesbravadorNoMes(ficha, fimDoMes))
+      .map((ficha) => ({ ...ficha, unidade: unidadeDoRanking(ficha) }))
     const dbvs = unidadeId ? comUnidade.filter((dbv) => dbv.unidade?.id === unidadeId) : comUnidade
     const dbvIds = dbvs.map((dbv) => dbv.id)
     const pontos = await this.pontosPorDbv(clubeId, dbvIds, mes)

@@ -483,6 +483,26 @@ describe('Tipo: Desbravador, Diretoria e Líder', () => {
     expect(painel.queryByLabelText('Unidade')).not.toBeInTheDocument()
   })
 
+  it.each([
+    ['Diretoria', marcada],
+    ['Líder', liderConselheira],
+  ])('voltar %s a Desbravador avisa que a chamada depende da unidade', async (_rotulo, quem) => {
+    const painel = await editar(quem)
+    await userEvent.selectOptions(painel.getByLabelText('Tipo'), 'Desbravador')
+    expect(painel.getByLabelText('Tipo')).toHaveAccessibleDescription('Volta para a chamada quando tiver uma unidade: escolha abaixo.')
+    expect(painel.getByLabelText('Unidade')).toHaveValue('')
+  })
+
+  it('Desbravador sem unidade mostra o aviso junto à Unidade; escolhida a unidade, o aviso sai', async () => {
+    const semUnidade = criarDesbravador({ id: uuid(506), nome: 'Ivo Lopes', unidade: null })
+    const painel = await editar(semUnidade)
+    const unidade = painel.getByLabelText('Unidade')
+    expect(unidade).toHaveAccessibleDescription('Volta para a chamada quando tiver uma unidade: escolha abaixo.')
+    expect(painel.getByLabelText('Tipo')).not.toHaveAccessibleDescription()
+    await userEvent.selectOptions(unidade, aguias.id)
+    expect(unidade).not.toHaveAccessibleDescription()
+  })
+
   it('o Tipo só vai no corpo quando muda', async () => {
     let corpo: unknown
     servidor.use(handlerEditarDesbravador(ana, [], (recebido) => (corpo = recebido)))
