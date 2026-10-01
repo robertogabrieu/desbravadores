@@ -1,5 +1,15 @@
 import type { QueryClient } from '@tanstack/react-query'
-import { ErroDaApi, avisarSeRefreshRecusado, avisarSessaoPerdida, erroDeResposta, lerTokenAcesso, renovarSessao, requisitarCru } from '../api/cliente'
+import {
+  ErroDaApi,
+  avisarSeRefreshRecusado,
+  avisarSessaoPerdida,
+  conferirVinculoDaSessao,
+  erroDeResposta,
+  lerTokenAcesso,
+  renovarSessao,
+  requisitarCru,
+} from '../api/cliente'
+import type { Sessao } from '../api/cliente'
 import { dependencias } from './dependencias'
 import type { ArquivoEnvio, ClasseFalha, ContextoEnvio, FalhaEnvio } from './tipos'
 import type { ErroApi } from '../api/cliente'
@@ -58,16 +68,23 @@ function enviarUmaVez(caminho: string, arquivo: ArquivoEnvio, onProgresso: (perc
   })
 }
 
-async function enviarArquivoAutenticado(caminho: string, arquivo: ArquivoEnvio, onProgresso: (percentual: number) => void): Promise<unknown> {
+async function enviarArquivoAutenticado(
+  caminho: string,
+  arquivo: ArquivoEnvio,
+  vinculoId: string,
+  onProgresso: (percentual: number) => void,
+): Promise<unknown> {
   let resposta = await enviarUmaVez(caminho, arquivo, onProgresso)
   if (resposta.status === 401) {
+    let renovada: Sessao
     try {
-      await renovarSessao()
+      renovada = await renovarSessao()
     } catch (erroRefresh) {
       if (erroRefresh instanceof ErroDaApi && erroRefresh.classe !== 'RECUSA') throw paraFalhaEnvio(erroRefresh)
       avisarSeRefreshRecusado(erroRefresh)
       throw paraFalhaEnvio(erroDeResposta(401, resposta.corpo))
     }
+    conferirVinculoDaSessao(renovada, vinculoId)
     resposta = await enviarUmaVez(caminho, arquivo, onProgresso)
     if (resposta.status === 401) avisarSessaoPerdida()
   }
@@ -78,20 +95,23 @@ async function enviarArquivoAutenticado(caminho: string, arquivo: ArquivoEnvio, 
   throw paraFalhaEnvio(erroDeResposta(resposta.status, resposta.corpo))
 }
 
-/** Contexto de um item: `aoProgresso` grava o percentual no item, além de repassá-lo ao tipo. */
-export function criarContextoEnvio(queryClient: QueryClient, aoProgresso: (percentual: number) => void): ContextoEnvio {
+/**
+ * Contexto de um item: `aoProgresso` grava o percentual no item, além de repassá-lo ao tipo. Os pedidos
+ * saem em nome de `vinculoId`; renovada a sessão para outro vínculo, não são repetidos.
+ */
+export function criarContextoEnvio(queryClient: QueryClient, vinculoId: string, aoProgresso: (percentual: number) => void): ContextoEnvio {
   return {
     queryClient,
     requisitar: async (caminho, opcoes) => {
       try {
-        return await requisitarCru(caminho, opcoes)
+        return await requisitarCru(caminho, { ...opcoes, vinculoEsperado: vinculoId })
       } catch (erro) {
         if (erro instanceof ErroDaApi) throw paraFalhaEnvio(erro)
         throw erro
       }
     },
     enviarArquivo: (caminho, arquivo, onProgresso) =>
-      enviarArquivoAutenticado(caminho, arquivo, (percentual) => {
+      enviarArquivoAutenticado(caminho, arquivo, vinculoId, (percentual) => {
         aoProgresso(percentual)
         onProgresso(percentual)
       }),

@@ -1,4 +1,5 @@
 import { Navigate } from 'react-router-dom'
+import { inicioDoPapel } from '../modulos/acesso/papeis'
 import { TelaCarregando } from './TelaCarregando'
 import { useSessao } from './useSessao'
 
@@ -10,5 +11,5 @@ export function RedirecionamentoRaiz() {
   if (situacao === 'anonima') return <Navigate to="/login" replace />
   if (situacao === 'sem-conexao') return <Navigate to="/conectar" replace />
   if (papel === null) return <Navigate to="/papel" replace />
-  return <Navigate to={papel === 'ADM' ? '/adm/desbravadores' : '/inicio'} replace />
+  return <Navigate to={inicioDoPapel(papel)} replace />
 }

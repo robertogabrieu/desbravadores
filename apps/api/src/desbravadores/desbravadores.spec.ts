@@ -306,7 +306,7 @@ describe('desbravadores: escopo, contato, cadastro, matricula', () => {
       expect(await prismaDeTeste().desbravador.count({ where: { clubeId: clube.id } })).toBe(0)
     })
 
-    it('LIDER com usuario do clube; unidade em LIDER e usuario em DBV sao recusados (422)', async () => {
+    it('LIDER com usuario do clube; unidade em LIDER e recusada (422)', async () => {
       const clube = await criarClube()
       const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
       const unidade = await criarUnidade({ clubeId: clube.id })
@@ -323,10 +323,44 @@ describe('desbravadores: escopo, contato, cadastro, matricula', () => {
         .post('/api/desbravadores', adm.autorizacao, { ...base, nascimento, tipo: 'LIDER', unidadeId: unidade.id })
         .expect(422)
       expect(comUnidade.body).toMatchObject({ codigo: 'REGRA' })
-      const dbvComUsuario = await api
-        .post('/api/desbravadores', adm.autorizacao, { ...base, nascimento: nascimentoComIdade(10), usuarioId: usuario.id })
+    })
+
+    it('DBV com conta de usuario do clube e aceito no cadastro e na edicao, e o tipo nao muda', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const usuario = await criarUsuario()
+      await criarVinculo({ usuarioId: usuario.id, clubeId: clube.id, papel: 'CONSELHEIRO' })
+      const { dados } = corpo<ComAvisos>(
+        await api
+          .post('/api/desbravadores', adm.autorizacao, { ...base, nascimento: nascimentoComIdade(16), usuarioId: usuario.id })
+          .expect(201),
+      )
+      expect(dados).toMatchObject({ tipo: 'DBV', usuarioId: usuario.id })
+
+      const outroUsuario = await criarUsuario()
+      await criarVinculo({ usuarioId: outroUsuario.id, clubeId: clube.id, papel: 'INSTRUTOR' })
+      const semConta = await criarDbv({ clubeId: clube.id })
+      const editado = corpo<ComAvisos>(
+        await api.patch(`/api/desbravadores/${semConta.id}`, adm.autorizacao, { usuarioId: outroUsuario.id }).expect(200),
+      )
+      expect(editado.dados).toMatchObject({ tipo: 'DBV', usuarioId: outroUsuario.id })
+    })
+
+    it('conta ja ligada a outra ficha do clube: cadastro e edicao recusam (422) e nada muda', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const usuario = await criarUsuario()
+      await criarVinculo({ usuarioId: usuario.id, clubeId: clube.id, papel: 'CONSELHEIRO' })
+      await criarDbv({ clubeId: clube.id, usuarioId: usuario.id })
+      const mensagem = 'Este usuário já está ligado a outro desbravador do clube.'
+      const novo = await api
+        .post('/api/desbravadores', adm.autorizacao, { ...base, nascimento: nascimentoComIdade(16), usuarioId: usuario.id })
         .expect(422)
-      expect(dbvComUsuario.body).toMatchObject({ codigo: 'REGRA' })
+      expect(novo.body).toMatchObject({ codigo: 'REGRA', mensagem })
+      const semConta = await criarDbv({ clubeId: clube.id })
+      const editado = await api.patch(`/api/desbravadores/${semConta.id}`, adm.autorizacao, { usuarioId: usuario.id }).expect(422)
+      expect(editado.body).toMatchObject({ codigo: 'REGRA', mensagem })
+      expect(await prismaDeTeste().desbravador.count({ where: { clubeId: clube.id, usuarioId: usuario.id } })).toBe(1)
     })
 
     it('ids de outro clube (unidade, classe, usuario do LIDER) e usuario sem vinculo ativo → 404', async () => {

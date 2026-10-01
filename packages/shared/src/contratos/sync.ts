@@ -19,6 +19,8 @@ export const PacoteInstrutor = z.object({
     classe: RefClasse,
     membros: z.array(MembroPacote.extend({                 // matrícula CURSANDO no ano
       tipo: TipoPessoa,
+      /** Ficha ligada à conta de quem baixou: aparece como "você", sem marcação de requisito. */
+      voce: z.boolean().default(false),
       concluidos: z.array(Uuid),
       /** Data e aula de cada conclusão ativa: o registro offline mostra a data e desmarca a desta aula. */
       conclusoes: z.array(z.object({

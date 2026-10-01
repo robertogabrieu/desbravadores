@@ -1,6 +1,7 @@
 import { CalendarDays, GraduationCap, House, Trophy, Users } from 'lucide-react'
 import { Outlet } from 'react-router-dom'
 import { SinoNotificacoes } from '../modulos/notificacoes/SinoNotificacoes'
+import { vinculosDoClube } from '../modulos/acesso/papeis'
 import { Marca } from '../ui/Marca'
 import { useSessao } from '../sessao/useSessao'
 import { FaixaSemConexao } from './FaixaSemConexao'
@@ -9,6 +10,7 @@ import { ItemNavegacao } from './ItemNavegacao'
 import type { ItemDeNavegacao } from './ItemNavegacao'
 import { MenuUsuario } from './MenuUsuario'
 import { SeloAguardandoEnvio } from './SeloAguardandoEnvio'
+import { SeloPapel } from './SeloPapel'
 
 const INICIO: ItemDeNavegacao = { rotulo: 'Início', icone: House, para: '/inicio' }
 const RANKING: ItemDeNavegacao = { rotulo: 'Ranking', icone: Trophy, para: '/ranking' }
@@ -21,17 +23,20 @@ const ITENS_POR_PAPEL = {
 
 /** Rota-layout do celular: cabeçalho com menu do usuário, conteúdo e barra inferior do papel ativo. */
 export function LayoutCelular() {
-  const { papel } = useSessao()
+  const { papel, vinculos, vinculoAtivo } = useSessao()
   const itens = ITENS_POR_PAPEL[papel ?? 'ADM']
+  // Com o selo do papel, o nome do app não cabe ao lado dele em 320 px: fica só o emblema.
+  const comSeloDoPapel = vinculosDoClube(vinculos, vinculoAtivo).length >= 2
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-[480px] flex-col bg-fundo">
       <FaixaSessaoExpirada />
       <FaixaSemConexao />
       <header className="flex items-center justify-between gap-2 bg-marca px-4 text-white">
-        <Marca />
-        <div className="flex items-center gap-1">
+        <Marca classeDoNome={comSeloDoPapel ? 'max-[419px]:sr-only' : undefined} />
+        <div className="flex min-w-0 items-center gap-1">
           <SeloAguardandoEnvio />
+          <SeloPapel sobreMarca />
           {papel === 'INSTRUTOR' && <SinoNotificacoes />}
           <MenuUsuario />
         </div>

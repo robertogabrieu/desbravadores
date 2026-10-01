@@ -23,7 +23,10 @@ function LinhaDoDbv({ item }: { item: Item }) {
     <li>
       <Link to={`/dbv/${item.dbvId}`} className="flex min-h-[var(--touch-min)] flex-col gap-2 rounded-cartao border border-borda bg-superficie p-3 focus-visible:outline-2 focus-visible:outline-marca">
         <div className="flex items-baseline gap-3">
-          <span className="flex-1 text-base font-semibold text-texto">{item.nome}</span>
+          <span className="flex flex-1 items-baseline gap-2 text-base font-semibold text-texto">
+            {item.nome}
+            {item.voce && <span className="rounded-full bg-marca-suave px-2 text-xs font-bold text-texto">você</span>}
+          </span>
           <span className="text-sm text-texto-2">{`faltam ${item.faltam} req.`}</span>
           <span data-abaixo={abaixo} className={cn('w-12 text-right text-base font-extrabold', abaixo ? 'text-alerta' : 'text-texto')}>{`${item.percentual}%`}</span>
         </div>

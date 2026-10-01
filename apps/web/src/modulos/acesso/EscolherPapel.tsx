@@ -3,13 +3,8 @@ import { usePapelAtivo } from '../../api/auth'
 import { useSessao } from '../../sessao/useSessao'
 import type { Vinculo } from '../../sessao/useSessao'
 import { Cartao } from '../../ui/Cartao'
-import { rotuloDoPapel } from './papeis'
+import { escopoDoVinculo, rotuloDoPapel } from './papeis'
 import { TelaAcesso } from './TelaAcesso'
-
-function escopoDoVinculo(vinculo: Vinculo): string {
-  const nomes = vinculo.papel === 'CONSELHEIRO' ? vinculo.unidades.map((u) => u.nome) : vinculo.classes.map((c) => c.nome)
-  return nomes.join(', ')
-}
 
 export function EscolherPapel() {
   const { vinculos } = useSessao()

@@ -76,4 +76,17 @@ describe('limites de taxa', () => {
       await enviar().expect(429)
     }
   })
+
+  it('aceite do convite por link: a 6a tentativa no mesmo e-mail em 1 min leva 429, mesmo de IPs diferentes', async () => {
+    const e = novoEmail()
+    const aceitar = (email: string, xff: string): request.Test =>
+      request(servidor()).post(`/api/acesso/${'y'.repeat(43)}`).set('X-Forwarded-For', xff).send({ email, senha: 'qualquer-1' })
+    for (let i = 0; i < 5; i++) await aceitar(i % 2 ? e.toUpperCase() : e, ip()).expect(410)
+    expect((await aceitar(e, ip()).expect(429)).body).toMatchObject({ codigo: 'LIMITE_EXCEDIDO' })
+    await aceitar(novoEmail(), ip()).expect(410)
+
+    const origem = ip()
+    for (let i = 0; i < 10; i++) await aceitar(novoEmail(), origem).expect(410)
+    await aceitar(novoEmail(), origem).expect(429)
+  })
 })

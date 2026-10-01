@@ -29,6 +29,9 @@ export const CODIGOS_ERRO = [
   'VINCULO_INATIVO',    // 403 — vínculo ativo foi desativado; front leva a /papel
   'NAO_ENCONTRADO',     // 404 — inclusive recurso fora do escopo ou de outro clube
   'CONFLITO',           // 409 — unicidade (nome de unidade repetido etc.)
+  'CONTA_EXISTENTE',    // 409 — e-mail do convite já tem conta e a senha não confere
+  'CONTA_PENDENTE',     // 409 — e-mail do convite é de conta convidada por e-mail que ainda não criou a senha
+  'CONTA_INATIVA',      // 422 — e-mail do convite é de conta desativada
   'TOKEN_INVALIDO',     // 410 — convite/redefinição usado, vencido ou inexistente
   'ULTIMO_ADM',         // 422 — operação deixaria o clube sem Adm ativo
   'AJUSTE_INVALIDO',    // 422 — permissão fora do catálogo ou que não se aplica ao papel

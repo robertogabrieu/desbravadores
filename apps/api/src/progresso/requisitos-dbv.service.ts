@@ -7,7 +7,7 @@ import { PrismaService } from '../comum/prisma/prisma.service'
 import { daDataCivil } from '../desbravadores/apoio'
 import { ServicoEscopo, type RelogioDoClube } from '../desbravadores/escopo.service'
 import { ServicoPontos } from '../pontos/servico-pontos'
-import { ehViolacaoUnica, exigirDataDoAnoCorrente, jaConcluido } from './conclusoes'
+import { ehViolacaoUnica, exigirDataDoAnoCorrente, exigirFichaDeOutraPessoa, jaConcluido } from './conclusoes'
 import { ServicoProgresso } from './servico-progresso'
 
 type ProgressoDbv = z.infer<typeof ProgressoDbvSaida>
@@ -84,7 +84,7 @@ export class RequisitosDbvService {
 
   /**
    * F8: o DBV precisa estar no escopo de quem pede e matriculado, no ano, na classe do requisito;
-   * o instrutor precisa ser dessa classe. Qualquer falha e 404.
+   * o instrutor precisa ser dessa classe. Qualquer falha e 404; a ficha da propria conta e 422.
    */
   private async exigirAlcance(
     sessao: SessaoLogada,
@@ -92,7 +92,7 @@ export class RequisitosDbvService {
     dbvId: string,
     requisitoId: string,
     exigirAtivo: boolean,
-  ): Promise<{ id: string; tipo: 'DBV' | 'LIDER' }> {
+  ): Promise<{ id: string; tipo: 'DBV' | 'LIDER'; usuarioId: string | null }> {
     const { clubeId } = sessao
     const dbv = await this.progresso.exigirDbvNoEscopo(sessao, relogio, dbvId)
     const requisito = await this.prisma.requisito.findUnique({
@@ -113,6 +113,7 @@ export class RequisitosDbvService {
       const ativo = (await this.progresso.secoesAtivas(clubeId, classeId)).some((secao) => secao.requisitos.some((r) => r.id === requisitoId))
       if (!ativo) throw new ErroApp('NAO_ENCONTRADO', REQUISITO_NAO_ENCONTRADO)
     }
+    exigirFichaDeOutraPessoa(sessao, dbv.usuarioId)
     return dbv
   }
 }

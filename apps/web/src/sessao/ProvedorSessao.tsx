@@ -17,9 +17,10 @@ import { estadoOffline } from '../offline/estado'
 import { gravarIdentidade, lerUltimaIdentidade, tocarContato } from '../offline/identidade'
 import type { RegistroSessao } from '../offline/banco'
 import { limparFilaDeAbertura } from '../offline/limpeza'
-import { iniciarMotor, pararMotor } from '../offline/motor'
+import { iniciarMotor, liberarTrocaDePapel, pararMotor, pausarParaTrocaDePapel } from '../offline/motor'
 import { baixarPacoteAoVoltarConexao, baixarPacoteSeVelho } from '../offline/pacote'
 import { VALIDADE_DO_MODO_SEM_CONEXAO_MS, tempos } from '../offline/tempos'
+import { avisarTrocaDePapel, ouvirOutrasAbas } from './abasDaSessao'
 import { ContextoDaSessao } from './useSessao'
 import type { ContextoSessao, Eu } from './useSessao'
 import type { z } from 'zod'
@@ -83,6 +84,7 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
   const descartarSessao = useCallback(() => {
     geracao.current += 1
     definirTokenAcesso(null)
+    estadoOffline.trocaParaVinculo = null
     clienteConsultas.clear()
     definirConexao('ONLINE')
     definirExpirada(false)
@@ -161,6 +163,28 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
     [],
   )
 
+  // Outra aba trocou de papel: o cookie de refresh já é do vínculo novo. Renova aqui também, para o
+  // motor desta aba (que pode ser o dono da fila) passar ao vínculo novo e a tela relê o eu.
+  useEffect(
+    () =>
+      ouvirOutrasAbas((aviso) => {
+        const usuario = estadoAtual.current.eu?.usuario.id
+        if (estadoAtual.current.situacao !== 'autenticada' || !usuario) return
+        // Como na troca feita aqui: a fila pausa antes de renovar, senão um item do papel antigo já
+        // escolhido sairia com o token novo e seria recusado de vez. A pausa sai quando o motor recebe
+        // o vínculo da sessão renovada; se a renovação falhar ou vier sem vínculo, sai na hora.
+        pausarParaTrocaDePapel(aviso.vinculoId)
+        void (async () => {
+          const sessao = await renovarSessao()
+          if (sessao.vinculoAtivoId) iniciarMotor({ usuarioId: usuario, vinculoId: sessao.vinculoAtivoId, queryClient: clienteConsultas })
+          liberarTrocaDePapel()
+          clienteConsultas.clear()
+          await lerEu()
+        })().catch(() => liberarTrocaDePapel())
+      }),
+    [clienteConsultas, lerEu],
+  )
+
   // Sem conexão: tenta renovar a cada evento `online` e a cada intervalo com a aba visível.
   useEffect(() => {
     if (modo !== 'SEM_CONEXAO') return
@@ -205,8 +229,21 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
   const escolherPapel = useCallback(
     async (vinculoId: string) => {
       const entrada: z.infer<typeof PapelAtivoEntrada> = { vinculoId }
-      const sessao = await requisitar('/api/auth/papel-ativo', SessaoSaida, { metodo: 'POST', corpo: entrada })
+      // A fila não envia durante a troca: um item do papel antigo sairia com o token do novo e seria
+      // recusado de vez. Aceita a troca, o motor passa na hora à sessão do vínculo novo (o que tira a
+      // pausa, inclusive quando o papel escolhido é o que já estava em uso); recusada, volta como estava.
+      pausarParaTrocaDePapel(vinculoId)
+      let sessao
+      try {
+        sessao = await requisitar('/api/auth/papel-ativo', SessaoSaida, { metodo: 'POST', corpo: entrada })
+      } catch (falha) {
+        liberarTrocaDePapel()
+        throw falha
+      }
       definirTokenAcesso(sessao.accessToken)
+      const usuario = estadoAtual.current.eu?.usuario.id
+      if (usuario) iniciarMotor({ usuarioId: usuario, vinculoId, queryClient: clienteConsultas })
+      avisarTrocaDePapel(vinculoId)
       clienteConsultas.clear()
       await lerEu()
     },

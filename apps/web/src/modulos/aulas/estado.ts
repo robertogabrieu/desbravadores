@@ -20,6 +20,8 @@ export interface Membro {
   concluidos: string[]
   /** Quando e em que aula cada requisito foi concluído (`registroAulaId` `null` = fora de aula); ausente em pacote guardado antes de o servidor mandá-las. */
   conclusoes?: { requisitoId: string; concluidoEm: string; registroAulaId: string | null }[]
+  /** Ficha ligada à conta de quem registra: aparece como "você" e outro instrutor ou o Adm marca os requisitos dela. */
+  voce?: boolean
 }
 
 /** A aula como o servidor a tem (online ou no pacote), com as versões que o aparelho viu. */
@@ -192,12 +194,12 @@ interface Pontos {
   pontosRequisito: { pontos: number; ativo: boolean }
 }
 
-/** Só requisito novo (que o servidor ainda não tem), de presente do tipo DBV. LIDER não pontua. */
+/** Só requisito novo (que o servidor ainda não tem), de presente do tipo DBV. LIDER e a ficha do próprio instrutor não pontuam. */
 export function pontosProvisorios({ membros, estado, servidor, comFila, requisitos, pontosRequisito }: Pontos): number {
   if (!pontosRequisito.ativo) return 0
   let novos = 0
   for (const membro of membros) {
-    if (membro.tipo !== 'DBV' || !estaPresente(estado, membro.dbvId)) continue
+    if (membro.tipo !== 'DBV' || membro.voce || !estaPresente(estado, membro.dbvId)) continue
     for (const requisito of requisitos) {
       const chave = chavePar(membro.dbvId, requisito.id)
       const concluido = efetivamenteConcluido(estado, comFila, membro.dbvId, requisito.id)
@@ -207,12 +209,12 @@ export function pontosProvisorios({ membros, estado, servidor, comFila, requisit
   return novos * pontosRequisito.pontos
 }
 
-/** Quem está presente e ainda não cumpriu cada requisito. */
+/** Quem está presente e ainda não cumpriu cada requisito; a ficha do próprio instrutor não entra, porque ele não a marca. */
 export function quemFalta(membros: Membro[], estado: EstadoAula, comFila: Set<string>, requisitos: Requisito[]): { requisito: Requisito; nomes: string[] }[] {
   return requisitos.map((requisito) => ({
     requisito,
     nomes: membros
-      .filter((m) => estaPresente(estado, m.dbvId))
+      .filter((m) => !m.voce && estaPresente(estado, m.dbvId))
       .filter((m) => !efetivamenteConcluido(estado, comFila, m.dbvId, requisito.id) && !concluidoAntes(m, comFila, requisito.id))
       .map((m) => m.nome),
   }))
@@ -234,9 +236,10 @@ export function montarEntrada({ estado, membros, requisitos, base, registroAulaI
   const versoes = new Map((base?.presencas ?? []).map((linha) => [linha.dbvId, linha.versao]))
   const paraPresenca = (dbvId: string) => ({ dbvId, presente: estaPresente(estado, dbvId), versaoVista: versoes.get(dbvId) ?? null })
   const presencas = base ? estado.tocadas.map(paraPresenca) : membros.map((m) => paraPresenca(m.dbvId))
+  const daPropriaFicha = new Set(membros.filter((m) => m.voce).map((m) => m.dbvId))
   const pares = Object.entries(estado.acoes).flatMap(([chave, acao]) => {
     const [dbvId = '', requisitoId = ''] = chave.split('|')
-    return estaPresente(estado, dbvId) ? [{ dbvId, requisitoId, acao }] : []
+    return estaPresente(estado, dbvId) && !daPropriaFicha.has(dbvId) ? [{ dbvId, requisitoId, acao }] : []
   })
   const marcados = pares.filter((p) => p.acao === 'MARCAR').map(({ dbvId, requisitoId }) => ({ dbvId, requisitoId }))
   const desmarcados = pares.filter((p) => p.acao === 'DESMARCAR').map(({ dbvId, requisitoId }) => ({ dbvId, requisitoId }))

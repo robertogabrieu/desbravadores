@@ -23,6 +23,8 @@ export function criarDesbravador(parcial: Partial<Desbravador> = {}): Desbravado
     classeAtual: null,
     avancadaAtual: null,
     diretoria: { membro: false, motivos: [] },
+    instrui: [],
+    aconselha: [],
     ...parcial,
   }
 }

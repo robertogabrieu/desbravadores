@@ -1,7 +1,7 @@
 import { variavel } from '../comum/ambiente'
 import type { MensagemDeEmail } from './servico-email'
 
-function urlDoApp(appUrl?: string): string {
+export function urlDoApp(appUrl?: string): string {
   return (appUrl ?? variavel('APP_URL')).replace(/\/+$/, '')
 }
 

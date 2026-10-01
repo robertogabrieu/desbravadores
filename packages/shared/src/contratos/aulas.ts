@@ -23,10 +23,11 @@ export const AulaEnvioSaida = z.object({
   conflitos: z.array(z.object({ dbvId: Uuid, nome: z.string() })),
   ignorados: z.array(z.object({ dbvId: Uuid, nome: z.string() })),
   /** Marcações sem efeito: já concluído (a data mais antiga vale — pode mover a conclusão para esta
-   *  aula), requisito que deixou de ser da classe ou ficou inativo, ou DBV ausente no próprio envio. */
+   *  aula), requisito que deixou de ser da classe ou ficou inativo, DBV ausente no próprio envio, ou
+   *  ficha ligada à conta de quem envia (outro instrutor ou o Adm registra). */
   requisitosSemEfeito: z.array(z.object({
     dbvId: Uuid, requisitoId: Uuid,
-    motivo: z.enum(['JA_CONCLUIDO', 'REQUISITO_INVALIDO', 'AUSENTE']),
+    motivo: z.enum(['JA_CONCLUIDO', 'REQUISITO_INVALIDO', 'AUSENTE', 'PROPRIA_FICHA']),
     concluidoEm: DataCivil.nullable(),
   })),
   /** Avisos que não recusam o envio (ex.: a aula planejada saiu do cronograma publicado). */

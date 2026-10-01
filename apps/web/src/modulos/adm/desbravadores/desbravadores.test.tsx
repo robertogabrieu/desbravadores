@@ -16,6 +16,7 @@ import {
   handlerMoverUnidade,
   handlerReativarDesbravador,
 } from '../../../testes/handlers/desbravadores'
+import { handlersConviteAcesso } from '../../../testes/handlers/convite-acesso'
 import { criarConfiguracao, handlerConfiguracao } from '../../../testes/handlers/clube'
 import { uuid } from '../../../testes/handlers/sessao'
 import { renderizarRotas } from '../../../testes/renderizar'
@@ -37,7 +38,7 @@ const bruno = criarDesbravador({ id: uuid(302), nome: 'Bruno Lima', sexo: 'M', i
 const lider = criarDesbravador({ id: uuid(303), nome: 'Carla Dias', tipo: 'LIDER', idade: 17 })
 
 function abrir(desbravadores = [ana, bruno, lider], aoConsultar?: (url: URL) => void) {
-  servidor.use(handlerDesbravadores(desbravadores, aoConsultar), handlerUnidades([aguias]), handlerClasses([amigo]))
+  servidor.use(handlerDesbravadores(desbravadores, aoConsultar), handlerUnidades([aguias]), handlerClasses([amigo]), ...handlersConviteAcesso())
   return renderizarRotas(rotasAdmDesbravadores, '/adm/desbravadores')
 }
 
@@ -430,6 +431,33 @@ describe('Diretoria', () => {
     abrir([instrutora])
     await userEvent.click(await screen.findByRole('button', { name: 'Editar Eva Prado' }))
     expect(within(await screen.findByRole('dialog', { name: 'Editar Eva Prado' })).getByText('instrutor')).toBeInTheDocument()
+  })
+
+  it('o painel mostra o que a conta ligada instrui e aconselha', async () => {
+    const duplo = criarDesbravador({
+      id: uuid(503),
+      nome: 'Rui Duplo',
+      usuarioId: uuid(900),
+      diretoria: { membro: true, motivos: ['CONSELHEIRO', 'INSTRUTOR'] },
+      instrui: [
+        { id: uuid(601), nome: 'Amigo', tipo: 'REGULAR', trilha: 'INDIVIDUAL', corToken: '--classe-amigo' },
+        { id: uuid(602), nome: 'Companheiro', tipo: 'REGULAR', trilha: 'INDIVIDUAL', corToken: '--classe-companheiro' },
+      ],
+      aconselha: [{ id: uuid(701), nome: 'Águias' }],
+    })
+    abrir([duplo])
+    await userEvent.click(await screen.findByRole('button', { name: 'Editar Rui Duplo' }))
+    const painel = within(await screen.findByRole('dialog', { name: 'Editar Rui Duplo' }))
+    expect(painel.getByText('Instrui: Amigo, Companheiro')).toBeInTheDocument()
+    expect(painel.getByText('Aconselha: Águias')).toBeInTheDocument()
+  })
+
+  it('sem vínculo de instrutor ou conselheiro, o painel não tem as linhas Instrui/Aconselha', async () => {
+    abrir([ana])
+    await userEvent.click(await screen.findByRole('button', { name: 'Editar Ana Clara Souza' }))
+    const painel = within(await screen.findByRole('dialog', { name: 'Editar Ana Clara Souza' }))
+    expect(painel.queryByText(/^Instrui:/)).not.toBeInTheDocument()
+    expect(painel.queryByText(/^Aconselha:/)).not.toBeInTheDocument()
   })
 
   it('o painel de quem não é da Diretoria não tem a linha', async () => {

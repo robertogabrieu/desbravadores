@@ -24,7 +24,7 @@ export const DesbravadorCriarEntrada = z.object({
   autorizacaoImagem: z.boolean().default(false),
   autorizacaoImagemEm: camposPessoa.autorizacaoImagemEm.optional(),
   entradaEm: DataCivil,
-  usuarioId: Uuid.nullable().optional(),  // só tipo LIDER
+  usuarioId: Uuid.nullable().optional(),  // conta de usuário do clube, em qualquer tipo; o tipo não muda
   unidadeId: Uuid.nullable().optional(),  // só tipo DBV; cria o MembroUnidade desde entradaEm
   classeId: Uuid.nullable().optional(),   // classe REGULAR do ano do clube; cria a matrícula
   incluirAvancada: z.boolean().default(true), // matricula também na avançada ligada
@@ -70,6 +70,9 @@ export const DesbravadorSaida = z.object({
   classeAtual: RefClasse.nullable(),   // matrícula CURSANDO na REGULAR do ano do clube
   avancadaAtual: RefClasse.nullable(), // matrícula CURSANDO na AVANCADA do ano do clube
   diretoria: DiretoriaSaida,
+  /** Classes que a conta ligada instrui e unidades que aconselha, dos vínculos ativos do clube; sem conta, vazias. */
+  instrui: z.array(RefClasse),
+  aconselha: z.array(RefUnidade),
   /** Ausente (não null) quando quem pede não tem `dbv.ver_contato`. O serviço omite a chave. */
   contato: ContatoResponsavel.optional(),
 })

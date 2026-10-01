@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -38,6 +38,15 @@ describe('Progresso da classe', () => {
     expect(screen.getByText('1 abaixo de 40%')).toBeInTheDocument()
     expect(screen.getByText('faltam 40 req.')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Miguel Teixeira/ })).toHaveAttribute('href', `/dbv/${uuid(403)}`)
+  })
+
+  it('a ficha da própria conta aparece como "você"; a dos outros, não', async () => {
+    const padrao = criarProgressoClasse()
+    const itens = padrao.itens.map((item, i) => ({ ...item, voce: i === 1 }))
+    servidor.use(handlerProgressoClasse({ ...padrao, itens }))
+    abrir()
+    expect(within(await screen.findByRole('link', { name: /Sofia Lopes/ })).getByText('você')).toBeInTheDocument()
+    expect(within(screen.getByRole('link', { name: /Miguel Teixeira/ })).queryByText('você')).not.toBeInTheDocument()
   })
 
   it('marca em laranja quem está abaixo do limiar e não quem está acima', async () => {

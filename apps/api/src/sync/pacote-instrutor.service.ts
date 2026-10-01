@@ -8,6 +8,7 @@ import { PrismaService } from '../comum/prisma/prisma.service'
 import { ServicoCronograma } from '../cronogramas/servico-cronograma'
 import { colador, daDataCivil, paraDataCivil } from '../desbravadores/apoio'
 import { ServicoEscopo } from '../desbravadores/escopo.service'
+import { ehFichaDaSessao } from '../progresso/conclusoes'
 import type { ConfiguracaoClube } from '../generated/prisma/client.js'
 
 type PacoteInstrutor = NonNullable<z.infer<typeof PacoteSaida>['instrutor']>
@@ -44,27 +45,29 @@ export class PacoteInstrutorService {
     })
 
     const doPacote: ClasseDoPacote[] = []
-    for (const classe of classes) doPacote.push(await this.classe(clubeId, classe, ano, hoje))
+    for (const classe of classes) doPacote.push(await this.classe(sessao, classe, ano, hoje))
     return { classes: doPacote, pontosRequisito: criterio ?? { pontos: 0, ativo: false } }
   }
 
   private async classe(
-    clubeId: string,
+    sessao: SessaoLogada,
     classe: Parameters<typeof refClasse>[0],
     ano: number,
     hoje: string,
   ): Promise<ClasseDoPacote> {
+    const { clubeId } = sessao
     const requisitos = await resumosDeRequisitos(this.prisma, clubeId, { secao: { classeId: classe.id } }, true)
     return {
       classe: refClasse(classe),
-      membros: await this.membros(clubeId, classe.id, ano, hoje),
+      membros: await this.membros(sessao, classe.id, ano, hoje),
       requisitos,
       aulasProximas: await this.aulasProximas(clubeId, classe.id, ano, hoje),
       registrosRecentes: await this.registrosRecentes(clubeId, classe.id, somarDias(hoje, -DIAS_DE_REGISTROS)),
     }
   }
 
-  private async membros(clubeId: string, classeId: string, ano: number, hoje: string): Promise<ClasseDoPacote['membros']> {
+  private async membros(sessao: SessaoLogada, classeId: string, ano: number, hoje: string): Promise<ClasseDoPacote['membros']> {
+    const { clubeId } = sessao
     const matriculas = await this.prisma.matriculaClasse.findMany({
       where: { clubeId, classeId, anoClube: ano, status: 'CURSANDO', dbv: { clubeId, ativo: true, tipo: { in: ['DBV', 'LIDER'] } } },
       select: {
@@ -74,6 +77,7 @@ export class PacoteInstrutorService {
             nome: true,
             nomePublico: true,
             tipo: true,
+            usuarioId: true,
             sexo: true,
             nascimento: true,
             autorizacaoImagem: true,
@@ -105,6 +109,7 @@ export class PacoteInstrutorService {
           classeAtual: atual ? refClasse(atual) : null,
           autorizacaoImagem: dbv.autorizacaoImagem,
           tipo: dbv.tipo,
+          voce: ehFichaDaSessao(sessao, dbv.usuarioId),
           concluidos: dbv.requisitosConcluidos.map((conclusao) => conclusao.requisitoId),
           conclusoes: dbv.requisitosConcluidos.map((conclusao) => ({
             requisitoId: conclusao.requisitoId,

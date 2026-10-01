@@ -264,42 +264,49 @@ function LinhaDbv({ membro, presente, situacao, requisitos, estado, comFila, aoA
       >
         <span aria-hidden className={cn('size-3 shrink-0 rounded-full', presente ? 'bg-sucesso' : 'border-2 border-borda')} />
         <span className="flex flex-col">
-          <span className={cn('text-sm font-bold', !presente && 'text-texto-2')}>{membro.nome}</span>
+          <span className={cn('flex items-baseline gap-2 text-sm font-bold', !presente && 'text-texto-2')}>
+            {membro.nome}
+            {membro.voce && <span className="rounded-full bg-marca-suave px-2 text-xs text-texto">você</span>}
+          </span>
           <span className="text-xs text-texto-2">{presente ? 'Presente' : situacao === false ? 'Faltou' : 'Sem marcação'}</span>
         </span>
       </button>
-      {requisitos.map((requisito) => {
-        const antes = concluidoAntes(membro, comFila, requisito.id)
-        const feito = antes || efetivamenteConcluido(estado, comFila, membro.dbvId, requisito.id)
-        const dataAntes = antes ? concluidoEm(membro, requisito.id) : null
-        const rotulo = `${requisito.codigo} · ${membro.nome}${antes ? ' · concluído antes' : ''}${dataAntes ? ` · feito em ${dataCurta(dataAntes)}` : ''}`
-        return (
-          <button
-            key={requisito.id}
-            type="button"
-            aria-label={rotulo}
-            aria-pressed={feito}
-            disabled={!presente || antes}
-            onClick={() => aoAlternarRequisito(requisito.id)}
-            className={cn(
-              'flex size-11 w-12 shrink-0 items-center justify-center rounded-lg text-sm font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marca',
-              !presente && 'border border-dashed border-borda bg-superficie-suave',
-              presente && feito && 'bg-marca text-white',
-              presente && !feito && 'border-2 border-borda bg-superficie',
-              antes && 'opacity-60',
-            )}
-          >
-            {dataAntes ? (
-              <span aria-hidden className="flex flex-col items-center text-xs leading-tight">
-                <span>✓</span>
-                <span>{dataCurta(dataAntes)}</span>
-              </span>
-            ) : (
-              <span aria-hidden>{feito ? '✓' : ''}</span>
-            )}
-          </button>
-        )
-      })}
+      {membro.voce ? (
+        presente && <span className="text-xs text-texto-2">Outro instrutor ou o Adm registra os seus requisitos.</span>
+      ) : (
+        requisitos.map((requisito) => {
+          const antes = concluidoAntes(membro, comFila, requisito.id)
+          const feito = antes || efetivamenteConcluido(estado, comFila, membro.dbvId, requisito.id)
+          const dataAntes = antes ? concluidoEm(membro, requisito.id) : null
+          const rotulo = `${requisito.codigo} · ${membro.nome}${antes ? ' · concluído antes' : ''}${dataAntes ? ` · feito em ${dataCurta(dataAntes)}` : ''}`
+          return (
+            <button
+              key={requisito.id}
+              type="button"
+              aria-label={rotulo}
+              aria-pressed={feito}
+              disabled={!presente || antes}
+              onClick={() => aoAlternarRequisito(requisito.id)}
+              className={cn(
+                'flex size-11 w-12 shrink-0 items-center justify-center rounded-lg text-sm font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marca',
+                !presente && 'border border-dashed border-borda bg-superficie-suave',
+                presente && feito && 'bg-marca text-white',
+                presente && !feito && 'border-2 border-borda bg-superficie',
+                antes && 'opacity-60',
+              )}
+            >
+              {dataAntes ? (
+                <span aria-hidden className="flex flex-col items-center text-xs leading-tight">
+                  <span>✓</span>
+                  <span>{dataCurta(dataAntes)}</span>
+                </span>
+              ) : (
+                <span aria-hidden>{feito ? '✓' : ''}</span>
+              )}
+            </button>
+          )
+        })
+      )}
     </li>
   )
 }

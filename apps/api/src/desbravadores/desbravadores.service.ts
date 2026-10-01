@@ -21,7 +21,7 @@ import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
 import { ErroApp } from '../comum/erros'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { PrismaService } from '../comum/prisma/prisma.service'
-import type { Prisma } from '../generated/prisma/client.js'
+import { Prisma } from '../generated/prisma/client.js'
 import { colador, daDataCivil, paginar, paraDataCivil, semAcento } from './apoio'
 import { ServicoEscopo, type RelogioDoClube } from './escopo.service'
 
@@ -31,6 +31,14 @@ type Aviso = z.infer<typeof AvisoContrato>
 type Motivo = z.infer<typeof MotivoDiretoria>
 type Cliente = Prisma.TransactionClient
 export type ClasseParaMatricula = { id: string; tipo: 'REGULAR' | 'AVANCADA'; trilha: 'INDIVIDUAL' | 'AGRUPADAS' }
+
+/** Uma conta liga no maximo uma ficha por clube: o indice parcial de Desbravador recusa a segunda. */
+function recusarContaJaLigada(falha: unknown): never {
+  if (falha instanceof Prisma.PrismaClientKnownRequestError && falha.code === 'P2002') {
+    throw new ErroApp('REGRA', 'Este usuário já está ligado a outro desbravador do clube.')
+  }
+  throw falha
+}
 
 /** O caderno das Agrupadas e para 16 anos ou mais: uma turma so, sem divisao por idade. */
 const IDADE_MINIMA_AGRUPADAS = 16
@@ -63,7 +71,18 @@ const CAMPOS_DO_CONSELHEIRO = [
 
 function relacoesDoAno(clubeId: string, anoClube: number) {
   return {
-    usuario: { select: { vinculos: { where: vinculosDaDiretoria(clubeId), select: { papel: true } } } },
+    usuario: {
+      select: {
+        vinculos: {
+          where: { clubeId, ativo: true },
+          select: {
+            papel: true,
+            classes: { select: { classe: { select: { ...SELECAO_REF_CLASSE, ordem: true } } } },
+            unidades: { where: { clubeId }, select: { unidade: { select: { id: true, nome: true } } } },
+          },
+        },
+      },
+    },
     membros: {
       where: { fim: null },
       include: { unidade: { select: { id: true, nome: true, tipo: true } } },
@@ -84,6 +103,20 @@ function diretoria(dbv: DesbravadorCompleto, hoje: string): Saida['diretoria'] {
   if (diretoriaPelaIdade(paraDataCivil(dbv.nascimento), hoje)) motivos.push('IDADE')
   for (const papel of PAPEIS_DA_DIRETORIA) if (papeis.has(papel)) motivos.push(papel)
   return { membro: motivos.length > 0, motivos }
+}
+
+/** O que a conta ligada à ficha conduz no clube: classes que instrui e unidades que aconselha. */
+function conduz(dbv: DesbravadorCompleto): Pick<Saida, 'instrui' | 'aconselha'> {
+  const vinculos = dbv.usuario?.vinculos ?? []
+  const classes = vinculos
+    .filter((vinculo) => vinculo.papel === 'INSTRUTOR')
+    .flatMap((vinculo) => vinculo.classes.map((ligacao) => ligacao.classe))
+    .sort((a, b) => a.ordem - b.ordem)
+  const unidades = vinculos
+    .filter((vinculo) => vinculo.papel === 'CONSELHEIRO')
+    .flatMap((vinculo) => vinculo.unidades.map((ligacao) => ligacao.unidade))
+    .sort((a, b) => colador.compare(a.nome, b.nome))
+  return { instrui: classes.map(refClasse), aconselha: unidades.map((unidade) => ({ id: unidade.id, nome: unidade.nome })) }
 }
 
 function classeRegularAtual(dbv: DesbravadorCompleto): DesbravadorCompleto['matriculas'][number]['classe'] | undefined {
@@ -112,6 +145,7 @@ export function montarSaida(dbv: DesbravadorCompleto, relogio: RelogioDoClube, c
     classeAtual: regular ? refClasse(regular) : null,
     avancadaAtual: avancada ? refClasse(avancada) : null,
     diretoria: diretoria(dbv, relogio.hoje),
+    ...conduz(dbv),
   }
   if (comContato) {
     saida.contato = {
@@ -199,9 +233,6 @@ export class DesbravadoresService {
     if (entrada.tipo === 'LIDER' && entrada.unidadeId) {
       throw new ErroApp('REGRA', 'Líder não pertence a uma unidade.')
     }
-    if (entrada.tipo === 'DBV' && entrada.usuarioId) {
-      throw new ErroApp('REGRA', 'Só líder pode ter conta de usuário.')
-    }
     if (entrada.unidadeId) await this.exigirUnidade(clubeId, entrada.unidadeId)
     if (entrada.usuarioId) await this.exigirUsuarioDoClube(clubeId, entrada.usuarioId)
     const classe = entrada.classeId ? await this.exigirClasse(clubeId, entrada.classeId) : undefined
@@ -209,9 +240,9 @@ export class DesbravadoresService {
       throw new ErroApp('REGRA', 'Escolha a classe regular; a avançada entra junto.')
     }
 
-    const criado = await this.prisma.$transaction((tx) =>
-      this.gravarNovo(tx, { clubeId, anoClube: relogio.anoClube, entrada, classe }),
-    )
+    const criado = await this.prisma
+      .$transaction((tx) => this.gravarNovo(tx, { clubeId, anoClube: relogio.anoClube, entrada, classe }))
+      .catch(recusarContaJaLigada)
     return this.saidaComAvisos(sessao, criado.id, relogio)
   }
 
@@ -271,8 +302,6 @@ export class DesbravadoresService {
       }
     }
     const tipoFinal = entrada.tipo ?? atual.tipo
-    const usuarioFinal = entrada.usuarioId === undefined ? atual.usuarioId : entrada.usuarioId
-    if (tipoFinal === 'DBV' && usuarioFinal) throw new ErroApp('REGRA', 'Só líder pode ter conta de usuário.')
     if (tipoFinal === 'LIDER' && atual.membros.length > 0) {
       throw new ErroApp('REGRA', 'Tire o desbravador da unidade antes de torná-lo líder.')
     }
@@ -293,7 +322,7 @@ export class DesbravadoresService {
         autorizacaoImagem: entrada.autorizacaoImagem,
         autorizacaoImagemEm: entrada.autorizacaoImagemEm ? daDataCivil(entrada.autorizacaoImagemEm) : entrada.autorizacaoImagemEm,
       },
-    })
+    }).catch(recusarContaJaLigada)
     return this.saidaComAvisos(sessao, id, relogio)
   }
 
