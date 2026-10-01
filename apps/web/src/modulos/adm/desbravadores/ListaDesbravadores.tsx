@@ -1,5 +1,6 @@
-import { Plus } from 'lucide-react'
-import { useCallback, useState } from 'react'
+import { FileSpreadsheet, Plus } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { POR_PAGINA, useDesbravadores, useReativarDesbravador } from '../../../api/desbravadores'
 import type { Aviso, Desbravador, SituacaoDesbravador } from '../../../api/desbravadores'
 import { useClasses, useUnidades } from '../../../api/leitura'
@@ -15,10 +16,15 @@ import { ChipClasse } from './ChipClasse'
 import { MENSAGEM_GENERICA, lerErroDaApi } from './erros'
 import { FormularioDesbravador } from './FormularioDesbravador'
 import { FormularioInativar } from './FormularioInativar'
+import type { ResultadoDaImportacao } from './ImportarDesbravadores'
 
 type Painel = { tipo: 'novo' } | { tipo: 'editar' | 'inativar'; desbravador: Desbravador } | null
 
 const SEM_UNIDADE = 'sem'
+
+function ehResultadoDaImportacao(estado: unknown): estado is ResultadoDaImportacao {
+  return typeof estado === 'object' && estado !== null && 'importados' in estado && typeof estado.importados === 'number'
+}
 
 export function ListaDesbravadores() {
   const [busca, setBusca] = useState('')
@@ -29,6 +35,15 @@ export function ListaDesbravadores() {
   const [painel, setPainel] = useState<Painel>(null)
   const [avisos, setAvisos] = useState<Aviso[]>([])
   const [erroAcao, setErroAcao] = useState<string | null>(null)
+  const navegar = useNavigate()
+  const local = useLocation()
+  const estadoDaRota: unknown = local.state
+  const [importados] = useState(() => (ehResultadoDaImportacao(estadoDaRota) ? estadoDaRota.importados : null))
+
+  // O resultado chega no estado da navegação, que sobrevive ao recarregar: lido uma vez, sai do histórico.
+  useEffect(() => {
+    if (ehResultadoDaImportacao(estadoDaRota)) void navegar({ pathname: local.pathname, search: local.search }, { replace: true, state: null })
+  }, [estadoDaRota, local.pathname, local.search, navegar])
 
   const unidades = useUnidades({ todas: true })
   const classes = useClasses({ tipo: 'REGULAR' })
@@ -97,11 +112,23 @@ export function ListaDesbravadores() {
           <h1 className="font-titulo text-2xl font-bold text-texto">Desbravadores</h1>
           {consulta.data && <p className="text-base text-texto-2">{total === 1 ? '1 cadastrado' : `${total} cadastrados`}</p>}
         </div>
-        <Botao onClick={() => setPainel({ tipo: 'novo' })}>
-          <Plus aria-hidden className="size-5" />
-          Novo desbravador
-        </Botao>
+        <div className="flex flex-wrap gap-2">
+          <Botao variante="secundario" onClick={() => void navegar('/adm/desbravadores/importar')}>
+            <FileSpreadsheet aria-hidden className="size-5" />
+            Importar planilha
+          </Botao>
+          <Botao onClick={() => setPainel({ tipo: 'novo' })}>
+            <Plus aria-hidden className="size-5" />
+            Novo desbravador
+          </Botao>
+        </div>
       </header>
+
+      {importados !== null && (
+        <p role="status" className="text-base font-semibold text-sucesso">
+          {importados === 1 ? '1 desbravador importado.' : `${importados} desbravadores importados.`}
+        </p>
+      )}
 
       {avisos.length > 0 && (
         <div className="flex flex-col gap-2">

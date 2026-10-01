@@ -17,6 +17,11 @@ const PADRAO_POR_STATUS: Record<number, { codigo: CodigoErro; mensagem: string }
   429: { codigo: 'LIMITE_EXCEDIDO', mensagem: 'Muitas tentativas. Tente de novo em instantes.' },
 }
 
+/** O parser de JSON recusa corpo acima do limite com erro próprio, que não é `HttpException`. */
+function corpoGrandeDemais(erro: unknown): boolean {
+  return typeof erro === 'object' && erro !== null && 'type' in erro && erro.type === 'entity.too.large'
+}
+
 /** Converte qualquer excecao em `ErroApi`; o que nao e erro esperado vira 500 generico, com o detalhe so no log. */
 @Catch()
 export class FiltroErros implements ExceptionFilter<unknown> {
@@ -34,6 +39,9 @@ export class FiltroErros implements ExceptionFilter<unknown> {
         status: STATUS_POR_CODIGO[erro.codigo],
         corpo: { codigo: erro.codigo, mensagem: erro.mensagem, ...(erro.campos ? { campos: erro.campos } : {}) },
       }
+    }
+    if (corpoGrandeDemais(erro)) {
+      return { status: STATUS_POR_CODIGO.REGRA, corpo: { codigo: 'REGRA', mensagem: 'O envio passou do tamanho permitido.' } }
     }
     if (erro instanceof HttpException && erro.getStatus() < 500) {
       const status = erro.getStatus()
