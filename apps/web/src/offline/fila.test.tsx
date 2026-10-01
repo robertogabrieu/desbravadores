@@ -12,7 +12,7 @@ import { dependencias } from './dependencias'
 import { enfileirar, itensDaChave, naoEnviadosDoVinculo, registrarTipo, useFila } from './index'
 import type { ItemFila, TipoFila } from './index'
 import { limparFilaDeAbertura } from './limpeza'
-import { aguardarMotorPronto, iniciarMotor } from './motor'
+import { aguardarMotorPronto, iniciarMotor, liberarTrocaDePapel, pausarParaTrocaDePapel } from './motor'
 import { tempos } from './tempos'
 
 const USUARIO = 'usuario-1'
@@ -193,6 +193,38 @@ describe('fila: envio', () => {
     await waitFor(async () => expect((await ler(primeiro))?.estado).toBe('ENVIADO'))
     expect(vistos).toEqual(['true:1'])
     await waitFor(async () => expect((await ler(seguinte.id))?.payload).toEqual({ valor: 'atualizado' }))
+  })
+})
+
+describe('fila: troca de papel', () => {
+  it('pausada durante a troca: nada sai até a sessão chegar ao vínculo novo', async () => {
+    let enviados = 0
+    servidor.use(http.put('/api/falso', () => ((enviados += 1), respostaOk())))
+    iniciar()
+    pausarParaTrocaDePapel('vinculo-2')
+    const id = await pedirCarga('k-troca', 'x')
+    await new Promise((resolver) => setTimeout(resolver, 200))
+    expect(enviados).toBe(0)
+    expect((await ler(id))?.estado).toBe('NA_FILA')
+
+    // A sessão ainda no vínculo antigo não solta a pausa.
+    iniciarMotor({ usuarioId: USUARIO, vinculoId: VINCULO, queryClient: new QueryClient() })
+    await new Promise((resolver) => setTimeout(resolver, 200))
+    expect(enviados).toBe(0)
+
+    // Chegou ao vínculo novo: a pausa sai (o item é do vínculo antigo e espera a volta a ele).
+    iniciarMotor({ usuarioId: USUARIO, vinculoId: 'vinculo-2', queryClient: new QueryClient() })
+    iniciarMotor({ usuarioId: USUARIO, vinculoId: VINCULO, queryClient: new QueryClient() })
+    await waitFor(async () => expect((await ler(id))?.estado).toBe('ENVIADO'))
+  })
+
+  it('troca recusada: liberar a pausa volta a enviar no vínculo de sempre', async () => {
+    servidor.use(http.put('/api/falso', respostaOk))
+    iniciar()
+    pausarParaTrocaDePapel('vinculo-2')
+    const id = await pedirCarga('k-recusa', 'x')
+    liberarTrocaDePapel()
+    await waitFor(async () => expect((await ler(id))?.estado).toBe('ENVIADO'))
   })
 })
 

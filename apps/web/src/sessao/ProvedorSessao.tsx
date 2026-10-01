@@ -17,7 +17,7 @@ import { estadoOffline } from '../offline/estado'
 import { gravarIdentidade, lerUltimaIdentidade, tocarContato } from '../offline/identidade'
 import type { RegistroSessao } from '../offline/banco'
 import { limparFilaDeAbertura } from '../offline/limpeza'
-import { iniciarMotor, pararMotor } from '../offline/motor'
+import { iniciarMotor, liberarTrocaDePapel, pararMotor, pausarParaTrocaDePapel } from '../offline/motor'
 import { baixarPacoteAoVoltarConexao, baixarPacoteSeVelho } from '../offline/pacote'
 import { VALIDADE_DO_MODO_SEM_CONEXAO_MS, tempos } from '../offline/tempos'
 import { ContextoDaSessao } from './useSessao'
@@ -205,7 +205,18 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
   const escolherPapel = useCallback(
     async (vinculoId: string) => {
       const entrada: z.infer<typeof PapelAtivoEntrada> = { vinculoId }
-      const sessao = await requisitar('/api/auth/papel-ativo', SessaoSaida, { metodo: 'POST', corpo: entrada })
+      // A fila não envia durante a troca: um item do papel antigo sairia com o token do novo e seria
+      // recusado de vez. A pausa sai quando o motor recebe a sessão do vínculo novo; se a troca for
+      // recusada, volta como estava. Se a troca passar e a leitura seguinte falhar, a fila fica
+      // pausada (nada sai com a sessão errada) até a próxima leitura chegar.
+      pausarParaTrocaDePapel(vinculoId)
+      let sessao
+      try {
+        sessao = await requisitar('/api/auth/papel-ativo', SessaoSaida, { metodo: 'POST', corpo: entrada })
+      } catch (falha) {
+        liberarTrocaDePapel()
+        throw falha
+      }
       definirTokenAcesso(sessao.accessToken)
       clienteConsultas.clear()
       await lerEu()

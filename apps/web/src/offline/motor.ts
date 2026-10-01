@@ -32,6 +32,8 @@ const MENSAGEM_SERVIDOR = 'O servidor não respondeu. Tente de novo mais tarde.'
 export function iniciarMotor(sessao: SessaoMotor): void {
   estadoOffline.sessao = sessao
   estadoOffline.pausadaPorSessao = false
+  // A troca de papel só termina quando a sessão do motor já é a do vínculo novo.
+  if (estadoOffline.trocaParaVinculo === sessao.vinculoId) estadoOffline.trocaParaVinculo = null
   void recarregarFila()
   if (execucao) {
     acordarMotor()
@@ -79,6 +81,17 @@ export function iniciarMotor(sessao: SessaoMotor): void {
 }
 
 /** Desliga o motor (sair, fim do componente). Espera o envio em andamento terminar. */
+/** Pausa o envio até a sessão do motor chegar a `vinculoId` (troca de papel em andamento). */
+export function pausarParaTrocaDePapel(vinculoId: string): void {
+  estadoOffline.trocaParaVinculo = vinculoId
+}
+
+/** A troca não aconteceu: o motor volta a enviar na sessão de antes. */
+export function liberarTrocaDePapel(): void {
+  estadoOffline.trocaParaVinculo = null
+  acordarMotor()
+}
+
 export async function pararMotor(): Promise<void> {
   const atual = execucao
   execucao = null
@@ -101,7 +114,7 @@ async function rodar(parada: { valor: boolean }): Promise<void> {
     consumirSinal()
     const sessao = estadoOffline.sessao
     let proximaEm: number | null = null
-    if (sessao && !estadoOffline.pausadaPorSessao && (lerConexao() === 'ONLINE' || estadoOffline.forcarPassada)) {
+    if (sessao && !estadoOffline.pausadaPorSessao && estadoOffline.trocaParaVinculo === null && (lerConexao() === 'ONLINE' || estadoOffline.forcarPassada)) {
       const escolha = await escolherProximo(sessao)
       if (escolha.item) {
         await enviarItem(escolha.item, sessao)

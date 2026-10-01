@@ -10,10 +10,15 @@ export interface SessaoMotor {
 export const estadoOffline: {
   sessao: SessaoMotor | null
   pausadaPorSessao: boolean
+  /**
+   * Troca de papel em andamento: o vínculo para o qual a sessão está indo. Enquanto não for nulo o
+   * motor não envia nada, para não mandar um item do papel antigo com o token do papel novo.
+   */
+  trocaParaVinculo: string | null
   descartadosDeOutraPessoa: number
   /** "Tentar enviar agora": uma passada mesmo em modo sem conexão. */
   forcarPassada: boolean
-} = { sessao: null, pausadaPorSessao: false, descartadosDeOutraPessoa: 0, forcarPassada: false }
+} = { sessao: null, pausadaPorSessao: false, trocaParaVinculo: null, descartadosDeOutraPessoa: 0, forcarPassada: false }
 
 /** Sobe a cada limpeza de dados do usuário: quem começou um download antes dela não pode gravar depois (E18). */
 export const limpezaDeDados = { epoca: 0 }
@@ -48,6 +53,7 @@ export function dormir(ate: number | null): Promise<void> {
 export function reiniciarEstado(): void {
   estadoOffline.sessao = null
   estadoOffline.pausadaPorSessao = false
+  estadoOffline.trocaParaVinculo = null
   estadoOffline.descartadosDeOutraPessoa = 0
   estadoOffline.forcarPassada = false
   pendente = false
