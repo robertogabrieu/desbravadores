@@ -41,6 +41,7 @@
   --cal-acamp-bg: #E6F0D4;    --cal-acamp-fg: #3F6212;
   --cal-evento-bg: #EDE4F6;   --cal-evento-fg: #5B3391;
   --cal-feriado-bg: #FBEFE3;  --cal-feriado-fg: #9A3412;
+  --cal-ferias-bg: #DCEBF7;   --cal-ferias-fg: #1D4E7A;
 
   /* Cores oficiais das classes regulares (tons ajustados p/ contraste com texto branco) */
   --classe-amigo: #2F5FB3;          /* azul    · 10 anos */

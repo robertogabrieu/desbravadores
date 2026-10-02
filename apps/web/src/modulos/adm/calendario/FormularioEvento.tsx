@@ -1,6 +1,7 @@
-import { EventoEntrada, MARCACOES_PADRAO, TIPOS_EVENTO } from '@desbravadores/shared'
-import { useState } from 'react'
+import { EventoEntrada, MARCACOES_PADRAO, TIPOS_EVENTO, validarEvento } from '@desbravadores/shared'
+import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
+import { useConfiguracaoClube } from '../../../api/clube'
 import { useCriarEvento, useEditarEvento } from '../../../api/calendario'
 import type { EventoCalendario, EventoGravado } from '../../../api/calendario'
 import { CaixaMarcacao } from '../../../ui/CaixaMarcacao'
@@ -9,7 +10,8 @@ import { CampoData } from '../../../ui/CampoData'
 import { RodapeDoFormulario } from '../../../ui/RodapeDoFormulario'
 import { Selecao } from '../../../ui/Selecao'
 import { lerErroDaApi } from '../desbravadores/erros'
-import { ROTULOS_DO_TIPO } from './tipos'
+import { diaDaSemana, dosDiasDeReuniao } from './datas'
+import { ROTULOS_DO_TIPO, TEXTO_DO_TIPO } from './tipos'
 import type { TipoDeEvento } from './tipos'
 
 interface Propriedades {
@@ -29,6 +31,12 @@ const MENSAGENS_DE_CAMPO: Record<string, string> = {
   horario: 'Informe o horário no formato 00:00',
 }
 
+interface Marcacoes {
+  temReuniao: boolean
+  temClasse: boolean
+  bomParaCampo: boolean
+}
+
 const tipoConhecido = (valor: string): TipoDeEvento => TIPOS_EVENTO.find((t) => t === valor) ?? 'EVENTO'
 
 export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar }: Propriedades) {
@@ -38,33 +46,60 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar }: Pr
   const [fim, setFim] = useState(evento?.fim ?? dataInicial)
   const [horario, setHorario] = useState(evento?.horario ?? '')
   const [local, setLocal] = useState(evento?.local ?? '')
-  const [marcacoes, setMarcacoes] = useState(
+  const [marcacoes, setMarcacoes] = useState<Marcacoes>(
     evento
-      ? { cancelaReuniao: evento.cancelaReuniao, bloqueiaAula: evento.bloqueiaAula, bomParaCampo: evento.bomParaCampo }
+      ? { temReuniao: evento.temReuniao, temClasse: evento.temClasse, bomParaCampo: evento.bomParaCampo }
       : { ...MARCACOES_PADRAO['EVENTO'] },
   )
   const [erros, setErros] = useState<Record<string, string>>({})
   const [erroGeral, setErroGeral] = useState<string | null>(null)
+  const idDoErroDoGrupo = useId()
   const criar = useCriarEvento()
   const editar = useEditarEvento()
+  const diaReuniao = useConfiguracaoClube().data?.diaReuniao
+
+  const ehFerias = tipo === 'FERIAS'
+  const ehExtra = tipo === 'REUNIAO_EXTRA'
+  const textoDeApoio = TEXTO_DO_TIPO[tipo]?.(diaReuniao)
+  const extraNoDiaDaReuniao = ehExtra && diaReuniao !== undefined && diaDaSemana(inicio) === diaReuniao
+  const classeSemComoAcontecer = !ehFerias && !ehExtra && marcacoes.temClasse && !marcacoes.temReuniao && !marcacoes.bomParaCampo
+  const erroDoGrupo = erros['temReuniao']
 
   function trocarTipo(novo: TipoDeEvento) {
     setTipo(novo)
     setMarcacoes({ ...MARCACOES_PADRAO[novo] })
+    if (novo === 'REUNIAO_EXTRA') setFim(inicio)
+  }
+
+  function mudarData(data: string) {
+    setInicio(data)
+    if (ehExtra) setFim(data)
+  }
+
+  /** O que o tipo esconde não vale: Férias leva o padrão e a extra nunca é de campo. */
+  function marcacoesDoTipo(): Marcacoes {
+    if (ehFerias) return { ...MARCACOES_PADRAO['FERIAS'] }
+    if (ehExtra) return { ...marcacoes, bomParaCampo: false }
+    return marcacoes
   }
 
   async function enviar(submissao: FormEvent) {
     submissao.preventDefault()
     setErros({})
     setErroGeral(null)
-    const entrada = { nome, tipo, inicio, fim, horario: horario.trim() || null, local: local.trim() || null, ...marcacoes }
+    const entrada = { nome, tipo, inicio, fim: ehExtra ? inicio : fim, horario: horario.trim() || null, local: local.trim() || null, ...marcacoesDoTipo() }
+    const achados: Record<string, string> = {}
     const validacao = EventoEntrada.safeParse(entrada)
     if (!validacao.success) {
-      const achados: Record<string, string> = {}
       for (const problema of validacao.error.issues) {
         const campo = String(problema.path[0] ?? '')
-        if (campo && !(campo in achados)) achados[campo] = campo === 'fim' && inicio && fim ? problema.message : (MENSAGENS_DE_CAMPO[campo] ?? 'Confira este campo')
+        if (campo && !(campo in achados)) achados[campo] = MENSAGENS_DE_CAMPO[campo] ?? 'Confira este campo'
       }
+    }
+    for (const problema of validarEvento(entrada)) {
+      if (!(problema.campo in achados)) achados[problema.campo] = problema.mensagem
+    }
+    if (Object.keys(achados).length > 0) {
       setErros(achados)
       return
     }
@@ -80,28 +115,48 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar }: Pr
   return (
     <form noValidate onSubmit={(submissao) => void enviar(submissao)} className="flex flex-col gap-4">
       <Campo rotulo="Nome" value={nome} erro={erros['nome']} onChange={(e) => setNome(e.target.value)} />
-      <Selecao rotulo="Tipo" value={tipo} erro={erros['tipo']} onChange={(e) => trocarTipo(tipoConhecido(e.target.value))}>
+      <Selecao rotulo="Tipo" value={tipo} ajuda={textoDeApoio} erro={erros['tipo']} onChange={(e) => trocarTipo(tipoConhecido(e.target.value))}>
         {TIPOS_EVENTO.map((t) => (
           <option key={t} value={t}>
             {ROTULOS_DO_TIPO[t]}
           </option>
         ))}
       </Selecao>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <CampoData rotulo="Início" value={inicio} erro={erros['inicio']} onChange={(e) => setInicio(e.target.value)} />
-        <CampoData rotulo="Fim" value={fim} erro={erros['fim']} onChange={(e) => setFim(e.target.value)} />
-      </div>
+      {ehExtra ? (
+        <CampoData
+          rotulo="Data"
+          value={inicio}
+          ajuda={extraNoDiaDaReuniao ? `${dosDiasDeReuniao(diaReuniao).nome.replace(/^./, (letra) => letra.toUpperCase())} já tem reunião: esta reunião extra só muda nome, horário e local.` : undefined}
+          erro={erros['inicio'] ?? erros['fim']}
+          onChange={(e) => mudarData(e.target.value)}
+        />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <CampoData rotulo="Início" value={inicio} erro={erros['inicio']} onChange={(e) => setInicio(e.target.value)} />
+          <CampoData rotulo="Fim" value={fim} erro={erros['fim']} onChange={(e) => setFim(e.target.value)} />
+        </div>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo rotulo="Horário" type="time" value={horario} erro={erros['horario']} onChange={(e) => setHorario(e.target.value)} />
         <Campo rotulo="Local" value={local} erro={erros['local']} onChange={(e) => setLocal(e.target.value)} />
       </div>
-      <fieldset className="flex flex-col gap-1">
-        <legend className="mb-1 text-sm font-semibold text-texto">Para a reunião e as aulas</legend>
-        <CaixaMarcacao rotulo="Não há reunião do clube" checked={marcacoes.cancelaReuniao} onChange={(e) => setMarcacoes({ ...marcacoes, cancelaReuniao: e.target.checked })} />
-        <CaixaMarcacao rotulo="Não há aula de classe" checked={marcacoes.bloqueiaAula} onChange={(e) => setMarcacoes({ ...marcacoes, bloqueiaAula: e.target.checked })} />
-        <CaixaMarcacao rotulo="Bom para requisitos de campo" checked={marcacoes.bomParaCampo} onChange={(e) => setMarcacoes({ ...marcacoes, bomParaCampo: e.target.checked })} />
-      </fieldset>
-      <p className="text-sm text-texto-2">Quem monta o cronograma vê este evento ao escolher as datas. Se já houver aulas marcadas no período, o instrutor é avisado.</p>
+      {!ehFerias && (
+        <fieldset aria-describedby={erroDoGrupo ? idDoErroDoGrupo : undefined} className="flex flex-col gap-1">
+          <legend className="mb-1 text-sm font-semibold text-texto">Para a reunião e as classes</legend>
+          <CaixaMarcacao rotulo="Terá reunião" checked={marcacoes.temReuniao} onChange={(e) => setMarcacoes({ ...marcacoes, temReuniao: e.target.checked })} />
+          <CaixaMarcacao rotulo="Terá classe" checked={marcacoes.temClasse} onChange={(e) => setMarcacoes({ ...marcacoes, temClasse: e.target.checked })} />
+          {!ehExtra && (
+            <CaixaMarcacao rotulo="Terá atividade de campo" checked={marcacoes.bomParaCampo} onChange={(e) => setMarcacoes({ ...marcacoes, bomParaCampo: e.target.checked })} />
+          )}
+          {classeSemComoAcontecer && <p className="text-sm text-texto-2">Sem reunião e sem campo, não há classe nesses dias.</p>}
+          {erroDoGrupo && (
+            <p id={idDoErroDoGrupo} role="alert" className="text-sm font-medium text-perigo">
+              {erroDoGrupo}
+            </p>
+          )}
+        </fieldset>
+      )}
+      <p className="text-sm text-texto-2">Quem monta o cronograma vê este evento ao escolher as datas. Se já houver classes marcadas no período, o instrutor é avisado.</p>
       {erroGeral && (
         <p role="alert" className="text-sm font-medium text-perigo">
           {erroGeral}

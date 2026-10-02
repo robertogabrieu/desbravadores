@@ -7,7 +7,7 @@ import type { EventoCalendario } from '../../../api/calendario'
 import { caixa } from '../../../testes/handlers/caixa'
 import type { Caixa } from '../../../testes/handlers/caixa'
 import { criarAulaAfetada, criarEvento, handlerCalendario, handlerCriarEvento, handlerEditarEvento, handlerEvento, handlerExcluirEvento } from '../../../testes/handlers/calendario'
-import { criarConfiguracao, handlerConfiguracao } from '../../../testes/handlers/clube'
+import { criarConfiguracao, handlerConfiguracao, handlerErroConfiguracao } from '../../../testes/handlers/clube'
 import { uuid } from '../../../testes/handlers/sessao'
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
@@ -26,7 +26,7 @@ beforeEach(() => {
 })
 
 const acampamento = () =>
-  caixa(criarEvento(1, { nome: 'Acampamento de primavera', tipo: 'ACAMPAMENTO', inicio: '2026-10-16', fim: '2026-10-18', horario: '07:00', local: 'Sítio Recanto Verde', cancelaReuniao: true, bloqueiaAula: true, bomParaCampo: true }))
+  caixa(criarEvento(1, { nome: 'Acampamento de primavera', tipo: 'ACAMPAMENTO', inicio: '2026-10-16', fim: '2026-10-18', horario: '07:00', local: 'Sítio Recanto Verde', temReuniao: false, temClasse: true, bomParaCampo: true }))
 
 function abrir(rota: string, evento = acampamento(), ...outros: Caixa<EventoCalendario>[]) {
   servidor.use(handlerEvento(evento, ...outros), handlerCalendario({ eventos: [evento.atual] }), handlerConfiguracao(criarConfiguracao({ diaReuniao })))
@@ -50,43 +50,89 @@ describe('ficha do evento', () => {
     expect(screen.getByText('7h')).toBeInTheDocument()
     expect(screen.getByText('Sítio Recanto Verde')).toBeInTheDocument()
     const muda = within(screen.getByRole('region', { name: 'O que muda no calendário' }))
-    expect((await muda.findByText('Cancela a reunião de domingo 18', { selector: 'dt' })).nextElementSibling).toHaveTextContent('Sim')
+    expect(await muda.findByText('Terá classe', { selector: 'dt' })).toBeInTheDocument()
   })
 
-  it('cancelar a reunião diz o dia de cada domingo dentro do período', async () => {
-    abrir(`/adm/calendario/eventos/${uuid(803)}`, caixa(criarEvento(3, { inicio: '2026-10-10', fim: '2026-10-18', cancelaReuniao: true })))
-    const muda = within(await screen.findByRole('region', { name: 'O que muda no calendário' }))
-    expect(await muda.findByText('Cancela as reuniões de domingo 11 e 18', { selector: 'dt' })).toBeInTheDocument()
-  })
-
-  it('com a reunião no sábado, o rótulo usa o sábado e não o domingo', async () => {
-    diaReuniao = 6
-    abrir(`/adm/calendario/eventos/${uuid(801)}`)
-    const muda = within(await screen.findByRole('region', { name: 'O que muda no calendário' }))
-    expect(await muda.findByText('Cancela a reunião de sábado 17', { selector: 'dt' })).toBeInTheDocument()
-  })
-
-  it('com a reunião no sábado e dois sábados no período, lista os dois', async () => {
-    diaReuniao = 6
-    abrir(`/adm/calendario/eventos/${uuid(803)}`, caixa(criarEvento(3, { inicio: '2026-10-10', fim: '2026-10-18', cancelaReuniao: true })))
-    const muda = within(await screen.findByRole('region', { name: 'O que muda no calendário' }))
-    expect(await muda.findByText('Cancela as reuniões de sábado 10 e 17', { selector: 'dt' })).toBeInTheDocument()
-  })
-
-  it('cancelar sem domingo no período não inventa dia', async () => {
-    abrir(`/adm/calendario/eventos/${uuid(804)}`, caixa(criarEvento(4, { inicio: '2026-10-20', fim: '2026-10-21', cancelaReuniao: true })))
-    const muda = within(await screen.findByRole('region', { name: 'O que muda no calendário' }))
-    expect(muda.getByText('Cancela a reunião', { selector: 'dt' }).nextElementSibling).toHaveTextContent('Sim')
-  })
-
-  it('sem horário nem local mostra traço e marcações "Não"', async () => {
-    abrir(`/adm/calendario/eventos/${uuid(802)}`, caixa(criarEvento(2, { cancelaReuniao: false, bloqueiaAula: false, bomParaCampo: false })))
+  it('sem horário nem local mostra traço', async () => {
+    abrir(`/adm/calendario/eventos/${uuid(802)}`, caixa(criarEvento(2, { temReuniao: true, temClasse: false, bomParaCampo: false })))
     await screen.findByRole('heading', { level: 1, name: 'Evento 2' })
     const dados = within(screen.getByRole('region', { name: 'Dados do evento' }))
     expect(dados.getByText('Horário', { selector: 'dt' }).nextElementSibling).toHaveTextContent('—')
     expect(dados.getByText('Local', { selector: 'dt' }).nextElementSibling).toHaveTextContent('—')
-    const muda = within(screen.getByRole('region', { name: 'O que muda no calendário' }))
-    expect(muda.getByText('Bloqueia aulas nessas datas', { selector: 'dt' }).nextElementSibling).toHaveTextContent('Não')
+  })
+
+  async function valorDe(rotulo: string): Promise<string> {
+    const muda = within(await screen.findByRole('region', { name: 'O que muda no calendário' }))
+    return (await muda.findByText(rotulo, { selector: 'dt' })).nextElementSibling?.textContent ?? ''
+  }
+
+  it('Férias mostra um texto só, sem pares', async () => {
+    abrir(`/adm/calendario/eventos/${uuid(810)}`, caixa(criarEvento(10, { tipo: 'FERIAS', inicio: '2025-12-07', fim: '2026-02-01', temReuniao: false, temClasse: true })))
+    const muda = within(await screen.findByRole('region', { name: 'O que muda no calendário' }))
+    expect(await muda.findByText('Sem reunião e sem classe nos domingos do período; acampamentos continuam valendo.')).toBeInTheDocument()
+    expect(muda.queryByText('Terá reunião')).not.toBeInTheDocument()
+  })
+
+  it('Reunião extra fora do dia normal: reunião sim e classe não', async () => {
+    abrir(`/adm/calendario/eventos/${uuid(811)}`, caixa(criarEvento(11, { tipo: 'REUNIAO_EXTRA', inicio: '2026-10-21', fim: '2026-10-21', temReuniao: true, temClasse: false })))
+    expect(await valorDe('Terá reunião')).toBe('Sim (quarta-feira 21)')
+    expect(await valorDe('Terá classe')).toBe('Não')
+  })
+
+  it.each([
+    [true, 'Sim — domingo 18 já tem reunião; vale o horário e o local deste evento'],
+    [false, 'Não acrescenta — domingo 18 segue o calendário'],
+  ])('Reunião extra no domingo, Terá reunião %s', async (temReuniao, texto) => {
+    abrir(`/adm/calendario/eventos/${uuid(812)}`, caixa(criarEvento(12, { tipo: 'REUNIAO_EXTRA', inicio: '2026-10-18', fim: '2026-10-18', temReuniao, temClasse: true })))
+    expect(await valorDe('Terá reunião')).toBe(texto)
+    expect(await valorDe('Terá classe')).toBe('Sim (domingo 18)')
+  })
+
+  it('Reunião extra no domingo sem classe: "Não acrescenta"', async () => {
+    abrir(`/adm/calendario/eventos/${uuid(813)}`, caixa(criarEvento(13, { tipo: 'REUNIAO_EXTRA', inicio: '2026-10-18', fim: '2026-10-18', temReuniao: true, temClasse: false })))
+    expect(await valorDe('Terá classe')).toBe('Não acrescenta — domingo 18 segue o calendário')
+  })
+
+  it('Evento comum num domingo', async () => {
+    abrir(`/adm/calendario/eventos/${uuid(814)}`, caixa(criarEvento(14, { inicio: '2026-10-18', fim: '2026-10-18', temReuniao: true, temClasse: false, bomParaCampo: false })))
+    expect(await valorDe('Terá reunião')).toBe('Sim (domingo 18)')
+    expect(await valorDe('Terá classe')).toBe('Não (domingo 18)')
+    expect(await valorDe('Terá atividade de campo')).toBe('Não')
+  })
+
+  it('Acampamento de sexta a domingo', async () => {
+    abrir(`/adm/calendario/eventos/${uuid(801)}`)
+    expect(await valorDe('Terá reunião')).toBe('Não (domingo 18)')
+    expect(await valorDe('Terá classe')).toBe('Sim (sexta 16 a domingo 18)')
+    expect(await valorDe('Terá atividade de campo')).toBe('Sim')
+  })
+
+  it('mais de três domingos vira contagem; dois domingos viram lista', async () => {
+    abrir(`/adm/calendario/eventos/${uuid(815)}`, caixa(criarEvento(15, { tipo: 'FERIADO', inicio: '2025-12-07', fim: '2026-02-01', temReuniao: false, temClasse: false })))
+    expect(await valorDe('Terá reunião')).toBe('Não (9 domingos, de 7/12 a 1/02)')
+  })
+
+  it('dois domingos no período: lista os dois', async () => {
+    abrir(`/adm/calendario/eventos/${uuid(816)}`, caixa(criarEvento(16, { inicio: '2026-10-10', fim: '2026-10-18', temReuniao: false, temClasse: false })))
+    expect(await valorDe('Terá reunião')).toBe('Não (domingos 11 e 18)')
+  })
+
+  it('sem domingo no período', async () => {
+    abrir(`/adm/calendario/eventos/${uuid(817)}`, caixa(criarEvento(17, { inicio: '2026-10-20', fim: '2026-10-21', temReuniao: false, temClasse: false })))
+    expect(await valorDe('Terá reunião')).toBe('Não há domingo no período')
+  })
+
+  it('o dia da reunião vem da configuração: sábado', async () => {
+    diaReuniao = 6
+    abrir(`/adm/calendario/eventos/${uuid(818)}`, caixa(criarEvento(18, { inicio: '2026-10-10', fim: '2026-10-18', temReuniao: false, temClasse: false })))
+    expect(await valorDe('Terá reunião')).toBe('Não (sábados 10 e 17)')
+  })
+
+  it('configuração com erro: só Sim ou Não, sem parênteses', async () => {
+    abrir(`/adm/calendario/eventos/${uuid(819)}`, caixa(criarEvento(19, { inicio: '2026-10-18', fim: '2026-10-18', temReuniao: true, temClasse: false })))
+    servidor.use(handlerErroConfiguracao())
+    expect(await valorDe('Terá reunião')).toBe('Sim')
+    expect(await valorDe('Terá classe')).toBe('Não')
   })
 
   it('Editar → Salvar volta à ficha com o aviso das aulas afetadas no topo', async () => {
@@ -96,7 +142,7 @@ describe('ficha do evento', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() => expect(roteador.state.location.pathname).toBe(`/adm/calendario/eventos/${uuid(801)}`))
     expect(roteador.state.historyAction).toBe('REPLACE')
-    expect(await screen.findByText('2 aulas estavam marcadas nessas datas: Amigo (17/10) e Companheiro (18/10). Os instrutores foram avisados.')).toBeInTheDocument()
+    expect(await screen.findByText('2 classes estavam marcadas nessas datas: Amigo (17/10) e Companheiro (18/10). Os instrutores foram avisados.')).toBeInTheDocument()
   })
 
   it('Novo pelo calendário chega com a data do mês mostrado e leva à ficha do criado', async () => {

@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { CalendarPlus, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { hojeDoClube } from '../../../api/desbravadores'
@@ -13,7 +13,7 @@ import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { Esqueleto } from '../../../ui/Esqueleto'
 import { cn } from '../../../ui/cn'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/EstadosDeCarga'
-import { dataCivilBr } from '../formatos'
+import { dataCivilBr, horaCurta } from '../formatos'
 import { useEstadoDeVolta, useFiltrosNaUrl } from '../navegacao'
 import {
   DIAS_DA_SEMANA,
@@ -26,7 +26,7 @@ import {
   eventosDoMes,
   mesDoEndereco,
 } from './datas'
-import { COR_DA_REUNIAO, CORES_DO_TIPO, ROTULOS_DO_TIPO } from './tipos'
+import { COR_DA_REUNIAO, CORES_DO_TIPO, ICONE_DO_TIPO, ROTULOS_DO_TIPO } from './tipos'
 
 const ABAS_DE_MES = MESES_CURTOS.map((rotulo, indice) => ({ id: String(indice), rotulo }))
 const MAXIMO_POR_DIA = 2
@@ -67,17 +67,22 @@ export function AdmCalendario() {
             className="flex flex-wrap gap-3 text-sm font-semibold text-texto-3"
           >
             <li className={cn('rounded-full px-2.5 py-0.5', COR_DA_REUNIAO)}>Reunião regular</li>
-            {Object.entries(ROTULOS_DO_TIPO).map(([tipo, rotulo]) => (
-              <li
-                key={tipo}
-                className={cn(
-                  'rounded-full px-2.5 py-0.5',
-                  CORES_DO_TIPO[tipo as keyof typeof CORES_DO_TIPO],
-                )}
-              >
-                {rotulo}
-              </li>
-            ))}
+            {Object.entries(ROTULOS_DO_TIPO).map(([tipo, rotulo]) => {
+              const tipoDoEvento = tipo as keyof typeof CORES_DO_TIPO
+              const Icone = ICONE_DO_TIPO[tipoDoEvento]
+              return (
+                <li
+                  key={tipo}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5',
+                    CORES_DO_TIPO[tipoDoEvento],
+                  )}
+                >
+                  {Icone && <Icone aria-hidden className="size-3.5" />}
+                  {rotulo}
+                </li>
+              )
+            })}
           </ul>
           <div className="grid grid-cols-7 gap-1 text-center text-sm font-extrabold text-texto-2">
             {DIAS_DA_SEMANA.map((dia) => (
@@ -105,7 +110,7 @@ export function AdmCalendario() {
         {eventosDesteMes.length === 0 ? (
           <EstadoVazio
             titulo={`Nenhum evento em ${MESES[mes]}`}
-            descricao="Cadastre feriados, acampamentos e dias sem reunião para que o cronograma das classes os respeite."
+            descricao="Cadastre feriados, férias, acampamentos, dias sem reunião e reuniões extras para que o cronograma das classes os respeite."
           />
         ) : (
           <ul aria-label={`Eventos de ${MESES[mes]}`} className="flex flex-col gap-2">
@@ -152,7 +157,11 @@ export function AdmCalendario() {
           </p>
           <h1 className="font-titulo text-2xl font-extrabold text-texto">Calendário do clube</h1>
         </div>
-        <Link to={`/adm/calendario/eventos/novo?data=${chaveDoDia(ano, mes, 1)}`} state={estadoDeVolta} className={estiloDoBotao()}>
+        <Link
+          to={`/adm/calendario/eventos/novo?data=${chaveDoDia(ano, mes, 1)}`}
+          state={estadoDeVolta}
+          className={estiloDoBotao()}
+        >
           <Plus aria-hidden className="size-5" />
           Novo evento
         </Link>
@@ -204,6 +213,8 @@ function CelulaDoDia({
   if (dia === null || data === null)
     return <div aria-hidden className="min-h-24 rounded-controle bg-superficie-suave/50" />
   const doDia = eventosDoDia(eventos, data)
+  const extra = doDia.find((evento) => evento.tipo === 'REUNIAO_EXTRA')
+  const horaDaExtra = extra?.horario ?? horaDaReuniao
   // No celular a célula tem ~45 px: a reunião pinta o número do dia e cada evento vira uma faixa da cor
   // do tipo; o nome completo está na lista de eventos abaixo da grade.
   return (
@@ -216,7 +227,23 @@ function CelulaDoDia({
       >
         {dia}
       </span>
-      {ehReuniao && (
+      {extra && (
+        <span
+          className={cn(
+            'flex items-center gap-1 truncate rounded-controle px-1.5 py-0.5 text-sm font-semibold max-sm:sr-only',
+            CORES_DO_TIPO['REUNIAO_EXTRA'],
+          )}
+        >
+          <CalendarPlus aria-hidden className="size-3.5 shrink-0" />
+          {[
+            extra.temReuniao ? 'Reunião extra' : 'Classe extra',
+            horaDaExtra && horaCurta(horaDaExtra),
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        </span>
+      )}
+      {ehReuniao && !extra?.temReuniao && (
         <span
           className={cn(
             'truncate rounded-controle px-1.5 py-0.5 text-sm font-semibold max-sm:sr-only',
@@ -226,19 +253,25 @@ function CelulaDoDia({
           {horaDaReuniao ? `Reunião ${horaDaReuniao}` : 'Reunião'}
         </span>
       )}
-      {doDia.slice(0, MAXIMO_POR_DIA).map((evento) => (
-        <Link
-          key={evento.id}
-          to={fichaDoEvento(evento)}
-          state={estadoDeVolta}
-          className={cn(
-            'truncate rounded-controle px-1.5 py-0.5 text-left text-sm font-semibold focus-visible:outline-2 focus-visible:outline-marca max-sm:h-2 max-sm:p-0',
-            CORES_DO_TIPO[evento.tipo],
-          )}
-        >
-          <span className="max-sm:sr-only">{evento.nome}</span>
-        </Link>
-      ))}
+      {doDia.slice(0, MAXIMO_POR_DIA).map((evento) => {
+        const Icone = ICONE_DO_TIPO[evento.tipo]
+        return (
+          <Link
+            key={evento.id}
+            to={fichaDoEvento(evento)}
+            state={estadoDeVolta}
+            className={cn(
+              'truncate rounded-controle px-1.5 py-0.5 text-left text-sm font-semibold focus-visible:outline-2 focus-visible:outline-marca max-sm:h-2 max-sm:p-0',
+              CORES_DO_TIPO[evento.tipo],
+            )}
+          >
+            <span className="max-sm:sr-only">
+              {Icone && <Icone aria-hidden className="mr-1 inline size-3.5" />}
+              {evento.nome}
+            </span>
+          </Link>
+        )
+      })}
       {doDia.length > MAXIMO_POR_DIA && (
         <span className="text-sm font-semibold text-texto-2">+{doDia.length - MAXIMO_POR_DIA}</span>
       )}
