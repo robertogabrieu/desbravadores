@@ -124,6 +124,9 @@ describe('PUT /api/sync/aulas/:uuid', () => {
     expect(saida.requisitosSemEfeito).toEqual([])
     expect(saida.avisos).toEqual([])
     expect(saida.totalPontos).toBe(4)
+    expect(saida.tarefaId).toBeNull()
+    expect(saida.tarefaItensSemEfeito).toEqual([])
+    expect(saida.especialidadesSemEfeito).toEqual([])
     const registro = await prismaDeTeste().registroAula.findUniqueOrThrow({ where: { id: uuid } })
     expect(registro).toMatchObject({ clubeId: c.clube.id, classeId: c.classe.id, registradoPorId: c.instrutor.usuario.id })
     const concluidos = await c.concluidosAtivos(c.ana.id)
@@ -135,6 +138,15 @@ describe('PUT /api/sync/aulas/:uuid', () => {
     const atividades = await prismaDeTeste().atividade.findMany({ where: { clubeId: c.clube.id, tipo: 'AULA_REGISTRADA' } })
     expect(atividades).toHaveLength(1)
     expect(atividades[0]?.descricao).toContain('Amigo')
+  })
+
+  it('correcao que nao manda o ausente gravado ainda recusa a marcacao dele como AUSENTE', async () => {
+    const c = await cenario()
+    const uuid = randomUUID()
+    await c.ok(c.enviar({ uuid, presencas: [{ dbvId: c.ana.id }, { dbvId: c.bia.id, presente: false }] }))
+    const saida = await c.ok(c.enviar({ uuid, presencas: [], marcados: [{ dbvId: c.bia.id, requisitoId: c.r1 }] }))
+    expect(saida.requisitosSemEfeito).toEqual([{ dbvId: c.bia.id, requisitoId: c.r1, motivo: 'AUSENTE', concluidoEm: null }])
+    expect(await c.concluidosAtivos(c.bia.id)).toEqual([])
   })
 
   it('reenviar o mesmo envioId responde o estado atual sem gravar nada', async () => {

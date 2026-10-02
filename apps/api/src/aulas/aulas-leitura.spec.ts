@@ -9,6 +9,7 @@ import {
   criarCronograma,
   criarDbv,
   criarRegistroAula,
+  criarTarefa,
   desconectarPrismaDeTeste,
   prismaDeTeste,
   publicarCronograma,
@@ -102,6 +103,29 @@ describe('leitura de aulas', () => {
     expect(detalhe.presencas.map((p) => [p.nome, p.presente])).toEqual([['Ana Souza', true], ['Bia Lima', false]])
     expect(detalhe.requisitosDaAula.map((r) => r.id).sort()).toEqual([r1, r2, r3].sort())
     expect(detalhe.concluidosNaAula).toEqual([{ dbvId: c.ana.id, requisitoId: r3 }])
+  })
+
+  it('detalhe: requisito marcado so por cobranca de tarefa anterior fica fora de requisitosDaAula, salvo se planejado para a data', async () => {
+    const c = await cenario()
+    const [r1 = '', r2 = '', r3 = ''] = c.requisitos
+    const origem = await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: diasAtras(10), presencas: [{ dbvId: c.ana.id }] })
+    await criarTarefa({ clubeId: c.clube.id, classeId: c.classe.id, registroAulaId: origem.id, itens: [{ requisitoId: r1 }, { requisitoId: r2 }] })
+    const cronograma = await criarCronograma({ clubeId: c.clube.id, classeId: c.classe.id, aulas: [{ data: diasAtras(1), requisitoIds: [r2] }] })
+    await publicarCronograma({ cronogramaId: cronograma.id, publicadoPorId: c.adm.usuario.id })
+    const cobranca = await criarRegistroAula({
+      clubeId: c.clube.id,
+      classeId: c.classe.id,
+      data: diasAtras(1),
+      presencas: [{ dbvId: c.ana.id }],
+      concluidos: [{ dbvId: c.ana.id, requisitoId: r1 }, { dbvId: c.ana.id, requisitoId: r2 }, { dbvId: c.ana.id, requisitoId: r3 }],
+    })
+    const resposta = await api.get(`/api/aulas/${cobranca.id}`, c.instrutor.autorizacao)
+    const detalhe = AulaDetalhe.parse(corpo<unknown>(resposta))
+    expect(detalhe.requisitosDaAula.map((r) => r.id).sort()).toEqual([r2, r3].sort())
+    expect(detalhe.concluidosNaAula).toHaveLength(3)
+
+    const daOrigem = AulaDetalhe.parse(corpo<unknown>(await api.get(`/api/aulas/${origem.id}`, c.instrutor.autorizacao)))
+    expect(daOrigem.requisitosDaAula).toEqual([])
   })
 
   it('detalhe: podeEditar falso para o instrutor depois do prazo e verdadeiro para o Adm; escopo 404 e 403', async () => {
