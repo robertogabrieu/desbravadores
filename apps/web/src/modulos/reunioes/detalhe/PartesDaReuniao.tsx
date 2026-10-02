@@ -3,7 +3,11 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { z } from 'zod'
 import type { LinhaChamadaSaida, ReuniaoDetalhe } from '@desbravadores/shared'
+import { useAlbum } from '../../../api/fotos'
+import { Botao } from '../../../ui/Botao'
 import { Chip } from '../../../ui/Chip'
+import { Carregando, ErroDeCarga } from '../../../ui/EstadosDeCarga'
+import { FotoCheia } from '../../galeria/FotoCheia'
 import { cn } from '../../../ui/cn'
 
 type Detalhe = z.infer<typeof ReuniaoDetalhe>
@@ -123,28 +127,57 @@ export interface LinksDaReuniao {
   enviarFotos: ((reuniaoId: string) => string) | null
 }
 
+/** A foto da miniatura em tela cheia: o álbum só é buscado quando alguém toca numa delas. Remover fica no álbum. */
+function FotoDaReuniaoCheia({ albumId, indice, aoMudar, aoFechar }: { albumId: string; indice: number; aoMudar: (indice: number) => void; aoFechar: () => void }) {
+  const album = useAlbum(albumId)
+  if (album.data) {
+    const fotos = album.data.fotos.map((foto) => ({ ...foto, podeRemover: false }))
+    return <FotoCheia fotos={fotos} indice={indice} aoMudar={aoMudar} aoFechar={aoFechar} aoRemover={() => undefined} />
+  }
+  return (
+    <div role="dialog" aria-modal="true" aria-label="Foto da reunião" className="fixed inset-0 z-40 flex flex-col bg-superficie p-4">
+      <div className="flex justify-end">
+        <Botao variante="secundario" onClick={aoFechar}>
+          Fechar
+        </Botao>
+      </div>
+      {album.isError ? <ErroDeCarga erro={album.error} aoTentarDeNovo={() => void album.refetch()} /> : <Carregando rotulo="Carregando a foto" />}
+    </div>
+  )
+}
+
 export function FotosDaReuniao({ dados, links }: { dados: Detalhe; links: LinksDaReuniao }) {
+  const [aberta, setAberta] = useState<number | null>(null)
   if (!links.album && !links.enviarFotos) return null
+  const album = dados.album
   return (
     <section className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-titulo text-lg font-bold">Fotos desta reunião</h2>
-        {dados.album && links.album && (
-          <Link to={links.album(dados.album.id)} className="text-base font-semibold text-marca">
-            {`Ver álbum (${dados.album.totalFotos})`}
+        {album && links.album && (
+          <Link to={links.album(album.id)} className="text-base font-semibold text-marca">
+            {`Ver álbum (${album.totalFotos})`}
           </Link>
         )}
       </div>
-      <div className="flex gap-2">
-        {dados.album?.miniaturas.map((url) => (
-          <img key={url} src={url} alt="Foto da reunião" className="size-16 rounded-botao object-cover" />
+      <div className="flex flex-wrap gap-2">
+        {album?.miniaturas.map((url, posicao) => (
+          <button key={url} type="button" aria-label={`Abrir foto ${posicao + 1}`} onClick={() => setAberta(posicao)} className="size-16 overflow-hidden rounded-botao focus-visible:outline-2 focus-visible:outline-marca">
+            <img src={url} alt="Foto da reunião" className="size-full object-cover" />
+          </button>
         ))}
         {links.enviarFotos && (
-          <Link to={links.enviarFotos(dados.id)} aria-label="Adicionar fotos a esta reunião" className="flex size-16 items-center justify-center rounded-botao border border-dashed border-borda text-marca">
-            <Plus aria-hidden className="size-6" />
+          <Link
+            to={links.enviarFotos(dados.id)}
+            aria-label="Adicionar fotos a esta reunião"
+            className="flex min-h-16 items-center gap-1 rounded-botao border border-dashed border-borda px-3 text-sm font-semibold text-marca"
+          >
+            <Plus aria-hidden className="size-5" />
+            Adicionar fotos
           </Link>
         )}
       </div>
+      {album && aberta !== null && <FotoDaReuniaoCheia albumId={album.id} indice={aberta} aoMudar={setAberta} aoFechar={() => setAberta(null)} />}
     </section>
   )
 }

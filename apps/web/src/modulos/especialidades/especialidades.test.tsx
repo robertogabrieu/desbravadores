@@ -121,6 +121,41 @@ describe('Especialidades', () => {
     expect(await screen.findAllByText('Toque para marcar como concluída')).toHaveLength(3)
   })
 
+  it('desmarcar que falha mantém o diálogo aberto com a mensagem; de novo com sucesso, fecha', async () => {
+    let falhar = true
+    servidor.use(
+      handlerEspecialidadesDoDbv(ANA, { dbvId: ANA, concluidas }),
+      http.delete(`/api/desbravadores/${ANA}/especialidades/${ESP_NOS}`, () =>
+        falhar ? HttpResponse.json({ codigo: 'CONFLITO', mensagem: 'Só quem marcou desmarca.' }, { status: 409 }) : HttpResponse.json({ dbvId: ANA, concluidas: [] }),
+      ),
+    )
+    const usuario = userEvent.setup()
+    abrir(`?classe=${CLASSE_AMIGO.id}&dbv=${ANA}`)
+    await usuario.click(await screen.findByRole('button', { name: /^Nós e Amarras/ }))
+    const dialogo = await screen.findByRole('dialog', { name: 'Desmarcar especialidade?' })
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Desmarcar' }))
+    expect(await within(dialogo).findByRole('alert')).toHaveTextContent('Só quem marcou desmarca.')
+    expect(screen.getByRole('dialog', { name: 'Desmarcar especialidade?' })).toBeInTheDocument()
+    falhar = false
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Desmarcar' }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Desmarcar especialidade?' })).not.toBeInTheDocument())
+  })
+
+  it('com mais desbravadores do que cabem, a faixa avisa que dá para deslizar para o lado', async () => {
+    const tres = criarProgressoClasse().itens
+    const itens = [...tres, ...tres.map((item, n) => ({ ...item, dbvId: uuid(450 + n), nome: `${item.nome} Filho` }))]
+    servidor.use(handlerProgressoClasse(criarProgressoClasse({ itens })))
+    abrir(`?classe=${CLASSE_AMIGO.id}`)
+    const faixa = await screen.findByRole('group', { name: 'Desbravador' })
+    expect(faixa).toHaveAccessibleDescription('Deslize para o lado para ver todos.')
+  })
+
+  it('com poucos desbravadores, a faixa não fala em deslizar', async () => {
+    abrir(`?classe=${CLASSE_AMIGO.id}`)
+    await screen.findByRole('group', { name: 'Desbravador' })
+    expect(screen.queryByText('Deslize para o lado para ver todos.')).not.toBeInTheDocument()
+  })
+
   it('desbravador fora do escopo mostra o 404 amigável', async () => {
     servidor.use(handlerEspecialidadesDoDbvNaoEncontrado(uuid(499)))
     abrir(`?classe=${CLASSE_AMIGO.id}&dbv=${uuid(499)}`)

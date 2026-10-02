@@ -177,13 +177,20 @@ describe('Materiais', () => {
     await waitFor(() => expect(corpo).toEqual({ classeId: CLASSE_AMIGO.id, secaoId: null, titulo: 'Requisitos', url: 'https://adventistas.org/x' }))
   })
 
-  it('menu: abrir abre o material em outra aba', async () => {
-    const abrirJanela = vi.spyOn(window, 'open').mockReturnValue(null)
+  it('o título e o botão "Abrir" da linha abrem o material; o menu fica só com as edições', async () => {
     servidor.use(handlerMateriais([pdf]))
+    const usuario = userEvent.setup()
     abrir()
-    const { usuario, menu } = await abrirMenuDe(pdf.titulo)
-    await usuario.click(menu.getByRole('menuitem', { name: 'Abrir' }))
-    expect(abrirJanela).toHaveBeenCalledWith(pdf.url, '_blank', 'noopener,noreferrer')
+    const titulo = await screen.findByRole('link', { name: pdf.titulo })
+    expect(titulo).toHaveAttribute('href', pdf.url)
+    expect(titulo).toHaveAttribute('target', '_blank')
+    const botao = screen.getByRole('link', { name: `Abrir ${pdf.titulo}` })
+    expect(botao).toHaveTextContent('Abrir')
+    expect(botao).toHaveAttribute('href', pdf.url)
+    await usuario.click(screen.getByRole('button', { name: `Opções de ${pdf.titulo}` }))
+    const menu = within(screen.getByRole('menu'))
+    expect(menu.queryByRole('menuitem', { name: 'Abrir' })).not.toBeInTheDocument()
+    expect(menu.getByRole('menuitem', { name: 'Renomear' })).toBeInTheDocument()
   })
 
   it('menu: renomear e mover de seção gravam pelo PATCH', async () => {
@@ -229,13 +236,32 @@ describe('Materiais', () => {
     await waitFor(() => expect(apagou).toBe(1))
   })
 
-  it('quem não é autor só tem "Abrir" no menu', async () => {
+  it('quem não é autor abre pelo título e não tem menu de opções', async () => {
     servidor.use(handlerMateriais([criarMaterial({ podeEditar: false })]))
     abrir()
-    const { menu } = await abrirMenuDe(pdf.titulo)
-    expect(menu.getByRole('menuitem', { name: 'Abrir' })).toBeInTheDocument()
-    expect(menu.queryByRole('menuitem', { name: 'Renomear' })).not.toBeInTheDocument()
-    expect(menu.queryByRole('menuitem', { name: 'Apagar' })).not.toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: pdf.titulo })).toHaveAttribute('href', pdf.url)
+    expect(screen.getByRole('link', { name: `Abrir ${pdf.titulo}` })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Opções/ })).not.toBeInTheDocument()
+  })
+
+  it('apagar que falha mantém o diálogo aberto com a mensagem; de novo com sucesso, fecha', async () => {
+    let falhar = true
+    servidor.use(
+      handlerMateriais([pdf]),
+      http.delete(`/api/materiais/${pdf.id}`, () =>
+        falhar ? HttpResponse.json({ codigo: 'CONFLITO', mensagem: 'Só o autor apaga este material.' }, { status: 409 }) : new HttpResponse(null, { status: 204 }),
+      ),
+    )
+    abrir()
+    const { usuario, menu } = await abrirMenuDe(pdf.titulo)
+    await usuario.click(menu.getByRole('menuitem', { name: 'Apagar' }))
+    const dialogo = await screen.findByRole('dialog', { name: 'Apagar material?' })
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Apagar' }))
+    expect(await within(dialogo).findByRole('alert')).toHaveTextContent('Só o autor apaga este material.')
+    expect(screen.getByRole('dialog', { name: 'Apagar material?' })).toBeInTheDocument()
+    falhar = false
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Apagar' }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Apagar material?' })).not.toBeInTheDocument())
   })
 
   it('mostra o carregando e o erro da API', async () => {

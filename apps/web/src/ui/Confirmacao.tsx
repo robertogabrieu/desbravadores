@@ -11,23 +11,54 @@ interface Propriedades {
   aoCancelar: () => void
   /** Botão de confirmação em vermelho, para ação que apaga. */
   perigo?: boolean
+  /** Mensagem de falha da ação; o diálogo continua aberto para tentar de novo ou cancelar. */
+  erro?: string | null
   children: ReactNode
 }
 
-/** Painel de confirmação centrado; Esc e o fundo cancelam. */
-export function Confirmacao({ aberta, titulo, rotuloConfirmar, aoConfirmar, aoCancelar, perigo = false, children }: Propriedades) {
+const FOCAVEIS = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+/** Tab no último volta ao primeiro, e Shift+Tab no primeiro vai ao último: o foco não sai do diálogo. */
+function prenderTab(evento: KeyboardEvent, painel: HTMLElement) {
+  const focaveis = [...painel.querySelectorAll<HTMLElement>(FOCAVEIS)]
+  const primeiro = focaveis[0]
+  const ultimo = focaveis[focaveis.length - 1]
+  if (!primeiro || !ultimo) return
+  const ativo = document.activeElement
+  const foraDoCiclo = ativo === painel || !painel.contains(ativo)
+  if (evento.shiftKey && (ativo === primeiro || foraDoCiclo)) {
+    evento.preventDefault()
+    ultimo.focus()
+  } else if (!evento.shiftKey && (ativo === ultimo || foraDoCiclo)) {
+    evento.preventDefault()
+    primeiro.focus()
+  }
+}
+
+/** Painel de confirmação centrado; Esc e o fundo cancelam, o Tab fica preso nele e o foco volta a quem o abriu. */
+export function Confirmacao({ aberta, titulo, rotuloConfirmar, aoConfirmar, aoCancelar, perigo = false, erro, children }: Propriedades) {
   const idTitulo = useId()
   const painel = useRef<HTMLDivElement>(null)
+  const cancelar = useRef(aoCancelar)
+
+  useEffect(() => {
+    cancelar.current = aoCancelar
+  }, [aoCancelar])
 
   useEffect(() => {
     if (!aberta) return
+    const quemAbriu = document.activeElement instanceof HTMLElement ? document.activeElement : null
     painel.current?.focus()
     const aoTeclar = (evento: KeyboardEvent) => {
-      if (evento.key === 'Escape') aoCancelar()
+      if (evento.key === 'Escape') cancelar.current()
+      if (evento.key === 'Tab' && painel.current) prenderTab(evento, painel.current)
     }
     document.addEventListener('keydown', aoTeclar)
-    return () => document.removeEventListener('keydown', aoTeclar)
-  }, [aberta, aoCancelar])
+    return () => {
+      document.removeEventListener('keydown', aoTeclar)
+      if (quemAbriu?.isConnected) quemAbriu.focus()
+    }
+  }, [aberta])
 
   if (!aberta) return null
 
@@ -46,6 +77,11 @@ export function Confirmacao({ aberta, titulo, rotuloConfirmar, aoConfirmar, aoCa
           {titulo}
         </h2>
         <div className="text-base text-texto-2">{children}</div>
+        {erro && (
+          <p role="alert" className="text-sm font-medium text-perigo">
+            {erro}
+          </p>
+        )}
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Botao variante="secundario" onClick={aoCancelar}>
             Cancelar

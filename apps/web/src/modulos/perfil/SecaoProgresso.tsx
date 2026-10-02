@@ -135,8 +135,8 @@ function LinhaDoRequisito({ requisito, dbvId, minimo }: { requisito: Requisito; 
   )
 }
 
-function SecaoDoCaderno({ secao, dbvId, minimo }: { secao: Secao; dbvId: string; minimo: string }) {
-  const [aberta, setAberta] = useState(false)
+function SecaoDoCaderno({ secao, dbvId, minimo, abertaDeInicio }: { secao: Secao; dbvId: string; minimo: string; abertaDeInicio: boolean }) {
+  const [aberta, setAberta] = useState(abertaDeInicio)
   const completa = secao.total > 0 && secao.concluidos >= secao.total
   const percentual = secao.total === 0 ? 0 : Math.round((secao.concluidos / secao.total) * 100)
   return (
@@ -149,8 +149,9 @@ function SecaoDoCaderno({ secao, dbvId, minimo }: { secao: Secao; dbvId: string;
       >
         <span className="flex w-full items-center justify-between gap-2 text-sm">
           <span className="font-semibold text-texto">{secao.nome}</span>
-          <span className="flex items-center gap-1 text-texto-2">
+          <span className="flex items-center gap-2 text-texto-2">
             {secao.concluidos}/{secao.total}
+            <span className="font-semibold text-marca">{aberta ? 'Esconder requisitos' : 'Ver requisitos'}</span>
             <ChevronDown aria-hidden className={cn('size-4 transition-transform', aberta && 'rotate-180')} />
           </span>
         </span>
@@ -176,6 +177,7 @@ function Conteudo({ progresso, dbvId }: { progresso: ProgressoDbv; dbvId: string
   if (!principal) return <EstadoVazio titulo="Sem classe neste ano" descricao="Quando houver matrícula, o progresso aparece aqui." />
 
   const pronto = regular !== undefined && regular.percentual >= 100
+  const primeiraIncompleta = principal.secoes.find((secao) => secao.concluidos < secao.total)
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-4">
@@ -201,7 +203,13 @@ function Conteudo({ progresso, dbvId }: { progresso: ProgressoDbv; dbvId: string
 
       <div className="flex flex-col gap-2">
         {principal.secoes.map((secao) => (
-          <SecaoDoCaderno key={secao.codigo} secao={secao} dbvId={dbvId} minimo={`${principal.anoClube}-01-01`} />
+          <SecaoDoCaderno
+            key={secao.codigo}
+            secao={secao}
+            dbvId={dbvId}
+            minimo={`${principal.anoClube}-01-01`}
+            abertaDeInicio={secao.codigo === primeiraIncompleta?.codigo}
+          />
         ))}
       </div>
     </div>

@@ -4,6 +4,7 @@ import { http } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PacoteGuardado } from '../../../offline'
 import { criarPacote } from '../../../testes/handlers/offline'
+import { criarDetalhe as criarDetalheAlbum, criarFoto, handlerAlbum, handlerErroAlbum } from '../../../testes/handlers/fotos'
 import { criarDetalhe, handlerErroReuniao, handlerReuniao } from '../../../testes/handlers/reunioes'
 import { criarVinculo, handlersSessao, uuid } from '../../../testes/handlers/sessao'
 import { renderizarRotas } from '../../../testes/renderizar'
@@ -118,6 +119,38 @@ describe('Detalhe da reunião', () => {
     expect(screen.getAllByRole('img')).toHaveLength(4)
     expect(screen.getByRole('link', { name: 'Ver álbum (6)' })).toHaveAttribute('href', `/galeria/${albumId}`)
     expect(screen.getByRole('link', { name: 'Adicionar fotos a esta reunião' })).toHaveAttribute('href', `/galeria/enviar?reuniao=${ID}`)
+  })
+
+  it('tocar numa miniatura abre a foto em tela cheia, sem remover; o "+" diz "Adicionar fotos"', async () => {
+    const albumId = uuid(800)
+    const fotos = [criarFoto({ id: uuid(801), url: '/f/1.jpg', podeRemover: true }), criarFoto({ id: uuid(802), url: '/f/2.jpg', podeRemover: true })]
+    servidor.use(
+      handlerReuniao(criarDetalhe({ album: { id: albumId, totalFotos: 2, miniaturas: ['/m/1.jpg', '/m/2.jpg'] } })),
+      handlerAlbum(criarDetalheAlbum({ id: albumId, fotos })),
+    )
+    const usuario = userEvent.setup()
+    abrir()
+    expect(await screen.findByRole('link', { name: 'Adicionar fotos a esta reunião' })).toHaveTextContent('Adicionar fotos')
+    await usuario.click(screen.getByRole('button', { name: 'Abrir foto 2' }))
+    const cheia = await screen.findByRole('dialog', { name: 'Foto 2 de 2' })
+    expect(within(cheia).getByRole('img')).toHaveAttribute('src', '/f/2.jpg')
+    expect(within(cheia).queryByRole('button', { name: 'Remover' })).not.toBeInTheDocument()
+    await usuario.click(within(cheia).getByRole('button', { name: 'Fechar' }))
+    expect(screen.queryByRole('dialog', { name: /^Foto/ })).not.toBeInTheDocument()
+  })
+
+  it('a foto em tela cheia avisa quando o álbum não carrega', async () => {
+    const albumId = uuid(800)
+    servidor.use(
+      handlerReuniao(criarDetalhe({ album: { id: albumId, totalFotos: 1, miniaturas: ['/m/1.jpg'] } })),
+      handlerErroAlbum(500, { codigo: 'ERRO_INTERNO', mensagem: 'Falhou o álbum.' }),
+    )
+    const usuario = userEvent.setup()
+    abrir()
+    await usuario.click(await screen.findByRole('button', { name: 'Abrir foto 1' }))
+    expect(await screen.findByText('Falhou o álbum.')).toBeInTheDocument()
+    await usuario.click(screen.getByRole('button', { name: 'Fechar' }))
+    expect(screen.queryByText('Falhou o álbum.')).not.toBeInTheDocument()
   })
 
   it('sem álbum não mostra "Ver álbum" mas mantém o "+"', async () => {

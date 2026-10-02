@@ -24,12 +24,13 @@ interface Propriedades {
 
 const AULA_VAZIA: AulaEmEdicao = { data: null, aulaId: null, dados: { horario: null, local: null, titulo: null } }
 
-/** I3b com cronograma: abas Por data / Sem data; "+" abre a folha de requisitos, cada ação grava. */
+/** I3b com cronograma: abas Por data / Sem data; "Adicionar requisito" numa data ou o toque num requisito sem data agendam, cada ação grava. */
 export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Propriedades) {
   const acoes = useAcoesDeMontagem(montagem.classe.id, ano, cronograma.id, montagem)
   const [aba, setAba] = useState('data')
   const [dataAberta, setDataAberta] = useState<DataDaMontagem | null>(null)
   const [emMovimento, setEmMovimento] = useState<RequisitoDaMontagem | null>(null)
+  const [aAgendar, setAAgendar] = useState<RequisitoDaMontagem | null>(null)
   const [aulaEmEdicao, setAulaEmEdicao] = useState<AulaEmEdicao | null>(null)
   const [confirmandoEnvio, setConfirmandoEnvio] = useState(false)
 
@@ -81,6 +82,7 @@ export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Prop
 
       {aba === 'data' ? (
         <>
+          <p className="text-sm text-texto-2">Toque em “Adicionar requisito” numa data para agendar.</p>
           {montagem.datasLivres && (
             <Botao variante="secundario" onClick={() => setAulaEmEdicao(AULA_VAZIA)}>
               + Nova aula
@@ -110,9 +112,10 @@ export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Prop
                         aria-label="Adicionar requisito nesta data"
                         disabled={acoes.ocupada}
                         onClick={() => setDataAberta(dado)}
-                        className="flex size-[var(--touch-min)] shrink-0 items-center justify-center rounded-botao border border-marca bg-superficie text-marca disabled:opacity-50"
+                        className="flex min-h-[var(--touch-min)] shrink-0 items-center gap-1 rounded-botao border border-marca bg-superficie px-3 text-sm font-semibold text-marca disabled:opacity-50"
                       >
                         <Plus aria-hidden className="size-5" />
+                        Adicionar requisito
                       </button>
                     )
                   }
@@ -123,14 +126,20 @@ export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Prop
         </>
       ) : (
         <div className="flex flex-col gap-2">
-          <p className="text-sm text-texto-2">Toque em + numa data da aba “Por data” para agendar.</p>
+          <p className="text-sm text-texto-2">Toque num requisito para escolher a data.</p>
           {semData.length === 0 && <EstadoVazio titulo="Todos os requisitos já têm data" />}
           {semData.map((requisito) => (
-            <div key={requisito.id} className="flex items-center gap-3 rounded-controle border border-divisor bg-superficie p-3">
+            <button
+              key={requisito.id}
+              type="button"
+              disabled={acoes.ocupada}
+              onClick={() => setAAgendar(requisito)}
+              className="flex min-h-[var(--touch-min)] items-center gap-3 rounded-controle border border-divisor bg-superficie p-3 text-left focus-visible:outline-2 focus-visible:outline-marca disabled:opacity-50"
+            >
               <span className="w-10 shrink-0 text-sm font-bold text-marca">{requisito.codigo}</span>
               <span className="min-w-0 flex-1 text-base text-texto">{requisito.texto}</span>
               {requisito.campo && <EtiquetaCampo />}
-            </div>
+            </button>
           ))}
         </div>
       )}
@@ -170,6 +179,16 @@ export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Prop
           desabilitado={acoes.ocupada}
           aoEscolher={(data) => acoes.colocar(emMovimento.id, data)}
           aoFechar={() => setEmMovimento(null)}
+        />
+      )}
+      {aAgendar && (
+        <FolhaMover
+          titulo={`Agendar ${aAgendar.codigo} para`}
+          requisito={aAgendar}
+          datas={montagem.datas.filter((dado) => aceitaRequisitoNovo(montagem, dado))}
+          desabilitado={acoes.ocupada}
+          aoEscolher={(data) => acoes.colocar(aAgendar.id, data)}
+          aoFechar={() => setAAgendar(null)}
         />
       )}
       {aulaEmEdicao && (

@@ -71,6 +71,8 @@ export function FolhaAdicionar({ dado, livres, desabilitado, aoConfirmar, aoFech
 }
 
 interface PropriedadesMover {
+  /** Padrão "Mover <código> para"; quem agenda um requisito sem data troca o verbo. */
+  titulo?: string
   requisito: RequisitoDaMontagem
   datas: DataDaMontagem[]
   desabilitado: boolean
@@ -79,7 +81,7 @@ interface PropriedadesMover {
 }
 
 /** Folha do "Mover": as datas que aceitam aula (não bloqueadas, sem aula dada). */
-export function FolhaMover({ requisito, datas, desabilitado, aoEscolher, aoFechar }: PropriedadesMover) {
+export function FolhaMover({ titulo, requisito, datas, desabilitado, aoEscolher, aoFechar }: PropriedadesMover) {
   const destinos = datas.filter((dado) => !dataBloqueada(dado) && !dado.aulaDada && dado.data !== requisito.data)
 
   async function escolher(data: string) {
@@ -88,7 +90,7 @@ export function FolhaMover({ requisito, datas, desabilitado, aoEscolher, aoFecha
   }
 
   return (
-    <FolhaLateral aberta titulo={`Mover ${requisito.codigo} para`} aoFechar={aoFechar}>
+    <FolhaLateral aberta titulo={titulo ?? `Mover ${requisito.codigo} para`} aoFechar={aoFechar}>
       <div className="flex flex-col gap-2">
         {destinos.length === 0 && <p className="py-6 text-center text-base text-texto-2">Nenhuma outra data aceita aula.</p>}
         {destinos.map((dado) => (

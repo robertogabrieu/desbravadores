@@ -162,6 +162,10 @@ function ListaDeObservacoes({ classeId, alvo }: { classeId: string; alvo: AlvoDa
   const observacoes = useObservacoes(classeId, alvo)
   const apagar = useApagarObservacao()
   const [aApagar, definirAApagar] = useState<Observacao | null>(null)
+  const fecharApagar = () => {
+    definirAApagar(null)
+    apagar.reset()
+  }
 
   if (observacoes.isPending) return <Carregando rotulo="Carregando observações" />
   if (observacoes.isError) return <ErroDeCarga erro={observacoes.error} aoTentarDeNovo={() => void observacoes.refetch()} />
@@ -179,9 +183,10 @@ function ListaDeObservacoes({ classeId, alvo }: { classeId: string; alvo: AlvoDa
         titulo="Apagar observação?"
         rotuloConfirmar="Apagar"
         perigo
-        aoCancelar={() => definirAApagar(null)}
+        erro={apagar.isError ? mensagemDe(apagar.error) : null}
+        aoCancelar={fecharApagar}
         aoConfirmar={() => {
-          if (aApagar) apagar.mutate(aApagar.id, { onSettled: () => definirAApagar(null) })
+          if (aApagar) apagar.mutate(aApagar.id, { onSuccess: fecharApagar })
         }}
       >
         O texto some para todos. Essa ação não pode ser desfeita.
