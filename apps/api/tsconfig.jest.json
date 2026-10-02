@@ -1,0 +1,8 @@
+// Só para o Jest: cada arquivo é traduzido sozinho, sem montar o programa TypeScript inteiro em
+// cada worker. A checagem de tipos continua no `npm run tipos`, que o CI roda.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "isolatedModules": true
+  }
+}
