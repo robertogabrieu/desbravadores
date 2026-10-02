@@ -1,4 +1,4 @@
-import { AulaEnvio, AulaEnvioSaida } from '@desbravadores/shared'
+import { AulaEnvio, AulaEnvioSaida, ItemTarefa } from '@desbravadores/shared'
 import { toast } from 'sonner'
 import type { z } from 'zod'
 import { registrarTipo } from '../index'
@@ -14,11 +14,14 @@ export interface PayloadAulaFila {
   /** Nome de cada desbravador e código de cada requisito do corpo, só para os avisos depois do envio. */
   nomes: Record<string, string>
   codigos: Record<string, string>
+  /** Nome de cada especialidade da tarefa, para o aviso; ausente em item guardado antes de a tarefa existir. */
+  especialidades?: Record<string, string>
   corpo: z.infer<typeof AulaEnvio>
 }
 
 type Saida = z.infer<typeof AulaEnvioSaida>
 type Par = { dbvId: string; requisitoId: string }
+type Item = z.infer<typeof ItemTarefa>
 
 const RAIZES_INVALIDADAS = ['aulas', 'aula', 'progresso', 'inicio', 'cronograma', 'ranking']
 
@@ -49,6 +52,22 @@ function fundirMarcacoes(anterior: PayloadAulaFila['corpo'], novo: PayloadAulaFi
   }
 }
 
+const chaveItem = (item: Item): string => ('requisitoId' in item ? `requisito:${item.requisitoId}` : `especialidade:${item.especialidadeId}`)
+
+/** Itens da tarefa por item: a última ação vence. Item guardado antes da tarefa existir não traz as listas. */
+function fundirItens(anterior: Partial<PayloadAulaFila['corpo']>, novo: Partial<PayloadAulaFila['corpo']>): Pick<PayloadAulaFila['corpo'], 'tarefaItensAcrescentados' | 'tarefaItensRetirados'> {
+  const acoes = new Map<string, { item: Item; acrescentar: boolean }>()
+  for (const corpo of [anterior, novo]) {
+    for (const item of corpo.tarefaItensAcrescentados ?? []) acoes.set(chaveItem(item), { item, acrescentar: true })
+    for (const item of corpo.tarefaItensRetirados ?? []) acoes.set(chaveItem(item), { item, acrescentar: false })
+  }
+  const todas = [...acoes.values()]
+  return {
+    tarefaItensAcrescentados: todas.filter((a) => a.acrescentar).map((a) => a.item),
+    tarefaItensRetirados: todas.filter((a) => !a.acrescentar).map((a) => a.item),
+  }
+}
+
 /** Presenças por desbravador (a nova vence), marcações por par (a última vence) e a identidade da aula original. */
 export function fundir(anterior: PayloadAulaFila, novo: PayloadAulaFila): PayloadAulaFila {
   const presencas = new Map(anterior.corpo.presencas.map((presenca) => [presenca.dbvId, presenca]))
@@ -59,11 +78,14 @@ export function fundir(anterior: PayloadAulaFila, novo: PayloadAulaFila): Payloa
     correcao: anterior.correcao,
     nomes: { ...anterior.nomes, ...novo.nomes },
     codigos: { ...anterior.codigos, ...novo.codigos },
+    especialidades: { ...anterior.especialidades, ...novo.especialidades },
     corpo: {
       ...novo.corpo,
       aulaPlanejadaId: novo.corpo.aulaPlanejadaId ?? anterior.corpo.aulaPlanejadaId,
       presencas: [...presencas.values()],
       ...fundirMarcacoes(anterior.corpo, novo.corpo),
+      ...fundirItens(anterior.corpo, novo.corpo),
+      tarefaId: anterior.corpo.tarefaId ?? novo.corpo.tarefaId ?? null,
     },
   }
 }
@@ -93,6 +115,12 @@ function avisar(saida: Saida, payload: PayloadAulaFila): void {
   if (invalidos.length > 0) {
     toast.warning(`Requisito que não é mais da classe ficou de fora: ${invalidos.map((item) => `${nome(item.dbvId)} (${codigo(item.requisitoId)})`).join(', ')}.`)
   }
+  const naoEntraram = saida.tarefaItensSemEfeito.filter((sem) => sem.motivo !== 'SEM_PERMISSAO')
+  if (naoEntraram.length > 0) {
+    const nomeDoItem = (item: Item): string =>
+      'requisitoId' in item ? codigo(item.requisitoId) : (payload.especialidades?.[item.especialidadeId] ?? 'especialidade')
+    toast.warning(`Não entrou na tarefa porque não vale mais ou já está em outra tarefa: ${naoEntraram.map((sem) => nomeDoItem(sem.item)).join(', ')}.`)
+  }
   for (const aviso of saida.avisos) toast.warning(aviso)
 }
 
@@ -100,12 +128,15 @@ function avisar(saida: Saida, payload: PayloadAulaFila): void {
 async function atualizarSeguintes(saida: Saida, ctx: ContextoAposEnvio<PayloadAulaFila>): Promise<void> {
   const versoes = new Map(saida.presencas.map((presenca) => [presenca.dbvId, presenca.versao]))
   for (const seguinte of await ctx.seguintesDaChave()) {
+    // Item guardado antes da tarefa existir não traz o campo; sem tarefa no item, não se inventa uma.
+    const { tarefaId }: Partial<PayloadAulaFila['corpo']> = seguinte.payload.corpo
     await ctx.atualizarPayload(seguinte.id, {
       ...seguinte.payload,
       registroAulaId: saida.registroAulaId,
       correcao: true,
       corpo: {
         ...seguinte.payload.corpo,
+        tarefaId: tarefaId ? (saida.tarefaId ?? tarefaId) : null,
         presencas: seguinte.payload.corpo.presencas.map((presenca) => ({ ...presenca, versaoVista: versoes.get(presenca.dbvId) ?? presenca.versaoVista })),
       },
     })

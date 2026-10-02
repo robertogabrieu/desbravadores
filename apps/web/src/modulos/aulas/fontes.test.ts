@@ -1,7 +1,9 @@
 import type { PacoteSaida } from '@desbravadores/shared'
 import { describe, expect, it } from 'vitest'
 import type { z } from 'zod'
-import { baseDoPacote } from './fontes'
+import { criarClasseInstrutor } from '../../testes/handlers/aulas'
+import { criarPacote, criarPacoteInstrutor, criarPacoteInstrutorAntigo } from '../../testes/handlers/offline'
+import { baseDoPacote, catalogoDeEspecialidades, tarefasDaClasse } from './fontes'
 
 type ClasseDoPacote = NonNullable<z.infer<typeof PacoteSaida>['instrutor']>['classes'][number]
 type Registro = ClasseDoPacote['registrosRecentes'][number]
@@ -16,5 +18,30 @@ describe('baseDoPacote', () => {
     const base = baseDoPacote(registro, classe)
     expect(base.concluidosNaAula).toEqual([])
     expect(base.requisitos).toEqual([])
+  })
+})
+
+describe('tarefasDaClasse', () => {
+  it('devolve as tarefas que o pacote guardou para a classe', () => {
+    const tarefa = { id: uuid(1), registroAulaId: uuid(2), data: '2030-03-10', encerrada: false, itens: [{ requisitoId: uuid(3) }] }
+    expect(tarefasDaClasse(criarClasseInstrutor({ tarefas: [tarefa] }))).toEqual([tarefa])
+  })
+
+  it('classe guardada antes das tarefas, sem o campo, vale lista vazia', () => {
+    const antiga = { ...criarClasseInstrutor(), tarefas: undefined } as unknown as ClasseDoPacote
+    expect(tarefasDaClasse(antiga)).toEqual([])
+  })
+})
+
+describe('catalogoDeEspecialidades', () => {
+  it('devolve o catálogo do pacote, mesmo vazio', () => {
+    const catalogo = [{ id: uuid(1), nome: 'Nós e Amarras', area: 'Artes e habilidades manuais' }]
+    expect(catalogoDeEspecialidades(criarPacote({ instrutor: criarPacoteInstrutor({ especialidades: catalogo }) }))).toEqual(catalogo)
+    expect(catalogoDeEspecialidades(criarPacote({ instrutor: criarPacoteInstrutor() }))).toEqual([])
+  })
+
+  it('pacote antigo, sem catálogo, ou sem parte de instrutor: nulo', () => {
+    expect(catalogoDeEspecialidades(criarPacote({ instrutor: criarPacoteInstrutorAntigo() }))).toBeNull()
+    expect(catalogoDeEspecialidades(criarPacote())).toBeNull()
   })
 })

@@ -12,10 +12,12 @@ import { Selecao } from '../../ui/Selecao'
 import { cn } from '../../ui/cn'
 import { dataCurta, diaDaSemana, listaAtualizada } from './datas'
 import { EsqueletoAula } from './EstadosAula'
+import { ParaCasa } from './ParaCasa'
 import {
   acrescentarRequisito,
   alternarPresenca,
   alternarRequisito,
+  chaveItem,
   comporEstado,
   concluidoAntes,
   concluidoEm,
@@ -23,14 +25,19 @@ import {
   concluidosDoServidor,
   efetivamenteConcluido,
   estaPresente,
+  itensDaTarefa,
   itensPendentes,
   lerRascunhoValido,
   montarEntrada,
+  passarItem,
+  passarOQueFaltou,
   pontosProvisorios,
   quemFalta,
   rascunhoDe,
   requisitosVisiveis,
+  tirarItem,
 } from './estado'
+import { catalogoDeEspecialidades, itensEmOutraTarefaAberta, tarefasDaClasse } from './fontes'
 import type { BaseAula, EstadoAula, ItemPendente, Membro, Requisito } from './estado'
 
 type Pacote = z.infer<typeof PacoteSaida>
@@ -60,7 +67,8 @@ export function FormularioAula(props: Propriedades) {
       if (cancelado) return
       const fila = itensPendentes(itens)
       if (!props.base && fila[0]) registroAulaId.current = fila[0].registroAulaId
-      setInicial({ estado: comporEstado({ membros, base: props.base, fila, rascunho: lerRascunhoValido(rascunho) }), fila })
+      const tarefaDoRegistro = tarefasDaClasse(props.classe).find((tarefa) => tarefa.registroAulaId === props.base?.registroAulaId)
+      setInicial({ estado: comporEstado({ membros, base: props.base, fila, rascunho: lerRascunhoValido(rascunho), tarefaDoRegistroId: tarefaDoRegistro?.id }), fila })
     })
     return () => {
       cancelado = true
@@ -101,7 +109,7 @@ interface PropriedadesCorpo extends Propriedades {
 }
 
 function CorpoAula({ pacote, baixadoEm, classe, data, base, chave, registroAulaId, inicial, fila }: PropriedadesCorpo) {
-  const { eu } = useSessao()
+  const { eu, pode } = useSessao()
   const { modo } = useConexao()
   const { avisos } = useFila()
   const salvar = useSalvarAula()
@@ -122,10 +130,12 @@ function CorpoAula({ pacote, baixadoEm, classe, data, base, chave, registroAulaI
   const comFila = concluidosComFila(servidor, fila)
   const presentes = membros.filter((m) => estaPresente(estado, m.dbvId)).length
   const pontos = pontosProvisorios({ membros, estado, servidor, comFila, requisitos, pontosRequisito: pacote.instrutor?.pontosRequisito ?? { pontos: 0, ativo: false } })
+  const catalogo = catalogoDeEspecialidades(pacote)
   const entrada = montarEntrada({
     estado,
     membros,
     requisitos: [...requisitos, ...classe.requisitos],
+    especialidades: catalogo ?? [],
     base,
     registroAulaId,
     aulaPlanejadaId: base ? base.aulaPlanejadaId : (planejada?.aulaPlanejadaId ?? null),
@@ -142,6 +152,11 @@ function CorpoAula({ pacote, baixadoEm, classe, data, base, chave, registroAulaI
   const faltas = quemFalta(membros, estado, comFila, requisitos)
   const pontosAtivos = pacote.instrutor?.pontosRequisito.ativo ?? false
 
+  const tarefas = tarefasDaClasse(classe)
+  const itensParaCasa = itensDaTarefa({ daTarefa: tarefas.find((tarefa) => tarefa.registroAulaId === registroAulaId)?.itens ?? [], fila, estado })
+  const indisponiveis = new Set([...itensEmOutraTarefaAberta(tarefas, registroAulaId), ...itensParaCasa.map(chaveItem)])
+  const haOQueFaltou = faltas.some(({ requisito, nomes }) => nomes.length > 0 && !indisponiveis.has(chaveItem({ requisitoId: requisito.id })))
+
   return (
     <div className="flex flex-col gap-4">
       {modo === 'SEM_CONEXAO' && <FaixaAviso>Sem conexão. A classe fica guardada no aparelho e é enviada quando a internet voltar.</FaixaAviso>}
@@ -150,6 +165,31 @@ function CorpoAula({ pacote, baixadoEm, classe, data, base, chave, registroAulaI
         <p className="text-sm text-texto-2">{`${classe.classe.nome} · ${diaDaSemana(data)} ${dataCurta(data)}`}</p>
         {atualizada && <p className="text-sm text-texto-2">{atualizada}</p>}
       </header>
+
+      <section aria-label="Presença e requisitos" className="flex flex-col gap-2">
+        <p className="text-sm text-texto-2">Toque no nome para marcar presença ou falta. Depois marque os requisitos de quem veio.</p>
+        <ul className="overflow-x-auto rounded-cartao bg-superficie">
+          <li aria-hidden className="flex items-center gap-1 bg-superficie-suave px-3 py-2 text-xs font-extrabold text-texto-2">
+            <span className="min-w-32 flex-1">Desbravador</span>
+            {requisitos.map((requisito) => (
+              <span key={requisito.id} className="w-12 shrink-0 text-center">{requisito.codigo}</span>
+            ))}
+          </li>
+          {membros.map((membro) => (
+            <LinhaDbv
+              key={membro.dbvId}
+              membro={membro}
+              presente={estaPresente(estado, membro.dbvId)}
+              situacao={estado.presencas[membro.dbvId] ?? null}
+              requisitos={requisitos}
+              estado={estado}
+              comFila={comFila}
+              aoAlternarPresenca={() => mudar(alternarPresenca(estado, membro.dbvId))}
+              aoAlternarRequisito={(requisitoId) => mudar(alternarRequisito(estado, comFila, membro.dbvId, requisitoId))}
+            />
+          ))}
+        </ul>
+      </section>
 
       <section aria-labelledby="titulo-requisitos" className="flex flex-col gap-2 rounded-cartao bg-superficie p-3">
         <h2 id="titulo-requisitos" className="text-sm font-bold text-texto-2">
@@ -180,31 +220,6 @@ function CorpoAula({ pacote, baixadoEm, classe, data, base, chave, registroAulaI
         )}
       </section>
 
-      <section aria-label="Presença e requisitos" className="flex flex-col gap-2">
-        <p className="text-sm text-texto-2">Toque no nome para marcar presença ou falta. Depois marque os requisitos de quem veio.</p>
-        <ul className="overflow-x-auto rounded-cartao bg-superficie">
-          <li aria-hidden className="flex items-center gap-1 bg-superficie-suave px-3 py-2 text-xs font-extrabold text-texto-2">
-            <span className="min-w-32 flex-1">Desbravador</span>
-            {requisitos.map((requisito) => (
-              <span key={requisito.id} className="w-12 shrink-0 text-center">{requisito.codigo}</span>
-            ))}
-          </li>
-          {membros.map((membro) => (
-            <LinhaDbv
-              key={membro.dbvId}
-              membro={membro}
-              presente={estaPresente(estado, membro.dbvId)}
-              situacao={estado.presencas[membro.dbvId] ?? null}
-              requisitos={requisitos}
-              estado={estado}
-              comFila={comFila}
-              aoAlternarPresenca={() => mudar(alternarPresenca(estado, membro.dbvId))}
-              aoAlternarRequisito={(requisitoId) => mudar(alternarRequisito(estado, comFila, membro.dbvId, requisitoId))}
-            />
-          ))}
-        </ul>
-      </section>
-
       {requisitos.length > 0 && (
         <section aria-labelledby="titulo-falta" className="flex flex-col gap-1 rounded-cartao bg-alerta-fundo p-3 text-alerta">
           <h2 id="titulo-falta" className="text-sm font-bold">
@@ -218,6 +233,19 @@ function CorpoAula({ pacote, baixadoEm, classe, data, base, chave, registroAulaI
           ))}
         </section>
       )}
+
+      <ParaCasa
+        itens={itensParaCasa}
+        requisitos={classe.requisitos}
+        catalogo={catalogo}
+        indisponiveis={indisponiveis}
+        podeEspecialidade={pode('requisito.marcar')}
+        haOQueFaltou={haOQueFaltou}
+        aoPassarRequisito={(requisitoId) => mudar(passarItem(estado, { requisitoId }))}
+        aoPassarEspecialidade={(especialidadeId) => mudar(passarItem(estado, { especialidadeId }))}
+        aoTirar={(item) => mudar(tirarItem(estado, item))}
+        aoPassarOQueFaltou={() => mudar(passarOQueFaltou(estado, faltas, indisponiveis))}
+      />
 
       <div className="flex flex-col gap-2 border-t border-borda pt-4">
         {modo === 'SEM_CONEXAO' && avisos.instalarNaTelaInicial && <FaixaAviso>Instale o app na tela inicial para não perder classes guardadas</FaixaAviso>}

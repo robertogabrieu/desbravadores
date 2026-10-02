@@ -41,6 +41,10 @@ export interface EntradaSalvarAula {
   requisitosDesmarcados: PayloadAulaFila['corpo']['requisitosDesmarcados']
   nomes: PayloadAulaFila['nomes']
   codigos: PayloadAulaFila['codigos']
+  especialidades: Record<string, string>
+  tarefaId: PayloadAulaFila['corpo']['tarefaId']
+  tarefaItensAcrescentados: PayloadAulaFila['corpo']['tarefaItensAcrescentados']
+  tarefaItensRetirados: PayloadAulaFila['corpo']['tarefaItensRetirados']
 }
 
 /** Não chama a API: guarda a aula na fila (que a envia, com ou sem internet) e volta ao Início. */
@@ -58,6 +62,7 @@ export function useSalvarAula() {
         classeNome: entrada.classeNome,
         nomes: entrada.nomes,
         codigos: entrada.codigos,
+        especialidades: entrada.especialidades,
         corpo: {
           versaoPayload: 1,
           envioId: crypto.randomUUID(),
@@ -68,6 +73,12 @@ export function useSalvarAula() {
           presencas: entrada.presencas,
           requisitosMarcados: entrada.requisitosMarcados,
           requisitosDesmarcados: entrada.requisitosDesmarcados,
+          tarefaId: entrada.tarefaId,
+          tarefaItensAcrescentados: entrada.tarefaItensAcrescentados,
+          tarefaItensRetirados: entrada.tarefaItensRetirados,
+          especialidadesMarcadas: [],
+          especialidadesDesmarcadas: [],
+          tarefasEncerradas: [],
         },
       }
       const chave = `aula:${entrada.classeId}:${entrada.data}`

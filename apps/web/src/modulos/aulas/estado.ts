@@ -1,9 +1,11 @@
+import { ItemTarefa } from '@desbravadores/shared'
 import type { AulaEnvio } from '@desbravadores/shared'
 import { z } from 'zod'
 import type { EntradaSalvarAula } from '../../api/aulas'
 import type { ItemFila } from '../../offline'
 
 type Corpo = z.infer<typeof AulaEnvio>
+export type ItemDaTarefa = z.infer<typeof ItemTarefa>
 
 export interface Requisito {
   id: string
@@ -46,14 +48,23 @@ export interface EstadoAula {
   acoes: Record<string, Acao>
   /** Requisitos acrescentados por "+ Requisito" (ou marcados antes e ainda por enviar). */
   extras: string[]
+  /** Itens para casa passados nesta sessão de edição: a última ação por item decide em qual lista ele está. */
+  itensAcrescentados: ItemDaTarefa[]
+  itensRetirados: ItemDaTarefa[]
+  /** Id da tarefa deste registro: o que o servidor já tem, o da fila, ou um novo que vale até o primeiro envio. */
+  tarefaId: string
 }
 
 export const chavePar = (dbvId: string, requisitoId: string): string => `${dbvId}|${requisitoId}`
+
+export const chaveItem = (item: ItemDaTarefa): string => ('requisitoId' in item ? `requisito:${item.requisitoId}` : `especialidade:${item.especialidadeId}`)
 
 export const RascunhoAula = z.object({
   presencas: z.record(z.string(), z.boolean()),
   acoes: z.record(z.string(), z.enum(['MARCAR', 'DESMARCAR'])),
   extras: z.array(z.string()),
+  itensAcrescentados: z.array(ItemTarefa).default([]),
+  itensRetirados: z.array(ItemTarefa).default([]),
 })
 type Rascunho = z.infer<typeof RascunhoAula>
 
@@ -98,15 +109,26 @@ interface Origem {
   base: BaseAula | null
   fila: ItemPendente[]
   rascunho: Rascunho | null
+  /** Id da tarefa que o servidor já tem para este registro (pacote), quando há. */
+  tarefaDoRegistroId?: string | null
 }
 
+/** Item de tarefa guardado na fila antes de o campo existir não traz as listas. */
+const tarefaDoCorpo = (corpo: Partial<Corpo>) => ({
+  acrescentados: corpo.tarefaItensAcrescentados ?? [],
+  retirados: corpo.tarefaItensRetirados ?? [],
+  tarefaId: corpo.tarefaId ?? null,
+})
+
 /** Base do servidor, por cima a fila da mesma chave, por cima de tudo o rascunho. Nova: todos presentes. */
-export function comporEstado({ membros, base, fila, rascunho }: Origem): EstadoAula {
+export function comporEstado({ membros, base, fila, rascunho, tarefaDoRegistroId = null }: Origem): EstadoAula {
   const padrao = base === null
   const presencas: Record<string, boolean | null> = Object.fromEntries(membros.map((m) => [m.dbvId, padrao ? true : null]))
   for (const linha of base?.presencas ?? []) if (linha.dbvId in presencas) presencas[linha.dbvId] = linha.presente
   const extras = new Set<string>(rascunho?.extras)
+  let tarefaDaFila: string | null = null
   for (const { corpo } of fila) {
+    tarefaDaFila = tarefaDoCorpo(corpo).tarefaId ?? tarefaDaFila
     for (const linha of corpo.presencas) if (linha.dbvId in presencas) presencas[linha.dbvId] = linha.presente
     for (const par of [...corpo.requisitosMarcados, ...corpo.requisitosDesmarcados]) extras.add(par.requisitoId)
   }
@@ -116,6 +138,9 @@ export function comporEstado({ membros, base, fila, rascunho }: Origem): EstadoA
     tocadas: Object.keys(rascunho?.presencas ?? {}).filter((dbvId) => dbvId in presencas),
     acoes: rascunho?.acoes ?? {},
     extras: [...extras],
+    itensAcrescentados: rascunho?.itensAcrescentados ?? [],
+    itensRetirados: rascunho?.itensRetirados ?? [],
+    tarefaId: tarefaDoRegistroId ?? tarefaDaFila ?? crypto.randomUUID(),
   }
 }
 
@@ -125,7 +150,7 @@ export function rascunhoDe(estado: EstadoAula): Rascunho {
     const presente = estado.presencas[dbvId]
     if (presente !== null && presente !== undefined) presencas[dbvId] = presente
   }
-  return { presencas, acoes: estado.acoes, extras: estado.extras }
+  return { presencas, acoes: estado.acoes, extras: estado.extras, itensAcrescentados: estado.itensAcrescentados, itensRetirados: estado.itensRetirados }
 }
 
 export const estaPresente = (estado: EstadoAula, dbvId: string): boolean => estado.presencas[dbvId] === true
@@ -160,6 +185,49 @@ export function alternarRequisito(estado: EstadoAula, base: Set<string>, dbvId: 
 
 export const acrescentarRequisito = (estado: EstadoAula, requisitoId: string): EstadoAula =>
   estado.extras.includes(requisitoId) ? estado : { ...estado, extras: [...estado.extras, requisitoId] }
+
+const semItem = (itens: ItemDaTarefa[], item: ItemDaTarefa): ItemDaTarefa[] => itens.filter((outro) => chaveItem(outro) !== chaveItem(item))
+
+export const passarItem = (estado: EstadoAula, item: ItemDaTarefa): EstadoAula => ({
+  ...estado,
+  itensAcrescentados: estado.itensAcrescentados.some((outro) => chaveItem(outro) === chaveItem(item)) ? estado.itensAcrescentados : [...estado.itensAcrescentados, item],
+  itensRetirados: semItem(estado.itensRetirados, item),
+})
+
+export const tirarItem = (estado: EstadoAula, item: ItemDaTarefa): EstadoAula => ({
+  ...estado,
+  itensAcrescentados: semItem(estado.itensAcrescentados, item),
+  itensRetirados: [...semItem(estado.itensRetirados, item), item],
+})
+
+interface ItensDaTarefa {
+  /** Itens que o servidor já tem na tarefa deste registro. */
+  daTarefa: ItemDaTarefa[]
+  fila: ItemPendente[]
+  estado: EstadoAula
+}
+
+/** Os itens que a tarefa deste registro terá: o do servidor, com a fila e depois a sessão por cima, a última ação vencendo. */
+export function itensDaTarefa({ daTarefa, fila, estado }: ItensDaTarefa): ItemDaTarefa[] {
+  const itens = new Map(daTarefa.map((item) => [chaveItem(item), item]))
+  for (const { corpo } of fila) {
+    const { acrescentados, retirados } = tarefaDoCorpo(corpo)
+    for (const item of acrescentados) itens.set(chaveItem(item), item)
+    for (const item of retirados) itens.delete(chaveItem(item))
+  }
+  for (const item of estado.itensAcrescentados) itens.set(chaveItem(item), item)
+  for (const item of estado.itensRetirados) itens.delete(chaveItem(item))
+  return [...itens.values()]
+}
+
+/** Passa os requisitos do dia que algum presente não cumpriu, menos os `indisponiveis` (já em tarefa aberta da classe ou já passados). */
+export function passarOQueFaltou(estado: EstadoAula, faltas: { requisito: Requisito; nomes: string[] }[], indisponiveis: ReadonlySet<string>): EstadoAula {
+  return faltas
+    .filter(({ nomes }) => nomes.length > 0)
+    .map(({ requisito }): ItemDaTarefa => ({ requisitoId: requisito.id }))
+    .filter((item) => !indisponiveis.has(chaveItem(item)))
+    .reduce(passarItem, estado)
+}
 
 /** Concluído em outra aula: fica feito e travado (nem o servidor nem esta aula o desfazem). */
 export const concluidoAntes = (membro: Membro, base: Set<string>, requisitoId: string): boolean =>
@@ -227,12 +295,14 @@ interface Contexto {
   base: BaseAula | null
   registroAulaId: string
   aulaPlanejadaId: string | null
+  /** Catálogo do pacote: dá o nome das especialidades da tarefa, para os avisos depois do envio. */
+  especialidades: { id: string; nome: string }[]
   classe: { id: string; nome: string }
   data: string
 }
 
 /** O que enfileirar; `null` quando não há o que salvar. Nova envia todos; correção, só o que foi tocado. */
-export function montarEntrada({ estado, membros, requisitos, base, registroAulaId, aulaPlanejadaId, classe, data }: Contexto): EntradaSalvarAula | null {
+export function montarEntrada({ estado, membros, requisitos, especialidades, base, registroAulaId, aulaPlanejadaId, classe, data }: Contexto): EntradaSalvarAula | null {
   const versoes = new Map((base?.presencas ?? []).map((linha) => [linha.dbvId, linha.versao]))
   const paraPresenca = (dbvId: string) => ({ dbvId, presente: estaPresente(estado, dbvId), versaoVista: versoes.get(dbvId) ?? null })
   const presencas = base ? estado.tocadas.map(paraPresenca) : membros.map((m) => paraPresenca(m.dbvId))
@@ -243,7 +313,9 @@ export function montarEntrada({ estado, membros, requisitos, base, registroAulaI
   })
   const marcados = pares.filter((p) => p.acao === 'MARCAR').map(({ dbvId, requisitoId }) => ({ dbvId, requisitoId }))
   const desmarcados = pares.filter((p) => p.acao === 'DESMARCAR').map(({ dbvId, requisitoId }) => ({ dbvId, requisitoId }))
-  if (presencas.length === 0 && marcados.length === 0 && desmarcados.length === 0) return null
+  const tarefaMudou = estado.itensAcrescentados.length > 0 || estado.itensRetirados.length > 0
+  if (presencas.length === 0 && marcados.length === 0 && desmarcados.length === 0 && !tarefaMudou) return null
+  const idsDeEspecialidade = new Set([...estado.itensAcrescentados, ...estado.itensRetirados].flatMap((item) => ('especialidadeId' in item ? [item.especialidadeId] : [])))
   return {
     classeId: classe.id,
     classeNome: classe.nome,
@@ -256,5 +328,9 @@ export function montarEntrada({ estado, membros, requisitos, base, registroAulaI
     requisitosDesmarcados: desmarcados,
     nomes: Object.fromEntries(membros.map((m) => [m.dbvId, m.nome])),
     codigos: Object.fromEntries(requisitos.map((r) => [r.id, r.codigo])),
+    especialidades: Object.fromEntries(especialidades.filter((e) => idsDeEspecialidade.has(e.id)).map((e) => [e.id, e.nome])),
+    tarefaId: tarefaMudou ? estado.tarefaId : null,
+    tarefaItensAcrescentados: estado.itensAcrescentados,
+    tarefaItensRetirados: estado.itensRetirados,
   }
 }

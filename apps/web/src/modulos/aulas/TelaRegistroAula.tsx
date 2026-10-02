@@ -1,12 +1,14 @@
 import { hojeNoFuso } from '@desbravadores/shared'
 import type { PacoteSaida } from '@desbravadores/shared'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import type { z } from 'zod'
 import { useAula, useAulas } from '../../api/aulas'
 import { ErroDaApi } from '../../api/cliente'
 import { useConexao, usePacote } from '../../offline'
 import type { PacoteGuardado } from '../../offline'
+import { baixarPacoteAoVoltarConexao } from '../../offline/pacote'
+import { useSessao } from '../../sessao/useSessao'
 import { Campo } from '../../ui/Campo'
 import { Selecao } from '../../ui/Selecao'
 import { dataCurta, somarDias } from './datas'
@@ -26,7 +28,16 @@ interface PropriedadesModo {
 export function TelaRegistroAula() {
   const { id } = useParams()
   const { modo } = useConexao()
+  const { eu } = useSessao()
   const guardado: PacoteGuardado = usePacote()
+  const [modoAoAbrir] = useState(modo)
+  const usuarioId = eu?.usuario.id
+  const vinculoId = eu?.vinculoAtivo?.id
+
+  // As tarefas da classe vêm do pacote: abrir com conexão o traz de novo, e a tela se atualiza sozinha.
+  useEffect(() => {
+    if (modoAoAbrir !== 'SEM_CONEXAO' && usuarioId && vinculoId) void baixarPacoteAoVoltarConexao(usuarioId, vinculoId)
+  }, [modoAoAbrir, usuarioId, vinculoId])
   const { pacote } = guardado
   const classes = pacote?.instrutor?.classes ?? []
 
