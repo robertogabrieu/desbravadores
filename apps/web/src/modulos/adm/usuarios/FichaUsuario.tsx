@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
+import { Plus } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { useCatalogoPermissoes } from '../../../api/leitura'
 import type { CatalogoPermissao } from '../../../api/leitura'
@@ -14,20 +15,17 @@ import { Confirmacao } from '../../../ui/Confirmacao'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/EstadosDeCarga'
 import { EstadoNaoEncontrado, ehNaoEncontrado } from '../../../ui/EstadoNaoEncontrado'
 import { ListaDePares } from '../../../ui/ListaDePares'
-import { Selo } from '../../../ui/Selo'
+import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { FUSO_PADRAO_DO_CLUBE, textoDoUltimoAcesso } from '../formatos'
-import { useVoltar } from '../navegacao'
-import { escopoDoPapel, mensagemDeErro, oQuePodeFazer } from './vinculos'
+import { useAvisosDaFicha, useVoltar } from '../navegacao'
+import { CartaoDoPapel } from './CartaoDoPapel'
+import { RemoverPapel, useDepoisDePerderOPapelDaSessao } from './RemoverPapel'
+import { ativosEmOrdem } from './remover'
+import { mensagemDeErro } from './vinculos'
 
 export const SITUACAO: Record<Usuario['situacao'], string> = { ATIVO: 'Ativo', CONVIDADO: 'Convite enviado', INATIVO: 'Inativo' }
 
 const GENERO: Record<'F' | 'M', string> = { F: 'Feminino', M: 'Masculino' }
-
-const PAPEL_NO_FEMININO = { ADM: 'Adm', CONSELHEIRO: 'Conselheira', INSTRUTOR: 'Instrutora' } as const
-const PAPEL_NO_MASCULINO = { ADM: 'Adm', CONSELHEIRO: 'Conselheiro', INSTRUTOR: 'Instrutor' } as const
-
-const tituloDoPapel = (vinculo: VinculoUsuario, genero: Usuario['genero']): string =>
-  (genero === 'F' ? PAPEL_NO_FEMININO : PAPEL_NO_MASCULINO)[vinculo.papel]
 
 function situacaoPorExtenso(usuario: Usuario): string {
   if (usuario.situacao === 'CONVIDADO') return SITUACAO.CONVIDADO
@@ -63,61 +61,55 @@ function FichaComCatalogo({ usuario }: { usuario: Usuario }) {
   return <FichaCarregada usuario={usuario} catalogo={catalogo.data} />
 }
 
-function CartaoDoPapel({ vinculo, genero, catalogo }: { vinculo: VinculoUsuario; genero: Usuario['genero']; catalogo: CatalogoPermissao[] }) {
-  const titulo = tituloDoPapel(vinculo, genero)
-  const idTitulo = `papel-${vinculo.id}`
-  const permissoes = oQuePodeFazer(vinculo, catalogo)
-  return (
-    <Cartao role="region" aria-labelledby={idTitulo} className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-2">
-        <h2 id={idTitulo} className="font-titulo text-lg font-bold">
-          {titulo}
-        </h2>
-        <Selo tom="sucesso">Ativo</Selo>
-      </div>
-      <ListaDePares
-        pares={[
-          { rotulo: 'Escopo', valor: escopoDoPapel(vinculo) },
-          {
-            rotulo: 'O que pode fazer',
-            valor:
-              vinculo.papel === 'ADM' ? (
-                'Todas as permissões do clube'
-              ) : (
-                <ul className="flex list-disc flex-col gap-1 pl-5 font-normal">
-                  {permissoes.map((rotulo) => (
-                    <li key={rotulo}>{rotulo}</li>
-                  ))}
-                </ul>
-              ),
-          },
-        ]}
-      />
-    </Cartao>
-  )
-}
-
 function FichaCarregada({ usuario, catalogo }: { usuario: Usuario; catalogo: CatalogoPermissao[] }) {
   const voltar = useVoltar({ para: '/adm/usuarios', rotulo: 'Usuários' })
   const estadoDeVolta = { voltarPara: voltar.para, voltarRotulo: voltar.rotulo }
   const { eu } = useSessao()
+  const { avisos, dispensar } = useAvisosDaFicha()
   const desativar = useDesativarUsuario()
   const reenviar = useReenviarConvite()
-  const [confirmando, setConfirmando] = useState(false)
+  const depoisDePerderOPapel = useDepoisDePerderOPapelDaSessao()
+  const [removendo, setRemovendo] = useState<VinculoUsuario | null>(null)
+  const [desativando, setDesativando] = useState(false)
+  const [erroAoDesativar, setErroAoDesativar] = useState<string>()
   const [aviso, setAviso] = useState<string>()
   const [erro, setErro] = useState<string>()
-  const ativos = usuario.vinculos.filter((v) => v.ativo)
+  const ativos = ativosEmOrdem(usuario.vinculos)
   const ehVoce = eu?.usuario.id === usuario.id
   const caminhoDaEdicao = `/adm/usuarios/${usuario.id}/editar`
+  const acrescentar = (
+    <Link to={`/adm/usuarios/${usuario.id}/papeis/novo`} state={estadoDeVolta} className={estiloDoBotao({ variante: 'secundario' })}>
+      <Plus aria-hidden className="size-4" />
+      Acrescentar papel
+    </Link>
+  )
 
-  const tentar = async (acao: () => Promise<unknown>, sucesso?: string) => {
+  const reenviarConvite = async () => {
     setErro(undefined)
     setAviso(undefined)
+    dispensar()
     try {
-      await acao()
-      setAviso(sucesso)
+      await reenviar.mutateAsync(usuario.id)
+      setAviso('Convite reenviado.')
     } catch (falha) {
       setErro(mensagemDeErro(falha))
+    }
+  }
+
+  const fecharDesativacao = () => {
+    setErroAoDesativar(undefined)
+    setDesativando(false)
+  }
+
+  const desativarNoClube = async () => {
+    if (desativar.isPending) return
+    setErroAoDesativar(undefined)
+    try {
+      await desativar.mutateAsync(usuario.id)
+      if (ehVoce) await depoisDePerderOPapel()
+      else fecharDesativacao()
+    } catch (falha) {
+      setErroAoDesativar(mensagemDeErro(falha))
     }
   }
 
@@ -128,11 +120,34 @@ function FichaCarregada({ usuario, catalogo }: { usuario: Usuario; catalogo: Cat
         sobretitulo={`Usuário · ${SITUACAO[usuario.situacao]}`}
         titulo={usuario.nome}
         acoes={
-          <Link to={caminhoDaEdicao} state={estadoDeVolta} className={estiloDoBotao()}>
-            Editar
-          </Link>
+          usuario.situacao === 'CONVIDADO' && (
+            <>
+              <Link to={caminhoDaEdicao} state={estadoDeVolta} className={estiloDoBotao({ variante: 'secundario' })}>
+                Editar
+              </Link>
+              <Botao variante="secundario" carregando={reenviar.isPending} onClick={() => void reenviarConvite()}>
+                Reenviar convite
+              </Botao>
+            </>
+          )
         }
       />
+
+      {avisos.map((texto) => (
+        <p key={texto} role="status" className="text-sm font-medium text-texto-2">
+          {texto}
+        </p>
+      ))}
+      {erro && (
+        <p role="alert" className="text-sm font-medium text-perigo">
+          {erro}
+        </p>
+      )}
+      {aviso && (
+        <p role="status" className="text-sm font-medium text-texto-2">
+          {aviso}
+        </p>
+      )}
 
       <Cartao className="flex flex-col gap-3">
         <h2 className="font-titulo text-lg font-bold">Dados</h2>
@@ -146,52 +161,50 @@ function FichaCarregada({ usuario, catalogo }: { usuario: Usuario; catalogo: Cat
         />
       </Cartao>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {ativos.map((vinculo) => (
-          <CartaoDoPapel key={vinculo.id} vinculo={vinculo} genero={usuario.genero} catalogo={catalogo} />
-        ))}
-      </div>
-
-      {erro && (
-        <p role="alert" className="text-sm font-medium text-perigo">
-          {erro}
-        </p>
-      )}
-      {aviso && (
-        <p role="status" className="text-sm font-medium text-texto-2">
-          {aviso}
-        </p>
-      )}
-
-      <div className="flex flex-wrap justify-between gap-3">
-        {usuario.situacao === 'CONVIDADO' ? (
-          <Botao variante="secundario" carregando={reenviar.isPending} onClick={() => void tentar(() => reenviar.mutateAsync(usuario.id), 'Convite reenviado.')}>
-            Reenviar convite
-          </Botao>
+      <section aria-labelledby="papeis-no-clube" className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="papeis-no-clube" className="font-titulo text-xl font-bold">
+            Papéis no clube
+          </h2>
+          {acrescentar}
+        </div>
+        {ativos.length === 0 ? (
+          <EstadoVazio titulo="Nenhum papel neste clube" descricao="Sem papel, a pessoa não entra no clube." />
         ) : (
-          <span />
+          <div className="flex flex-col gap-4">
+            {ativos.map((vinculo) => (
+              <CartaoDoPapel
+                key={vinculo.id}
+                usuarioId={usuario.id}
+                vinculo={vinculo}
+                genero={usuario.genero}
+                catalogo={catalogo}
+                estadoDeVolta={estadoDeVolta}
+                aoRemover={() => setRemovendo(vinculo)}
+              />
+            ))}
+          </div>
         )}
-        {ativos.length > 0 ? (
-          <Botao variante="perigo" onClick={() => setConfirmando(true)}>
+      </section>
+
+      {ativos.length > 0 && (
+        <div className="flex justify-end">
+          <Botao variante="texto" className="text-perigo hover:bg-perigo/10" onClick={() => setDesativando(true)}>
             Desativar neste clube
           </Botao>
-        ) : (
-          <Link to={`${caminhoDaEdicao}?acrescentar=1`} state={estadoDeVolta} className={estiloDoBotao({ variante: 'secundario' })}>
-            Acrescentar papel
-          </Link>
-        )}
-      </div>
+        </div>
+      )}
+
+      <RemoverPapel usuario={usuario} vinculo={removendo} aoFechar={() => setRemovendo(null)} />
 
       <Confirmacao
-        aberta={confirmando}
+        aberta={desativando}
         titulo={ehVoce ? 'Desativar o seu próprio acesso?' : `Desativar ${usuario.nome} neste clube?`}
         rotuloConfirmar="Desativar"
         perigo
-        aoCancelar={() => setConfirmando(false)}
-        aoConfirmar={() => {
-          setConfirmando(false)
-          void tentar(() => desativar.mutateAsync(usuario.id))
-        }}
+        erro={erroAoDesativar}
+        aoCancelar={fecharDesativacao}
+        aoConfirmar={() => void desativarNoClube()}
       >
         {ehVoce ? 'Este é o seu usuário. Ao desativar, você perde o acesso a este clube na hora.' : 'A pessoa perde o acesso a este clube na hora.'}
       </Confirmacao>

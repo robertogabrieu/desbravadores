@@ -2,12 +2,16 @@ import { useNavigate } from 'react-router-dom'
 import { usePapelAtivo } from '../../api/auth'
 import { useSessao } from '../../sessao/useSessao'
 import type { Vinculo } from '../../sessao/useSessao'
+import { Botao } from '../../ui/Botao'
 import { Cartao } from '../../ui/Cartao'
 import { escopoDoVinculo, rotuloDoPapel } from './papeis'
 import { TelaAcesso } from './TelaAcesso'
 
+/** Para quem ficou sem papel ativo em qualquer clube: aparece na escolha de papel e no login. */
+export const SEM_ACESSO = 'Você não tem mais acesso a nenhum clube.'
+
 export function EscolherPapel() {
-  const { vinculos } = useSessao()
+  const { vinculos, sair } = useSessao()
   const navegar = useNavigate()
   const papelAtivo = usePapelAtivo()
 
@@ -18,6 +22,21 @@ export function EscolherPapel() {
     } catch {
       // O erro fica em papelAtivo.isError e aparece abaixo.
     }
+  }
+
+  const irParaOLogin = async (): Promise<void> => {
+    void navegar('/login', { replace: true })
+    await sair()
+  }
+
+  if (vinculos.length === 0) {
+    return (
+      <TelaAcesso titulo="Sem acesso" subtitulo={SEM_ACESSO}>
+        <Botao largura="total" onClick={() => void irParaOLogin()}>
+          Ir para o login
+        </Botao>
+      </TelaAcesso>
+    )
   }
 
   return (
