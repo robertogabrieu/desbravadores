@@ -18,6 +18,7 @@
   --color-texto-2: var(--color-text-secondary);
   --color-texto-3: var(--color-text-tertiary);
   --color-borda: var(--color-border);
+  --color-borda-controle: var(--color-border-control);
   --color-divisor: var(--color-divider);
 
   --color-sucesso: var(--color-success);

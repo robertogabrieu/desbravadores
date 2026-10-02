@@ -169,15 +169,36 @@ describe('A1 · lista', () => {
     expect(screen.queryByRole('columnheader', { name: 'Ações' })).not.toBeInTheDocument()
   })
 
-  it('lista vazia ensina o próximo passo', async () => {
+  it('lista vazia ensina o próximo passo, sem botão de limpar filtro que não existe', async () => {
     abrir([])
     expect(await screen.findByText('Nenhum desbravador encontrado')).toBeInTheDocument()
+    expect(screen.getByText(/Cadastre o primeiro desbravador/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Limpar filtros' })).not.toBeInTheDocument()
   })
 
-  it('erro ao carregar aparece em texto', async () => {
-    servidor.use(handlerErroDesbravador('get', '/api/desbravadores', 500, { codigo: 'ERRO_INTERNO', mensagem: 'x' }))
+  it('vazio com filtro ativo diz que o filtro esconde e "Limpar filtros" volta à lista inteira', async () => {
+    servidor.use(handlerUnidades([aguias]), handlerClasses([amigo]), ...handlersConviteAcesso())
+    servidor.use(handlerDesbravadores([]))
+    const { roteador } = renderizarRotas(rotasAdmDesbravadores, '/adm/desbravadores?tipo=LIDER&situacao=false&busca=ze')
+    expect(await screen.findByText(/Os filtros escolhidos escondem/)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Limpar filtros' }))
+    expect(roteador.state.location.search).toBe('')
+  })
+
+  it('o nome na lista traz o ícone de abrir a ficha, e o nome acessível continua sendo o nome', async () => {
+    abrir([criarDesbravador()])
+    const link = await screen.findByRole('link', { name: 'Ana Clara Souza' })
+    expect(link.querySelector('[data-sinal="abre-ficha"]')).not.toBeNull()
+  })
+
+  it('erro ao carregar mostra a mensagem da API e repete a busca pelo "Tentar de novo"', async () => {
+    servidor.use(handlerErroDesbravador('get', '/api/desbravadores', 500, { codigo: 'ERRO_INTERNO', mensagem: 'Falha ao listar.' }))
+    servidor.use(handlerUnidades([aguias]), handlerClasses([amigo]))
     renderizarRotas(rotasAdmDesbravadores, '/adm/desbravadores')
-    expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível carregar os desbravadores')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Falha ao listar.')
+    servidor.use(handlerDesbravadores([criarDesbravador()]))
+    await userEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }))
+    expect(await screen.findByRole('link', { name: 'Ana Clara Souza' })).toBeInTheDocument()
   })
 })
 
@@ -540,6 +561,22 @@ describe('Tipo: Desbravador, Diretoria e Líder', () => {
     expect(screen.getByLabelText('Tipo')).not.toHaveAccessibleDescription()
     await userEvent.selectOptions(unidade, aguias.id)
     expect(unidade).not.toHaveAccessibleDescription()
+  })
+
+  it('no cadastro novo, "Sem unidade" também avisa que só entra na chamada com unidade', async () => {
+    await abrirNovo()
+    const unidade = screen.getByLabelText('Unidade')
+    await waitFor(() => expect(unidade).toHaveTextContent('Águias'))
+    expect(unidade).toHaveAccessibleDescription('Entra na chamada quando tiver uma unidade: escolha abaixo.')
+    await userEvent.selectOptions(unidade, aguias.id)
+    expect(unidade).not.toHaveAccessibleDescription()
+  })
+
+  it('sem nenhuma unidade no clube, o cadastro explica e leva às Unidades', async () => {
+    await abrirNovo(handlerUnidades([]))
+    const unidade = screen.getByLabelText('Unidade')
+    await waitFor(() => expect(unidade).toHaveAccessibleDescription('Entra na chamada quando tiver uma unidade. O clube ainda não tem unidades.'))
+    expect(screen.getByRole('link', { name: 'Cadastrar unidades' })).toHaveAttribute('href', '/adm/unidades')
   })
 
   it('o Tipo só vai no corpo quando muda', async () => {

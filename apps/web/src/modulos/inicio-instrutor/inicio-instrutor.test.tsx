@@ -216,3 +216,31 @@ describe('início do instrutor', () => {
     expect(screen.queryByText('Disponível quando houver internet')).not.toBeInTheDocument()
   })
 })
+
+describe('sinais do início do instrutor', () => {
+  it('a linha da classe e cada atalho mostram a seta de que abrem', async () => {
+    servidor.use(handlerInicioInstrutor())
+    abrir([CLASSE_AMIGO])
+    const minhas = await screen.findByRole('region', { name: 'Minhas classes' })
+    const linha = within(minhas).getByRole('link', { name: /Amigo/ })
+    expect(linha).toHaveAttribute('href', `/classes/${CLASSE_AMIGO.id}/progresso`)
+    expect(linha.querySelector('[data-sinal="navega"]')).not.toBeNull()
+    for (const rotulo of ['Cronograma', 'Registrar classe', 'Materiais', 'Observações', 'Progresso', 'Especialidades']) {
+      expect(screen.getByRole('link', { name: rotulo }).querySelector('[data-sinal="navega"]')).not.toBeNull()
+    }
+  })
+
+  it('"Agrupadas" sem transparência, que derrubava o contraste do título', async () => {
+    servidor.use(handlerInicioInstrutor(criarInicioInstrutor({ classes: [criarClasseDoInstrutor(), criarClasseDoInstrutor({ classe: CLASSE_AGRUPADAS })] })))
+    abrir([CLASSE_AMIGO, CLASSE_AGRUPADAS])
+    const bloco = await screen.findByRole('region', { name: 'Agrupadas' })
+    expect(bloco.className).not.toMatch(/opacity/)
+    expect(within(bloco).getByRole('heading', { name: 'Agrupadas' }).className).not.toMatch(/opacity/)
+  })
+
+  it('o cartão da próxima aula usa o contorno de controle', async () => {
+    servidor.use(handlerInicioInstrutor())
+    abrir([CLASSE_AMIGO])
+    expect(await screen.findByRole('region', { name: 'Próxima classe de Amigo' })).toHaveClass('border-borda-controle')
+  })
+})

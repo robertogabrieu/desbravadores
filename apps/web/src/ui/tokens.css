@@ -22,11 +22,12 @@
   --color-text: #1B221F;
   --color-text-secondary: #5B645F;
   --color-text-tertiary: #4A524E;
-  --color-border: #D9D3C5;
+  --color-border: #D9D3C5;         /* divisória e contorno decorativo: não é para controle */
+  --color-border-control: #8A8375; /* contorno de campo e cartão: 3,76:1 no branco, 3,33:1 no fundo, 3,51:1 na superfície suave (mínimo 3:1) */
   --color-divider: #EFEBE1;
 
   /* Estados */
-  --color-success: #1F7A45;
+  --color-success: #1D7442;        /* 4,86:1 sobre primary-soft e 5,79:1 no branco (era #1F7A45, 4,49:1) */
   --color-danger: #B42318;
   --color-warning: #9A3412;
   --color-warning-bg: #FBEFE3;

@@ -37,7 +37,7 @@ export function ItemNavegacao({ item, layout, aoEscolher }: Propriedades) {
     return (
       <span aria-disabled="true" className={cn(BASE[layout], 'cursor-not-allowed opacity-60')}>
         {conteudo}
-        <span className="rounded-full bg-trilho px-2 py-0.5 text-[11px] font-semibold text-texto-3">em breve</span>
+        <span className="rounded-full bg-trilho px-2 py-0.5 text-xs font-semibold text-texto-3">em breve</span>
       </span>
     )
   }

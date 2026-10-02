@@ -1,7 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Link } from 'react-router-dom'
 import type { ItemRanking } from '../../api/ranking'
 import { useRanking, useRankingUnidades } from '../../api/ranking'
 import { useConexao } from '../../offline'
@@ -10,6 +9,8 @@ import { Avatar } from '../../ui/Avatar'
 import { Chip } from '../../ui/Chip'
 import { EstadoVazio } from '../../ui/EstadoVazio'
 import { Esqueleto } from '../../ui/Esqueleto'
+import { LinhaQueNavega } from '../../ui/LinhaQueNavega'
+import { NomeDaFicha } from '../../ui/LinkDeFicha'
 import { cn } from '../../ui/cn'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../ui/EstadosDeCarga'
 import { nomeDoMes } from '../reunioes/historico/datas'
@@ -27,13 +28,26 @@ function deslocarMes(mes: string, passo: number): string {
 const descricaoDoItem = (item: ItemRanking): string =>
   [item.unidade?.nome, item.classe?.nome].filter(Boolean).join(' · ')
 
-/** Envolve o conteúdo num link para o perfil só quando quem pede pode abri-lo. */
-function ComPerfil({ item, className, children }: { item: ItemRanking; className: string; children: ReactNode }) {
-  if (!item.abrePerfil) return <div className={className}>{children}</div>
+interface PropriedadesComPerfil {
+  item: ItemRanking
+  /** Arranjo do conteúdo dentro do cartão (pódio em coluna, classificação em linha). */
+  className: string
+  children: (nome: ReactNode) => ReactNode
+}
+
+/** Cartão do participante: abre o perfil, com o ícone de ficha ao lado do nome, só quando quem pede pode abri-lo. */
+function ComPerfil({ item, className, children }: PropriedadesComPerfil) {
+  if (!item.abrePerfil) {
+    return (
+      <div className="rounded-cartao border border-borda-controle bg-superficie p-3">
+        <div className={className}>{children(item.nome)}</div>
+      </div>
+    )
+  }
   return (
-    <Link to={`/dbv/${item.dbvId}`} className={className}>
-      {children}
-    </Link>
+    <LinhaQueNavega to={`/dbv/${item.dbvId}`} forma="cartao" sinal="ficha" className="p-3">
+      <div className={className}>{children(<NomeDaFicha nome={item.nome} />)}</div>
+    </LinhaQueNavega>
   )
 }
 
@@ -44,17 +58,15 @@ function Podio({ itens }: { itens: ItemRanking[] }) {
     <ol aria-label="Pódio" className="grid grid-cols-3 items-end gap-2">
       {ordemVisual.map((item) => (
         <li key={item.dbvId}>
-          <ComPerfil
-            item={item}
-            className={cn(
-              'flex flex-col items-center gap-1 rounded-cartao border border-borda bg-superficie p-3 text-center',
-              item.posicao === 1 && 'pb-6',
+          <ComPerfil item={item} className={cn('flex flex-col items-center gap-1 text-center', item.posicao === 1 && 'pb-3')}>
+            {(nome) => (
+              <>
+                <Avatar nome={item.nome} classe={classeDoAvatar(item.classe?.corToken)} />
+                <span className="text-sm font-semibold text-texto">{nome}</span>
+                <span className="font-titulo text-lg font-extrabold text-marca">{item.posicao}º</span>
+                <span className="text-sm text-texto-2">{item.pontos} pts</span>
+              </>
             )}
-          >
-            <Avatar nome={item.nome} classe={classeDoAvatar(item.classe?.corToken)} />
-            <span className="text-sm font-semibold text-texto">{item.nome}</span>
-            <span className="font-titulo text-lg font-extrabold text-marca">{item.posicao}º</span>
-            <span className="text-sm text-texto-2">{item.pontos} pts</span>
           </ComPerfil>
         </li>
       ))}
@@ -67,14 +79,18 @@ function Classificacao({ itens }: { itens: ItemRanking[] }) {
     <ol aria-label="Classificação" className="flex flex-col gap-2">
       {itens.map((item) => (
         <li key={item.dbvId}>
-          <ComPerfil item={item} className="flex min-h-[var(--touch-min)] items-center gap-3 rounded-cartao border border-borda bg-superficie p-3">
-            <span className="w-6 text-center font-titulo font-bold text-texto-2">{item.posicao}</span>
-            <Avatar nome={item.nome} classe={classeDoAvatar(item.classe?.corToken)} />
-            <span className="flex min-w-0 flex-1 flex-col">
-              <span className="truncate font-semibold text-texto">{item.nome}</span>
-              <span className="truncate text-sm text-texto-2">{descricaoDoItem(item)}</span>
-            </span>
-            <span className="font-semibold text-texto">{item.pontos} pts</span>
+          <ComPerfil item={item} className="flex min-h-[var(--touch-min)] items-center gap-3">
+            {(nome) => (
+              <>
+                <span className="w-6 text-center font-titulo font-bold text-texto-2">{item.posicao}</span>
+                <Avatar nome={item.nome} classe={classeDoAvatar(item.classe?.corToken)} />
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate font-semibold text-texto">{nome}</span>
+                  <span className="truncate text-sm text-texto-2">{descricaoDoItem(item)}</span>
+                </span>
+                <span className="font-semibold text-texto">{item.pontos} pts</span>
+              </>
+            )}
           </ComPerfil>
         </li>
       ))}
@@ -130,7 +146,7 @@ export function Ranking() {
           {['Trimestre', 'Ano'].map((periodo) => (
             <button key={periodo} type="button" disabled className="flex min-h-[var(--touch-min)] flex-1 items-center justify-center gap-2 disabled:opacity-60">
               {periodo}
-              <span className="rounded-full bg-trilho px-2 py-0.5 text-[11px] font-semibold text-texto-3">em breve</span>
+              <span className="rounded-full bg-trilho px-2 py-0.5 text-xs font-semibold text-texto-3">em breve</span>
             </button>
           ))}
         </div>

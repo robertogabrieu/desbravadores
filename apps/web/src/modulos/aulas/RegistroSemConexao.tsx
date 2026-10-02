@@ -24,7 +24,7 @@ export function ClassesSemConexao() {
       {classes.map(({ classe, aulasProximas }) => {
         const proxima = aulasProximas[0]
         return (
-          <section key={classe.id} aria-label={`Classe ${classe.nome}`} className="flex flex-col overflow-hidden rounded-cartao border border-borda bg-superficie">
+          <section key={classe.id} aria-label={`Classe ${classe.nome}`} className="flex flex-col overflow-hidden rounded-cartao border border-borda-controle bg-superficie">
             <div className="h-1.5" style={corDaClasse(classe.corToken)} />
             <div className="flex flex-col gap-3 p-4">
               <span className="w-fit rounded-full px-3 py-1 text-sm font-bold text-white" style={corDaClasse(classe.corToken)}>

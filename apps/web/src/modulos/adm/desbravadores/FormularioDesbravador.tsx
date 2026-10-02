@@ -2,6 +2,7 @@ import { DesbravadorCriarEntrada, DesbravadorEditarEntrada, TipoPessoa, anoClube
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { ErroDaApi } from '../../../api/cliente'
 import { consultaConfiguracaoClube } from '../../../api/clube'
 import { hojeDoClube, useCriarDesbravador, useEditarDesbravador, useMatricular, useMoverUnidade } from '../../../api/desbravadores'
@@ -44,6 +45,7 @@ const textoOuNulo = (texto: string): string | null => texto.trim() || null
 
 const AVISO_SAIDA_DA_UNIDADE = 'Sai da unidade e da chamada; continua cursando a classe.'
 const AVISO_ENTRA_SEM_UNIDADE = 'Entra na chamada quando tiver uma unidade: escolha abaixo.'
+const AVISO_CLUBE_SEM_UNIDADES = 'Entra na chamada quando tiver uma unidade. O clube ainda não tem unidades.'
 
 /** "Diretoria pela idade (16 anos até junho) e porque é conselheiro"; nada fora da Diretoria. */
 function textoDosMotivos(motivos: Desbravador['motivosDiretoria']): string | undefined {
@@ -130,8 +132,9 @@ export function FormularioDesbravador({ desbravador, cancelar, aoConcluir }: Pro
   const mostraUnidade = valores.tipo === 'DBV' && ativoOuNovo
   const mostraClasse = !ehLider && ativoOuNovo
   // Desbravador sem unidade (inclusive quem voltou sozinho da Diretoria) fica fora da chamada até ganhar uma.
-  const avisoSemUnidade =
-    desbravador?.tipo === 'DBV' && !desbravador.unidade && valores.unidadeId === '' ? AVISO_ENTRA_SEM_UNIDADE : undefined
+  const semUnidadeNoClube = unidades.data?.length === 0
+  const vaiFicarSemUnidade = (!editando || (desbravador.tipo === 'DBV' && !desbravador.unidade)) && valores.unidadeId === ''
+  const avisoSemUnidade = semUnidadeNoClube ? AVISO_CLUBE_SEM_UNIDADES : vaiFicarSemUnidade ? AVISO_ENTRA_SEM_UNIDADE : undefined
   const mostraResponsavel = !editando || desbravador.contato !== undefined
   const salvando = criar.isPending || editar.isPending || mover.isPending || matricular.isPending
   const classeAtualId = desbravador?.classeAtual?.id ?? ''
@@ -315,6 +318,11 @@ export function FormularioDesbravador({ desbravador, cancelar, aoConcluir }: Pro
                   </option>
                 ))}
               </Selecao>
+            )}
+            {mostraUnidade && semUnidadeNoClube && (
+              <Link to="/adm/unidades" className="self-end text-base font-semibold text-marca underline">
+                Cadastrar unidades
+              </Link>
             )}
             {mostraClasse && (
               <>

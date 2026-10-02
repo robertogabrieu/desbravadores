@@ -417,3 +417,29 @@ describe('início do conselheiro', () => {
     })
   })
 })
+
+describe('sinais do início do conselheiro', () => {
+  it('atalhos com seta, destaque com o ícone de ficha e números sem cara de cartão', async () => {
+    servidor.use(...handlersSessao([CONSELHEIRO]), handlerInicioConselheiro())
+    renderizarRotas(rotasInicio, '/inicio')
+    const destaque = await screen.findByRole('link', { name: /Ana Clara Souza/ })
+    expect(destaque.querySelector('[data-sinal="abre-ficha"]')).not.toBeNull()
+    expect(destaque.querySelector('[data-sinal="navega"]')).toBeNull()
+    for (const rotulo of ['Unidade', 'Reuniões', 'Galeria', 'Ranking']) {
+      expect(screen.getByRole('link', { name: rotulo }).querySelector('[data-sinal="navega"]')).not.toBeNull()
+    }
+    const numero = screen.getByText('DBVs na unidade').parentElement as HTMLElement
+    expect(numero.tagName).not.toBe('A')
+    expect(numero.className).not.toMatch(/\bborder\b/)
+    expect(numero.querySelector('[data-sinal]')).toBeNull()
+  })
+
+  it('sem conexão e sem pacote guardado, os atalhos continuam à vista', async () => {
+    offline.modo = 'SEM_CONEXAO'
+    servidor.use(...handlersSessao([CONSELHEIRO]))
+    renderizarRotas(rotasInicio, '/inicio')
+    expect(await screen.findByText('Disponível quando houver internet')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Galeria' })).toHaveAttribute('href', '/galeria')
+    expect(screen.getByRole('link', { name: 'Unidade' })).toHaveAttribute('href', '/unidade')
+  })
+})

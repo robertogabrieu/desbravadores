@@ -69,7 +69,7 @@ export function PainelAdm({ montagem, cronograma, classe, ano, aoAtualizar }: Pr
       {acoes.erro && <FaixaDeMontagem erro={acoes.erro} aoAtualizar={() => { acoes.limparErro(); aoAtualizar() }} />}
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 min-[900px]:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-        <section aria-label="Requisitos" className="flex flex-col gap-3 rounded-cartao border border-borda bg-superficie p-4">
+        <section aria-label="Requisitos" className="flex flex-col gap-3 rounded-cartao border border-borda-controle bg-superficie p-4">
           <div className="flex items-baseline justify-between">
             <h2 className="font-titulo text-lg font-bold text-texto">Requisitos da classe</h2>
             <span className="text-sm font-semibold text-texto-2">

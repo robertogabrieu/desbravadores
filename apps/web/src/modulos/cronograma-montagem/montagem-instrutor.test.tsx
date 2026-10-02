@@ -158,6 +158,26 @@ describe('I3b · montar', () => {
     await waitFor(() => expect(screen.queryByRole('dialog', { name: /Adicionar em/ })).not.toBeInTheDocument())
   })
 
+  it('o botão de cada data diz "Adicionar requisito" e a aba Por data explica como agendar', async () => {
+    abrir()
+    await screen.findByText('3 de 5 requisitos com data')
+    expect(within(linha('2026-10-04')).getByRole('button', { name: 'Adicionar requisito nesta data' })).toHaveTextContent('Adicionar requisito')
+    expect(screen.getByText('Toque em “Adicionar requisito” numa data para agendar.')).toBeInTheDocument()
+  })
+
+  it('na aba Sem data, tocar num requisito abre a escolha de data e grava com PUT', async () => {
+    const registro = abrir()
+    const usuario = userEvent.setup()
+    await screen.findByText('3 de 5 requisitos com data')
+    await usuario.click(screen.getByRole('tab', { name: 'Sem data (2)' }))
+    expect(screen.getByText('Toque num requisito para escolher a data.')).toBeInTheDocument()
+    await usuario.click(screen.getByRole('button', { name: new RegExp(REQ_LIVRE.texto) }))
+    const folha = screen.getByRole('dialog', { name: `Agendar ${REQ_LIVRE.codigo} para` })
+    await usuario.click(within(folha).getByRole('button', { name: /04\/10/ }))
+    await waitFor(() => expect(registro.chamadas).toHaveLength(1))
+    expect(registro.chamadas[0]).toMatchObject({ metodo: 'PUT', caminho: `/api/cronogramas/${CRONOGRAMA_ID}/requisitos/${REQ_LIVRE.id}`, corpo: { data: '2026-10-04' } })
+  })
+
   it('data de campo: os de campo vêm primeiro, "Sugerido para este dia"', async () => {
     abrir()
     const usuario = userEvent.setup()

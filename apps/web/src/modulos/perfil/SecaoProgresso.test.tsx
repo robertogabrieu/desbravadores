@@ -34,8 +34,10 @@ function abrir(...handlers: Parameters<typeof servidor.use>) {
   return renderizarRotas(rotasPerfil, `/dbv/${ID}`)
 }
 
+/** Abre a seção se ela ainda estiver fechada: a primeira incompleta já começa aberta. */
 async function abrirSecao(nome: string) {
-  await userEvent.click(await screen.findByRole('button', { name: new RegExp(nome) }))
+  const cabecalho = await screen.findByRole('button', { name: new RegExp(nome) })
+  if (cabecalho.getAttribute('aria-expanded') !== 'true') await userEvent.click(cabecalho)
 }
 
 describe('seção de progresso do perfil', () => {
@@ -57,14 +59,30 @@ describe('seção de progresso do perfil', () => {
     expect(screen.queryByText('Avançada recomendada')).not.toBeInTheDocument()
   })
 
-  it('tocar na seção abre os requisitos com a data de conclusão', async () => {
+  it('a primeira seção incompleta começa aberta; as outras abrem pelo "Ver requisitos"', async () => {
     abrir(handlerProgressoDbv())
     expect(await screen.findByText('1/1')).toBeInTheDocument()
-    expect(screen.queryByText('Requisito DE.1')).not.toBeInTheDocument()
-    await abrirSecao('Descoberta espiritual')
+    const gerais = screen.getByRole('button', { name: /Gerais/ })
+    const descoberta = screen.getByRole('button', { name: /Descoberta espiritual/ })
+    expect(descoberta).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText(/Requisito DE\.1/)).toBeInTheDocument()
     expect(screen.getByText('Concluído em 02/04/2020')).toBeInTheDocument()
     expect(screen.getByText('Ainda não concluído')).toBeInTheDocument()
+    expect(gerais).toHaveAttribute('aria-expanded', 'false')
+    expect(gerais).toHaveTextContent('Ver requisitos')
+    expect(screen.queryByRole('list', { name: 'Requisitos de Gerais' })).not.toBeInTheDocument()
+    await userEvent.click(gerais)
+    expect(screen.getByRole('list', { name: 'Requisitos de Gerais' })).toBeInTheDocument()
+  })
+
+  it('tudo concluído: nenhuma seção começa aberta', async () => {
+    const base = criarProgressoDbv()
+    const [matricula] = base.matriculas
+    const secoes = matricula.secoes.map((secao) => ({ ...secao, concluidos: secao.total }))
+    abrir(handlerProgressoDbv({ matriculas: [{ ...matricula, secoes }] }))
+    const descoberta = await screen.findByRole('button', { name: /Descoberta espiritual/ })
+    expect(descoberta).toHaveAttribute('aria-expanded', 'false')
+    expect(descoberta).toHaveTextContent('Ver requisitos')
   })
 
   it('marca o requisito com a data escolhida (limitada ao início do ano do clube e hoje)', async () => {

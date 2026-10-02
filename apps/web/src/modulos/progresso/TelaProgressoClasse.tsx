@@ -8,6 +8,8 @@ import { useSessao } from '../../sessao/useSessao'
 import { Abas } from '../../ui/Abas'
 import { Cartao } from '../../ui/Cartao'
 import { EstadoVazio } from '../../ui/EstadoVazio'
+import { LinhaQueNavega } from '../../ui/LinhaQueNavega'
+import { NomeDaFicha } from '../../ui/LinkDeFicha'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../ui/EstadosDeCarga'
 import { cn } from '../../ui/cn'
 import { ChipsDeClasse } from './ChipsDeClasse'
@@ -21,19 +23,21 @@ function LinhaDoDbv({ item }: { item: Item }) {
   const abaixo = item.percentual < LIMIAR_PROGRESSO_ALERTA
   return (
     <li>
-      <Link to={`/dbv/${item.dbvId}`} className="flex min-h-[var(--touch-min)] flex-col gap-2 rounded-cartao border border-borda bg-superficie p-3 focus-visible:outline-2 focus-visible:outline-marca">
-        <div className="flex items-baseline gap-3">
-          <span className="flex flex-1 items-baseline gap-2 text-base font-semibold text-texto">
-            {item.nome}
-            {item.voce && <span className="rounded-full bg-marca-suave px-2 py-0.5 text-xs font-bold text-texto">você</span>}
-          </span>
-          <span className="text-sm text-texto-2">{`faltam ${item.faltam} req.`}</span>
-          <span data-abaixo={abaixo} className={cn('w-12 text-right text-base font-extrabold', abaixo ? 'text-alerta' : 'text-texto')}>{`${item.percentual}%`}</span>
+      <LinhaQueNavega to={`/dbv/${item.dbvId}`} forma="cartao" sinal="ficha" className="min-h-[var(--touch-min)] p-3">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-baseline gap-3">
+            <span className="flex flex-1 items-baseline gap-2 text-base font-semibold text-texto">
+              <NomeDaFicha nome={item.nome} />
+              {item.voce && <span className="rounded-full bg-marca-suave px-2 py-0.5 text-xs font-bold text-texto">você</span>}
+            </span>
+            <span className="text-sm text-texto-2">{`faltam ${item.faltam} req.`}</span>
+            <span data-abaixo={abaixo} className={cn('w-12 text-right text-base font-extrabold', abaixo ? 'text-alerta' : 'text-texto')}>{`${item.percentual}%`}</span>
+          </div>
+          <div aria-hidden className="h-2 overflow-hidden rounded-full bg-trilho">
+            <div className={cn('h-full rounded-full', abaixo ? 'bg-alerta' : 'bg-marca')} style={{ width: `${Math.min(100, item.percentual)}%` }} />
+          </div>
         </div>
-        <div aria-hidden className="h-2 overflow-hidden rounded-full bg-trilho">
-          <div className={cn('h-full rounded-full', abaixo ? 'bg-alerta' : 'bg-marca')} style={{ width: `${Math.min(100, item.percentual)}%` }} />
-        </div>
-      </Link>
+      </LinhaQueNavega>
     </li>
   )
 }

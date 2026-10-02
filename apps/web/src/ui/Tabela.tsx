@@ -28,7 +28,7 @@ export function Tabela<T>({ colunas, itens, chaveItem, pagina, porPagina, total,
   const totalPaginas = Math.max(1, Math.ceil(total / porPagina))
 
   return (
-    <div className="overflow-hidden rounded-cartao border border-borda bg-superficie">
+    <div className="overflow-hidden rounded-cartao border border-borda-controle bg-superficie">
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-left text-base">
           <thead className="bg-superficie-suave text-sm text-texto-2">

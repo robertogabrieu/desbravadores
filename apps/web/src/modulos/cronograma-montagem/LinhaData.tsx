@@ -69,7 +69,7 @@ export function LinhaData({ dado, requisitos, destaqueCampo = false, desabilitad
               {requisito.codigo} · {requisito.texto}
             </span>
             {aoMover && dado.conflito && !dado.aulaDada && (
-              <Botao variante="secundario" className="min-h-9 px-3 text-sm" disabled={desabilitada} onClick={() => aoMover(requisito)}>
+              <Botao variante="secundario" className="px-3 text-sm" disabled={desabilitada} onClick={() => aoMover(requisito)}>
                 Mover
               </Botao>
             )}

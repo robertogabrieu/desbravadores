@@ -115,3 +115,20 @@ describe('minhas classes', () => {
     expect(screen.queryByText('Progresso médio')).not.toBeInTheDocument()
   })
 })
+
+describe('atalhos no cartão da classe', () => {
+  it('Observações e Especialidades viram botões no cartão, ao lado de Cronograma, Progresso e Materiais', async () => {
+    servidor.use(handlerInicioInstrutor(criarInicioInstrutor({ classes: [criarClasseDoInstrutor()] })))
+    abrir()
+    const amigo = within((await screen.findByRole('heading', { name: 'Amigo' })).closest('article') as HTMLElement)
+    expect(amigo.getByRole('link', { name: 'Observações' })).toHaveAttribute('href', `/observacoes?classe=${CLASSE_AMIGO.id}`)
+    expect(amigo.getByRole('link', { name: 'Especialidades' })).toHaveAttribute('href', `/especialidades?classe=${CLASSE_AMIGO.id}`)
+  })
+
+  it('o cartão usa o contorno de controle', async () => {
+    servidor.use(handlerInicioInstrutor(criarInicioInstrutor({ classes: [criarClasseDoInstrutor()] })))
+    abrir()
+    const artigo = (await screen.findByRole('heading', { name: 'Amigo' })).closest('article')
+    expect(artigo).toHaveClass('border-borda-controle')
+  })
+})

@@ -102,3 +102,13 @@ describe('Progresso da classe', () => {
     expect(consultas).toBe(0)
   })
 })
+
+describe('sinais do progresso', () => {
+  it('cada desbravador abre a ficha, com o ícone ao lado do nome e sem seta', async () => {
+    servidor.use(handlerProgressoClasse())
+    abrir()
+    const link = await screen.findByRole('link', { name: /Miguel Teixeira/ })
+    expect(link.querySelector('[data-sinal="abre-ficha"]')).not.toBeNull()
+    expect(link.querySelector('[data-sinal="navega"]')).toBeNull()
+  })
+})

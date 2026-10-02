@@ -144,3 +144,19 @@ describe('A3 · nova e editar (telas dedicadas)', () => {
     expect(await screen.findByRole('heading', { name: 'Não encontramos esta unidade' })).toBeInTheDocument()
   })
 })
+
+describe('lista de unidades: sinal de navegação e erro', () => {
+  it('cada cartão de unidade mostra a seta de que abre', async () => {
+    abrir()
+    const cartaoDasAguias = await screen.findByRole('link', { name: /^Águias/ })
+    expect(cartaoDasAguias.querySelector('[data-sinal="navega"]')).not.toBeNull()
+  })
+
+  it('erro ao carregar mostra a mensagem da API e repete a busca pelo "Tentar de novo"', async () => {
+    abrir('/adm/unidades', http.get('/api/unidades', () => HttpResponse.json({ codigo: 'ERRO_INTERNO', mensagem: 'Falha ao listar.' }, { status: 500 })))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Falha ao listar.')
+    servidor.use(handlerUnidades([aguias]))
+    await userEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }))
+    expect(await screen.findByRole('link', { name: /^Águias/ })).toBeInTheDocument()
+  })
+})

@@ -51,7 +51,7 @@ const idsDe = (mensagens: Mensagem[]): string | undefined => mensagens.map((mens
 /** Uma linha por pessoa; os erros e avisos dela vêm logo abaixo. A grade rola dentro de si no celular. */
 export function GradeImportacao({ linhas, unidades, classes, aoEditar, aoMarcar }: Propriedades) {
   return (
-    <div className="overflow-x-auto rounded-cartao border border-borda bg-superficie">
+    <div className="overflow-x-auto rounded-cartao border border-borda-controle bg-superficie">
       <table className="w-full border-collapse text-left text-base">
         <thead className="bg-superficie-suave text-sm text-texto-2">
           <tr>

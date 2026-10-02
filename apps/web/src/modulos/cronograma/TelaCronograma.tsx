@@ -72,7 +72,7 @@ function CartaoDaAula({ aula, classeId }: { aula: AulaDoCronograma; classeId: st
       <div className="flex w-12 shrink-0 flex-col items-center">
         <span className={cn('flex size-12 flex-col items-center justify-center rounded-botao', aula.situacao === 'HOJE' ? 'bg-marca text-white' : 'bg-superficie text-texto')}>
           <span className="font-titulo text-lg font-extrabold leading-none">{dia}</span>
-          <span className="text-[10px] font-bold">{MESES[Number(mes) - 1]}</span>
+          <span className="text-xs font-bold">{MESES[Number(mes) - 1]}</span>
         </span>
         <span aria-hidden className="my-1 w-0.5 grow bg-borda" />
       </div>

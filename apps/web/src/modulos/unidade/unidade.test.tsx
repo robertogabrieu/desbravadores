@@ -144,3 +144,15 @@ describe('Minha unidade', () => {
     expect(await screen.findByText('Disponível quando houver internet')).toBeInTheDocument()
   })
 })
+
+describe('sinais e caminhos da unidade', () => {
+  it('cada desbravador abre a ficha com o ícone ao lado do nome, e a Galeria vira botão na tela', async () => {
+    entrarComo([AGUIAS])
+    servidor.use(membrosPorUnidade({ [AGUIAS.id]: [criarMembro({ dbvId: uuid(301), nome: 'Ana Clara Souza' })] }))
+    abrir()
+    const link = await screen.findByRole('link', { name: /Ana Clara Souza/ })
+    expect(link.querySelector('[data-sinal="abre-ficha"]')).not.toBeNull()
+    expect(link.querySelector('[data-sinal="navega"]')).toBeNull()
+    expect(screen.getByRole('link', { name: 'Galeria' })).toHaveAttribute('href', '/galeria')
+  })
+})

@@ -6,6 +6,7 @@ import type { Album } from '../../api/fotos'
 import { useConexao } from '../../offline'
 import { useSessao } from '../../sessao/useSessao'
 import { EstadoVazio } from '../../ui/EstadoVazio'
+import { LinhaQueNavega } from '../../ui/LinhaQueNavega'
 import { Selecao } from '../../ui/Selecao'
 import { contarFotos, diaMes, quemEnviou } from './formatos'
 import { ResultadoConsulta } from './ResultadoConsulta'
@@ -17,22 +18,24 @@ function CartaoAlbum({ album }: { album: Album }) {
   const autores = quemEnviou(album.enviadoPor)
   return (
     <li>
-      <Link to={`/galeria/${album.id}`} className="flex min-h-[var(--touch-min)] items-center gap-3 rounded-cartao border border-borda bg-superficie p-3">
-        {album.capaUrl ? (
-          <img src={album.capaUrl} alt={`Capa de ${album.titulo}`} className="size-16 shrink-0 rounded-botao object-cover" />
-        ) : (
-          <span className="flex size-16 shrink-0 items-center justify-center rounded-botao bg-marca-suave text-marca">
-            <Image aria-hidden className="size-6" />
+      <LinhaQueNavega to={`/galeria/${album.id}`} forma="cartao" className="min-h-[var(--touch-min)] p-3">
+        <span className="flex items-center gap-3">
+          {album.capaUrl ? (
+            <img src={album.capaUrl} alt={`Capa de ${album.titulo}`} className="size-16 shrink-0 rounded-botao object-cover" />
+          ) : (
+            <span className="flex size-16 shrink-0 items-center justify-center rounded-botao bg-marca-suave text-marca">
+              <Image aria-hidden className="size-6" />
+            </span>
+          )}
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="font-titulo text-lg font-bold text-texto">{album.titulo}</span>
+            <span className="text-sm text-texto-2">
+              <span>{diaMes(album.data)}</span> · <span>{contarFotos(album.totalFotos)}</span>
+            </span>
+            {autores && <span className="text-sm text-texto-2">{autores}</span>}
           </span>
-        )}
-        <span className="flex min-w-0 flex-1 flex-col">
-          <span className="font-titulo text-lg font-bold text-texto">{album.titulo}</span>
-          <span className="text-sm text-texto-2">
-            <span>{diaMes(album.data)}</span> · <span>{contarFotos(album.totalFotos)}</span>
-          </span>
-          {autores && <span className="text-sm text-texto-2">{autores}</span>}
         </span>
-      </Link>
+      </LinhaQueNavega>
     </li>
   )
 }

@@ -8,6 +8,8 @@ import { useClasses, useUnidades } from '../../../api/leitura'
 import { Botao, estiloDoBotao } from '../../../ui/Botao'
 import { Campo } from '../../../ui/Campo'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
+import { ErroDeCarga } from '../../../ui/EstadosDeCarga'
+import { LinkDeFicha } from '../../../ui/LinkDeFicha'
 import { Selecao } from '../../../ui/Selecao'
 import { Tabela } from '../../../ui/Tabela'
 import type { ColunaTabela } from '../../../ui/Tabela'
@@ -65,20 +67,14 @@ export function ListaDesbravadores() {
   })
 
   const filtrar = (chave: string) => (valor: string) => mudar({ [chave]: valor, pagina: '' })
+  const comFiltro = Boolean(busca.trim() || unidade || classeId || tipo) || situacao !== 'true'
+  const limparFiltros = () => mudar({ busca: '', unidade: '', classe: '', situacao: '', tipo: '', pagina: '' })
 
   const colunas: ColunaTabela<Desbravador>[] = [
     {
       chave: 'nome',
       titulo: 'Nome',
-      celula: (d) => (
-        <Link
-          to={`/adm/desbravadores/${d.id}`}
-          state={estadoDeVolta}
-          className="font-semibold text-marca underline-offset-2 hover:underline"
-        >
-          {d.nome}
-        </Link>
-      ),
+      celula: (d) => <LinkDeFicha to={`/adm/desbravadores/${d.id}`} state={estadoDeVolta} nome={d.nome} />,
     },
     { chave: 'idade', titulo: 'Idade', celula: (d) => d.idade },
     { chave: 'unidade', titulo: 'Unidade', celula: (d) => (d.tipo === 'DBV' ? (d.unidade?.nome ?? 'Sem unidade') : '—') },
@@ -150,11 +146,7 @@ export function ListaDesbravadores() {
       </div>
 
       {consulta.isPending && <p className="text-base text-texto-2">Carregando…</p>}
-      {consulta.isError && (
-        <p role="alert" className="text-base font-medium text-perigo">
-          Não foi possível carregar os desbravadores. Tente de novo.
-        </p>
-      )}
+      {consulta.isError && <ErroDeCarga erro={consulta.error} aoTentarDeNovo={() => void consulta.refetch()} />}
       {consulta.data && (
         <Tabela
           colunas={colunas}
@@ -164,7 +156,21 @@ export function ListaDesbravadores() {
           porPagina={POR_PAGINA}
           total={total}
           aoMudarPagina={(nova) => mudar({ pagina: nova === 1 ? '' : String(nova) })}
-          vazio={<EstadoVazio titulo="Nenhum desbravador encontrado" descricao="Mude os filtros ou cadastre um novo desbravador." />}
+          vazio={
+            comFiltro ? (
+              <EstadoVazio
+                titulo="Nenhum desbravador encontrado"
+                descricao="Os filtros escolhidos escondem todos os cadastros. Limpe os filtros para ver a lista inteira."
+                acao={
+                  <Botao variante="secundario" onClick={limparFiltros}>
+                    Limpar filtros
+                  </Botao>
+                }
+              />
+            ) : (
+              <EstadoVazio titulo="Nenhum desbravador encontrado" descricao="Cadastre o primeiro desbravador pelo botão “Novo desbravador”." />
+            )
+          }
         />
       )}
 
