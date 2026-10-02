@@ -3,7 +3,7 @@ import type { InputHTMLAttributes, ReactNode } from 'react'
 import { cn } from './cn'
 
 export const estiloControle =
-  'min-h-[var(--touch-min)] w-full rounded-controle border border-borda bg-superficie px-3.5 text-base text-texto placeholder:text-texto-3 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-marca disabled:bg-superficie-suave aria-[invalid=true]:border-perigo'
+  'min-h-[var(--touch-min)] w-full rounded-controle border border-borda-controle bg-superficie px-3.5 text-base text-texto placeholder:text-texto-3 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-marca disabled:bg-superficie-suave aria-[invalid=true]:border-perigo'
 
 interface PropriedadesRotulo {
   rotulo: string

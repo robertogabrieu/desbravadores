@@ -262,7 +262,7 @@ function FormularioDeEnvio({ unidades, unidadeId, aoTrocarUnidade, reuniaoDoLink
               <li key={foto.id} className="relative aspect-square overflow-hidden rounded-botao bg-marca-suave">
                 <img src={foto.previa} alt={`Prévia de ${foto.arquivo.name}`} className="size-full object-cover" />
                 {!enviadas && (
-                  <button type="button" aria-label="Remover foto" onClick={() => tirar(foto.id)} className="absolute right-1 top-1 flex size-8 items-center justify-center rounded-full bg-black/60 text-white">
+                  <button type="button" aria-label="Remover foto" onClick={() => tirar(foto.id)} className="absolute right-1 top-1 flex size-[var(--touch-min)] items-center justify-center rounded-full bg-black/60 text-white">
                     <X aria-hidden className="size-4" />
                   </button>
                 )}

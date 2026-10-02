@@ -9,6 +9,28 @@ interface Propriedades {
   children: ReactNode
 }
 
+const FOCAVEIS = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+/** Mantém o Tab dentro do painel: do último volta ao primeiro, e do primeiro (ou do painel) vai ao último. */
+function prenderTab(evento: KeyboardEvent, painel: HTMLElement) {
+  const focaveis = [...painel.querySelectorAll<HTMLElement>(FOCAVEIS)]
+  const primeiro = focaveis[0]
+  const ultimo = focaveis[focaveis.length - 1]
+  if (!primeiro || !ultimo) {
+    evento.preventDefault()
+    return
+  }
+  const atual = document.activeElement
+  const foraDoPainel = !(atual instanceof Node) || !painel.contains(atual)
+  if (evento.shiftKey && (atual === primeiro || atual === painel || foraDoPainel)) {
+    evento.preventDefault()
+    ultimo.focus()
+  } else if (!evento.shiftKey && (atual === ultimo || foraDoPainel)) {
+    evento.preventDefault()
+    primeiro.focus()
+  }
+}
+
 /** Painel que entra pela direita (tela cheia no celular): usado para Novo/Editar. */
 export function FolhaLateral({ aberta, titulo, aoFechar, children }: Propriedades) {
   const idTitulo = useId()
@@ -16,9 +38,18 @@ export function FolhaLateral({ aberta, titulo, aoFechar, children }: Propriedade
 
   useEffect(() => {
     if (!aberta) return
+    const quemAbriu = document.activeElement
     painel.current?.focus()
+    return () => {
+      if (quemAbriu instanceof HTMLElement && quemAbriu.isConnected) quemAbriu.focus()
+    }
+  }, [aberta])
+
+  useEffect(() => {
+    if (!aberta) return
     const aoTeclar = (evento: KeyboardEvent) => {
       if (evento.key === 'Escape') aoFechar()
+      if (evento.key === 'Tab' && painel.current) prenderTab(evento, painel.current)
     }
     document.addEventListener('keydown', aoTeclar)
     return () => document.removeEventListener('keydown', aoTeclar)
