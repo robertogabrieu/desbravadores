@@ -3,6 +3,7 @@ import { HttpResponse, http } from 'msw'
 import type { z } from 'zod'
 
 type Pacote = z.infer<typeof PacoteSaida>
+type PacoteInstrutor = NonNullable<Pacote['instrutor']>
 
 const uuid = (n: number): string => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
 
@@ -54,3 +55,20 @@ export const handlerRefreshForaDoContrato = () => http.post('/api/auth/refresh',
 
 export const handlerRefreshRecusado = (status = 401, codigo = 'NAO_AUTENTICADO') =>
   http.post('/api/auth/refresh', () => HttpResponse.json({ codigo, mensagem: 'Sessão encerrada' }, { status }))
+
+/** Parte do instrutor do pacote, com catálogo de especialidades vazio e sem pontos de especialidade. */
+export function criarPacoteInstrutor(parcial: Partial<PacoteInstrutor> = {}): PacoteInstrutor {
+  return {
+    classes: [],
+    especialidades: [],
+    pontosRequisito: { pontos: 0, ativo: false },
+    pontosEspecialidade: { pontos: 0, ativo: false },
+    ...parcial,
+  }
+}
+
+/** Pacote guardado antes da tarefa para casa: sem catálogo de especialidades (a tela pede internet). */
+export function criarPacoteInstrutorAntigo(parcial: Partial<PacoteInstrutor> = {}): PacoteInstrutor {
+  const { especialidades: _semCatalogo, ...pacote } = criarPacoteInstrutor(parcial)
+  return pacote
+}

@@ -15,6 +15,7 @@ export function criarClasseDoInstrutor(parcial: Partial<ClasseDoInstrutor> = {})
     aulaHoje: false,
     aulaHojeRegistrada: false,
     aulasDadas: 11,
+    paraCobrar: null,
     ...parcial,
   }
 }

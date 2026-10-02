@@ -1,10 +1,11 @@
-import type { AulaDetalhe, AulaResumo, PacoteSaida } from '@desbravadores/shared'
+import type { AulaDetalhe, AulaEnvioSaida, AulaResumo, PacoteSaida } from '@desbravadores/shared'
 import { HttpResponse, http } from 'msw'
 import type { z } from 'zod'
 import { uuid } from './sessao'
 
 type Detalhe = z.infer<typeof AulaDetalhe>
 type Resumo = z.infer<typeof AulaResumo>
+type SaidaEnvio = z.infer<typeof AulaEnvioSaida>
 type ClasseInstrutor = NonNullable<z.infer<typeof PacoteSaida>['instrutor']>['classes'][number]
 
 export const CLASSE_COMPANHEIRO = { id: uuid(400), nome: 'Companheiro', tipo: 'REGULAR', trilha: 'INDIVIDUAL', corToken: 'classe-companheiro' } as const
@@ -29,7 +30,24 @@ export function criarDetalheAula(parcial: Partial<Detalhe> = {}): Detalhe {
 }
 
 export function criarClasseInstrutor(parcial: Partial<ClasseInstrutor> = {}): ClasseInstrutor {
-  return { classe: CLASSE_COMPANHEIRO, membros: [], requisitos: [], aulasProximas: [], registrosRecentes: [], ...parcial }
+  return { classe: CLASSE_COMPANHEIRO, membros: [], requisitos: [], aulasProximas: [], registrosRecentes: [], tarefas: [], ...parcial }
+}
+
+/** Resposta de PUT /api/sync/aulas/:uuid sem nada de especial: sem conflito, sem aviso, sem tarefa. */
+export function criarSaidaEnvioAula(parcial: Partial<SaidaEnvio> = {}): SaidaEnvio {
+  return {
+    registroAulaId: uuid(700),
+    presencas: [],
+    conflitos: [],
+    ignorados: [],
+    requisitosSemEfeito: [],
+    avisos: [],
+    totalPontos: 0,
+    tarefaId: null,
+    tarefaItensSemEfeito: [],
+    especialidadesSemEfeito: [],
+    ...parcial,
+  }
 }
 
 export const handlerAulas = (resumos: Resumo[]) => http.get('/api/classes/:id/aulas', () => HttpResponse.json(resumos))

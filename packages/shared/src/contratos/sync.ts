@@ -4,6 +4,7 @@ import { DataCivil, InstanteIso, Uuid } from './comum'
 import { RefClasse } from './auth'
 import { MarcacaoChamadaServidor } from './reunioes'
 import { RequisitoResumo } from './cronograma'
+import { ItemTarefa } from './aulas'
 import { EventoSaida } from './calendario'
 
 export const MembroPacote = z.object({
@@ -27,6 +28,8 @@ export const PacoteInstrutor = z.object({
       conclusoes: z.array(z.object({
         requisitoId: Uuid, concluidoEm: DataCivil, registroAulaId: Uuid.nullable(),
       })).default([]),
+      /** Conclusões ativas das especialidades que estão nas tarefas da classe. */
+      especialidades: z.array(z.object({ especialidadeId: Uuid, registroAulaId: Uuid.nullable() })).default([]),
     })),
     requisitos: z.array(RequisitoResumo),                  // ativos, com ajuste do clube
     aulasProximas: z.array(z.object({                      // publicadas, próximos 14 dias
@@ -36,8 +39,15 @@ export const PacoteInstrutor = z.object({
       id: Uuid, data: DataCivil, aulaPlanejadaId: Uuid.nullable(),
       presencas: z.array(z.object({ dbvId: Uuid, presente: z.boolean(), versao: InstanteIso })),
     })),
+    /** Tarefas para casa: abertas do ano do clube e encerradas com entrega num registro recente (para corrigir sem rede). */
+    tarefas: z.array(z.object({
+      id: Uuid, registroAulaId: Uuid, data: DataCivil, encerrada: z.boolean(), itens: z.array(ItemTarefa),
+    })).default([]),
   })),
+  /** Catálogo ativo (oficial e do clube). Ausente = pacote de antes desta mudança: a tela pede internet. */
+  especialidades: z.array(z.object({ id: Uuid, nome: z.string(), area: z.string() })).optional(),
   pontosRequisito: z.object({ pontos: z.number().int(), ativo: z.boolean() }),
+  pontosEspecialidade: z.object({ pontos: z.number().int(), ativo: z.boolean() }).default({ pontos: 0, ativo: false }),
 })
 
 /** Evento do calendário no pacote offline: o que a regra do dia precisa, sem o id. */

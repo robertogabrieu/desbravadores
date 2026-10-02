@@ -31,6 +31,7 @@ const guardarPacote = () => {
     instrutor: {
       classes: [criarClasseInstrutor({ classe: CLASSE_AMIGO, aulasProximas: [{ aulaPlanejadaId: uuid(50), data: '2030-09-27', horario: '09:15', titulo: 'Descoberta espiritual', requisitoIds: [] }] })],
       pontosRequisito: { pontos: 5, ativo: true },
+      pontosEspecialidade: { pontos: 0, ativo: false },
     },
   })
 }
