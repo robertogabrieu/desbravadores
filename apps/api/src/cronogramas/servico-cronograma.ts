@@ -177,6 +177,7 @@ export class ServicoCronograma {
     const registroPorData = new Map(registros.map((registro) => [paraDataCivil(registro.data), registro.id]))
     const requisitos = await this.requisitosPorId(clubeId, planejadas.flatMap((aula) => aula.requisitoIds))
     const situacoes = await this.situacoesDasDatas(clubeId, planejadas.map((aula) => aula.data))
+    const { diaReuniao } = await this.prisma.configuracaoClube.findUniqueOrThrow({ where: { clubeId }, select: { diaReuniao: true } })
 
     const doCronograma = planejadas.map((aula): AulaLida => {
       const registroAulaId = registroPorData.get(aula.data) ?? null
@@ -186,7 +187,7 @@ export class ServicoCronograma {
         temRegistro: registroAulaId !== null,
         data: aula.data,
         hoje: relogio.hoje,
-        situacaoDaData: situacoes.get(aula.data) ?? situacaoDaData(aula.data, []),
+        situacaoDaData: situacoes.get(aula.data) ?? situacaoDaData(aula.data, diaReuniao, []),
       })
       return {
         origem: 'PLANEJADA',

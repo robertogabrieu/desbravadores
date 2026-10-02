@@ -8,6 +8,7 @@ import {
   criarAcesso,
   criarClube,
   criarCronograma,
+  criarEvento,
   desconectarPrismaDeTeste,
   prismaDeTeste,
 } from '../../test/fabricas'
@@ -72,11 +73,11 @@ describe('configuracao do clube', () => {
     expect(gravada).toMatchObject({ fuso: 'America/Sao_Paulo', inicioAnoClube: '02-01', metaFrequencia: 85 })
   })
 
-  it('G9: mudar o dia com aula futura no dia de reuniao atual → 422 com as classes; nada e gravado', async () => {
+  it('G9: mudar o dia com classe futura no dia de reuniao atual → 422 com as classes; nada e gravado', async () => {
     const { clube, adm, amigo } = await cenario()
     await criarCronograma({ clubeId: clube.id, classeId: amigo.id, aulas: [{ data: '2026-06-21', requisitoIds: [] }] })
     const resposta = await api.patch('/api/clube/configuracao', adm.autorizacao, { diaReuniao: 3, metaFrequencia: 99 }).expect(422)
-    expect(resposta.body).toMatchObject({ codigo: 'REGRA', mensagem: 'Há aulas marcadas no dia atual de reunião: Amigo. Mova-as antes.' })
+    expect(resposta.body).toMatchObject({ codigo: 'REGRA', mensagem: 'Há classes marcadas no dia atual de reunião: Amigo. Mova-as antes.' })
     const gravada = await prismaDeTeste().configuracaoClube.findUniqueOrThrow({ where: { clubeId: clube.id } })
     expect(gravada).toMatchObject({ diaReuniao: 0, metaFrequencia: 80 })
   })
@@ -103,12 +104,26 @@ describe('configuracao do clube', () => {
     expect(saida.diaReuniao).toBe(3)
   })
 
+  it('G9: classe num domingo que tem extra com Terá classe não trava a troca; extra só com reunião ou removida trava', async () => {
+    const { clube, adm, amigo } = await cenario()
+    await criarCronograma({ clubeId: clube.id, classeId: amigo.id, aulas: [{ data: '2026-06-21', requisitoIds: [] }] })
+    const extra = await criarEvento({ clubeId: clube.id, tipo: 'REUNIAO_EXTRA', inicio: '2026-06-21', marcacoes: { temClasse: false } })
+    await api.patch('/api/clube/configuracao', adm.autorizacao, { diaReuniao: 3 }).expect(422)
+
+    await prismaDeTeste().eventoCalendario.update({ where: { id: extra.id }, data: { temClasse: true, removidoEm: new Date() } })
+    await api.patch('/api/clube/configuracao', adm.autorizacao, { diaReuniao: 3 }).expect(422)
+
+    await prismaDeTeste().eventoCalendario.update({ where: { id: extra.id }, data: { removidoEm: null } })
+    const saida = corpo<Configuracao>(await api.patch('/api/clube/configuracao', adm.autorizacao, { diaReuniao: 3 }).expect(200))
+    expect(saida.diaReuniao).toBe(3)
+  })
+
   it('G9: lista todas as classes com aula, sem repetir', async () => {
     const { clube, adm, amigo } = await cenario()
     const companheiro = await classeOficial('Companheiro')
     await criarCronograma({ clubeId: clube.id, classeId: amigo.id, aulas: [{ data: '2026-06-21', requisitoIds: [] }, { data: '2026-06-28', requisitoIds: [] }] })
     await criarCronograma({ clubeId: clube.id, classeId: companheiro.id, aulas: [{ data: '2026-06-21', requisitoIds: [] }] })
     const resposta = await api.patch('/api/clube/configuracao', adm.autorizacao, { diaReuniao: 5 }).expect(422)
-    expect((resposta.body as { mensagem: string }).mensagem).toBe('Há aulas marcadas no dia atual de reunião: Amigo, Companheiro. Mova-as antes.')
+    expect((resposta.body as { mensagem: string }).mensagem).toBe('Há classes marcadas no dia atual de reunião: Amigo, Companheiro. Mova-as antes.')
   })
 })

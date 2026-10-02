@@ -1,33 +1,50 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common'
-import { CalendarioFiltro, EventoEntrada, MARCACOES_PADRAO, Uuid, type CalendarioSaida, type EventoGravadoSaida, type EventoSaida } from '@desbravadores/shared'
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, type PipeTransform } from '@nestjs/common'
+import { CalendarioFiltro, EventoEntrada, MARCACOES_PADRAO, Uuid, validarEvento, type CalendarioSaida, type EventoGravadoSaida, type EventoSaida } from '@desbravadores/shared'
 import { z } from 'zod'
 import { Logado } from '../comum/decorators/logado.decorator'
 import { Pode } from '../comum/decorators/pode.decorator'
+import { ErroApp } from '../comum/erros'
 import { SessaoDoClube, type SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { ZodValidationPipe } from '../comum/pipes/zod-validation.pipe'
 import { ServicoEventos } from './servico-eventos'
+
+/** O objeto do Zod não é estrito: sem este pipe, as chaves de uma aba antiga sumiriam caladas. */
+class RecusarMarcacoesAntigas implements PipeTransform<unknown, unknown> {
+  transform(corpo: unknown): unknown {
+    const antiga = typeof corpo === 'object' && corpo !== null && ('cancelaReuniao' in corpo || 'bloqueiaAula' in corpo)
+    if (antiga) throw new ErroApp('VALIDACAO', 'Atualize o app para salvar este evento.')
+    return corpo
+  }
+}
 
 /** As três marcações podem faltar: valem as do tipo (`MARCACOES_PADRAO`). */
 const EventoGravar = z
   .object({
     ...EventoEntrada.shape,
-    cancelaReuniao: z.boolean().optional(),
-    bloqueiaAula: z.boolean().optional(),
+    temReuniao: z.boolean().optional(),
+    temClasse: z.boolean().optional(),
     bomParaCampo: z.boolean().optional(),
   })
-  .refine((e) => e.fim >= e.inicio, { message: 'O fim não pode ser antes do início', path: ['fim'] })
 
 const IdDaRota = new ZodValidationPipe(Uuid)
 
-/** Entrada já com as marcações preenchidas pelo padrão do tipo. */
+/** Entrada com as marcações do padrão do tipo (Férias o força; a extra nunca é boa para campo), já validada. */
 function comMarcacoes(entrada: z.infer<typeof EventoGravar>): z.infer<typeof EventoEntrada> {
   const padrao = MARCACOES_PADRAO[entrada.tipo]
-  return {
-    ...entrada,
-    cancelaReuniao: entrada.cancelaReuniao ?? padrao.cancelaReuniao,
-    bloqueiaAula: entrada.bloqueiaAula ?? padrao.bloqueiaAula,
-    bomParaCampo: entrada.bomParaCampo ?? padrao.bomParaCampo,
+  const completo =
+    entrada.tipo === 'FERIAS'
+      ? { ...entrada, ...padrao }
+      : {
+          ...entrada,
+          temReuniao: entrada.temReuniao ?? padrao.temReuniao,
+          temClasse: entrada.temClasse ?? padrao.temClasse,
+          bomParaCampo: entrada.tipo === 'REUNIAO_EXTRA' ? false : (entrada.bomParaCampo ?? padrao.bomParaCampo),
+        }
+  const problemas = validarEvento(completo)
+  if (problemas.length > 0) {
+    throw new ErroApp('VALIDACAO', 'Confira os campos informados.', Object.fromEntries(problemas.map((p) => [p.campo, p.mensagem])))
   }
+  return completo
 }
 
 @Controller('calendario')
@@ -53,7 +70,7 @@ export class EventosController {
   @Post('eventos')
   criar(
     @SessaoDoClube() sessao: SessaoLogada,
-    @Body(new ZodValidationPipe(EventoGravar)) entrada: z.infer<typeof EventoGravar>,
+    @Body(new RecusarMarcacoesAntigas(), new ZodValidationPipe(EventoGravar)) entrada: z.infer<typeof EventoGravar>,
   ): Promise<z.infer<typeof EventoGravadoSaida>> {
     return this.eventos.criar(sessao, comMarcacoes(entrada))
   }
@@ -63,7 +80,7 @@ export class EventosController {
   editar(
     @SessaoDoClube() sessao: SessaoLogada,
     @Param('id', IdDaRota) id: string,
-    @Body(new ZodValidationPipe(EventoGravar)) entrada: z.infer<typeof EventoGravar>,
+    @Body(new RecusarMarcacoesAntigas(), new ZodValidationPipe(EventoGravar)) entrada: z.infer<typeof EventoGravar>,
   ): Promise<z.infer<typeof EventoGravadoSaida>> {
     return this.eventos.editar(sessao, id, comMarcacoes(entrada))
   }
