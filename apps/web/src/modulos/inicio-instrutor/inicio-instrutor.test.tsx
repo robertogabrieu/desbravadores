@@ -36,6 +36,7 @@ const guardarPacote = () => {
     instrutor: {
       classes: [criarClasseInstrutor({ classe: CLASSE_AMIGO, aulasProximas: [{ aulaPlanejadaId: uuid(50), data: '2030-09-27', horario: '09:15', titulo: 'Descoberta espiritual', requisitoIds: [] }] })],
       pontosRequisito: { pontos: 5, ativo: true },
+      pontosEspecialidade: { pontos: 0, ativo: false },
     },
   })
 }
@@ -140,6 +141,59 @@ describe('início do instrutor', () => {
     abrir([CLASSE_AMIGO])
     expect(await screen.findByText('Falha no servidor')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Tentar de novo' })).toBeInTheDocument()
+  })
+
+  describe('lembrete "Para cobrar"', () => {
+    const paraCobrar = { requisitos: 2, especialidades: 1, desbravadores: 5 }
+
+    it('aparece abaixo do resumo da próxima classe, só no cartão da classe que tem pendência', async () => {
+      servidor.use(handlerInicioInstrutor(criarInicioInstrutor({ classes: [criarClasseDoInstrutor({ paraCobrar }), criarClasseDoInstrutor({ classe: CLASSE_COMPANHEIRO })] })))
+      abrir()
+      const amigo = await screen.findByRole('region', { name: 'Próxima classe de Amigo' })
+      const lembrete = within(amigo).getByText('Para cobrar: 2 requisitos · 1 especialidade · 5 desbravadores')
+      const resumo = within(amigo).getByText('2 requisitos planejados · 9 desbravadores')
+      expect(resumo.compareDocumentPosition(lembrete) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      const companheiro = screen.getByRole('region', { name: 'Próxima classe de Companheiro' })
+      expect(within(companheiro).queryByText(/Para cobrar/)).not.toBeInTheDocument()
+    })
+
+    it('a parte com zero não aparece', async () => {
+      servidor.use(handlerInicioInstrutor(criarInicioInstrutor({ classes: [criarClasseDoInstrutor({ paraCobrar: { requisitos: 2, especialidades: 0, desbravadores: 5 } })] })))
+      abrir([CLASSE_AMIGO])
+      expect(await screen.findByText('Para cobrar: 2 requisitos · 5 desbravadores')).toBeInTheDocument()
+    })
+
+    it('usa o singular quando é um só', async () => {
+      servidor.use(handlerInicioInstrutor(criarInicioInstrutor({ classes: [criarClasseDoInstrutor({ paraCobrar: { requisitos: 1, especialidades: 1, desbravadores: 1 } })] })))
+      abrir([CLASSE_AMIGO])
+      expect(await screen.findByText('Para cobrar: 1 requisito · 1 especialidade · 1 desbravador')).toBeInTheDocument()
+    })
+
+    it('é texto, não link: o caminho é "Registrar classe"', async () => {
+      servidor.use(handlerInicioInstrutor(criarInicioInstrutor({ classes: [criarClasseDoInstrutor({ paraCobrar, aulaHoje: true })] })))
+      abrir([CLASSE_AMIGO])
+      await screen.findByText(/Para cobrar/)
+      expect(screen.queryByRole('link', { name: /Para cobrar/ })).not.toBeInTheDocument()
+      expect(screen.getByText(/Para cobrar/).closest('a')).toBeNull()
+      const cartao = screen.getByRole('region', { name: 'Próxima classe de Amigo' })
+      expect(within(cartao).getByRole('link', { name: 'Registrar classe' })).toBeInTheDocument()
+    })
+
+    it('fica fora das Agrupadas e some quando paraCobrar é nulo', async () => {
+      servidor.use(handlerInicioInstrutor(criarInicioInstrutor({ classes: [criarClasseDoInstrutor({ paraCobrar: null }), criarClasseDoInstrutor({ classe: CLASSE_AGRUPADAS, paraCobrar })] })))
+      abrir([CLASSE_AMIGO, CLASSE_AGRUPADAS])
+      await screen.findByRole('region', { name: 'Agrupadas' })
+      expect(screen.queryByText(/Para cobrar/)).not.toBeInTheDocument()
+    })
+
+    it('sem conexão não há lembrete', async () => {
+      offline.modo = 'SEM_CONEXAO'
+      guardarPacote()
+      servidor.use(handlerErroInicioInstrutor(500, { codigo: 'ERRO_INTERNO', mensagem: 'x' }))
+      abrir([CLASSE_AMIGO])
+      await screen.findByRole('region', { name: 'Classe Amigo' })
+      expect(screen.queryByText(/Para cobrar/)).not.toBeInTheDocument()
+    })
   })
 
   it('sem conexão e sem pacote baixado diz que precisa de internet', async () => {

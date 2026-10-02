@@ -1,5 +1,5 @@
 import { hojeNoFuso } from '@desbravadores/shared'
-import { CalendarDays, ClipboardCheck, Folder, MessageSquare, Medal, BarChart3 } from 'lucide-react'
+import { CalendarDays, ClipboardCheck, ClipboardList, Folder, MessageSquare, Medal, BarChart3 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useInicioInstrutor } from '../../api/instrutor'
@@ -41,8 +41,17 @@ const ehAgrupada = (classe: ClasseDoInstrutor): boolean => classe.classe.trilha 
 /** Data de hoje na tela do instrutor quando não há aula planejada para carregar a data. */
 const hojeLocal = (): string => hojeNoFuso(Intl.DateTimeFormat().resolvedOptions().timeZone, new Date())
 
+const partesDoLembrete = (paraCobrar: NonNullable<ClasseDoInstrutor['paraCobrar']>): string[] =>
+  [
+    { total: paraCobrar.requisitos, singular: 'requisito', plural: 'requisitos' },
+    { total: paraCobrar.especialidades, singular: 'especialidade', plural: 'especialidades' },
+    { total: paraCobrar.desbravadores, singular: 'desbravador', plural: 'desbravadores' },
+  ]
+    .filter(({ total }) => total > 0)
+    .map(({ total, singular, plural }) => `${total} ${total === 1 ? singular : plural}`)
+
 function CartaoProximaAula({ item }: { item: ClasseDoInstrutor }) {
-  const { classe, proximaAula, aulaHoje, aulaHojeRegistrada, totalDbvs } = item
+  const { classe, proximaAula, aulaHoje, aulaHojeRegistrada, totalDbvs, paraCobrar } = item
   const dataDaAula = proximaAula?.data ?? hojeLocal()
   return (
     <section aria-label={`Próxima classe de ${classe.nome}`} className="flex flex-col overflow-hidden rounded-cartao border border-borda bg-superficie">
@@ -68,6 +77,12 @@ function CartaoProximaAula({ item }: { item: ClasseDoInstrutor }) {
           </div>
         ) : (
           <span className="text-base text-texto-2">Nenhuma classe publicada ainda</span>
+        )}
+        {paraCobrar && (
+          <p className="flex items-center gap-2 text-base font-semibold text-texto">
+            <ClipboardList aria-hidden className="size-5" />
+            Para cobrar: {partesDoLembrete(paraCobrar).join(' · ')}
+          </p>
         )}
         {aulaHoje && aulaHojeRegistrada && (
           <span className="flex items-center gap-2 text-base font-semibold text-sucesso">

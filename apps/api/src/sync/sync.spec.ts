@@ -80,6 +80,22 @@ describe('GET /api/sync/pacote', () => {
     }
   })
 
+  it('INSTRUTOR recebe as chaves de tarefa e especialidade; ADM e CONSELHEIRO ficam com instrutor nulo', async () => {
+    const { clube, unidade } = await clubeComConselheiro()
+    const classe = await classeOficial('Amigo')
+    const instrutor = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [classe.id] })
+    const doInstrutor = (await baixar(instrutor.autorizacao)).instrutor
+    expect(doInstrutor?.classes[0]).toMatchObject({ tarefas: [] })
+    expect(doInstrutor?.classes[0]?.membros).toEqual([])
+    expect(doInstrutor?.especialidades).toEqual(expect.any(Array))
+    expect(doInstrutor?.pontosEspecialidade).toEqual({ pontos: expect.any(Number) as number, ativo: expect.any(Boolean) as boolean })
+
+    const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+    const conselheiro = await criarAcesso({ clubeId: clube.id, papel: 'CONSELHEIRO', unidadeIds: [unidade.id] })
+    expect((await baixar(adm.autorizacao)).instrutor).toBeNull()
+    expect((await baixar(conselheiro.autorizacao)).instrutor).toBeNull()
+  })
+
   it('membros: so DBV ativo e membro atual, com nome, idade, classe e autorizacao de imagem', async () => {
     const { clube, unidade, outra, acesso } = await clubeComConselheiro()
     const classe = await classeOficial('Amigo')
