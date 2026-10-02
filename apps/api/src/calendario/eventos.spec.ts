@@ -375,6 +375,29 @@ describe('calendário do clube — eventos', () => {
       expect((await notificacoesDe(instrutor.usuario.id)).map((n) => n.titulo)).toEqual(['Classe em conflito com o calendário'])
     })
 
+    it('excluir extra com classe numa quarta com classe planejada avisa; sem classe planejada, não avisa ninguém', async () => {
+      const { clube, amigo, adm, instrutor, requisitos } = await cenario()
+      const quarta = proximoDomingo(3)
+      const extra = await criarEvento({ clubeId: clube.id, tipo: 'REUNIAO_EXTRA', inicio: quarta })
+      await criarCronograma({ clubeId: clube.id, classeId: amigo.id, aulas: [{ data: quarta, requisitoIds: requisitos }] })
+      expect((await apagar(`/api/calendario/eventos/${extra.id}`, adm.autorizacao)).status).toBe(204)
+      expect((await notificacoesDe(instrutor.usuario.id)).map((n) => n.titulo)).toEqual(['Classe em conflito com o calendário'])
+
+      const quinta = proximoDomingo(4)
+      const outra = await criarEvento({ clubeId: clube.id, tipo: 'REUNIAO_EXTRA', inicio: quinta })
+      expect((await apagar(`/api/calendario/eventos/${outra.id}`, adm.autorizacao)).status).toBe(204)
+      expect(await notificacoesDe(instrutor.usuario.id)).toHaveLength(1)
+    })
+
+    it('mover a extra com classe para outra data devolve a aula da data antiga em aulasAfetadas', async () => {
+      const { clube, amigo, adm, requisitos } = await cenario()
+      const quarta = proximoDomingo(3)
+      const extra = await criarEvento({ clubeId: clube.id, tipo: 'REUNIAO_EXTRA', inicio: quarta })
+      const cronograma = await criarCronograma({ clubeId: clube.id, classeId: amigo.id, aulas: [{ data: quarta, requisitoIds: requisitos }] })
+      const resposta = await http.patch(`/api/calendario/eventos/${extra.id}`, adm.autorizacao, evento({ tipo: 'REUNIAO_EXTRA', inicio: proximoDomingo(4), fim: proximoDomingo(4), temReuniao: true, temClasse: true }))
+      expect(corpo<Gravado>(resposta).aulasAfetadas.map((a) => a.aulaId)).toEqual([cronograma.aulas[0].id])
+    })
+
     it('remover um evento não avisa ninguém', async () => {
       const { clube, amigo, adm, instrutor, requisitos } = await cenario()
       await criarCronograma({ clubeId: clube.id, classeId: amigo.id, aulas: [{ data: dia(10), requisitoIds: requisitos }] })

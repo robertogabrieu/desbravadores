@@ -147,7 +147,10 @@ describe('tipo AULA da fila', () => {
 
     it('item antigo da fila, sem os campos de cobrança, funde sem quebrar', () => {
       const antigo = payload()
-      const { especialidadesMarcadas: _a, especialidadesDesmarcadas: _b, tarefasEncerradas: _c, ...corpoAntigo } = antigo.corpo
+      const corpoAntigo: Partial<typeof antigo.corpo> = { ...antigo.corpo }
+      delete corpoAntigo.especialidadesMarcadas
+      delete corpoAntigo.especialidadesDesmarcadas
+      delete corpoAntigo.tarefasEncerradas
       const fundido = fundir({ ...antigo, corpo: corpoAntigo } as unknown as PayloadAulaFila, payload({ tarefasEncerradas: [uuid(600)] }))
       expect(fundido.corpo.especialidadesMarcadas).toEqual([])
       expect(fundido.corpo.tarefasEncerradas).toEqual([uuid(600)])

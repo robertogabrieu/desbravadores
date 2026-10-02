@@ -285,6 +285,14 @@ describe('Cobrar a tarefa no registro', () => {
       expect(screen.queryByText('Texto de I.3')).not.toBeInTheDocument()
     })
 
+    it('a prévia de pontos não conta duas vezes o requisito planejado que também está na cobrança', async () => {
+      guardar([comPlanejado([R2])])
+      montar()
+      await esperar()
+      await userEvent.click(naGrade('II.4') as HTMLElement)
+      expect(screen.getByText('5 pts')).toBeInTheDocument()
+    })
+
     it('o "+ Requisito" de "Requisitos desta classe" não oferece o item da cobrança', async () => {
       guardar([comPlanejado([R3])])
       montar()

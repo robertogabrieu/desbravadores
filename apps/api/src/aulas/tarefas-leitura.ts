@@ -110,8 +110,9 @@ export async function devedoresPorItem(
 }
 
 /**
- * As tarefas da classe para o pacote: abertas do ano com alguem devendo e encerradas com entrega num registro
- * da classe a partir de `desde` (para corrigir sem rede). Itens que deixaram de valer ficam de fora.
+ * As tarefas da classe para o pacote: abertas do ano com alguem devendo e as de qualquer estado com entrega num
+ * registro da classe a partir de `desde` ou com o registro de origem a partir de `desde` (para corrigir sem rede,
+ * mesmo quando ninguem mais deve). Itens que deixaram de valer ficam de fora.
  */
 export async function tarefasDaClasse(
   db: Db,
@@ -126,9 +127,12 @@ export async function tarefasDaClasse(
     lerTarefas(db, clubeId, classeId, { encerradaEm: { not: null } }),
   ])
   const entregues = await itensEntreguesDesde(db, clubeId, classeId, desde)
+  const temEntrega = (tarefa: TarefaLida): boolean => tarefa.itens.some((item) => entregues.has(chaveDoItem(item)))
+  const origemRecente = (tarefa: TarefaLida): boolean => tarefa.data >= desde
+  const temDevedor = (tarefa: TarefaLida): boolean => tarefa.itens.some((item) => devedores.has(chaveDoItem(item)))
   return [
-    ...abertas.filter((tarefa) => tarefa.itens.some((item) => devedores.has(chaveDoItem(item)))),
-    ...encerradas.filter((tarefa) => tarefa.itens.some((item) => entregues.has(chaveDoItem(item)))),
+    ...abertas.filter((tarefa) => temDevedor(tarefa) || temEntrega(tarefa) || origemRecente(tarefa)),
+    ...encerradas.filter((tarefa) => temEntrega(tarefa) || origemRecente(tarefa)),
   ].sort((a, b) => a.data.localeCompare(b.data) || a.id.localeCompare(b.id))
 }
 

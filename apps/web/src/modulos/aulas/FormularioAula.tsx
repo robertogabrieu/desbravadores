@@ -149,7 +149,7 @@ function CorpoAula({ pacote, baixadoEm, classe, data, base, chave, registroAulaI
     estado,
     servidor,
     comFila,
-    requisitos: [...requisitos, ...classe.requisitos.filter((r) => daCobranca.has(r.id))],
+    requisitos: [...requisitos, ...classe.requisitos.filter((r) => daCobranca.has(r.id) && !requisitos.some((v) => v.id === r.id))],
     pontosRequisito: pontosDoPacote?.pontosRequisito ?? { pontos: 0, ativo: false },
     especialidades: { servidor: especialidadesNoServidor, comFila: especialidadesFila, pontos: pontosDoPacote?.pontosEspecialidade ?? { pontos: 0, ativo: false } },
   })

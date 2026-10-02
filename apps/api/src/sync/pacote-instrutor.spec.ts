@@ -177,7 +177,28 @@ describe('GET /api/sync/pacote do instrutor (F11)', () => {
       ])
     })
 
-    it('item invalido some; tarefa do ano anterior e a de ninguem devendo ficam fora', async () => {
+    it('tarefa aberta sem ninguem devendo entra se o registro de origem e recente ou se tem entrega recente; fora disso, nao', async () => {
+      const c = await cenario()
+      const [r1, r2, r3] = c.requisitos as [string, string, string]
+      const daOrigemRecente = await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-5) })
+      const antigaComEntrega = await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-50) })
+      const antigaSemEntrega = await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-51) })
+      const recente = await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-2) })
+      const t1 = await criarTarefa({ clubeId: c.clube.id, classeId: c.classe.id, registroAulaId: daOrigemRecente.id, itens: [{ requisitoId: r1 }] })
+      const t2 = await criarTarefa({ clubeId: c.clube.id, classeId: c.classe.id, registroAulaId: antigaComEntrega.id, itens: [{ requisitoId: r2 }] })
+      await criarTarefa({ clubeId: c.clube.id, classeId: c.classe.id, registroAulaId: antigaSemEntrega.id, itens: [{ requisitoId: r3 }] })
+      const turma = await prismaDeTeste().desbravador.findMany({ where: { clubeId: c.clube.id }, select: { id: true } })
+      for (const { id } of turma) {
+        for (const requisitoId of [r1, r3]) await criarRequisitoConcluido({ clubeId: c.clube.id, dbvId: id, requisitoId })
+        await criarRequisitoConcluido({ clubeId: c.clube.id, dbvId: id, requisitoId: r2, concluidoEm: dia(-2), registroAulaId: recente.id })
+      }
+
+      const classe = (await baixar(c.instrutor.autorizacao)).instrutor?.classes[0]
+
+      expect(classe?.tarefas.map((t) => t.id)).toEqual([t2.id, t1.id])
+    })
+
+    it('item invalido some; tarefa do ano anterior e a de ninguem devendo, com origem antiga, ficam fora', async () => {
       const c = await cenario()
       const [r1, r2, r3] = c.requisitos as [string, string, string]
       const desativada = await admCriarEspecialidadeClube({ clubeId: c.clube.id })
@@ -186,7 +207,7 @@ describe('GET /api/sync/pacote do instrutor (F11)', () => {
       const [a, b, d] = [
         await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-3) }),
         await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-4) }),
-        await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-5) }),
+        await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-50) }),
       ]
       const valida = await criarTarefa({ clubeId: c.clube.id, classeId: c.classe.id, registroAulaId: a.id, itens: [{ requisitoId: r1 }, { requisitoId: r3 }, { especialidadeId: desativada.id }] })
       await criarTarefa({ clubeId: c.clube.id, classeId: c.classe.id, registroAulaId: b.id, itens: [{ requisitoId: r1 }], anoClube: anoCorrente() - 1 })

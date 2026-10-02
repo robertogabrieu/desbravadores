@@ -86,33 +86,30 @@ export class TarefasEnvio {
     }
   }
 
-  /** A tarefa do registro (so existe uma): a que ja esta la, ou a nova com o id do aparelho. */
-  private async acharOuCriarTarefa(tx: Tx, { sessao, registro, envio, anoClube }: ContextoDaEntrega): Promise<{ id: string; criada: boolean } | null> {
-    const { clubeId } = sessao
-    const existente = await tx.tarefaCasa.findFirst({ where: { clubeId, registroAulaId: registro.id }, select: { id: true } })
-    if (existente) return { id: existente.id, criada: false }
-    if (envio.tarefaId === null) return null
-    await tx.tarefaCasa.create({
-      data: { id: envio.tarefaId, clubeId, classeId: registro.classeId, registroAulaId: registro.id, anoClube, criadaPorId: sessao.usuarioId },
-    })
-    return { id: envio.tarefaId, criada: true }
+  /** A tarefa que ja existe no registro (so existe uma), se existe. */
+  private tarefaDoRegistro(tx: Tx, { sessao, registro }: ContextoDaEntrega): Promise<{ id: string; encerradaEm: Date | null } | null> {
+    return tx.tarefaCasa.findFirst({ where: { clubeId: sessao.clubeId, registroAulaId: registro.id }, select: { id: true, encerradaEm: true } })
   }
 
   /** Retira e acrescenta itens, com a validacao de item (requisito da classe ou especialidade ativa) e de repeticao. */
   private async aplicarItens(tx: Tx, contexto: ContextoDaEntrega, podeMarcarEspecialidade: boolean) {
-    const { sessao, registro, envio, agora } = contexto
+    const { sessao, registro, envio, agora, anoClube } = contexto
     const { clubeId } = sessao
     const semEfeito: ItemSemEfeito[] = []
-    const tarefa = await this.acharOuCriarTarefa(tx, contexto)
-    if (!tarefa) return { semEfeito, gravou: false }
-    let gravou = tarefa.criada
+    const existente = await this.tarefaDoRegistro(tx, contexto)
+    const tarefaId = existente?.id ?? envio.tarefaId
+    if (tarefaId === null) return { semEfeito, gravou: false }
+    let tarefaExiste = existente !== null
+    let gravou = false
 
-    for (const item of semRepetidos(envio.tarefaItensRetirados, chaveDoItem)) {
-      const { count } = await tx.tarefaItem.updateMany({
-        where: { clubeId, tarefaId: tarefa.id, removidoEm: null, ...item },
-        data: { removidoEm: agora, removidoPorId: sessao.usuarioId },
-      })
-      if (count > 0) gravou = true
+    if (existente) {
+      for (const item of semRepetidos(envio.tarefaItensRetirados, chaveDoItem)) {
+        const { count } = await tx.tarefaItem.updateMany({
+          where: { clubeId, tarefaId, removidoEm: null, ...item },
+          data: { removidoEm: agora, removidoPorId: sessao.usuarioId },
+        })
+        if (count > 0) gravou = true
+      }
     }
 
     const acrescentados = semRepetidos(envio.tarefaItensAcrescentados, chaveDoItem)
@@ -121,8 +118,8 @@ export class TarefasEnvio {
     const [requisitosOk, especialidadesOk, jaNestaTarefa, emOutraTarefa] = await Promise.all([
       requisitosValidos(tx, clubeId, registro.classeId, requisitosIds),
       this.especialidadesValidas(tx, clubeId, especialidadesIds),
-      this.itensAtivosDa(tx, clubeId, { id: tarefa.id }, requisitosIds, especialidadesIds),
-      this.itensAtivosDa(tx, clubeId, { id: { not: tarefa.id }, classeId: registro.classeId, encerradaEm: null }, requisitosIds, especialidadesIds),
+      this.itensAtivosDa(tx, clubeId, { id: tarefaId }, requisitosIds, especialidadesIds),
+      this.itensAtivosDa(tx, clubeId, { id: { not: tarefaId }, classeId: registro.classeId, anoClube, encerradaEm: null }, requisitosIds, especialidadesIds),
     ])
 
     for (const item of acrescentados) {
@@ -136,7 +133,7 @@ export class TarefasEnvio {
         continue
       }
       const valido = 'requisitoId' in item ? requisitosOk.has(item.requisitoId) : especialidadesOk.has(item.especialidadeId)
-      if (!valido) {
+      if (!valido || existente?.encerradaEm) {
         sem('ITEM_INVALIDO')
         continue
       }
@@ -144,7 +141,13 @@ export class TarefasEnvio {
         sem('JA_EM_TAREFA')
         continue
       }
-      await tx.tarefaItem.create({ data: { clubeId, tarefaId: tarefa.id, criadoPorId: sessao.usuarioId, ...item } })
+      if (!tarefaExiste) {
+        await tx.tarefaCasa.create({
+          data: { id: tarefaId, clubeId, classeId: registro.classeId, registroAulaId: registro.id, anoClube, criadaPorId: sessao.usuarioId },
+        })
+        tarefaExiste = true
+      }
+      await tx.tarefaItem.create({ data: { clubeId, tarefaId, criadoPorId: sessao.usuarioId, ...item } })
       gravou = true
     }
     return { semEfeito, gravou }

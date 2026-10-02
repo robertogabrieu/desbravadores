@@ -186,9 +186,20 @@ export class ServicoEventos {
           )
         const jaEmConflito = conflitos(eventosAntes)
         const emConflitoDepois = conflitos(eventosDepois)
+        // Data sem evento nunca é conflito; por isso a classe que só cabia numa extra (ou num campo) é avisada pela troca de temClasse.
+        const temClasse = (aula: AulaVista, eventos: EventoDoCalendario[]): boolean =>
+          situacaoDaData(aula.data, configuracao.diaReuniao, eventos).temClasse
+        const perdeuAClasse = (aula: AulaVista): boolean =>
+          aula.trilha === 'INDIVIDUAL' &&
+          aula.temRequisitos &&
+          !registros.has(`${aula.classeId}|${aula.data}`) &&
+          aula.data >= hoje &&
+          temClasse(aula, eventosAntes) &&
+          !temClasse(aula, eventosDepois)
         const entraram = new Map<string, AulaVista>()
         for (const aula of aulas) {
-          if (emConflitoDepois.has(aula.aulaId) && !jaEmConflito.has(aula.aulaId)) entraram.set(aula.aulaId, aula)
+          const entrouEmConflito = emConflitoDepois.has(aula.aulaId) && !jaEmConflito.has(aula.aulaId)
+          if (entrouEmConflito || perdeuAClasse(aula)) entraram.set(aula.aulaId, aula)
         }
 
         await gravacao(tx)

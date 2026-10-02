@@ -69,6 +69,7 @@ export function criarPacoteInstrutor(parcial: Partial<PacoteInstrutor> = {}): Pa
 
 /** Pacote guardado antes da tarefa para casa: sem catálogo de especialidades (a tela pede internet). */
 export function criarPacoteInstrutorAntigo(parcial: Partial<PacoteInstrutor> = {}): PacoteInstrutor {
-  const { especialidades: _semCatalogo, ...pacote } = criarPacoteInstrutor(parcial)
+  const pacote = criarPacoteInstrutor(parcial)
+  delete pacote.especialidades
   return pacote
 }

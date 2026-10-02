@@ -221,6 +221,34 @@ describe('PUT /api/sync/aulas/:uuid com tarefa para casa', () => {
     expect((await c.itensAtivos(semPermissao.tarefaId)).map((i) => i.requisitoId)).toEqual([c.r2])
   })
 
+  it('tarefa aberta de outro ano do clube nao barra o item: JA_EM_TAREFA vale so no ano do registro', async () => {
+    const c = await cenario()
+    const registroVelho = await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: diasAtras(400) })
+    await criarTarefa({ clubeId: c.clube.id, classeId: c.classe.id, registroAulaId: registroVelho.id, anoClube: anoCorrente() - 1, itens: [{ requisitoId: c.r1 }] })
+    const { tarefaId, saida } = await passar(c, [{ requisitoId: c.r1 }])
+    expect(saida.tarefaItensSemEfeito).toEqual([])
+    expect((await c.itensAtivos(tarefaId)).map((i) => i.requisitoId)).toEqual([c.r1])
+  })
+
+  it('acrescentar item na tarefa ja encerrada do proprio registro volta como ITEM_INVALIDO', async () => {
+    const c = await cenario()
+    const { tarefaId, uuid } = await passar(c, [{ requisitoId: c.r1 }])
+    await c.ok(c.enviar({ uuid, encerrar: [tarefaId] }))
+    const saida = await c.ok(c.enviar({ uuid, acrescentar: [{ requisitoId: c.r2 }] }))
+    expect(saida.tarefaItensSemEfeito).toEqual([{ item: { requisitoId: c.r2 }, motivo: 'ITEM_INVALIDO' }])
+    expect((await c.itensAtivos(tarefaId)).map((i) => i.requisitoId)).toEqual([c.r1])
+  })
+
+  it('so itens recusados nao criam a tarefa; com ao menos um gravado ela e criada', async () => {
+    const c = await cenario()
+    const recusado = await passar(c, [{ requisitoId: c.deOutraClasse }])
+    expect(recusado.saida.tarefaItensSemEfeito).toEqual([{ item: { requisitoId: c.deOutraClasse }, motivo: 'ITEM_INVALIDO' }])
+    expect(await prismaDeTeste().tarefaCasa.count({ where: { clubeId: c.clube.id } })).toBe(0)
+
+    const { tarefaId } = await passar(c, [{ requisitoId: c.deOutraClasse }, { requisitoId: c.r1 }], { data: diasAtras(1) })
+    expect((await c.itensAtivos(tarefaId)).map((i) => i.requisitoId)).toEqual([c.r1])
+  })
+
   it('CHECK do banco: item com requisito e especialidade, ou com nenhum dos dois, e rejeitado', async () => {
     const c = await cenario()
     const registro = await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: diasAtras(1) })

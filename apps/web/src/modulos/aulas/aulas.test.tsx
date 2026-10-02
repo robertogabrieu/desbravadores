@@ -383,6 +383,25 @@ describe('Edição de aula', () => {
     expect(payload.corpo.requisitosMarcados).toEqual([{ dbvId: BRUNO, requisitoId: R1 }])
   })
 
+  it('correção de cobrança em que todos entregaram: a entrega aparece no bloco da tarefa, com desfazer, e o requisito não volta à grade', async () => {
+    const anterior = { id: uuid(602), registroAulaId: uuid(701), data: '2030-03-03', encerrada: false, itens: [{ requisitoId: R3 }] }
+    guardar([classe({ tarefas: [anterior] })])
+    servidor.use(
+      handlerAula(
+        criarDetalheAula({
+          presencas,
+          requisitosDaAula: [requisito(R3, 'R3')],
+          concluidosNaAula: [{ dbvId: ANA, requisitoId: R3 }, { dbvId: BRUNO, requisitoId: R3 }],
+        }),
+      ),
+    )
+    montar(`/aulas/${uuid(700)}/editar`)
+    await screen.findByRole('listitem', { name: 'Ana Clara' })
+    const bloco = within(screen.getByRole('region', { name: 'Cobrar tarefa de 03/03' }))
+    expect(bloco.getByRole('button', { name: 'Entregue em 10/03 · Ana Clara · desfazer' })).toBeInTheDocument()
+    expect(within(screen.getByRole('listitem', { name: 'Ana Clara' })).queryByRole('button', { name: /^R3 · / })).not.toBeInTheDocument()
+  })
+
   it('desmarcar o que foi concluído nesta aula vai em requisitosDesmarcados', async () => {
     servidor.use(handlerAula(criarDetalheAula({ presencas, requisitosDaAula: [requisito(R1, 'R1')], concluidosNaAula: [{ dbvId: ANA, requisitoId: R1 }] })))
     montar(`/aulas/${uuid(700)}/editar`)

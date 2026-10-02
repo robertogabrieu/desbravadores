@@ -69,10 +69,7 @@ export class AulasService {
       this.prisma.configuracaoClube.findUniqueOrThrow({ where: { clubeId } }),
       this.requisitosPlanejados(clubeId, registro.aulaPlanejadaId),
     ])
-    const cobradosDeTarefaAnterior = await this.requisitosDeTarefaAnterior(clubeId, registro.classeId, registro.data)
-    const marcadosNaAula = registro.requisitos
-      .map((conclusao) => conclusao.requisitoId)
-      .filter((requisitoId) => !cobradosDeTarefaAnterior.has(requisitoId) || planejados.includes(requisitoId))
+    const marcadosNaAula = registro.requisitos.map((conclusao) => conclusao.requisitoId)
     const idsDosRequisitos = [...new Set([...planejados, ...marcadosNaAula])]
     const requisitosDaAula = await resumosDeRequisitos(this.prisma, clubeId, { id: { in: idsDosRequisitos } }, false)
 
@@ -94,15 +91,6 @@ export class AulasService {
       concluidosNaAula: registro.requisitos.map(({ dbvId, requisitoId }) => ({ dbvId, requisitoId })),
       podeEditar: sessao.papel === 'ADM' || dentroDoPrazoDeCorrecao(paraDataCivil(registro.data), agora, configuracao.fuso),
     }
-  }
-
-  /** Requisitos que sao item ativo de uma tarefa passada em registro anterior da classe: aparecem so no bloco de cobranca. */
-  private async requisitosDeTarefaAnterior(clubeId: string, classeId: string, data: Date): Promise<Set<string>> {
-    const itens = await this.prisma.tarefaItem.findMany({
-      where: { clubeId, removidoEm: null, requisitoId: { not: null }, tarefa: { clubeId, classeId, registro: { clubeId, data: { lt: data } } } },
-      select: { requisitoId: true },
-    })
-    return new Set(itens.flatMap((item) => (item.requisitoId ? [item.requisitoId] : [])))
   }
 
   /** Requisitos da aula planejada: os da ultima publicacao e, se ela nao esta la (vivo), os do cronograma vivo. */
