@@ -101,7 +101,7 @@ const NOVA = `/aulas/nova?classe=${CLASSE_COMPANHEIRO.id}&data=${DATA}`
 const linha = (nome: string) => within(screen.getByRole('listitem', { name: nome }))
 const presenca = (nome: string) => linha(nome).getByRole('button', { name: new RegExp(`^${nome}`) })
 const celula = (nome: string, codigo: string) => linha(nome).getByRole('button', { name: new RegExp(`^${codigo} · `) })
-const botaoSalvar = () => screen.getByRole('button', { name: /^Salvar aula/ })
+const botaoSalvar = () => screen.getByRole('button', { name: /^Salvar classe/ })
 const enviado = () => (estado.enfileirar.mock.calls[0]?.[0] as { chave: string; payload: { correcao: boolean; registroAulaId: string; corpo: { presencas: { dbvId: string; presente: boolean; versaoVista: string | null }[]; requisitosMarcados: { dbvId: string; requisitoId: string }[]; requisitosDesmarcados: unknown[]; aulaPlanejadaId: string | null } } })
 
 beforeEach(() => {
@@ -124,7 +124,7 @@ describe('Registro de aula nova', () => {
     expect(screen.getByText('Texto de R1')).toBeInTheDocument()
     expect(screen.queryByText('Texto de R3')).not.toBeInTheDocument()
     await waitFor(() => expect(botaoSalvar()).toBeEnabled())
-    expect(botaoSalvar()).toHaveTextContent('Salvar aula · 3 presentes')
+    expect(botaoSalvar()).toHaveTextContent('Salvar classe · 3 presentes')
     expect(screen.getByText('Lista atualizada hoje às 09:05')).toBeInTheDocument()
   })
 
@@ -145,7 +145,7 @@ describe('Registro de aula nova', () => {
       { dbvId: LIA, presente: false, versaoVista: null },
     ])
     expect(payload.corpo.requisitosMarcados).toEqual([{ dbvId: ANA, requisitoId: R1 }])
-    expect(estado.aviso.success).toHaveBeenCalledWith('Aula salva', expect.anything())
+    expect(estado.aviso.success).toHaveBeenCalledWith('Classe salva', expect.anything())
     await waitFor(() => expect(roteador.state.location.pathname).toBe('/inicio'))
   })
 
@@ -209,10 +209,10 @@ describe('Registro de aula nova', () => {
     expect(enviado().payload.corpo.aulaPlanejadaId).toBe(PASSADA)
   })
 
-  it('enquanto o cronograma da data carrega, Salvar aula fica desabilitado', async () => {
+  it('enquanto o cronograma da data carrega, Salvar classe fica desabilitado', async () => {
     servidor.use(http.get('/api/classes/:id/cronograma', () => new Promise<Response>(() => undefined)))
     montar(NOVA)
-    await screen.findByText('Registro de aula')
+    await screen.findByText('Registro de classe')
     expect(botaoSalvar()).toBeDisabled()
   })
 
@@ -333,10 +333,10 @@ describe('Registro de aula nova', () => {
     servidor.use(http.all('/api/*', () => HttpResponse.error()))
     montar(NOVA)
     expect(await screen.findByText('Ana Clara')).toBeInTheDocument()
-    expect(screen.getByText(/Sem conexão\. A aula fica guardada/)).toBeInTheDocument()
+    expect(screen.getByText(/Sem conexão\. A classe fica guardada/)).toBeInTheDocument()
     await userEvent.click(botaoSalvar())
     await waitFor(() => expect(estado.enfileirar).toHaveBeenCalledOnce())
-    expect(estado.aviso.success).toHaveBeenCalledWith('Aula salva', { description: 'Vai ser enviada quando houver internet.' })
+    expect(estado.aviso.success).toHaveBeenCalledWith('Classe salva', { description: 'Vai ser enviada quando houver internet.' })
   })
 
   it('já existe aula da data no servidor: abre como correção, sem o que ninguém tocou', async () => {
@@ -423,7 +423,7 @@ describe('Edição de aula', () => {
   it('sem conexão e sem a aula no aparelho, avisa que precisa de internet', async () => {
     estado.modo = 'SEM_CONEXAO'
     montar(`/aulas/${uuid(999)}/editar`)
-    expect(await screen.findByText('Esta aula não está neste aparelho')).toBeInTheDocument()
+    expect(await screen.findByText('Esta classe não está neste aparelho')).toBeInTheDocument()
   })
 
   it('erro do servidor sem cópia no aparelho mostra o erro com "Tentar de novo"', async () => {
@@ -445,7 +445,7 @@ describe('Estados da tela', () => {
   it('carregando: o pacote ainda está sendo lido', () => {
     estado.pacote = { pacote: null, carregando: true, baixadoEm: null }
     montar(NOVA)
-    expect(screen.getByRole('status', { name: 'Carregando a aula' })).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'Carregando a classe' })).toBeInTheDocument()
   })
 
   it('vazio: instrutor sem classes', async () => {

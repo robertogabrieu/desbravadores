@@ -40,8 +40,8 @@ function CartaoDaClasse({ item, idade }: { item: ClasseDoInstrutor; idade: numbe
           {progressoMedio !== null && <BarraProgresso valor={progressoMedio} rotulo={`Progresso médio de ${classe.nome}`} />}
         </div>
         <div className="flex gap-4 text-sm text-texto-2">
-          <span>{proximaAula ? `Próxima aula: ${formatarDiaMes(proximaAula.data)}` : 'Nenhuma aula publicada ainda'}</span>
-          <span>{aulasDadas === 1 ? '1 aula dada' : `${aulasDadas} aulas dadas`}</span>
+          <span>{proximaAula ? `Próxima classe: ${formatarDiaMes(proximaAula.data)}` : 'Nenhuma classe publicada ainda'}</span>
+          <span>{aulasDadas === 1 ? '1 classe dada' : `${aulasDadas} classes dadas`}</span>
         </div>
         {/* Em 320 px os três não cabem lado a lado sem o texto encostar na borda: quebram de linha. */}
         <div className="flex flex-wrap gap-2">

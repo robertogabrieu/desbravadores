@@ -6,7 +6,7 @@ import { Esqueleto } from '../../ui/Esqueleto'
 
 export function EsqueletoAula() {
   return (
-    <div role="status" aria-label="Carregando a aula" className="flex flex-col gap-3">
+    <div role="status" aria-label="Carregando a classe" className="flex flex-col gap-3">
       <Esqueleto className="h-8 w-2/3" />
       {[0, 1, 2, 3].map((n) => (
         <Esqueleto key={n} className="h-14 w-full" />

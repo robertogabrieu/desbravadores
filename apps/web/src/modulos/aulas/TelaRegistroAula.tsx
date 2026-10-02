@@ -37,7 +37,7 @@ export function TelaRegistroAula() {
       modo === 'SEM_CONEXAO' ? (
         <AulaVazia titulo="Disponível quando houver internet" descricao="A lista de desbravadores ainda não foi baixada neste aparelho." />
       ) : (
-        <AulaVazia titulo="A lista de desbravadores ainda não foi baixada" descricao="Aguarde um instante e abra o registro de aula de novo." />
+        <AulaVazia titulo="A lista de desbravadores ainda não foi baixada" descricao="Aguarde um instante e abra o registro de classe de novo." />
       )
   } else if (classes.length === 0) {
     conteudo = <AulaVazia titulo="Você ainda não tem classes" descricao="O Adm do clube as atribui." />
@@ -136,7 +136,7 @@ interface PropriedadesEdicao extends PropriedadesModo {
 function EdicaoGuardada({ id, pacote, classes, baixadoEm }: PropriedadesEdicao) {
   const classe = classes.find((c) => c.registrosRecentes.some((r) => r.id === id))
   const registro = classe?.registrosRecentes.find((r) => r.id === id)
-  if (!classe || !registro) return <AulaVazia titulo="Esta aula não está neste aparelho" descricao="Abra-a de novo quando houver internet." />
+  if (!classe || !registro) return <AulaVazia titulo="Esta classe não está neste aparelho" descricao="Abra-a de novo quando houver internet." />
   return <FormularioAula key={registro.id} pacote={pacote} baixadoEm={baixadoEm} classe={classe} data={registro.data} base={baseDoPacote(registro, classe)} />
 }
 
@@ -150,6 +150,6 @@ function EdicaoDoServidor({ id, pacote, classes, baixadoEm }: PropriedadesEdicao
     return <AulaErro mensagem={consulta.error.message} aoTentar={() => void consulta.refetch()} />
   }
   const classe = classes.find((c) => c.classe.id === consulta.data.classe.id)
-  if (!classe) return <AulaVazia titulo="Esta aula não está neste aparelho" descricao="Abra-a de novo quando houver internet." />
+  if (!classe) return <AulaVazia titulo="Esta classe não está neste aparelho" descricao="Abra-a de novo quando houver internet." />
   return <FormularioAula key={consulta.data.id} pacote={pacote} baixadoEm={baixadoEm} classe={classe} data={consulta.data.data} base={baseDoDetalhe(consulta.data)} />
 }

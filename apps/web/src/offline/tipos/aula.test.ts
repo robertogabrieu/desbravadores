@@ -48,8 +48,8 @@ describe('tipo AULA da fila', () => {
   const tipo = obterTipo('AULA')
 
   it('registra o tipo com rótulo e detalhe de aula nova e de correção', () => {
-    expect(tipo?.rotulo(payload())).toBe('Aula · Companheiro · 10/03')
-    expect(tipo?.rotulo(payload({}, { correcao: true }))).toBe('Correção na aula · Companheiro · 10/03')
+    expect(tipo?.rotulo(payload())).toBe('Classe · Companheiro · 10/03')
+    expect(tipo?.rotulo(payload({}, { correcao: true }))).toBe('Correção na classe · Companheiro · 10/03')
     expect(tipo?.detalhe(payload())).toBe('2 presentes · 2 requisitos')
   })
 

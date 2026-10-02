@@ -75,7 +75,7 @@ export function useSalvarAula() {
       if (eu) await apagarRascunho(eu.usuario.id, chave)
     },
     onSuccess: () => {
-      toast.success('Aula salva', {
+      toast.success('Classe salva', {
         description: modo === 'SEM_CONEXAO' ? 'Vai ser enviada quando houver internet.' : 'Enviando agora.',
       })
       void navegar('/inicio')

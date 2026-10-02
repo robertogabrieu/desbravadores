@@ -28,7 +28,7 @@ function diaMes(data: string): string {
 }
 
 const rotulo = (payload: PayloadAulaFila): string =>
-  `${payload.correcao ? 'Correção na aula' : 'Aula'} · ${payload.classeNome} · ${diaMes(payload.corpo.data)}`
+  `${payload.correcao ? 'Correção na classe' : 'Classe'} · ${payload.classeNome} · ${diaMes(payload.corpo.data)}`
 
 const detalhe = (payload: PayloadAulaFila): string =>
   `${payload.corpo.presencas.filter((p) => p.presente).length} presentes · ${payload.corpo.requisitosMarcados.length} requisitos`
@@ -87,7 +87,7 @@ function avisar(saida: Saida, payload: PayloadAulaFila): void {
   }
   const ausentes = semEfeito('AUSENTE')
   if (ausentes.length > 0) {
-    toast.warning(`Faltaram à aula, então o requisito não valeu: ${ausentes.map((item) => `${nome(item.dbvId)} (${codigo(item.requisitoId)})`).join(', ')}.`)
+    toast.warning(`Faltaram à classe, então o requisito não valeu: ${ausentes.map((item) => `${nome(item.dbvId)} (${codigo(item.requisitoId)})`).join(', ')}.`)
   }
   const invalidos = semEfeito('REQUISITO_INVALIDO')
   if (invalidos.length > 0) {

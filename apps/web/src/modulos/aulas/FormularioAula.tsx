@@ -144,18 +144,18 @@ function CorpoAula({ pacote, baixadoEm, classe, data, base, chave, registroAulaI
 
   return (
     <div className="flex flex-col gap-4">
-      {modo === 'SEM_CONEXAO' && <FaixaAviso>Sem conexão. A aula fica guardada no aparelho e é enviada quando a internet voltar.</FaixaAviso>}
+      {modo === 'SEM_CONEXAO' && <FaixaAviso>Sem conexão. A classe fica guardada no aparelho e é enviada quando a internet voltar.</FaixaAviso>}
       <header className="flex flex-col gap-1">
-        <h1 className="font-titulo text-2xl font-extrabold">Registro de aula</h1>
+        <h1 className="font-titulo text-2xl font-extrabold">Registro de classe</h1>
         <p className="text-sm text-texto-2">{`${classe.classe.nome} · ${diaDaSemana(data)} ${dataCurta(data)}`}</p>
         {atualizada && <p className="text-sm text-texto-2">{atualizada}</p>}
       </header>
 
       <section aria-labelledby="titulo-requisitos" className="flex flex-col gap-2 rounded-cartao bg-superficie p-3">
         <h2 id="titulo-requisitos" className="text-sm font-bold text-texto-2">
-          Requisitos desta aula
+          Requisitos desta classe
         </h2>
-        {requisitos.length === 0 && <p className="text-sm text-texto-2">Nenhum requisito nesta aula. Use “+ Requisito” para acrescentar.</p>}
+        {requisitos.length === 0 && <p className="text-sm text-texto-2">Nenhum requisito nesta classe. Use “+ Requisito” para acrescentar.</p>}
         <ul className="flex flex-col gap-2">
           {requisitos.map((requisito) => (
             <li key={requisito.id} className="flex items-start gap-3">
@@ -220,7 +220,7 @@ function CorpoAula({ pacote, baixadoEm, classe, data, base, chave, registroAulaI
       )}
 
       <div className="flex flex-col gap-2 border-t border-borda pt-4">
-        {modo === 'SEM_CONEXAO' && avisos.instalarNaTelaInicial && <FaixaAviso>Instale o app na tela inicial para não perder aulas guardadas</FaixaAviso>}
+        {modo === 'SEM_CONEXAO' && avisos.instalarNaTelaInicial && <FaixaAviso>Instale o app na tela inicial para não perder classes guardadas</FaixaAviso>}
         {pontosAtivos && (
           <p className="flex items-center gap-2 text-sm">
             <span className="font-semibold">{`${pontos} pts`}</span>
@@ -235,7 +235,7 @@ function CorpoAula({ pacote, baixadoEm, classe, data, base, chave, registroAulaI
             if (entrada) salvar.mutate(entrada)
           }}
         >
-          {`Salvar aula · ${presentes} presentes`}
+          {`Salvar classe · ${presentes} presentes`}
         </Botao>
       </div>
     </div>
