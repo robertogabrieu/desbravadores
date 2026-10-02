@@ -23,7 +23,7 @@ function tipoEIdade(item: ClasseDoInstrutor, idade: number | null | undefined): 
 function CartaoDaClasse({ item, idade }: { item: ClasseDoInstrutor; idade: number | null | undefined }) {
   const { classe, totalDbvs, progressoMedio, proximaAula, aulasDadas } = item
   return (
-    <article className="flex flex-col overflow-hidden rounded-cartao border border-borda bg-superficie">
+    <article className="flex flex-col overflow-hidden rounded-cartao border border-borda-controle bg-superficie">
       <div className="flex flex-col gap-1 p-4 text-white" style={corDaClasse(classe.corToken)}>
         <div className="flex items-center justify-between gap-2">
           <span className="text-xs font-bold uppercase tracking-wide">{tipoEIdade(item, idade)}</span>
@@ -43,7 +43,7 @@ function CartaoDaClasse({ item, idade }: { item: ClasseDoInstrutor; idade: numbe
           <span>{proximaAula ? `Próxima aula: ${formatarDiaMes(proximaAula.data)}` : 'Nenhuma aula publicada ainda'}</span>
           <span>{aulasDadas === 1 ? '1 aula dada' : `${aulasDadas} aulas dadas`}</span>
         </div>
-        {/* Em 320 px os três não cabem lado a lado sem o texto encostar na borda: quebram de linha. */}
+        {/* Em 320 px os cinco não cabem lado a lado sem o texto encostar na borda: quebram de linha. */}
         <div className="flex flex-wrap gap-2">
           <Link to={`/cronograma?classe=${classe.id}`} className={LINK_ACAO}>
             Cronograma
@@ -53,6 +53,12 @@ function CartaoDaClasse({ item, idade }: { item: ClasseDoInstrutor; idade: numbe
           </Link>
           <Link to={`/classes/${classe.id}/materiais`} className={LINK_ACAO}>
             Materiais
+          </Link>
+          <Link to={`/observacoes?classe=${classe.id}`} className={LINK_ACAO}>
+            Observações
+          </Link>
+          <Link to={`/especialidades?classe=${classe.id}`} className={LINK_ACAO}>
+            Especialidades
           </Link>
         </div>
       </div>

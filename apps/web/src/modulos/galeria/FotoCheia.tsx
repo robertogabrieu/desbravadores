@@ -20,9 +20,18 @@ interface Propriedades {
 /** Foto em tela cheia (sem zoom): deslizar ou tocar nas setas troca de foto; Esc fecha. */
 export function FotoCheia({ fotos, indice, aoMudar, aoFechar, aoRemover }: Propriedades) {
   const inicioDoToque = useRef<number | null>(null)
+  const dialogo = useRef<HTMLDivElement>(null)
   const foto = fotos[indice]
   const anterior = indice > 0
   const proxima = indice < fotos.length - 1
+
+  useEffect(() => {
+    const quemAbriu = document.activeElement
+    dialogo.current?.focus()
+    return () => {
+      if (quemAbriu instanceof HTMLElement && quemAbriu.isConnected) quemAbriu.focus()
+    }
+  }, [])
 
   useEffect(() => {
     const aoTeclar = (evento: KeyboardEvent) => {
@@ -50,7 +59,7 @@ export function FotoCheia({ fotos, indice, aoMudar, aoFechar, aoRemover }: Propr
   }
 
   return (
-    <div role="dialog" aria-modal="true" aria-label={`Foto ${indice + 1} de ${fotos.length}`} className="fixed inset-0 z-40 flex flex-col bg-black text-white">
+    <div ref={dialogo} tabIndex={-1} role="dialog" aria-modal="true" aria-label={`Foto ${indice + 1} de ${fotos.length}`} className="fixed inset-0 z-40 flex flex-col bg-black text-white outline-none">
       <div className="flex items-center justify-between p-3">
         <span className="text-base font-semibold">
           {indice + 1} / {fotos.length}

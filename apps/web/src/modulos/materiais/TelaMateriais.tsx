@@ -1,4 +1,4 @@
-import { ChevronLeft, Link2, Upload } from 'lucide-react'
+import { ChevronLeft, ExternalLink, Link2, Upload } from 'lucide-react'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
@@ -142,7 +142,15 @@ function DialogosDoMaterial({ acao, secoes, aoFechar }: { acao: Acao; secoes: Se
 
   if (acao.tipo === 'apagar') {
     return (
-      <Confirmacao aberta titulo="Apagar material?" rotuloConfirmar="Apagar" perigo aoCancelar={aoFechar} aoConfirmar={() => apagar.mutate(acao.material.id, { onSettled: aoFechar })}>
+      <Confirmacao
+        aberta
+        titulo="Apagar material?"
+        rotuloConfirmar="Apagar"
+        perigo
+        erro={apagar.isError ? mensagemDe(apagar.error) : null}
+        aoCancelar={aoFechar}
+        aoConfirmar={() => apagar.mutate(acao.material.id, { onSuccess: aoFechar })}
+      >
         {`“${acao.material.titulo}” some para todos os instrutores da classe.`}
       </Confirmacao>
     )
@@ -182,24 +190,31 @@ function DialogosDoMaterial({ acao, secoes, aoFechar }: { acao: Acao; secoes: Se
 }
 
 function LinhaDoMaterial({ material, aoEscolher }: { material: Material; aoEscolher: (tipo: Acao['tipo']) => void }) {
-  const itens = [
-    { rotulo: 'Abrir', aoEscolher: () => void window.open(material.url, '_blank', 'noopener,noreferrer') },
-    ...(material.podeEditar
-      ? [
-          { rotulo: 'Renomear', aoEscolher: () => aoEscolher('renomear') },
-          { rotulo: 'Mover de seção', aoEscolher: () => aoEscolher('mover') },
-          { rotulo: 'Apagar', aoEscolher: () => aoEscolher('apagar') },
-        ]
-      : []),
+  const edicoes = [
+    { rotulo: 'Renomear', aoEscolher: () => aoEscolher('renomear') },
+    { rotulo: 'Mover de seção', aoEscolher: () => aoEscolher('mover') },
+    { rotulo: 'Apagar', aoEscolher: () => aoEscolher('apagar') },
   ]
   return (
-    <li className="flex items-center gap-3 rounded-cartao border border-borda bg-superficie p-3">
+    <li className="flex items-center gap-3 rounded-cartao border border-borda-controle bg-superficie p-3">
       <span aria-hidden className="flex size-11 shrink-0 items-center justify-center rounded-botao bg-marca-suave text-xs font-extrabold text-marca">{SELOS[material.tipo]}</span>
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-base font-semibold text-texto">{material.titulo}</span>
+        <a href={material.url} target="_blank" rel="noopener noreferrer" className="truncate text-base font-semibold text-texto underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-marca">
+          {material.titulo}
+        </a>
         <span className="text-sm text-texto-2">{metaDoMaterial(material)}</span>
       </span>
-      <MenuCabecalho rotulo="Opções" itens={itens} />
+      <a
+        href={material.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Abrir ${material.titulo}`}
+        className="flex min-h-[var(--touch-min)] shrink-0 items-center gap-1 rounded-botao border border-marca px-3 text-base font-semibold text-marca hover:bg-marca-suave focus-visible:outline-2 focus-visible:outline-marca"
+      >
+        <ExternalLink aria-hidden className="size-4" />
+        Abrir
+      </a>
+      {material.podeEditar && <MenuCabecalho rotulo="Opções" rotuloAcessivel={`Opções de ${material.titulo}`} itens={edicoes} />}
     </li>
   )
 }

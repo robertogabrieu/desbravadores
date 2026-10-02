@@ -10,6 +10,7 @@ import { Botao } from '../../../ui/Botao'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { Esqueleto } from '../../../ui/Esqueleto'
 import { FaixaAviso } from '../../../ui/FaixaAviso'
+import { LinhaQueNavega } from '../../../ui/LinhaQueNavega'
 import { Selecao } from '../../../ui/Selecao'
 import { cn } from '../../../ui/cn'
 import { ErroDeCarga } from '../../../ui/EstadosDeCarga'
@@ -22,11 +23,47 @@ const ABAS = [
   { id: 'dbv', rotulo: 'Por DBV' },
 ]
 
+// Quem veio (P, A) é marca cheia; quem não veio (F, J), marca vazada com contorno. Cheia e vazada têm 3:1
+// entre si e contra o fundo; dentro de cada par, quem separa é a letra (ui/contraste.test.tsx mede os tokens).
 const MARCAS: Record<string, { texto: string; classe: string }> = {
-  P: { texto: 'presente', classe: 'bg-marca' },
-  A: { texto: 'atraso', classe: 'bg-alerta' },
-  F: { texto: 'falta', classe: 'bg-divisor' },
-  J: { texto: 'falta justificada', classe: 'bg-borda' },
+  P: { texto: 'presente', classe: 'bg-marca text-white' },
+  A: { texto: 'atraso', classe: 'bg-alerta text-white' },
+  F: { texto: 'falta', classe: 'border-2 border-perigo bg-superficie text-perigo' },
+  J: { texto: 'falta justificada', classe: 'border-2 border-borda-controle bg-superficie text-texto-2' },
+}
+
+const ESTILO_MARCA = 'flex h-6 w-5 items-center justify-center rounded-sm text-xs font-bold'
+
+function Marca({ letra }: { letra: string | null }) {
+  const definicao = letra === null ? undefined : MARCAS[letra]
+  if (!definicao) {
+    return (
+      <span className={cn(ESTILO_MARCA, 'border border-dashed border-borda-controle')}>
+        <span className="sr-only">sem registro</span>
+      </span>
+    )
+  }
+  return (
+    <span className={cn(ESTILO_MARCA, definicao.classe)}>
+      <span aria-hidden>{letra}</span>
+      <span className="sr-only">{definicao.texto}</span>
+    </span>
+  )
+}
+
+function LegendaDasMarcas() {
+  return (
+    <ul aria-label="Legenda" className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-texto-2">
+      {Object.entries(MARCAS).map(([letra, { texto, classe }]) => (
+        <li key={letra} className="flex items-center gap-1.5">
+          <span aria-hidden className={cn(ESTILO_MARCA, classe)}>
+            {letra}
+          </span>{' '}
+          {texto}
+        </li>
+      ))}
+    </ul>
+  )
 }
 
 const corDoPercentual = (percentual: number | null): string => (percentual !== null && percentual < LIMIAR_FREQUENCIA_ALERTA ? 'text-perigo' : 'text-marca')
@@ -80,7 +117,7 @@ function ConteudoLinha({ linha }: { linha: LinhaHistorico }) {
   )
 }
 
-const estiloLinha = 'flex items-center gap-3 rounded-cartao border border-borda bg-superficie p-3'
+const estiloLinha = 'flex items-center gap-3 rounded-cartao border border-borda-controle bg-superficie p-3'
 
 function PorReuniao({ unidadeId, mes }: { unidadeId: string; mes: string }) {
   const servidor = useReunioes(unidadeId, mes)
@@ -112,9 +149,11 @@ function PorReuniao({ unidadeId, mes }: { unidadeId: string; mes: string }) {
       {linhas.map((linha) => (
         <li key={linha.chave}>
           {linha.id ? (
-            <Link to={`/reunioes/${linha.id}`} className={estiloLinha}>
-              <ConteudoLinha linha={linha} />
-            </Link>
+            <LinhaQueNavega to={`/reunioes/${linha.id}`} forma="cartao" className="p-3">
+              <span className="flex items-center gap-3">
+                <ConteudoLinha linha={linha} />
+              </span>
+            </LinhaQueNavega>
           ) : (
             <div className={estiloLinha}>
               <ConteudoLinha linha={linha} />
@@ -135,21 +174,19 @@ function PorDbv({ unidadeId }: { unidadeId: string }) {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm font-semibold text-texto-2">Últimas 8 reuniões</p>
+      <LegendaDasMarcas />
       <ul className="flex flex-col gap-2">
         {grade.data.linhas.map((linha) => (
-          <li key={linha.dbvId} className={estiloLinha}>
-            <span className="min-w-0 flex-1 truncate font-semibold">{linha.nome}</span>
-            <span className="flex gap-1">
-              {linha.marcas.map((marca, indice) => {
-                const definicao = marca === null ? null : MARCAS[marca]
-                return (
-                  <span key={grade.data.reunioes[indice]?.id ?? indice} className={cn('h-5 w-3 rounded-sm', definicao?.classe ?? 'border border-divisor')}>
-                    <span className="sr-only">{definicao?.texto ?? 'sem registro'}</span>
-                  </span>
-                )
-              })}
+          <li key={linha.dbvId} className={cn(estiloLinha, 'flex-col items-stretch gap-2')}>
+            <span className="flex items-center gap-3">
+              <span className="min-w-0 flex-1 truncate font-semibold">{linha.nome}</span>
+              <span className={cn('w-12 text-right text-base font-extrabold', corDoPercentual(linha.percentual))}>{linha.percentual === null ? '—' : `${linha.percentual}%`}</span>
             </span>
-            <span className={cn('w-12 text-right text-base font-extrabold', corDoPercentual(linha.percentual))}>{linha.percentual === null ? '—' : `${linha.percentual}%`}</span>
+            <span className="flex gap-1">
+              {linha.marcas.map((marca, indice) => (
+                <Marca key={grade.data.reunioes[indice]?.id ?? indice} letra={marca} />
+              ))}
+            </span>
           </li>
         ))}
       </ul>

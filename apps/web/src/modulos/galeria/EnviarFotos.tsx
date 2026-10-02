@@ -234,7 +234,7 @@ function FormularioDeEnvio({ unidades, unidadeId, aoTrocarUnidade, reuniaoDoLink
                 onClick={() => setEscolhida(opcao.chave)}
                 className={cn('flex min-h-[var(--touch-min)] items-center gap-3 rounded-cartao border-2 px-3.5 py-2 text-left', marcada ? 'border-marca bg-marca-suave' : 'border-superficie bg-superficie')}
               >
-                <span className={cn('size-5 shrink-0 rounded-full', marcada ? 'border-[6px] border-marca bg-superficie' : 'border-2 border-borda')} />
+                <span className={cn('size-5 shrink-0 rounded-full', marcada ? 'border-[6px] border-marca bg-superficie' : 'border-2 border-borda-controle')} />
                 <span className="flex flex-col">
                   <span className="text-base font-semibold text-texto">{opcao.titulo}</span>
                   <span className="text-sm text-texto-2">{opcao.subtitulo}</span>
@@ -262,7 +262,7 @@ function FormularioDeEnvio({ unidades, unidadeId, aoTrocarUnidade, reuniaoDoLink
               <li key={foto.id} className="relative aspect-square overflow-hidden rounded-botao bg-marca-suave">
                 <img src={foto.previa} alt={`Prévia de ${foto.arquivo.name}`} className="size-full object-cover" />
                 {!enviadas && (
-                  <button type="button" aria-label="Remover foto" onClick={() => tirar(foto.id)} className="absolute right-1 top-1 flex size-8 items-center justify-center rounded-full bg-black/60 text-white">
+                  <button type="button" aria-label="Remover foto" onClick={() => tirar(foto.id)} className="absolute right-1 top-1 flex size-[var(--touch-min)] items-center justify-center rounded-full bg-black/60 text-white">
                     <X aria-hidden className="size-4" />
                   </button>
                 )}

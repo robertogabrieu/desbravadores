@@ -1,5 +1,5 @@
-import { Check, ChevronLeft } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { Check, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useId, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ErroDaApi } from '../../api/cliente'
 import { hojeDoClube } from '../../api/desbravadores'
@@ -20,6 +20,7 @@ import { diaEMesCurto, semAcento } from '../progresso/formatos'
 type Concluida = EspecialidadesDoDbv['concluidas'][number]
 type Alvo = { id: string; nome: string }
 
+const DBVS_QUE_CABEM_NA_FAIXA = 4
 const MENSAGEM_PADRAO = 'Não foi possível concluir agora. Tente de novo.'
 const mensagemDe = (erro: Error | null): string => (erro instanceof ErroDaApi ? erro.erro.mensagem : MENSAGEM_PADRAO)
 
@@ -83,9 +84,13 @@ function ListaDoDbv({ dbv }: { dbv: Alvo }) {
     if (!aMarcar) return
     marcar.mutate({ especialidadeId: aMarcar.id, concluidoEm: data }, { onSuccess: fecharMarcar })
   }
+  const fecharDesmarcar = () => {
+    definirADesmarcar(null)
+    desmarcar.reset()
+  }
   const confirmarDesmarcar = () => {
     if (!aDesmarcar) return
-    desmarcar.mutate(aDesmarcar.id, { onSettled: () => definirADesmarcar(null) })
+    desmarcar.mutate(aDesmarcar.id, { onSuccess: fecharDesmarcar })
   }
 
   return (
@@ -116,7 +121,7 @@ function ListaDoDbv({ dbv }: { dbv: Alvo }) {
           {marcar.isError && <p role="alert" className="text-sm font-medium text-perigo">{mensagemDe(marcar.error)}</p>}
         </div>
       </Confirmacao>
-      <Confirmacao aberta={aDesmarcar !== null} titulo="Desmarcar especialidade?" rotuloConfirmar="Desmarcar" perigo aoConfirmar={confirmarDesmarcar} aoCancelar={() => definirADesmarcar(null)}>
+      <Confirmacao aberta={aDesmarcar !== null} titulo="Desmarcar especialidade?" rotuloConfirmar="Desmarcar" perigo erro={desmarcar.isError ? mensagemDe(desmarcar.error) : null} aoConfirmar={confirmarDesmarcar} aoCancelar={fecharDesmarcar}>
         {`${aDesmarcar?.nome ?? ''} deixa de constar como concluída por ${dbv.nome}.`}
       </Confirmacao>
     </>
@@ -131,10 +136,13 @@ export function TelaEspecialidades() {
   const dbvId = consulta.get('dbv')
   const progresso = useProgressoClasse(classeId, online)
   const [buscaDbv, definirBuscaDbv] = useState('')
+  const idDica = useId()
 
   const escolherDbv = (id: string) => definirConsulta({ classe: classeId, dbv: id }, { replace: true })
   const desbravadores = (progresso.data?.itens ?? []).filter((item) => semAcento(item.nome).includes(semAcento(buscaDbv.trim())))
   const escolhido = progresso.data?.itens.find((item) => item.dbvId === dbvId)
+  // No celular a faixa mostra uns quatro de cada vez; com mais, o resto fica escondido à direita.
+  const rolaParaOLado = desbravadores.length > DBVS_QUE_CABEM_NA_FAIXA
   const alvo: Alvo | null = dbvId ? { id: dbvId, nome: escolhido?.nome ?? '' } : null
 
   let corpo
@@ -148,7 +156,7 @@ export function TelaEspecialidades() {
       <>
         <div className="flex flex-col gap-2">
           <Campo rotulo="Buscar desbravador" type="search" value={buscaDbv} onChange={(e) => definirBuscaDbv(e.target.value)} placeholder="Buscar desbravador" />
-          <div role="group" aria-label="Desbravador" className="flex gap-3 overflow-x-auto pb-1 md:flex-wrap">
+          <div role="group" aria-label="Desbravador" aria-describedby={rolaParaOLado ? idDica : undefined} className="flex gap-3 overflow-x-auto pb-1 md:flex-wrap">
             {desbravadores.map((item) => (
               <button
                 key={item.dbvId}
@@ -163,6 +171,12 @@ export function TelaEspecialidades() {
               </button>
             ))}
           </div>
+          {rolaParaOLado && (
+            <p id={idDica} className="flex items-center gap-1 text-sm text-texto-2 md:hidden">
+              Deslize para o lado para ver todos.
+              <ChevronRight aria-hidden className="size-4" />
+            </p>
+          )}
         </div>
         {alvo ? <ListaDoDbv key={alvo.id} dbv={alvo} /> : <EstadoVazio titulo="Escolha um desbravador" descricao="Toque num nome acima para ver as especialidades dele." />}
       </>

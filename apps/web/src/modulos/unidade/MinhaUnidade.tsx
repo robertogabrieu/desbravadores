@@ -1,3 +1,4 @@
+import { Image } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ErroDaApi } from '../../api/cliente'
@@ -6,10 +7,12 @@ import { useMembrosUnidade } from '../../api/leitura'
 import { useAvisarAdmUnidadeVazia } from '../../api/pedidos'
 import { LIMIAR_FREQUENCIA_ALERTA } from '../../api/reunioes'
 import { useSessao } from '../../sessao/useSessao'
-import { Botao } from '../../ui/Botao'
+import { Botao, estiloDoBotao } from '../../ui/Botao'
 import { Campo } from '../../ui/Campo'
 import { Esqueleto } from '../../ui/Esqueleto'
 import { EstadoVazio } from '../../ui/EstadoVazio'
+import { LinhaQueNavega } from '../../ui/LinhaQueNavega'
+import { NomeDaFicha } from '../../ui/LinkDeFicha'
 import { Selecao } from '../../ui/Selecao'
 import { cn } from '../../ui/cn'
 import { ErroDeCarga } from '../../ui/EstadosDeCarga'
@@ -58,7 +61,13 @@ export function MinhaUnidade() {
 
   return (
     <main className="flex flex-col gap-4 p-4">
-      <h1 className="font-titulo text-2xl font-extrabold">{unidade.nome}</h1>
+      <header className="flex items-center justify-between gap-3">
+        <h1 className="font-titulo text-2xl font-extrabold">{unidade.nome}</h1>
+        <Link to="/galeria" className={estiloDoBotao({ variante: 'secundario' })}>
+          <Image aria-hidden className="size-5" />
+          Galeria
+        </Link>
+      </header>
       {unidades.length > 1 && (
         <Selecao rotulo="Unidade" value={unidade.id} onChange={(evento) => setEscolhida(evento.target.value)}>
           {unidades.map((u) => (
@@ -84,21 +93,23 @@ export function MinhaUnidade() {
           <ul className="grid gap-2 md:grid-cols-2">
             {filtrados.map((membro) => (
               <li key={membro.dbvId}>
-                <Link to={`/dbv/${membro.dbvId}`} className="flex items-center gap-3 rounded-cartao border border-borda bg-superficie p-3">
-                  <span aria-hidden className="flex size-11 shrink-0 items-center justify-center rounded-full bg-marca-suave text-sm font-bold text-marca">
-                    {iniciais(membro.nome)}
-                  </span>
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="font-semibold">{membro.nome}</span>
-                    <span className="text-sm text-texto-2">{descricao(membro)}</span>
-                  </span>
-                  <span className="flex flex-col items-end leading-tight">
-                    <span className={cn('text-base font-extrabold', membro.frequencia != null && membro.frequencia < LIMIAR_FREQUENCIA_ALERTA ? 'text-perigo' : 'text-marca')}>
-                      {membro.frequencia == null ? '—' : `${membro.frequencia}%`}
+                <LinhaQueNavega to={`/dbv/${membro.dbvId}`} forma="cartao" sinal="ficha" className="p-3">
+                  <span className="flex items-center gap-3">
+                    <span aria-hidden className="flex size-11 shrink-0 items-center justify-center rounded-full bg-marca-suave text-sm font-bold text-marca">
+                      {iniciais(membro.nome)}
                     </span>
-                    <span className="text-xs text-texto-2">frequência</span>
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <NomeDaFicha nome={membro.nome} className="font-semibold" />
+                      <span className="text-sm text-texto-2">{descricao(membro)}</span>
+                    </span>
+                    <span className="flex flex-col items-end leading-tight">
+                      <span className={cn('text-base font-extrabold', membro.frequencia != null && membro.frequencia < LIMIAR_FREQUENCIA_ALERTA ? 'text-perigo' : 'text-marca')}>
+                        {membro.frequencia == null ? '—' : `${membro.frequencia}%`}
+                      </span>
+                      <span className="text-xs text-texto-2">frequência</span>
+                    </span>
                   </span>
-                </Link>
+                </LinhaQueNavega>
               </li>
             ))}
           </ul>

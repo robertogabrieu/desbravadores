@@ -14,7 +14,7 @@ const TRACO = '—'
 
 function Numero({ valor, rotulo }: { valor: string; rotulo: string }) {
   return (
-    <div className="flex flex-col items-center gap-1 rounded-cartao border border-borda bg-superficie p-3">
+    <div className="flex flex-col items-center gap-1 rounded-cartao border border-borda-controle bg-superficie p-3">
       <span className="font-titulo text-2xl font-extrabold text-texto">{valor}</span>
       <span className="text-sm text-texto-2">{rotulo}</span>
     </div>
@@ -55,7 +55,7 @@ function Conteudo({ perfil }: { perfil: PerfilDaApi }) {
         ) : (
           <ul className="flex flex-col gap-2">
             {perfil.classesInvestidas.map(({ classe, anoClube }) => (
-              <li key={`${classe.id}-${anoClube}`} className="flex items-center gap-3 rounded-cartao border border-borda bg-superficie p-3">
+              <li key={`${classe.id}-${anoClube}`} className="flex items-center gap-3 rounded-cartao border border-borda-controle bg-superficie p-3">
                 <Avatar nome={classe.nome} classe={classeDoAvatar(classe.corToken)} className="size-8 text-xs" />
                 <span className="flex flex-col">
                   <span className="font-semibold text-texto">{classe.nome}</span>

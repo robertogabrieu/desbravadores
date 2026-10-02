@@ -249,3 +249,33 @@ describe('Histórico de reuniões', () => {
     expect(await screen.findByText('Você ainda não tem unidade')).toBeInTheDocument()
   })
 })
+
+describe('sinais do histórico', () => {
+  it('reunião enviada abre com seta; a que espera envio não é link, não tem seta e diz "não enviado"', async () => {
+    entrarComo([AGUIAS])
+    estado.itens = [itemDaFila(AGUIAS.id, diaDoMes('27'), [linha(301, 'PRESENTE')])]
+    servidor.use(handlerReunioes({ [mesAtual]: [criarResumo({ id: uuid(610), data: diaDoMes('20') })] }))
+    abrir()
+    const itens = await screen.findAllByRole('listitem')
+    expect(within(itens[0]).queryByRole('link')).not.toBeInTheDocument()
+    expect(itens[0].querySelector('[data-sinal]')).toBeNull()
+    expect(within(itens[0]).getByText('não enviado')).toBeInTheDocument()
+    expect(within(itens[1]).getByRole('link').querySelector('[data-sinal="navega"]')).not.toBeNull()
+  })
+
+  it('a grade "Por DBV" põe a letra do estado em cada marca e mostra a legenda', async () => {
+    entrarComo([AGUIAS])
+    servidor.use(handlerReunioes({}), handlerGrade(criarGrade()))
+    abrir()
+    await userEvent.click(await screen.findByRole('tab', { name: 'Por DBV' }))
+    const legenda = await screen.findByRole('list', { name: 'Legenda' })
+    for (const texto of ['P presente', 'A atraso', 'F falta', 'J falta justificada']) {
+      expect(within(legenda).getByText((_, elemento) => elemento?.tagName === 'LI' && elemento.textContent === texto)).toBeInTheDocument()
+    }
+    const linhaAna = screen.getByText('Ana Clara Souza').closest('li') as HTMLElement
+    expect(within(linhaAna).getByText('P')).toBeInTheDocument()
+    expect(within(linhaAna).getByText('A')).toBeInTheDocument()
+    const linhaPedro = screen.getByText('Pedro Lima').closest('li') as HTMLElement
+    expect(within(linhaPedro).getByText('F')).toBeInTheDocument()
+  })
+})

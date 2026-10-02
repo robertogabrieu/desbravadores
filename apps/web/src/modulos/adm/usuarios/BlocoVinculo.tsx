@@ -29,7 +29,7 @@ export function BlocoVinculo({ indice, rascunho, aoMudar, papelTravado = false, 
   const permissoes = permissoesDoPapel(catalogo.data ?? [], papel)
 
   return (
-    <section role="group" aria-label={`Vínculo ${indice}`} className="flex flex-col gap-3 rounded-cartao border border-borda p-4">
+    <section role="group" aria-label={`Vínculo ${indice}`} className="flex flex-col gap-3 rounded-cartao border border-borda-controle p-4">
       <Selecao
         rotulo="Papel"
         value={papel}

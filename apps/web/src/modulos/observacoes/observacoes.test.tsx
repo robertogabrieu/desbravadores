@@ -161,6 +161,26 @@ describe('Observações', () => {
     await waitFor(() => expect(apagou).toBe(1))
   })
 
+  it('apagar que falha mantém o diálogo aberto com a mensagem; de novo com sucesso, fecha', async () => {
+    let falhar = true
+    servidor.use(
+      handlerObservacoes([criarObservacao()]),
+      http.delete(`/api/observacoes/${uuid(901)}`, () =>
+        falhar ? HttpResponse.json({ codigo: 'CONFLITO', mensagem: 'Você não pode apagar esta observação.' }, { status: 409 }) : new HttpResponse(null, { status: 204 }),
+      ),
+    )
+    const usuario = userEvent.setup()
+    abrir()
+    await usuario.click(await screen.findByRole('button', { name: 'Apagar' }))
+    const dialogo = await screen.findByRole('dialog', { name: 'Apagar observação?' })
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Apagar' }))
+    expect(await within(dialogo).findByRole('alert')).toHaveTextContent('Você não pode apagar esta observação.')
+    expect(screen.getByRole('dialog', { name: 'Apagar observação?' })).toBeInTheDocument()
+    falhar = false
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Apagar' }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Apagar observação?' })).not.toBeInTheDocument())
+  })
+
   it('mostra o carregando e o erro da API', async () => {
     servidor.use(http.get('/api/observacoes', () => HttpResponse.json({ codigo: 'NAO_ENCONTRADO', mensagem: 'Classe não encontrada.' }, { status: 404 })))
     abrir()

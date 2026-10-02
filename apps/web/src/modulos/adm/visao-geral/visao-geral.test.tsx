@@ -34,7 +34,7 @@ describe('A0 · quatro estados', () => {
     servidor.use(handlerVisaoGeral(criarVisaoGeral({ dbvsAtivos: 0, unidades: 0, unidadesResumo: [], frequenciaMes: null, variacaoFrequencia: null })))
     abrir()
     expect(await screen.findByText('O clube ainda não tem desbravadores')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Cadastrar desbravador' })).toHaveAttribute('href', '/adm/desbravadores')
+    expect(screen.getByRole('link', { name: 'Cadastrar desbravador' })).toHaveAttribute('href', '/adm/desbravadores/novo')
   })
 
   it('erro: mostra a mensagem da API e repete a busca', async () => {
@@ -106,8 +106,8 @@ describe('A0 · conteúdo', () => {
   it('unidades: marca a frequência abaixo do limiar do clube (60 não marca ninguém)', async () => {
     servidor.use(handlerVisaoGeral(duasUnidades), handlerConfiguracao(criarConfiguracao({ limiarFrequenciaAlerta: 75 })))
     abrir()
-    const aguias = within(await screen.findByRole('link', { name: 'Águias' }))
-    const tigres = within(screen.getByRole('link', { name: 'Tigres' }))
+    const aguias = within(await screen.findByRole('link', { name: /^Águias/ }))
+    const tigres = within(screen.getByRole('link', { name: /^Tigres/ }))
     await waitFor(() => expect(tigres.getByText('68%')).toHaveAttribute('data-abaixo-do-limiar', 'true'))
     expect(aguias.getByText('87%')).toHaveAttribute('data-abaixo-do-limiar', 'false')
     expect(tigres.getByText('Sem conselheiro')).toBeInTheDocument()
@@ -116,27 +116,52 @@ describe('A0 · conteúdo', () => {
   it('o cartão da unidade leva à ficha dela', async () => {
     servidor.use(handlerVisaoGeral(duasUnidades), handlerConfiguracao(criarConfiguracao()))
     abrir()
-    expect(await screen.findByRole('link', { name: 'Águias' })).toHaveAttribute('href', `/adm/unidades/${uuid(11)}`)
-    expect(screen.getByRole('link', { name: 'Tigres' })).toHaveAttribute('href', `/adm/unidades/${uuid(12)}`)
+    expect(await screen.findByRole('link', { name: /^Águias/ })).toHaveAttribute('href', `/adm/unidades/${uuid(11)}`)
+    expect(screen.getByRole('link', { name: /^Tigres/ })).toHaveAttribute('href', `/adm/unidades/${uuid(12)}`)
+  })
+
+  it('o nome do cartão da unidade diz a contagem e a frequência, e avisa quando está abaixo do limite', async () => {
+    servidor.use(handlerVisaoGeral(duasUnidades), handlerConfiguracao(criarConfiguracao({ limiarFrequenciaAlerta: 75 })))
+    abrir()
+    expect(await screen.findByRole('link', { name: 'Águias · 8 DBVs · frequência do mês 87%' })).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: 'Tigres · 10 DBVs · frequência do mês 68%, abaixo do limite' })).toBeInTheDocument()
+  })
+
+  it('só o que abre leva seta: o cartão da unidade tem, os números do clube não', async () => {
+    servidor.use(handlerVisaoGeral(duasUnidades), handlerConfiguracao(criarConfiguracao()))
+    abrir()
+    const unidade = await screen.findByRole('link', { name: /^Águias/ })
+    expect(unidade.querySelector('[data-sinal="navega"]')).not.toBeNull()
+    for (const titulo of ['Desbravadores', 'Unidades', 'Instrutores', 'Frequência do mês', 'Especialidades no ano']) {
+      const indicador = screen.getByRole('group', { name: titulo })
+      expect(indicador.querySelector('[data-sinal="navega"]')).toBeNull()
+      expect(indicador.closest('a')).toBeNull()
+    }
+  })
+
+  it('"Novo desbravador" abre o cadastro, não a lista', async () => {
+    servidor.use(handlerVisaoGeral(duasUnidades), handlerConfiguracao(criarConfiguracao()))
+    abrir()
+    expect(await screen.findByRole('link', { name: 'Novo desbravador' })).toHaveAttribute('href', '/adm/desbravadores/novo')
   })
 
   it('limiar diferente de 70: com 90, 87% passa a ser marcado; com 60, 68% deixa de ser', async () => {
     servidor.use(handlerVisaoGeral(duasUnidades), handlerConfiguracao(criarConfiguracao({ limiarFrequenciaAlerta: 90 })))
     const primeira = abrir()
-    const aguias = within(await screen.findByRole('link', { name: 'Águias' }))
+    const aguias = within(await screen.findByRole('link', { name: /^Águias/ }))
     await waitFor(() => expect(aguias.getByText('87%')).toHaveAttribute('data-abaixo-do-limiar', 'true'))
     primeira.unmount()
 
     servidor.use(handlerConfiguracao(criarConfiguracao({ limiarFrequenciaAlerta: 60 })))
     abrir()
-    const tigres = within(await screen.findByRole('link', { name: 'Tigres' }))
+    const tigres = within(await screen.findByRole('link', { name: /^Tigres/ }))
     await waitFor(() => expect(tigres.getByText('68%')).toHaveAttribute('data-abaixo-do-limiar', 'false'))
   })
 
   it('configuração com erro: unidades aparecem sem destaque', async () => {
     servidor.use(handlerVisaoGeral(duasUnidades), handlerErroConfiguracao())
     abrir()
-    const tigres = within(await screen.findByRole('link', { name: 'Tigres' }))
+    const tigres = within(await screen.findByRole('link', { name: /^Tigres/ }))
     expect(tigres.getByText('68%')).toHaveAttribute('data-abaixo-do-limiar', 'false')
   })
 

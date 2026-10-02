@@ -59,6 +59,9 @@ describe('ficha da unidade', () => {
     const membros = within(screen.getByRole('region', { name: 'Membros' }))
     expect(membros.getByRole('link', { name: /Ana Beatriz Souza/ })).toHaveAttribute('href', `/adm/desbravadores/${uuid(301)}`)
     expect(membros.getByText('90%')).toBeInTheDocument()
+    const linhaDaAna = membros.getByRole('link', { name: /Ana Beatriz Souza/ })
+    expect(linhaDaAna.querySelector('[data-sinal="abre-ficha"]')).not.toBeNull()
+    expect(linhaDaAna.querySelector('[data-sinal="navega"]')).toBeNull()
   })
 
   it('adicionar desbravador sem unidade é uma janela de um campo', async () => {
@@ -142,6 +145,7 @@ describe('ficha da unidade', () => {
     })
     const secao = within(await screen.findByRole('region', { name: 'Reuniões de setembro de 2026' }))
     expect(await secao.findByRole('link', { name: /Domingo, 27 de setembro/ })).toHaveAttribute('href', `/adm/reunioes/${uuid(601)}`)
+    expect(secao.getByRole('link', { name: /Domingo, 27 de setembro/ }).querySelector('[data-sinal="navega"]')).not.toBeNull()
     expect(secao.getByText(/7 de 8 presentes · 1 atraso/)).toBeInTheDocument()
     await userEvent.click(secao.getByRole('button', { name: 'Mês anterior' }))
     expect(roteador.state.location.search).toBe('?mes=2026-08')

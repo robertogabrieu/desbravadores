@@ -118,7 +118,7 @@ function FormularioNovaObservacao({ classeId }: { classeId: string }) {
   }
 
   return (
-    <form onSubmit={salvar} className="flex flex-col gap-3 rounded-cartao border border-borda bg-superficie p-4">
+    <form onSubmit={salvar} className="flex flex-col gap-3 rounded-cartao border border-borda-controle bg-superficie p-4">
       <div role="radiogroup" aria-label="Sobre o quê" className="flex gap-4">
         {(['AULA', 'DBV'] as const).map((opcao) => (
           <label key={opcao} className="flex min-h-[var(--touch-min)] items-center gap-2 text-base font-semibold text-texto">
@@ -162,6 +162,10 @@ function ListaDeObservacoes({ classeId, alvo }: { classeId: string; alvo: AlvoDa
   const observacoes = useObservacoes(classeId, alvo)
   const apagar = useApagarObservacao()
   const [aApagar, definirAApagar] = useState<Observacao | null>(null)
+  const fecharApagar = () => {
+    definirAApagar(null)
+    apagar.reset()
+  }
 
   if (observacoes.isPending) return <Carregando rotulo="Carregando observações" />
   if (observacoes.isError) return <ErroDeCarga erro={observacoes.error} aoTentarDeNovo={() => void observacoes.refetch()} />
@@ -179,9 +183,10 @@ function ListaDeObservacoes({ classeId, alvo }: { classeId: string; alvo: AlvoDa
         titulo="Apagar observação?"
         rotuloConfirmar="Apagar"
         perigo
-        aoCancelar={() => definirAApagar(null)}
+        erro={apagar.isError ? mensagemDe(apagar.error) : null}
+        aoCancelar={fecharApagar}
         aoConfirmar={() => {
-          if (aApagar) apagar.mutate(aApagar.id, { onSettled: () => definirAApagar(null) })
+          if (aApagar) apagar.mutate(aApagar.id, { onSuccess: fecharApagar })
         }}
       >
         O texto some para todos. Essa ação não pode ser desfeita.

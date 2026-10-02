@@ -239,3 +239,12 @@ describe('Álbum', () => {
     expect(await screen.findByText('Disponível quando houver internet')).toBeInTheDocument()
   })
 })
+
+describe('sinais da galeria', () => {
+  it('cada álbum mostra a seta de que abre', async () => {
+    servidor.use(handlerAlbuns([criarAlbum({ id: uuid(701), titulo: 'Reunião · 20 set' })]))
+    renderizarRotas(rotasGaleria, '/galeria')
+    const album = await screen.findByRole('link', { name: /Reunião · 20 set/ })
+    expect(album.querySelector('[data-sinal="navega"]')).not.toBeNull()
+  })
+})
