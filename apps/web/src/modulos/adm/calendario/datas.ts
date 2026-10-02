@@ -20,8 +20,11 @@ export function diasDaGrade(ano: number, mes: number): (number | null)[] {
   return celulas
 }
 
+const ehExtra = (evento: EventoCalendario): number => Number(evento.tipo === 'REUNIAO_EXTRA')
+
+/** Eventos que cobrem o dia, com a reunião extra antes dos demais (a ordem do modelo). */
 export const eventosDoDia = (eventos: EventoCalendario[], data: string): EventoCalendario[] =>
-  eventos.filter((evento) => evento.inicio <= data && data <= evento.fim)
+  eventos.filter((evento) => evento.inicio <= data && data <= evento.fim).sort((a, b) => ehExtra(b) - ehExtra(a))
 
 /** Eventos que tocam o mês, na ordem em que vieram (por início). */
 export function eventosDoMes(eventos: EventoCalendario[], ano: number, mes: number): EventoCalendario[] {
@@ -67,6 +70,10 @@ export const datasDoDiaDaSemana = (inicio: string, fim: string, diaDaSemanaDesej
 
 const MAXIMO_DE_DIAS_NA_LISTA = 3
 const diaEMesSemZero = (data: string): string => `${numeroDoDia(data)}/${data.slice(5, 7)}`
+
+/** "25/01" num dia só; "7/12 a 1/02" no período. */
+export const periodoCurto = (inicio: string, fim: string): string =>
+  inicio === fim ? diaEMesSemZero(inicio) : `${diaEMesSemZero(inicio)} a ${diaEMesSemZero(fim)}`
 const nomeCurto = (data: string): string => (NOMES_DO_DIA[diaDaSemana(data)] ?? '').replace('-feira', '')
 
 /**

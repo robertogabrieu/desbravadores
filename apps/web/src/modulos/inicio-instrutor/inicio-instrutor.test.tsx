@@ -56,7 +56,7 @@ describe('início do instrutor', () => {
     expect(screen.getByText('Instrutora · Amigo e Companheiro')).toBeInTheDocument()
     const cartao = await screen.findByRole('region', { name: 'Próxima classe de Amigo' })
     expect(within(cartao).getByText('Descoberta espiritual')).toBeInTheDocument()
-    expect(within(cartao).getByText(/Sex, 27 set · 9h15/)).toBeInTheDocument()
+    expect(within(cartao).getByText('Próxima classe · 27/09 · 9h15')).toBeInTheDocument()
     expect(within(cartao).getByText('2 requisitos planejados · 9 desbravadores')).toBeInTheDocument()
     expect(screen.getByText('64%')).toBeInTheDocument()
   })

@@ -137,7 +137,7 @@ function CorpoAula({ pacote, baixadoEm, classe, data, base, chave, registroAulaI
   const especialidadesFila = especialidadesComFila(especialidadesNoServidor, fila)
   const tarefas = tarefasDaClasse(classe)
   const entregues = itensEntreguesAqui({ itens: tarefas.flatMap((tarefa) => tarefa.itens), membros, estado, comFila, especialidadesFila })
-  const tarefasACobrar = tarefasParaCobrar({ tarefas, registroAulaId, data, entregues })
+  const tarefasACobrar = tarefasParaCobrar({ tarefas, registroAulaId, data, entregues, membros, comFila })
   const daCobranca = new Set(tarefasACobrar.flatMap((tarefa) => tarefa.itens.flatMap((item) => ('requisitoId' in item ? [item.requisitoId] : []))))
   const requisitos = requisitosVisiveis({ daClasse: classe.requisitos, base, planejados: planejada?.requisitoIds ?? [], estado, daCobranca })
   const disponiveis = classe.requisitos.filter((r) => !requisitos.some((v) => v.id === r.id) && !daCobranca.has(r.id))

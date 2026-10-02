@@ -13,7 +13,7 @@ import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { Esqueleto } from '../../../ui/Esqueleto'
 import { cn } from '../../../ui/cn'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/EstadosDeCarga'
-import { dataCivilBr, horaCurta } from '../formatos'
+import { horaCurta } from '../formatos'
 import { useEstadoDeVolta, useFiltrosNaUrl } from '../navegacao'
 import {
   DIAS_DA_SEMANA,
@@ -25,16 +25,12 @@ import {
   eventosDoDia,
   eventosDoMes,
   mesDoEndereco,
+  periodoCurto,
 } from './datas'
 import { COR_DA_REUNIAO, CORES_DO_TIPO, ICONE_DO_TIPO, ROTULOS_DO_TIPO } from './tipos'
 
 const ABAS_DE_MES = MESES_CURTOS.map((rotulo, indice) => ({ id: String(indice), rotulo }))
 const MAXIMO_POR_DIA = 2
-
-const periodo = (evento: EventoCalendario): string =>
-  evento.inicio === evento.fim
-    ? dataCivilBr(evento.inicio)
-    : `${dataCivilBr(evento.inicio)} a ${dataCivilBr(evento.fim)}`
 
 const fichaDoEvento = (evento: EventoCalendario): string => `/adm/calendario/eventos/${evento.id}`
 
@@ -66,7 +62,9 @@ export function AdmCalendario() {
             aria-label="Legenda"
             className="flex flex-wrap gap-3 text-sm font-semibold text-texto-3"
           >
-            <li className={cn('rounded-full px-2.5 py-0.5', COR_DA_REUNIAO)}>Reunião regular</li>
+            <li className={cn('rounded-full px-2.5 py-0.5', COR_DA_REUNIAO)}>
+              {horaDaReuniao ? `Reunião regular · ${horaCurta(horaDaReuniao)}` : 'Reunião regular'}
+            </li>
             {Object.entries(ROTULOS_DO_TIPO).map(([tipo, rotulo]) => {
               const tipoDoEvento = tipo as keyof typeof CORES_DO_TIPO
               const Icone = ICONE_DO_TIPO[tipoDoEvento]
@@ -126,8 +124,8 @@ export function AdmCalendario() {
                   </Link>
                   <div className="flex flex-col gap-0.5">
                     <span className="text-sm text-texto-2">
-                      {ROTULOS_DO_TIPO[evento.tipo]} · {periodo(evento)}
-                      {evento.horario && ` · ${evento.horario}`}
+                      {ROTULOS_DO_TIPO[evento.tipo]} · {periodoCurto(evento.inicio, evento.fim)}
+                      {evento.horario && ` · ${horaCurta(evento.horario)}`}
                       {evento.local && ` · ${evento.local}`}
                     </span>
                   </div>

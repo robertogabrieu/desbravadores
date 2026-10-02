@@ -13,7 +13,8 @@ import { Esqueleto } from '../../ui/Esqueleto'
 import { FaixaAviso } from '../../ui/FaixaAviso'
 import { ClassesSemConexao } from '../aulas/RegistroSemConexao'
 import { corDaClasse } from '../classes/cores'
-import { TRACO, formatarDataCurta, formatarHorario } from '../cronograma/formatos'
+import { dataCurta } from '../aulas/datas'
+import { TRACO, formatarHorario } from '../cronograma/formatos'
 
 interface Atalho {
   rotulo: string
@@ -63,7 +64,7 @@ function CartaoProximaAula({ item }: { item: ClasseDoInstrutor }) {
           </span>
           {proximaAula && (
             <span className="text-sm font-semibold text-texto-2">
-              Próxima classe · {formatarDataCurta(proximaAula.data)}
+              Próxima classe · {dataCurta(proximaAula.data)}
               {proximaAula.horario && ` · ${formatarHorario(proximaAula.horario)}`}
             </span>
           )}

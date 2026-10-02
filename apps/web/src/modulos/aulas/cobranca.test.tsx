@@ -147,6 +147,18 @@ describe('Cobrar a tarefa no registro', () => {
     expect(screen.getByRole('button', { name: '+1 tarefa anterior' })).toBeInTheDocument()
   })
 
+  it('aberta que ninguém mais deve sai do bloco e o requisito dela volta à grade; a com devedores fica como principal', async () => {
+    const quitada = { ...TAREFA, id: uuid(601), registroAulaId: uuid(711), data: '2030-10-01', itens: [{ requisitoId: R3 }] }
+    const feitoPorTodos = [membro(ANA, 'Ana Beatriz Souza', [R3]), membro(BRUNO, 'Bruno Lima', [R1, R3]), membro(CARLA, 'Carla Mendes', [R3])]
+    guardar([classe({ tarefas: [quitada, TAREFA], membros: feitoPorTodos, aulasProximas: [{ aulaPlanejadaId: uuid(50), data: DATA, horario: '09:00', titulo: 'Aula', requisitoIds: [R3] }] })])
+    montar()
+    await esperar()
+    expect(screen.getByRole('heading', { name: 'Cobrar tarefa de 27/09' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^\+1 tarefa anterior/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Cobrar tarefa de 01/10' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^III.1 · Ana/ })).toBeInTheDocument()
+  })
+
   it('chips com o nome curto trocam o item, e o nome inteiro do escolhido aparece abaixo', async () => {
     montar()
     await esperar()

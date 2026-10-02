@@ -198,6 +198,24 @@ describe('GET /api/sync/pacote do instrutor (F11)', () => {
       expect(classe?.tarefas.map((t) => t.id)).toEqual([t2.id, t1.id])
     })
 
+    it('encerrada de outro ano do clube nao entra, mesmo com entrega recente; a do ano entra', async () => {
+      const c = await cenario()
+      const [r1, r2] = c.requisitos as [string, string]
+      const [origemDoAno, origemAnterior, recente] = [
+        await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-45) }),
+        await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-44) }),
+        await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-2) }),
+      ]
+      const doAno = await criarTarefa({ clubeId: c.clube.id, classeId: c.classe.id, registroAulaId: origemDoAno.id, itens: [{ requisitoId: r1 }], encerrada: true })
+      await criarTarefa({ clubeId: c.clube.id, classeId: c.classe.id, registroAulaId: origemAnterior.id, itens: [{ requisitoId: r2 }], encerrada: true, anoClube: anoCorrente() - 1 })
+      await criarRequisitoConcluido({ clubeId: c.clube.id, dbvId: c.bia.id, requisitoId: r1, concluidoEm: dia(-2), registroAulaId: recente.id })
+      await criarRequisitoConcluido({ clubeId: c.clube.id, dbvId: c.bia.id, requisitoId: r2, concluidoEm: dia(-2), registroAulaId: recente.id })
+
+      const classe = (await baixar(c.instrutor.autorizacao)).instrutor?.classes[0]
+
+      expect(classe?.tarefas.map((t) => t.id)).toEqual([doAno.id])
+    })
+
     it('item invalido some; tarefa do ano anterior e a de ninguem devendo, com origem antiga, ficam fora', async () => {
       const c = await cenario()
       const [r1, r2, r3] = c.requisitos as [string, string, string]

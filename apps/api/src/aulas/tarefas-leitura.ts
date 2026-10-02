@@ -110,9 +110,9 @@ export async function devedoresPorItem(
 }
 
 /**
- * As tarefas da classe para o pacote: abertas do ano com alguem devendo e as de qualquer estado com entrega num
- * registro da classe a partir de `desde` ou com o registro de origem a partir de `desde` (para corrigir sem rede,
- * mesmo quando ninguem mais deve). Itens que deixaram de valer ficam de fora.
+ * As tarefas da classe para o pacote: abertas do ano com alguem devendo ou com entrega num registro da classe a partir
+ * de `desde` ou com o registro de origem a partir de `desde` (para corrigir sem rede, mesmo quando ninguem mais deve);
+ * encerradas do ano so com entrega recente num registro posterior ao dela. Itens que deixaram de valer ficam de fora.
  */
 export async function tarefasDaClasse(
   db: Db,
@@ -124,27 +124,32 @@ export async function tarefasDaClasse(
 ): Promise<TarefaLida[]> {
   const [abertas, encerradas] = await Promise.all([
     abertasDoAno(db, clubeId, classeId, anoClube),
-    lerTarefas(db, clubeId, classeId, { encerradaEm: { not: null } }),
+    lerTarefas(db, clubeId, classeId, { encerradaEm: { not: null }, anoClube }),
   ])
-  const entregues = await itensEntreguesDesde(db, clubeId, classeId, desde)
-  const temEntrega = (tarefa: TarefaLida): boolean => tarefa.itens.some((item) => entregues.has(chaveDoItem(item)))
+  const entregas = await entregasDesde(db, clubeId, classeId, desde)
+  const entregaEmQualquerRegistro = (tarefa: TarefaLida): boolean => tarefa.itens.some((item) => entregas.has(chaveDoItem(item)))
+  const entregaPosterior = (tarefa: TarefaLida): boolean => tarefa.itens.some((item) => (entregas.get(chaveDoItem(item)) ?? []).some((dataDoRegistro) => dataDoRegistro > tarefa.data))
   const origemRecente = (tarefa: TarefaLida): boolean => tarefa.data >= desde
   const temDevedor = (tarefa: TarefaLida): boolean => tarefa.itens.some((item) => devedores.has(chaveDoItem(item)))
   return [
-    ...abertas.filter((tarefa) => temDevedor(tarefa) || temEntrega(tarefa) || origemRecente(tarefa)),
-    ...encerradas.filter((tarefa) => temEntrega(tarefa) || origemRecente(tarefa)),
+    ...abertas.filter((tarefa) => temDevedor(tarefa) || entregaEmQualquerRegistro(tarefa) || origemRecente(tarefa)),
+    ...encerradas.filter((tarefa) => entregaPosterior(tarefa) || origemRecente(tarefa)),
   ].sort((a, b) => a.data.localeCompare(b.data) || a.id.localeCompare(b.id))
 }
 
-/** Chaves dos itens concluidos (ativos) em registros da classe a partir de `desde`. */
-async function itensEntreguesDesde(db: Db, clubeId: string, classeId: string, desde: string): Promise<Set<string>> {
+/** Por item ativo concluido em registros da classe a partir de `desde`, as datas desses registros. */
+async function entregasDesde(db: Db, clubeId: string, classeId: string, desde: string): Promise<Map<string, string[]>> {
   const registro = { clubeId, classeId, data: { gte: daDataCivil(desde) } }
+  const select = { registro: { select: { data: true } } }
   const [requisitos, especialidades] = await Promise.all([
-    db.requisitoConcluido.findMany({ where: { clubeId, removidoEm: null, registro }, select: { requisitoId: true } }),
-    db.especialidadeConcluida.findMany({ where: { clubeId, removidoEm: null, registro }, select: { especialidadeId: true } }),
+    db.requisitoConcluido.findMany({ where: { clubeId, removidoEm: null, registro }, select: { requisitoId: true, ...select } }),
+    db.especialidadeConcluida.findMany({ where: { clubeId, removidoEm: null, registro }, select: { especialidadeId: true, ...select } }),
   ])
-  return new Set([
-    ...requisitos.map((c) => `requisito:${c.requisitoId}`),
-    ...especialidades.map((c) => `especialidade:${c.especialidadeId}`),
-  ])
+  const entregas = new Map<string, string[]>()
+  const anotar = (chave: string, data: Date | undefined) => {
+    if (data) entregas.set(chave, [...(entregas.get(chave) ?? []), paraDataCivil(data)])
+  }
+  for (const c of requisitos) anotar(`requisito:${c.requisitoId}`, c.registro?.data)
+  for (const c of especialidades) anotar(`especialidade:${c.especialidadeId}`, c.registro?.data)
+  return entregas
 }

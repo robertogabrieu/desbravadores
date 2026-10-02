@@ -75,6 +75,15 @@ describe('A7 · quatro estados', () => {
   })
 })
 
+describe('A7 · largura no celular', () => {
+  it('as seções ocupam uma coluna que nunca passa da largura da tela, mesmo com texto que não quebra', async () => {
+    abrir()
+    await screen.findByText(/agendados/)
+    const colunas = screen.getByRole('region', { name: 'Datas' }).parentElement as HTMLElement
+    expect(colunas.className).toContain('grid-cols-[minmax(0,1fr)]')
+  })
+})
+
 describe('A7 · criar cronograma', () => {
   it('cria com o ano do clube como período padrão', async () => {
     const registro = abrir(criarMontagem({ cronograma: null }))

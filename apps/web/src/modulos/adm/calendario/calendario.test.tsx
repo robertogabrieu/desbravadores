@@ -13,7 +13,7 @@ import {
   handlerErroGravarEvento,
   handlerEvento,
 } from '../../../testes/handlers/calendario'
-import { criarConfiguracao, handlerConfiguracao } from '../../../testes/handlers/clube'
+import { criarConfiguracao, handlerConfiguracao, handlerErroConfiguracao } from '../../../testes/handlers/clube'
 import { uuid } from '../../../testes/handlers/sessao'
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
@@ -36,6 +36,7 @@ const carnaval = criarEvento(1, { nome: 'Acampamento do clube', tipo: 'ACAMPAMEN
 beforeEach(() => {
   estado.modo = 'ONLINE'
   diaReuniao = 0
+  configuracaoComErro = false
 })
 
 function abrir(...extras: Parameters<typeof servidor.use>) {
@@ -43,8 +44,9 @@ function abrir(...extras: Parameters<typeof servidor.use>) {
 }
 
 let diaReuniao = 0
+let configuracaoComErro = false
 function abrirEm(rota: string, ...extras: Parameters<typeof servidor.use>) {
-  servidor.use(handlerConfiguracao(criarConfiguracao({ diaReuniao, horaReuniao: '15:00' })), ...extras)
+  servidor.use(configuracaoComErro ? handlerErroConfiguracao() : handlerConfiguracao(criarConfiguracao({ diaReuniao, horaReuniao: '15:00' })), ...extras)
   return renderizarRotas(rotasAdmCalendario, rota)
 }
 
@@ -388,6 +390,35 @@ describe('P3 · calendário', () => {
     const legenda = within(await screen.findByRole('list', { name: 'Legenda' }))
     expect(legenda.getByText('Reunião extra')).toBeInTheDocument()
     expect(legenda.getByText('Férias')).toBeInTheDocument()
+  })
+
+  it('a legenda diz a reunião regular com o horário do clube, e sem horário não inventa um', async () => {
+    abrir(handlerCalendario({ eventos: [carnaval] }))
+    expect(await within(await screen.findByRole('list', { name: 'Legenda' })).findByText('Reunião regular · 15h')).toBeInTheDocument()
+  })
+
+  it('sem a configuração do clube, a legenda diz só "Reunião regular"', async () => {
+    configuracaoComErro = true
+    abrir(handlerCalendario({ eventos: [carnaval] }))
+    expect(within(await screen.findByRole('list', { name: 'Legenda' })).getByText('Reunião regular')).toBeInTheDocument()
+  })
+
+  it('no dia com extra e férias, a extra vem antes de "Férias"', async () => {
+    abrir(handlerCalendario({ eventos: [ferias, extraQuarta], diasDeReuniao: [] }))
+    const grade = within(await screen.findByRole('group', { name: 'Outubro de 2026' }))
+    const celula = grade.getByText('21', { selector: 'span' }).parentElement as HTMLElement
+    const textos = within(celula).getAllByRole('link').map((link) => link.textContent)
+    expect(textos).toEqual(['Encontro', 'Férias de verão'])
+  })
+
+  it('a lista mostra período e horário no formato curto do modelo', async () => {
+    const longas = criarEvento(24, { nome: 'Férias de fim de ano', tipo: 'FERIAS', inicio: '2026-10-07', fim: '2026-10-25', temReuniao: false, temClasse: true })
+    const dezembro = criarEvento(25, { nome: 'Recesso', tipo: 'FERIAS', inicio: '2026-09-07', fim: '2027-02-01', temReuniao: false, temClasse: true })
+    abrir(handlerCalendario({ eventos: [dezembro, longas, extraQuarta], diasDeReuniao: [] }))
+    const lista = within(await screen.findByRole('list', { name: 'Eventos de Outubro' }))
+    expect(lista.getByText('Férias · 7/09 a 1/02')).toBeInTheDocument()
+    expect(lista.getByText('Férias · 7/10 a 25/10')).toBeInTheDocument()
+    expect(lista.getByText('Reunião extra · 21/10 · 19h30')).toBeInTheDocument()
   })
 
   it('mês vazio explica o que cadastrar', async () => {

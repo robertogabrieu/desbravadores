@@ -4,6 +4,7 @@ import type { z } from 'zod'
 import { criarClasseInstrutor } from '../../testes/handlers/aulas'
 import { criarPacote, criarPacoteInstrutor, criarPacoteInstrutorAntigo } from '../../testes/handlers/offline'
 import { chaveItem } from './estado'
+import type { Membro } from './estado'
 import { baseDoPacote, catalogoDeEspecialidades, especialidadesConcluidasNoRegistro, tarefasDaClasse, tarefasParaCobrar } from './fontes'
 
 type ClasseDoPacote = NonNullable<z.infer<typeof PacoteSaida>['instrutor']>['classes'][number]
@@ -64,9 +65,12 @@ describe('especialidadesConcluidasNoRegistro', () => {
 })
 
 describe('tarefasParaCobrar', () => {
+  const REGISTRO = uuid(799)
   const tarefa = (n: number, data: string, parcial: Partial<ClasseDoPacote['tarefas'][number]> = {}) => ({ id: uuid(600 + n), registroAulaId: uuid(700 + n), data, encerrada: false, itens: [{ requisitoId: uuid(10 + n) }], ...parcial })
-  const cobrar = (tarefas: ClasseDoPacote['tarefas'], entregues: string[] = []) =>
-    tarefasParaCobrar({ tarefas, registroAulaId: uuid(799), data: '2030-10-04', entregues: new Set(entregues) }).map((t) => t.data)
+  const membro = (concluidos: string[], voce = false) => ({ dbvId: uuid(900 + concluidos.length), nome: 'Ana', concluidos, voce, especialidades: [] }) as unknown as Membro
+  const DEVEDOR = membro([])
+  const cobrar = (tarefas: ClasseDoPacote['tarefas'], entregues: string[] = [], membros: Membro[] = [DEVEDOR]) =>
+    tarefasParaCobrar({ tarefas, registroAulaId: REGISTRO, data: '2030-10-04', entregues: new Set(entregues), membros, comFila: new Set() }).map((t) => t.data)
 
   it('abertas com data anterior à do registro, da mais recente para a mais antiga', () => {
     expect(cobrar([tarefa(1, '2030-09-13'), tarefa(2, '2030-09-27'), tarefa(3, '2030-10-04'), tarefa(4, '2030-10-11')])).toEqual(['2030-09-27', '2030-09-13'])
@@ -79,7 +83,24 @@ describe('tarefasParaCobrar', () => {
   })
 
   it('a tarefa passada neste mesmo registro nunca é cobrada nele', () => {
-    const propria = tarefa(9, '2030-09-20', { registroAulaId: uuid(799) })
+    const propria = tarefa(9, '2030-09-20', { registroAulaId: REGISTRO })
     expect(cobrar([propria], [chaveItem(propria.itens[0])])).toEqual([])
+  })
+
+  it('aberta que ninguém mais deve e sem entrega aqui fica fora; com entrega aqui entra', () => {
+    const quitada = tarefa(1, '2030-09-27')
+    const quemJaFez = membro([uuid(11)])
+    expect(cobrar([quitada], [], [quemJaFez])).toEqual([])
+    expect(cobrar([quitada], [chaveItem(quitada.itens[0])], [quemJaFez])).toEqual(['2030-09-27'])
+  })
+
+  it('quem é "você" não conta como devedor', () => {
+    expect(cobrar([tarefa(1, '2030-09-27')], [], [membro([], true)])).toEqual([])
+  })
+
+  it('a mais recente quitada não empurra a que tem devedores', () => {
+    const quitada = tarefa(1, '2030-09-27')
+    const comDevedor = tarefa(2, '2030-09-13')
+    expect(cobrar([quitada, comDevedor], [], [membro([uuid(11)])])).toEqual(['2030-09-13'])
   })
 })

@@ -1,7 +1,7 @@
 import type { AulaDetalhe, PacoteSaida } from '@desbravadores/shared'
 import type { z } from 'zod'
-import { chaveItem, chavePar } from './estado'
-import type { BaseAula } from './estado'
+import { chaveItem, chavePar, concluidoAntes, especialidadeConcluidaAntes } from './estado'
+import type { BaseAula, Membro } from './estado'
 
 type Pacote = z.infer<typeof PacoteSaida>
 type ClasseDoPacote = NonNullable<Pacote['instrutor']>['classes'][number]
@@ -58,12 +58,18 @@ interface ParaCobrar {
   data: string
   /** Chaves (`chaveItem`) dos itens que alguém entregou neste registro. */
   entregues: ReadonlySet<string>
+  membros: Membro[]
+  comFila: Set<string>
 }
 
-/** Abertas de data anterior à do registro e as com entrega neste registro (mesmo encerradas); abertas primeiro, da mais recente para a mais antiga. */
-export function tarefasParaCobrar({ tarefas, registroAulaId, data, entregues }: ParaCobrar): Tarefa[] {
+/** Abertas de data anterior à do registro em que alguém ainda deve um item, e as com entrega neste registro (mesmo encerradas); abertas primeiro, da mais recente para a mais antiga. */
+export function tarefasParaCobrar({ tarefas, registroAulaId, data, entregues, membros, comFila }: ParaCobrar): Tarefa[] {
   const entregueAqui = (tarefa: Tarefa): boolean => tarefa.itens.some((item) => entregues.has(chaveItem(item)))
+  const aindaDeve = (tarefa: Tarefa): boolean =>
+    tarefa.itens.some((item) =>
+      membros.some((membro) => !membro.voce && !('requisitoId' in item ? concluidoAntes(membro, comFila, item.requisitoId) : especialidadeConcluidaAntes(membro, item.especialidadeId, registroAulaId))),
+    )
   return tarefas
-    .filter((tarefa) => tarefa.registroAulaId !== registroAulaId && ((!tarefa.encerrada && tarefa.data < data) || entregueAqui(tarefa)))
+    .filter((tarefa) => tarefa.registroAulaId !== registroAulaId && ((!tarefa.encerrada && tarefa.data < data && aindaDeve(tarefa)) || entregueAqui(tarefa)))
     .sort((a, b) => Number(a.encerrada) - Number(b.encerrada) || b.data.localeCompare(a.data))
 }
