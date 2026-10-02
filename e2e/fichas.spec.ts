@@ -6,6 +6,9 @@ test.use({ baseURL: process.env['E2E_WEB_URL'] })
 
 const MES_DO_EVENTO = '2027-03'
 const DATA_DO_EVENTO = `${MES_DO_EVENTO}-10`
+const FERIAS_DE = `${MES_DO_EVENTO}-05`
+const FERIAS_ATE = `${MES_DO_EVENTO}-28`
+const EXTRA_EM = `${MES_DO_EVENTO}-10`
 const DATA_DA_REUNIAO = '2026-03-01'
 const LARGURAS = [390, 820, 1280]
 const POR_PAGINA = 25
@@ -124,6 +127,57 @@ test.describe('fichas e telas de edição do Adm', () => {
     expect(parametros(page).get('mes')).toBe(MES_DO_EVENTO)
   })
 
+  test('Férias: criadas sem caixas pelo formulário, a ficha diz o que muda no calendário', async ({ page }) => {
+    await clubeComAdm(page)
+    await page.goto('/adm/calendario/eventos/novo')
+    await page.getByLabel('Nome', { exact: true }).fill('Férias de março E2E')
+    await page.getByLabel('Tipo').selectOption({ label: 'Férias' })
+    await page.getByLabel('Início').fill(FERIAS_DE)
+    await page.getByLabel('Fim').fill(FERIAS_ATE)
+
+    // Férias leva o padrão: o formulário não oferece as caixas de reunião, classe e campo.
+    await expect(page.getByLabel('Terá reunião')).toHaveCount(0)
+    await expect(page.getByLabel('Terá classe')).toHaveCount(0)
+    await expect(page.getByLabel('Terá atividade de campo')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Salvar', exact: true }).click()
+
+    await expect(page.getByRole('heading', { level: 1, name: 'Férias de março E2E' })).toBeVisible()
+    await expect(page.getByText('Férias', { exact: true })).toBeVisible()
+    await expect(page.getByText('sex 5 a dom 28 de março')).toBeVisible()
+    await expect(page.getByText('Sem reunião e sem classe nos domingos do período; acampamentos continuam valendo.')).toBeVisible()
+    await expect(page.getByText('Terá reunião')).toHaveCount(0)
+  })
+
+  test('Reunião extra: criada com o campo Data e duas caixas, a ficha mostra o que ela acrescenta', async ({ page }) => {
+    await clubeComAdm(page)
+    await page.goto('/adm/calendario/eventos/novo')
+    await page.getByLabel('Nome', { exact: true }).fill('Encontro extra E2E')
+    await page.getByLabel('Tipo').selectOption({ label: 'Reunião extra' })
+
+    // A extra é de um dia só (campo Data) e nunca é de campo: sobram as duas caixas.
+    await expect(page.getByLabel('Data', { exact: true })).toBeVisible()
+    await expect(page.getByLabel('Início')).toHaveCount(0)
+    await expect(page.getByLabel('Fim')).toHaveCount(0)
+    await expect(page.getByLabel('Terá reunião')).toBeChecked()
+    await expect(page.getByLabel('Terá classe')).toBeChecked()
+    await expect(page.getByLabel('Terá atividade de campo')).toHaveCount(0)
+
+    await page.getByLabel('Data', { exact: true }).fill(EXTRA_EM)
+    await page.getByLabel('Horário').fill('15:00')
+    await page.getByLabel('Local').fill('Parque Ecológico do Tietê')
+    await page.getByLabel('Terá classe').uncheck()
+    await page.getByRole('button', { name: 'Salvar', exact: true }).click()
+
+    await expect(page.getByRole('heading', { level: 1, name: 'Encontro extra E2E' })).toBeVisible()
+    await expect(page.getByText('Reunião extra', { exact: true })).toBeVisible()
+    await expect(page.getByText('qua 10 de março')).toBeVisible()
+    await expect(page.getByText('15h', { exact: true })).toBeVisible()
+    await expect(page.getByText('Parque Ecológico do Tietê')).toBeVisible()
+    await expect(page.getByText('Sim (quarta-feira 10)')).toBeVisible()
+    await expect(page.getByText('Não', { exact: true })).toBeVisible()
+    await expect(page.getByText('Terá atividade de campo')).toHaveCount(0)
+  })
+
   test('o Adm corrige a chamada de uma reunião e volta à ficha da reunião', async ({ page }) => {
     const { clubeId } = await clubeComAdm(page)
     const unidade = await criarUnidade({ clubeId, nome: `Falcões ${Date.now().toString(36)}` })
@@ -194,6 +248,8 @@ test.describe('fichas e telas de edição do Adm', () => {
     const usuario = await criarUsuario({ nome: 'Hugo Medido', status: 'CONVIDADO' })
     await criarVinculo({ usuarioId: usuario.id, clubeId, papel: 'CONSELHEIRO', unidadeIds: [unidade.id] })
     const evento = await criarEvento({ clubeId, tipo: 'ACAMPAMENTO', inicio: DATA_DO_EVENTO })
+    const ferias = await criarEvento({ clubeId, tipo: 'FERIAS', inicio: `${MES_DO_EVENTO}-19`, fim: FERIAS_ATE })
+    const extra = await criarEvento({ clubeId, tipo: 'REUNIAO_EXTRA', inicio: `${MES_DO_EVENTO}-17` })
     const reuniao = await criarReuniao({ unidadeId: unidade.id, data: DATA_DA_REUNIAO, chamada: [{ dbvId: dbv.id }] })
 
     const salvarChamada = (p: Page) => p.getByRole('button', { name: /Salvar chamada/ })
@@ -201,6 +257,11 @@ test.describe('fichas e telas de edição do Adm', () => {
       await expect(p.getByRole('region', { name: 'Membros' }).getByText('Nenhum desbravador nesta unidade')).toBeVisible()
       await expect(p.getByRole('region', { name: /^Reuniões de/ }).getByText(/Nenhuma reunião em|presentes/)).toBeVisible()
     }
+    const formularioComReuniaoExtra = async (p: Page) => {
+      await p.getByLabel('Tipo').selectOption({ label: 'Reunião extra' })
+      await expect(p.getByLabel('Data', { exact: true })).toBeVisible()
+    }
+    const mesComFerias = (p: Page) => expect(p.getByRole('list', { name: /^Eventos de / }).getByRole('link', { name: ferias.nome })).toBeVisible()
     // Cada caminho mede só depois do conteúdo final: o esqueleto de carga é mais estreito e esconde a rolagem.
     const caminhos: { caminho: string; carregado?: (p: Page) => Promise<void> }[] = [
       { caminho: `/adm/desbravadores/${dbv.id}` },
@@ -215,6 +276,10 @@ test.describe('fichas e telas de edição do Adm', () => {
       { caminho: `/adm/calendario/eventos/${evento.id}` },
       { caminho: `/adm/calendario/eventos/${evento.id}/editar` },
       { caminho: '/adm/calendario/eventos/novo' },
+      { caminho: `/adm/calendario/eventos/${ferias.id}` },
+      { caminho: `/adm/calendario/eventos/${extra.id}` },
+      { caminho: '/adm/calendario/eventos/novo', carregado: formularioComReuniaoExtra },
+      { caminho: `/adm/calendario?mes=${MES_DO_EVENTO}`, carregado: mesComFerias },
       { caminho: `/adm/reunioes/${reuniao.id}` },
       { caminho: `/adm/reunioes/${reuniao.id}/chamada`, carregado: (p) => expect(salvarChamada(p)).toBeVisible() },
     ]
