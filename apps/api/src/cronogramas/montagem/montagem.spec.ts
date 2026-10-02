@@ -132,7 +132,7 @@ describe('Montagem do cronograma', () => {
       const saida = corpo<Saida>(resposta)
       const bloqueada = saida.datas.find((data) => data.data === DOMINGO_A)
       expect(bloqueada).toMatchObject({ conflito: true, aulaDada: false, requisitoIds: [requisitos[0]] })
-      expect(bloqueada?.situacao.bloqueiaAula).toBe(true)
+      expect(bloqueada?.situacao).toMatchObject({ temClasse: false, reuniaoMantida: false, extra: null })
       expect(saida.datas.some((data) => data.data === DOMINGO_B && data.aulaId === null)).toBe(true)
       expect(saida.datas.some((data) => data.data === SEGUNDA)).toBe(false)
       expect(requisitoNaSaida(saida, requisitos[0])?.data).toBe(DOMINGO_A)
@@ -217,7 +217,7 @@ describe('Montagem do cronograma', () => {
       await colocar(cronograma.id, requisitos[0], DOMINGO_A, adm.autorizacao)
       const recusado = await http.patch(`/api/cronogramas/${cronograma.id}`, adm.autorizacao, { inicio: '2026-02-01', fim: '2026-06-30' })
       expect(recusado.status).toBe(422)
-      expect((corpo<{ mensagem: string }>(recusado)).mensagem).toContain('05/07')
+      expect((corpo<{ mensagem: string }>(recusado)).mensagem).toBe('Há classes fora do novo período: 05/07. Mova-as antes.')
       const aceito = await http.patch(`/api/cronogramas/${cronograma.id}`, adm.autorizacao, { inicio: '2026-03-01', fim: '2026-12-31' })
       expect(aceito.status).toBe(200)
       expect(corpo<Saida>(aceito).cronograma?.inicio).toBe('2026-03-01')
@@ -292,7 +292,9 @@ describe('Montagem do cronograma', () => {
 
     it('aceita aula em qualquer data; colocar exige a aula criada; tirar não remove a aula', async () => {
       const { adm, requisitos, cronograma } = await cenarioAgrupadas()
-      expect((await colocar(cronograma.id, requisitos[0], SEGUNDA, adm.autorizacao)).status).toBe(422)
+      const semAula = await colocar(cronograma.id, requisitos[0], SEGUNDA, adm.autorizacao)
+      expect(semAula.status).toBe(422)
+      expect(corpo<{ mensagem: string }>(semAula).mensagem).toBe('Crie o dia de classe desta data antes de colocar o requisito.')
       const criada = await criarAula(cronograma.id, SEGUNDA, adm.autorizacao)
       expect(criada.status).toBe(201)
       expect(corpo<Saida>(criada)).toMatchObject({ datasLivres: true, datas: [{ data: SEGUNDA }] })
@@ -304,12 +306,16 @@ describe('Montagem do cronograma', () => {
     it('POST aulas em data com aula ativa responde 409', async () => {
       const { adm, cronograma } = await cenarioAgrupadas()
       await criarAula(cronograma.id, SEGUNDA, adm.autorizacao)
-      expect((await criarAula(cronograma.id, SEGUNDA, adm.autorizacao)).status).toBe(409)
+      const repetida = await criarAula(cronograma.id, SEGUNDA, adm.autorizacao)
+      expect(repetida.status).toBe(409)
+      expect(corpo<{ mensagem: string }>(repetida).mensagem).toBe('Já existe dia de classe nesta data.')
     })
 
     it('classe individual não cria aula por data (422)', async () => {
       const { adm, cronograma } = await cenario()
-      expect((await criarAula(cronograma.id, DOMINGO_A, adm.autorizacao)).status).toBe(422)
+      const recusada = await criarAula(cronograma.id, DOMINGO_A, adm.autorizacao)
+      expect(recusada.status).toBe(422)
+      expect(corpo<{ mensagem: string }>(recusada).mensagem).toBe('Só as classes agrupadas aceitam qualquer data.')
     })
   })
 
@@ -319,7 +325,7 @@ describe('Montagem do cronograma', () => {
       await criarRegistroAula({ clubeId: clube.id, classeId: amigo.id, data: DOMINGO_B })
       const recusada = await colocar(cronograma.id, requisitos[0], DOMINGO_B, adm.autorizacao)
       expect(recusada.status).toBe(422)
-      expect(corpo<{ mensagem: string }>(recusada).mensagem).toBe('Esta aula já foi dada.')
+      expect(corpo<{ mensagem: string }>(recusada).mensagem).toBe('Esta classe já foi dada.')
 
       await colocar(cronograma.id, requisitos[1], DOMINGO_A, adm.autorizacao)
       const [aula] = await aulasAtivas(cronograma.id)
@@ -485,11 +491,15 @@ describe('Montagem do cronograma', () => {
 
       expect((await removerAula(segunda.id, adm.autorizacao)).status).toBe(422)
       expect((await removerAula(primeira.id, instrutor.autorizacao)).status).toBe(403)
-      expect((await removerAula('019d0000-0000-7000-8000-000000000000', adm.autorizacao)).status).toBe(404)
+      const inexistente = await removerAula('019d0000-0000-7000-8000-000000000000', adm.autorizacao)
+      expect(inexistente.status).toBe(404)
+      expect(corpo<{ mensagem: string }>(inexistente).mensagem).toBe('Dia de classe não encontrado.')
       const resposta = await removerAula(primeira.id, adm.autorizacao)
       expect(resposta.status).toBe(200)
       expect((await aulasAtivas(cronograma.id)).map((aula) => aula.id)).toEqual([segunda.id])
-      expect((await removerAula(primeira.id, adm.autorizacao)).status).toBe(404)
+      const jaRemovida = await removerAula(primeira.id, adm.autorizacao)
+      expect(jaRemovida.status).toBe(404)
+      expect(corpo<{ mensagem: string }>(jaRemovida).mensagem).toBe('Dia de classe não encontrado.')
     })
 
     it('DELETE aula de outro clube responde 404', async () => {
@@ -542,8 +552,8 @@ describe('Montagem do cronograma', () => {
       await criarEvento({ clubeId: clube.id, tipo: 'SEM_REUNIAO', inicio: DOMINGO_B })
       const saida = corpo<Saida>(await http.get(`/api/classes/${amigo.id}/cronograma/montagem`, adm.autorizacao))
       const bloqueada = saida.datas.find((data) => data.data === DOMINGO_A)
-      expect(bloqueada).toMatchObject({ aulaId: null, conflito: false, situacao: { bloqueiaAula: true } })
-      expect(saida.datas.find((data) => data.data === DOMINGO_B)).toMatchObject({ aulaId: null, conflito: false, situacao: { cancelaReuniao: true } })
+      expect(bloqueada).toMatchObject({ aulaId: null, conflito: false, situacao: { temClasse: false, reuniaoMantida: true, extra: null } })
+      expect(saida.datas.find((data) => data.data === DOMINGO_B)).toMatchObject({ aulaId: null, conflito: false, situacao: { temClasse: false, reuniaoMantida: false, extra: null } })
       expect(saida.datas.some((data) => data.data === SEGUNDA)).toBe(false)
     })
 
@@ -552,6 +562,57 @@ describe('Montagem do cronograma', () => {
       await criarEvento({ clubeId: clube.id, tipo: 'ACAMPAMENTO', inicio: '2026-07-17', fim: '2026-07-18' })
       const saida = corpo<Saida>(await http.get(`/api/classes/${amigo.id}/cronograma/montagem`, adm.autorizacao))
       expect(saida.datas.find((data) => data.data === '2026-07-17')).toMatchObject({ aulaId: null, situacao: { bomParaCampo: true } })
+    })
+
+    it('individuais: os domingos das férias somem da montagem', async () => {
+      const { clube, amigo, adm } = await cenario()
+      await criarEvento({ clubeId: clube.id, tipo: 'FERIAS', inicio: '2026-07-01', fim: '2026-07-31' })
+      const saida = corpo<Saida>(await http.get(`/api/classes/${amigo.id}/cronograma/montagem`, adm.autorizacao))
+      const datasDeJulho = saida.datas.map((data) => data.data).filter((data) => data.startsWith('2026-07'))
+      expect(datasDeJulho).toEqual([])
+      expect(saida.datas.some((data) => data.data === '2026-06-28')).toBe(true)
+    })
+
+    it('individuais: domingo em férias com classe marcada aparece, em conflito e sem classe', async () => {
+      const { clube, amigo, adm, requisitos, cronograma } = await cenario()
+      await colocar(cronograma.id, requisitos[0], DOMINGO_A, adm.autorizacao)
+      await criarEvento({ clubeId: clube.id, tipo: 'FERIAS', inicio: '2026-07-01', fim: '2026-07-31' })
+      const saida = corpo<Saida>(await http.get(`/api/classes/${amigo.id}/cronograma/montagem`, adm.autorizacao))
+      expect(saida.datas.filter((data) => data.data.startsWith('2026-07')).map((data) => data.data)).toEqual([DOMINGO_A])
+      expect(saida.datas.find((data) => data.data === DOMINGO_A)).toMatchObject({ conflito: true, situacao: { temClasse: false, ferias: true } })
+    })
+
+    it('individuais: acampamento dentro das férias e extra com classe entram; extra só com reunião não', async () => {
+      const { clube, amigo, adm } = await cenario()
+      await criarEvento({ clubeId: clube.id, tipo: 'FERIAS', inicio: '2026-07-01', fim: '2026-07-31' })
+      await criarEvento({ clubeId: clube.id, tipo: 'ACAMPAMENTO', inicio: '2026-07-17', fim: '2026-07-19' })
+      await criarEvento({ clubeId: clube.id, tipo: 'REUNIAO_EXTRA', inicio: '2026-07-08' })
+      await criarEvento({ clubeId: clube.id, tipo: 'REUNIAO_EXTRA', inicio: '2026-07-22', marcacoes: { temClasse: false } })
+      const saida = corpo<Saida>(await http.get(`/api/classes/${amigo.id}/cronograma/montagem`, adm.autorizacao))
+      const datasDeJulho = saida.datas.map((data) => data.data).filter((data) => data.startsWith('2026-07'))
+      expect(datasDeJulho).toEqual(['2026-07-08', '2026-07-17', '2026-07-18', '2026-07-19'])
+      expect(saida.datas.find((data) => data.data === '2026-07-08')).toMatchObject({ situacao: { temClasse: true, extra: { temClasse: true } } })
+    })
+
+    it('agrupadas seguem livres: férias não filtram as datas criadas', async () => {
+      const clube = await criarClube()
+      const classe = await prismaDeTeste().classe.findFirstOrThrow({ where: { trilha: 'AGRUPADAS', clubeId: null }, select: { id: true } })
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const cronograma = await criarCronograma({ clubeId: clube.id, classeId: classe.id })
+      await criarEvento({ clubeId: clube.id, tipo: 'FERIAS', inicio: '2026-07-01', fim: '2026-07-31' })
+      const criada = await criarAulaAgrupada(cronograma.id, SEGUNDA, adm.autorizacao)
+      expect(criada.status).toBe(201)
+      expect(corpo<Saida>(criada)).toMatchObject({ datasLivres: true, datas: [{ data: SEGUNDA }] })
+    })
+
+    it('colocar em data de férias responde 422 "não é dia de classe"; na quarta da extra com classe grava', async () => {
+      const { clube, adm, requisitos, cronograma } = await cenario()
+      await criarEvento({ clubeId: clube.id, tipo: 'FERIAS', inicio: '2026-07-01', fim: '2026-07-31' })
+      await criarEvento({ clubeId: clube.id, tipo: 'REUNIAO_EXTRA', inicio: '2026-07-08' })
+      const recusada = await colocar(cronograma.id, requisitos[0], DOMINGO_A, adm.autorizacao)
+      expect(recusada.status).toBe(422)
+      expect(corpo<{ mensagem: string }>(recusada).mensagem).toBe('Esta data não é dia de classe.')
+      expect((await colocar(cronograma.id, requisitos[0], '2026-07-08', adm.autorizacao)).status).toBe(200)
     })
   })
 

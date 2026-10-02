@@ -108,14 +108,14 @@ export function PainelAdm({ montagem, cronograma, classe, ano, aoAtualizar }: Pr
             <h2 className="font-titulo text-lg font-bold text-texto">Datas</h2>
             {montagem.datasLivres && (
               <Botao variante="secundario" onClick={() => setAulaEmEdicao({ data: null, aulaId: null, dados: { horario: null, local: null, titulo: null } })}>
-                + Nova aula
+                + Novo dia de classe
               </Botao>
             )}
           </div>
           {montagem.datas.length === 0 ? (
             <EstadoVazio
-              titulo={montagem.datasLivres ? 'Nenhuma aula ainda' : 'Nenhuma data de aula neste período'}
-              descricao={montagem.datasLivres ? 'Crie uma aula para poder colocar requisitos nela.' : undefined}
+              titulo={montagem.datasLivres ? 'Nenhum dia de classe ainda' : 'Nenhuma data de classe neste período'}
+              descricao={montagem.datasLivres ? 'Crie um dia de classe para poder colocar requisitos nele.' : undefined}
             />
           ) : (
             <ul className="flex flex-col gap-2">
