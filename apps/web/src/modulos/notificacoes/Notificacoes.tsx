@@ -1,9 +1,10 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useMarcarLida, useMarcarTodasLidas, useNotificacoes } from '../../api/notificacoes'
 import type { NotificacaoItem } from '../../api/notificacoes'
 import { useConexao } from '../../offline'
 import { Botao } from '../../ui/Botao'
 import { EstadoVazio } from '../../ui/EstadoVazio'
+import { LinhaQueNavega } from '../../ui/LinhaQueNavega'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../ui/EstadosDeCarga'
 import { cn } from '../../ui/cn'
 import { dataRelativa } from './dataRelativa'
@@ -11,18 +12,18 @@ import { dataRelativa } from './dataRelativa'
 function CartaoNotificacao({ item, aoAbrir }: { item: NotificacaoItem; aoAbrir: (item: NotificacaoItem) => void }) {
   return (
     <li>
-      <Link
+      <LinhaQueNavega
         to={item.link}
         onClick={() => aoAbrir(item)}
-        className={cn(
-          'flex min-h-[var(--touch-min)] flex-col gap-1 rounded-cartao border p-4',
-          item.lida ? 'border-borda bg-superficie' : 'border-marca bg-marca-suave',
-        )}
+        forma="cartao"
+        className={cn('min-h-[var(--touch-min)]', !item.lida && 'border-marca bg-marca-suave')}
       >
-        <span className={cn('text-base text-texto', !item.lida && 'font-bold')}>{item.titulo}</span>
-        <span className="text-base text-texto-2">{item.texto}</span>
-        <span className="text-sm text-texto-3">{dataRelativa(item.criadaEm)}</span>
-      </Link>
+        <span className="flex flex-col gap-1">
+          <span className={cn('text-base text-texto', !item.lida && 'font-bold')}>{item.titulo}</span>
+          <span className="text-base text-texto-2">{item.texto}</span>
+          <span className="text-sm text-texto-3">{dataRelativa(item.criadaEm)}</span>
+        </span>
+      </LinhaQueNavega>
     </li>
   )
 }

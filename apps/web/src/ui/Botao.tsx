@@ -10,7 +10,7 @@ export const estiloDoBotao = cva(
     variants: {
       variante: {
         primario: 'bg-marca text-white hover:bg-marca-escura',
-        secundario: 'border border-borda bg-superficie text-texto hover:bg-superficie-suave',
+        secundario: 'border border-borda-controle bg-superficie text-texto hover:bg-superficie-suave',
         perigo: 'bg-perigo text-white hover:opacity-90',
         texto: 'text-marca hover:bg-marca-suave',
       },

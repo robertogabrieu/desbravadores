@@ -11,6 +11,7 @@ import { EstadoVazio } from '../../ui/EstadoVazio'
 import { Carregando, ErroDeCarga } from '../../ui/EstadosDeCarga'
 import { Esqueleto } from '../../ui/Esqueleto'
 import { FaixaAviso } from '../../ui/FaixaAviso'
+import { LinhaQueNavega } from '../../ui/LinhaQueNavega'
 import { ClassesSemConexao } from '../aulas/RegistroSemConexao'
 import { corDaClasse } from '../classes/cores'
 import { TRACO, formatarDataCurta, formatarHorario } from '../cronograma/formatos'
@@ -45,7 +46,7 @@ function CartaoProximaAula({ item }: { item: ClasseDoInstrutor }) {
   const { classe, proximaAula, aulaHoje, aulaHojeRegistrada, totalDbvs } = item
   const dataDaAula = proximaAula?.data ?? hojeLocal()
   return (
-    <section aria-label={`Próxima aula de ${classe.nome}`} className="flex flex-col overflow-hidden rounded-cartao border border-borda bg-superficie">
+    <section aria-label={`Próxima aula de ${classe.nome}`} className="flex flex-col overflow-hidden rounded-cartao border border-borda-controle bg-superficie">
       <div className="h-1.5" style={corDaClasse(classe.corToken)} />
       <div className="flex flex-col gap-3 p-4">
         <div className="flex flex-wrap items-center gap-2">
@@ -88,22 +89,24 @@ function CartaoProximaAula({ item }: { item: ClasseDoInstrutor }) {
 function LinhaDaClasse({ item }: { item: ClasseDoInstrutor }) {
   const { classe, totalDbvs, progressoMedio } = item
   return (
-    <Link to={`/classes/${classe.id}/progresso`} className="flex flex-col gap-2 rounded-cartao border border-borda bg-superficie p-3">
-      <div className="flex items-center gap-3">
-        <span aria-hidden className="size-3 rounded-full" style={corDaClasse(classe.corToken)} />
-        <span className="flex-1 text-base font-bold text-texto">{classe.nome}</span>
-        <span className="text-sm text-texto-2">{totalDbvs} DBVs</span>
-        <span className="font-bold text-texto">{progressoMedio === null ? TRACO : `${progressoMedio}%`}</span>
+    <LinhaQueNavega to={`/classes/${classe.id}/progresso`} forma="cartao" className="p-3">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-3">
+          <span aria-hidden className="size-3 rounded-full" style={corDaClasse(classe.corToken)} />
+          <span className="flex-1 text-base font-bold text-texto">{classe.nome}</span>
+          <span className="text-sm text-texto-2">{totalDbvs} DBVs</span>
+          <span className="font-bold text-texto">{progressoMedio === null ? TRACO : `${progressoMedio}%`}</span>
+        </div>
+        {progressoMedio !== null && <BarraProgresso valor={progressoMedio} rotulo={`Progresso médio de ${classe.nome}`} />}
       </div>
-      {progressoMedio !== null && <BarraProgresso valor={progressoMedio} rotulo={`Progresso médio de ${classe.nome}`} />}
-    </Link>
+    </LinhaQueNavega>
   )
 }
 
 function ListaDeClasses({ titulo, itens, discreto = false }: { titulo: string; itens: ClasseDoInstrutor[]; discreto?: boolean }) {
   if (itens.length === 0) return null
   return (
-    <section aria-label={titulo} className={discreto ? 'flex flex-col gap-2 opacity-90' : 'flex flex-col gap-2'}>
+    <section aria-label={titulo} className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <h2 className={discreto ? 'text-base font-semibold text-texto-2' : 'font-titulo text-lg font-bold text-texto'}>{titulo}</h2>
         {!discreto && (
@@ -137,16 +140,14 @@ function Atalhos({ classeUnica }: { classeUnica: string | undefined }) {
   return (
     <section className="flex flex-col gap-2">
       <h2 className="font-titulo text-lg font-bold text-texto">Atalhos</h2>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {ATALHOS.map(({ rotulo, para, icone: Icone }) => (
-          <Link
-            key={rotulo}
-            to={para(classeUnica)}
-            className="flex min-h-[var(--touch-min)] flex-col items-center justify-center gap-2 rounded-cartao border border-borda bg-superficie p-3 text-center text-sm font-bold text-texto"
-          >
-            <Icone aria-hidden className="size-6 text-marca" />
-            {rotulo}
-          </Link>
+          <LinhaQueNavega key={rotulo} to={para(classeUnica)} forma="cartao" className="gap-2 p-3">
+            <span className="flex flex-col items-start gap-1 text-sm font-bold break-words hyphens-auto">
+              <Icone aria-hidden className="size-6 text-marca" />
+              {rotulo}
+            </span>
+          </LinhaQueNavega>
         ))}
       </div>
     </section>

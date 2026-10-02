@@ -5,7 +5,7 @@ import { cn } from './cn'
 
 const FORMAS = {
   linha: 'min-h-[var(--touch-min)] rounded-botao px-2 py-2',
-  cartao: 'rounded-cartao border border-borda bg-superficie p-4',
+  cartao: 'rounded-cartao border border-borda-controle bg-superficie p-4',
 }
 
 interface Propriedades extends LinkProps {

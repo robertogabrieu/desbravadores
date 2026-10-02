@@ -15,6 +15,8 @@ import { Avatar } from '../../ui/Avatar'
 import { Cartao } from '../../ui/Cartao'
 import { EstadoVazio } from '../../ui/EstadoVazio'
 import { Esqueleto } from '../../ui/Esqueleto'
+import { LinhaQueNavega } from '../../ui/LinhaQueNavega'
+import { NomeDaFicha } from '../../ui/LinkDeFicha'
 import { Selecao } from '../../ui/Selecao'
 import { rotuloDoPapel } from '../acesso/papeis'
 import { ConviteInstalacao } from './ConviteInstalacao'
@@ -102,7 +104,7 @@ function CartaoProximaReuniao({ reuniao }: { reuniao: ProximaReuniao | null }) {
 
 function Numero({ valor, rotulo }: { valor: string; rotulo: string }) {
   return (
-    <div className="flex flex-1 flex-col items-center gap-1 rounded-cartao border border-borda bg-superficie p-3">
+    <div className="flex flex-1 flex-col items-center gap-1 rounded-cartao bg-marca-tinta p-3">
       <span className="font-titulo text-2xl font-extrabold text-texto">{valor}</span>
       <span className="text-center text-sm text-texto-2">{rotulo}</span>
     </div>
@@ -125,14 +127,12 @@ function Atalhos() {
       <h2 className="font-titulo text-lg font-bold text-texto">Atalhos</h2>
       <div className="grid grid-cols-2 gap-2">
         {ATALHOS.map(({ rotulo, para, icone: Icone }) => (
-          <Link
-            key={rotulo}
-            to={para}
-            className="flex min-h-[var(--touch-min)] items-center gap-3 rounded-cartao border border-borda bg-superficie p-3 text-base font-semibold text-texto"
-          >
-            <Icone aria-hidden className="size-5 text-marca" />
-            {rotulo}
-          </Link>
+          <LinhaQueNavega key={rotulo} to={para} forma="cartao" className="gap-2 p-3">
+            <span className="flex flex-col items-start gap-1 text-base font-semibold break-words hyphens-auto">
+              <Icone aria-hidden className="size-5 text-marca" />
+              {rotulo}
+            </span>
+          </LinhaQueNavega>
         ))}
       </div>
     </section>
@@ -152,12 +152,14 @@ function Destaques({ destaques }: { destaques: InicioDaApi['destaques'] }) {
       <ol className="flex flex-col gap-2">
         {destaques.map((destaque) => (
           <li key={destaque.dbvId}>
-            <Link to={`/dbv/${destaque.dbvId}`} className="flex min-h-[var(--touch-min)] items-center gap-3 rounded-cartao border border-borda bg-superficie p-3">
-              <span className="w-5 text-center font-titulo font-bold text-texto-2">{destaque.posicao}</span>
-              <Avatar nome={destaque.nome} />
-              <span className="flex-1 font-semibold text-texto">{destaque.nome}</span>
-              <span className="text-base text-texto-2">{destaque.pontos} pts</span>
-            </Link>
+            <LinhaQueNavega to={`/dbv/${destaque.dbvId}`} forma="cartao" sinal="ficha" className="min-h-[var(--touch-min)] p-3">
+              <span className="flex items-center gap-3">
+                <span className="w-5 text-center font-titulo font-bold text-texto-2">{destaque.posicao}</span>
+                <Avatar nome={destaque.nome} />
+                <NomeDaFicha nome={destaque.nome} className="flex-1 font-semibold text-texto" />
+                <span className="text-base text-texto-2">{destaque.pontos} pts</span>
+              </span>
+            </LinhaQueNavega>
           </li>
         ))}
       </ol>
@@ -202,7 +204,12 @@ function PainelDaUnidade({ unidades, papel, primeiroNome }: PropriedadesPainel) 
         </>
       )
     } else if (modo === 'SEM_CONEXAO') {
-      conteudo = <EstadoVazio titulo="Disponível quando houver internet" descricao="Conecte-se para ver o início." />
+      conteudo = (
+        <>
+          <EstadoVazio titulo="Disponível quando houver internet" descricao="Conecte-se para ver o início." />
+          <Atalhos />
+        </>
+      )
     } else {
       conteudo = <ErroDeCarga erro={null} aoTentarDeNovo={() => void consulta.refetch()} />
     }

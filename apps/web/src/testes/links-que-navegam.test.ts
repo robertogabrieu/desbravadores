@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -6,18 +6,6 @@ import { describe, expect, it } from 'vitest'
 // Quem resolve isso são ui/LinhaQueNavega e ui/LinkDeFicha; um <Link> com classe de cartão ou de
 // linha clicável escrito à mão em src/modulos volta a esconder a navegação.
 const MODULOS = resolve(__dirname, '../modulos')
-
-// O pacote B troca estes pelo componente comum e esvazia a lista.
-const PENDENTES_DO_PACOTE_B = new Set([
-  'inicio-instrutor/TelaInicioInstrutor.tsx',
-  'progresso/TelaProgressoClasse.tsx',
-  'ranking/Ranking.tsx',
-  'inicio/InicioConselheiro.tsx',
-  'unidade/MinhaUnidade.tsx',
-  'reunioes/historico/HistoricoReunioes.tsx',
-  'galeria/Galeria.tsx',
-  'notificacoes/Notificacoes.tsx',
-])
 
 interface Abertura {
   linha: number
@@ -98,17 +86,11 @@ describe('links com cara de linha ou cartão', () => {
     const violacoes: string[] = []
     for (const arquivo of arquivosTsx(MODULOS)) {
       const nome = relative(MODULOS, arquivo).split('\\').join('/')
-      if (PENDENTES_DO_PACOTE_B.has(nome)) continue
       const fonte = readFileSync(arquivo, 'utf8')
       for (const abertura of aberturasDeLink(fonte)) {
         if (temCaraDeLinhaOuCartao(abertura, fonte)) violacoes.push(`${nome}:${abertura.linha}`)
       }
     }
     expect(violacoes).toEqual([])
-  })
-
-  it('a lista de pendências só tem arquivos que existem', () => {
-    const sumidos = [...PENDENTES_DO_PACOTE_B].filter((nome) => !existsSync(join(MODULOS, nome)))
-    expect(sumidos).toEqual([])
   })
 })

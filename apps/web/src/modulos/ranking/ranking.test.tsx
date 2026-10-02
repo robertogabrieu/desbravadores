@@ -135,3 +135,22 @@ describe('ranking do mês', () => {
     expect(await screen.findByText('Disponível quando houver internet')).toBeInTheDocument()
   })
 })
+
+describe('sinais do ranking', () => {
+  it('quem abre o perfil mostra o ícone de ficha ao lado do nome; quem não abre não é link nem tem sinal', async () => {
+    servidor.use(handlerRanking(), handlerRankingUnidades())
+    abrir()
+    const podio = await screen.findByRole('list', { name: 'Pódio' })
+    const ana = within(podio).getByRole('link', { name: /Ana Clara Souza/ })
+    expect(ana.querySelector('[data-sinal="abre-ficha"]')).not.toBeNull()
+    expect(ana.querySelector('[data-sinal="navega"]')).toBeNull()
+    const mateus = within(podio).getByText('Mateus V.').closest('li') as HTMLElement
+    expect(within(mateus).queryByRole('link')).not.toBeInTheDocument()
+    expect(mateus.querySelector('[data-sinal]')).toBeNull()
+    const lista = screen.getByRole('list', { name: 'Classificação' })
+    expect(within(lista).getByRole('link', { name: /Júlia Ramos/ }).querySelector('[data-sinal="abre-ficha"]')).not.toBeNull()
+    const lucas = within(lista).getByText('Lucas O.').closest('li') as HTMLElement
+    expect(within(lucas).queryByRole('link')).not.toBeInTheDocument()
+    expect(lucas.querySelector('[data-sinal]')).toBeNull()
+  })
+})

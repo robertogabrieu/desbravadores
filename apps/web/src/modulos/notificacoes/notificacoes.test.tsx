@@ -152,3 +152,14 @@ describe('página /notificacoes', () => {
     expect(await screen.findByText('Disponível quando houver internet')).toBeInTheDocument()
   })
 })
+
+describe('sinais das notificações', () => {
+  it('cada notificação, lida ou não, mostra a seta de que abre', async () => {
+    const { handlers } = handlersNotificacoes([criarNotificacao(1), criarNotificacao(2, { lida: true })])
+    servidor.use(...handlersSessao([criarVinculo('INSTRUTOR')]), ...handlers)
+    renderizarRotas(rotas, '/notificacoes')
+    const primeira = await screen.findByRole('link', { name: /Notificação 1/ })
+    expect(primeira.querySelector('[data-sinal="navega"]')).not.toBeNull()
+    expect(screen.getByRole('link', { name: /Notificação 2/ }).querySelector('[data-sinal="navega"]')).not.toBeNull()
+  })
+})

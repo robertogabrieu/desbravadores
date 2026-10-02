@@ -2,6 +2,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+import { Botao } from './Botao'
 import { Campo } from './Campo'
 import { Cartao } from './Cartao'
 
@@ -48,10 +49,22 @@ describe('contraste dos tokens', () => {
     expect(document.querySelector('input')?.className).toContain('border-borda-controle')
     expect(document.querySelector('[data-testid="cartao"]')?.className).toContain('border-borda-controle')
   })
-})
 
-/** Ranking.tsx ainda tem 11 px e é de outra entrega: sai daqui quando ela for corrigida. */
-const PENDENTES = new Set(['modulos/ranking/Ranking.tsx'])
+  it('botão secundário usa o contorno de controle', () => {
+    render(<Botao variante="secundario">Voltar</Botao>)
+    expect(document.querySelector('button')?.className).toContain('border-borda-controle')
+  })
+
+  // Grade de frequência: P e A são marcas cheias; F e J, marcas vazadas com contorno. Cheia contra vazada
+  // (o fundo branco) e cada contorno contra o fundo precisam de 3:1 — a letra é que separa P de A e F de J.
+  it.each(['color-primary', 'color-warning', 'color-danger', 'color-border-control'])('marca da frequência em %s tem 3:1 sobre o branco', (token) => {
+    expect(razao(token, 'color-surface')).toBeGreaterThanOrEqual(3)
+  })
+
+  it.each(['color-primary', 'color-warning'])('letra branca na marca cheia %s tem 4,5:1', (token) => {
+    expect(razao(token, 'color-surface')).toBeGreaterThanOrEqual(4.5)
+  })
+})
 
 function arquivosTsx(pasta: string): string[] {
   return readdirSync(pasta).flatMap((nome) => {
@@ -65,7 +78,6 @@ describe('tamanho de letra', () => {
   it('nenhuma letra fixa abaixo de 12 px', () => {
     const abaixo = arquivosTsx(PASTA_SRC)
       .map((caminho) => relative(PASTA_SRC, caminho).split('\\').join('/'))
-      .filter((caminho) => !PENDENTES.has(caminho))
       .flatMap((caminho) =>
         [...readFileSync(join(PASTA_SRC, caminho), 'utf8').matchAll(/text-\[(\d+(?:\.\d+)?)px\]/g)]
           .filter((achado) => Number(achado[1]) < 12)
