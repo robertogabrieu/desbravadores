@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Acrescentar papel, passo 2</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;font-family:'Figtree',system-ui,sans-serif;color:#1B221F}
+a{color:#1F4D3A}a:hover{color:#163828}
+.t{font-family:'Bricolage Grotesque',system-ui,sans-serif}
+.rot{font-size:13px;font-weight:600;color:#5B645F}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 20px;border-radius:12px;font-size:16px;font-weight:600;text-decoration:none;border:0;font-family:inherit;cursor:pointer;box-sizing:border-box}
+.pri{background:#1F4D3A;color:#fff}
+.sec{background:#fff;color:#1B221F;border:1px solid #D9D3C5}
+.txt{background:transparent;color:#1F4D3A;padding:0 12px}
+.lbl{font-size:14px;font-weight:700;color:#1B221F}
+.in{min-height:44px;border:1px solid #D9D3C5;border-radius:9px;background:#fff;padding:0 14px;font-size:16px;font-family:inherit;color:#1B221F;box-sizing:border-box;width:100%}
+.ajuda{font-size:13px;color:#5B645F}
+.pill{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 16px;border-radius:999px;font-size:15px;font-weight:700;font-family:inherit;border:1px solid #D9D3C5;background:#fff;color:#1B221F;cursor:pointer}
+.pill.on{background:#1F4D3A;border-color:#1F4D3A;color:#fff}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+</style>
+</helmet>
+<div style="width:390px;min-height:1340px;display:flex;flex-direction:column;background:#F4F1EA"><header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 16px;background:#1F4D3A;color:#fff"><span class="t" style="font-size:17px;font-weight:700">App do Desbravador</span><button class="btn txt" style="color:#fff;padding:0 12px">Rosa <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></header><main style="flex-grow:1;padding:16px;display:flex;flex-direction:column;gap:16px"><a href="A1-Ficha.dc.html" style="display:inline-flex;align-items:center;gap:4px;font-weight:600;text-decoration:none;min-height:44px;align-self:flex-start"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg> Carla Mendes</a><div style="display:flex;flex-direction:column;gap:4px"><span class="rot">Acrescentar papel · passo 2 de 2 · Instrutora</span><h1 class="t" style="margin:0;font-size:26px;font-weight:800">Que classes Carla vai instruir?</h1></div>
+<form style="display:flex;flex-direction:column;gap:20px">
+<label style="display:flex;flex-direction:column;gap:6px"><span class="lbl">Buscar classe</span><span style="position:relative;display:flex;align-items:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5B645F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position:absolute;left:12px"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input class="in" type="search" placeholder="Nome da classe" style="padding-left:40px"></span></label>
+<p aria-live="polite" style="margin:0;font-size:16px;font-weight:700;color:#1F4D3A;display:flex;align-items:center;gap:6px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> 2 escolhidas</p>
+<fieldset style="border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:10px"><legend class="lbl" style="padding:0;margin-bottom:10px">Regulares</legend><div class="chips"><button class="pill on" type="button" aria-pressed="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Amigo</button><button class="pill on" type="button" aria-pressed="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Companheiro</button><button class="pill" type="button" aria-pressed="false">Pesquisador</button><button class="pill" type="button" aria-pressed="false">Pioneiro</button><button class="pill" type="button" aria-pressed="false">Excursionista</button><button class="pill" type="button" aria-pressed="false">Guia</button></div></fieldset>
+<fieldset style="border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:10px"><legend class="lbl" style="padding:0;margin-bottom:10px">Avançadas</legend><div class="chips"><button class="pill" type="button" aria-pressed="false">Amigo da Natureza</button><button class="pill" type="button" aria-pressed="false">Companheiro de Excursionismo</button><button class="pill" type="button" aria-pressed="false">Pesquisador de Campo e Bosque</button><button class="pill" type="button" aria-pressed="false">Pioneiro de Novas Fronteiras</button><button class="pill" type="button" aria-pressed="false">Excursionista na Mata</button><button class="pill" type="button" aria-pressed="false">Guia de Exploração</button></div></fieldset>
+<fieldset style="border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:10px"><legend class="lbl" style="padding:0;margin-bottom:10px">Agrupadas</legend><div class="chips"><button class="pill" type="button" aria-pressed="false">Agrupadas (Amigo a Guia)</button><button class="pill" type="button" aria-pressed="false">Agrupadas — avançada</button></div></fieldset>
+<p class="ajuda" style="margin:0;font-size:14px;color:#4A524E">Carla começa com as permissões de instrutora. Dá para ajustar depois, em Alterar.</p>
+<div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid #D9D3C5;padding-top:20px"><button class="btn pri" type="button" style="width:100%">Salvar</button><a class="btn sec" href="A2-Papel.dc.html" style="width:100%">Voltar</a></div>
+</form></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1340}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

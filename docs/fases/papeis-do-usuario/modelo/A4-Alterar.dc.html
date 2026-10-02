@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Alterar papel</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;font-family:'Figtree',system-ui,sans-serif;color:#1B221F}
+a{color:#1F4D3A}a:hover{color:#163828}
+.t{font-family:'Bricolage Grotesque',system-ui,sans-serif}
+.card{background:#fff;border:1px solid #D9D3C5;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.h2{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:18px;font-weight:700;margin:0}
+.rot{font-size:13px;font-weight:600;color:#5B645F}
+.val{font-size:16px;color:#1B221F}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 20px;border-radius:12px;font-size:16px;font-weight:600;text-decoration:none;border:0;font-family:inherit;cursor:pointer;box-sizing:border-box}
+.pri{background:#1F4D3A;color:#fff}
+.sec{background:#fff;color:#1B221F;border:1px solid #D9D3C5}
+.txt{background:transparent;color:#1F4D3A;padding:0 12px}
+.lbl{font-size:14px;font-weight:700;color:#1B221F}
+.ajuda{font-size:13px;color:#5B645F}
+.nav{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:12px;color:#CFE0D6;font-weight:600;font-size:16px}
+.nav.on{background:#163828;color:#fff}
+.pill{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 16px;border-radius:999px;font-size:15px;font-weight:700;font-family:inherit;border:1px solid #D9D3C5;background:#fff;color:#1B221F;cursor:pointer}
+.pill.on{background:#1F4D3A;border-color:#1F4D3A;color:#fff}
+.lin{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0;border-top:1px solid #EFEBE1}
+.tg{display:inline-flex;align-items:center;border-radius:999px;padding:2px 10px;font-size:13px;font-weight:700}
+.tg.alt{background:#FBEFE3;color:#9A3412}
+.tg.pd{background:#EFEBE1;color:#4A524E}
+.sw{width:56px;height:44px;border:0;background:transparent;position:relative;padding:0;cursor:pointer;flex-shrink:0}
+.sw::before{content:'';position:absolute;left:2px;top:8px;width:52px;height:28px;border-radius:999px;background:#8A8578}
+.sw::after{content:'';position:absolute;top:12px;left:6px;width:20px;height:20px;border-radius:50%;background:#fff}
+.sw.on::before{background:#1F4D3A}
+.sw.on::after{left:30px}
+</style>
+</helmet>
+<div style="width:1280px;min-height:1100px;display:flex;background:#F4F1EA"><aside style="width:248px;flex-shrink:0;background:#1F4D3A;color:#fff;display:flex;flex-direction:column;gap:4px;padding:20px 8px"><div class="t" style="font-size:18px;font-weight:700;padding:0 12px 16px">App do Desbravador</div><nav aria-label="Menu do Adm" style="display:flex;flex-direction:column;gap:4px"><span class="nav">Visão geral</span><span class="nav">Desbravadores</span><span class="nav on">Usuários</span><span class="nav">Unidades</span><span class="nav">Classes e especialidades</span><span class="nav">Calendário do clube</span><span class="nav">Cronogramas</span><span class="nav">Configurações do clube</span><span class="nav">Ranking</span></nav></aside><div style="flex-grow:1;display:flex;flex-direction:column;min-width:0"><header style="display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:8px 32px;background:#fff;border-bottom:1px solid #D9D3C5"><button class="btn txt" aria-label="Notificações" style="color:#1B221F"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg></button><button class="btn txt" style="color:#1B221F;padding:0 12px">Rosa Almeida <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></header><main style="padding:32px 48px;display:flex;flex-direction:column;gap:20px;max-width:816px;box-sizing:border-box;width:100%">
+<div style="display:flex;flex-direction:column;gap:8px"><a href="A1-Ficha.dc.html" style="display:inline-flex;align-items:center;gap:4px;font-weight:600;text-decoration:none;min-height:44px;align-self:flex-start"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg> Carla Mendes</a><div style="display:flex;flex-direction:column;gap:4px"><span class="rot">Carla Mendes · Alterar papel</span><h1 class="t" style="margin:0;font-size:30px;font-weight:800">Conselheira</h1></div></div>
+<form style="display:flex;flex-direction:column;gap:20px">
+<fieldset class="card" style="margin:0"><legend class="h2" style="float:left;padding:0;margin-bottom:4px">Unidades</legend><span class="ajuda" style="font-size:14px;clear:both">Escolha uma ou mais. Carla acompanha só as que estiverem marcadas.</span><div style="display:flex;flex-wrap:wrap;gap:8px"><button class="pill on" type="button" aria-pressed="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Águias</button><button class="pill" type="button" aria-pressed="false">Falcões</button><button class="pill" type="button" aria-pressed="false">Lobos</button><button class="pill" type="button" aria-pressed="false">Tigres</button></div></fieldset>
+<section class="card" style="gap:8px"><button type="button" aria-expanded="true" aria-controls="ajustes" style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;border:0;background:transparent;padding:0;font-family:inherit;cursor:pointer;text-align:left;color:#1B221F"><span style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="h2">Ajustar o que pode fazer</span><span class="tg alt">1 alteração</span></span><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg></button>
+<div id="ajustes" style="display:flex;flex-direction:column">
+<div class="lin"><span id="p1" class="val" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">Ver desbravadores <span class="tg pd">padrão</span></span><button class="sw on" type="button" role="switch" aria-checked="true" aria-labelledby="p1"></button></div>
+<div class="lin"><span id="p2" class="val" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">Ver contato do responsável <span class="tg pd">padrão</span></span><button class="sw on" type="button" role="switch" aria-checked="true" aria-labelledby="p2"></button></div>
+<div class="lin" style="background:#FDF8F2;margin:0 -20px;padding:6px 20px"><span id="p3" class="val" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">Editar dados dos DBVs da unidade <span class="tg alt">alterado</span></span><button class="sw on" type="button" role="switch" aria-checked="true" aria-labelledby="p3"></button></div>
+<div class="lin"><span id="p4" class="val" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">Registrar reuniões <span class="tg pd">padrão</span></span><button class="sw on" type="button" role="switch" aria-checked="true" aria-labelledby="p4"></button></div>
+<div class="lin"><span id="p5" class="val" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">Ver histórico de reuniões <span class="tg pd">padrão</span></span><button class="sw on" type="button" role="switch" aria-checked="true" aria-labelledby="p5"></button></div>
+<div class="lin"><span id="p6" class="val" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">Enviar fotos na galeria <span class="tg pd">padrão</span></span><button class="sw on" type="button" role="switch" aria-checked="true" aria-labelledby="p6"></button></div>
+<div class="lin"><span id="p7" class="val" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">Ver a galeria <span class="tg pd">padrão</span></span><button class="sw on" type="button" role="switch" aria-checked="true" aria-labelledby="p7"></button></div>
+<div class="lin"><span id="p8" class="val" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">Ver relatórios da unidade <span class="tg pd">padrão</span></span><button class="sw" type="button" role="switch" aria-checked="false" aria-labelledby="p8"></button></div>
+</div>
+<div style="border-top:1px solid #EFEBE1;padding-top:8px"><button class="btn txt" type="button" style="padding:0 4px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg> Volta ao padrão do papel</button></div>
+</section>
+<div style="display:flex;justify-content:flex-end;gap:12px;border-top:1px solid #D9D3C5;padding-top:20px"><a class="btn txt" href="A1-Ficha.dc.html" style="color:#1B221F">Cancelar</a><button class="btn pri" type="button">Salvar alterações</button></div>
+</form></main></div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1100}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

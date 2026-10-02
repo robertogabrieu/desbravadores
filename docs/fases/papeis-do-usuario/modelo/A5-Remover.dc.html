@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Remover papel</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;font-family:'Figtree',system-ui,sans-serif;color:#1B221F}
+a{color:#1F4D3A}a:hover{color:#163828}
+.t{font-family:'Bricolage Grotesque',system-ui,sans-serif}
+.card{background:#fff;border:1px solid #D9D3C5;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.h2{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:18px;font-weight:700;margin:0}
+.rot{font-size:13px;font-weight:600;color:#5B645F}
+.val{font-size:16px;color:#1B221F}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 20px;border-radius:12px;font-size:16px;font-weight:600;text-decoration:none;border:0;font-family:inherit;cursor:pointer;box-sizing:border-box}
+.pri{background:#1F4D3A;color:#fff}
+.sec{background:#fff;color:#1B221F;border:1px solid #D9D3C5}
+.txt{background:transparent;color:#1F4D3A;padding:0 12px}
+.dang{background:#B42318;color:#fff}
+.nav{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:12px;color:#CFE0D6;font-weight:600;font-size:16px}
+.nav.on{background:#163828;color:#fff}
+</style>
+</helmet>
+<div style="width:1280px;height:800px;position:relative;overflow:hidden;display:flex;background:#F4F1EA"><aside aria-hidden="true" style="width:248px;flex-shrink:0;background:#1F4D3A;color:#fff;display:flex;flex-direction:column;gap:4px;padding:20px 8px"><div class="t" style="font-size:18px;font-weight:700;padding:0 12px 16px">App do Desbravador</div><div style="display:flex;flex-direction:column;gap:4px"><span class="nav">Visão geral</span><span class="nav">Desbravadores</span><span class="nav on">Usuários</span><span class="nav">Unidades</span><span class="nav">Classes e especialidades</span><span class="nav">Calendário do clube</span><span class="nav">Cronogramas</span><span class="nav">Configurações do clube</span><span class="nav">Ranking</span></div></aside><div aria-hidden="true" style="flex-grow:1;display:flex;flex-direction:column;min-width:0"><div style="height:60px;background:#fff;border-bottom:1px solid #D9D3C5"></div><div style="padding:32px 48px;display:flex;flex-direction:column;gap:20px;max-width:1024px;box-sizing:border-box"><div style="display:flex;flex-direction:column;gap:4px;padding-top:52px"><span class="rot">Usuário · Ativo</span><span class="t" style="font-size:30px;font-weight:800">Carla Mendes</span></div><div class="card" style="height:56px"></div><div class="card" style="height:110px"><span class="h2" style="font-size:20px">Conselheira</span><span class="val">Unidade Águias</span></div><div class="card" style="height:90px"><span class="h2" style="font-size:20px">Instrutora</span><span class="val">Classes Amigo e Companheiro</span></div></div></div>
+<div style="position:absolute;inset:0;background:rgba(27,34,31,0.55);display:flex;align-items:center;justify-content:center;padding:24px"><div role="dialog" aria-modal="true" aria-labelledby="dlg-t" aria-describedby="dlg-d" style="width:480px;background:#fff;border-radius:16px;padding:28px;display:flex;flex-direction:column;gap:16px;box-shadow:0 12px 40px rgba(0,0,0,0.25)"><h2 id="dlg-t" class="t" style="margin:0;font-size:24px;font-weight:800">Remover o papel de Instrutora de Carla?</h2><div id="dlg-d" style="display:flex;flex-direction:column;gap:10px;font-size:16px;line-height:1.5"><p style="margin:0">Carla deixa de instruir as classes Amigo e Companheiro e não vê mais as chamadas nem os requisitos delas.</p><p style="margin:0;color:#4A524E">O que ela já registrou nessas classes continua guardado. Ela segue como conselheira das Águias.</p></div><div style="display:flex;justify-content:flex-end;gap:12px;padding-top:8px"><a class="btn sec" href="A1-Ficha.dc.html">Cancelar</a><button class="btn dang" type="button">Remover papel</button></div></div></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
