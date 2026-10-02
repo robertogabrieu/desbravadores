@@ -58,6 +58,11 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      # Vazios no deploy à mão: o site sobe igual, só sem os mapas do código no Sentry.
+      args:
+        SENTRY_AUTH_TOKEN: ${SENTRY_AUTH_TOKEN:-}
+        SENTRY_PROJECT: ${SENTRY_PROJECT:-}
+        SENTRY_RELEASE: ${VERSAO_APP:-}
     restart: unless-stopped
     depends_on:
       api:

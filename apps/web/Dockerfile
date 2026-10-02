@@ -11,6 +11,11 @@ RUN npm ci --ignore-scripts -w web -w @desbravadores/shared
 COPY tsconfig.base.json ./
 COPY packages/shared packages/shared
 COPY apps/web apps/web
+# Só neste estágio: o token sobe os mapas do código ao Sentry e não chega à imagem final. Vazio, o
+# build segue sem mapas.
+ARG SENTRY_AUTH_TOKEN=""
+ARG SENTRY_PROJECT=""
+ARG SENTRY_RELEASE=""
 RUN npm run build -w packages/shared && npm run build -w web
 
 FROM nginx:1.27-alpine

@@ -6,8 +6,12 @@ import { Toaster } from 'sonner'
 import { ErroDaApi, configurarCliente } from './api/cliente'
 import './offline/tipos/todos'
 import { rotas } from './rotas'
+import { iniciarSentry } from './sentry'
 import { ProvedorSessao } from './sessao/ProvedorSessao'
 import './ui/tema.css'
+
+// Antes de montar qualquer coisa, para pegar também o erro da primeira renderização.
+iniciarSentry()
 
 const MAXIMO_DE_TENTATIVAS = 2
 

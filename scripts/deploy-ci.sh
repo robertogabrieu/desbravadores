@@ -14,6 +14,16 @@ ESPERA_SAUDE="${ESPERA_SAUDE:-240}"
 BACKUPS_MANTIDOS=10
 COMPOSE=(docker compose -f docker-compose.prod.yml --env-file .env)
 
+# O token do Sentry (sobe os mapas do codigo do site no build) chega pela entrada padrao, e nao pela
+# linha de comando nem por arquivo: assim nao aparece na lista de processos do servidor nem fica gravado.
+# Lido antes de tudo, porque o primeiro `docker compose exec` consumiria a entrada. Rodado a mao, num
+# terminal, segue sem ele: o site sobe igual, so sem os mapas.
+SENTRY_AUTH_TOKEN=""
+if [ ! -t 0 ]; then
+  IFS= read -r SENTRY_AUTH_TOKEN || true
+fi
+export SENTRY_AUTH_TOKEN
+
 log() { printf '[%s] %s\n' "$(date -u '+%H:%M:%S')" "$*"; }
 fim_com_erro() { printf '[%s] ERRO: %s\n' "$(date -u '+%H:%M:%S')" "$*" >&2; exit 1; }
 
