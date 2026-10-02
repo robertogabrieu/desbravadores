@@ -1,12 +1,12 @@
 import { MesCivil } from '@desbravadores/shared'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { Link } from 'react-router-dom'
 import { hojeDoClube } from '../../../api/desbravadores'
 import { useReunioes } from '../../../api/reunioes'
 import { Botao } from '../../../ui/Botao'
 import { Cartao } from '../../../ui/Cartao'
 import { Carregando, ErroDeCarga } from '../../../ui/EstadosDeCarga'
+import { LinhaQueNavega } from '../../../ui/LinhaQueNavega'
 import { somarMeses, nomeDoMes } from '../../reunioes/historico/datas'
 import { dataPorExtenso } from '../formatos'
 import { useEstadoDeVolta, useFiltrosNaUrl } from '../navegacao'
@@ -32,18 +32,16 @@ export function ReunioesDoMes({ unidadeId }: { unidadeId: string }) {
           const faltas = reuniao.total - reuniao.presentes
           return (
             <li key={reuniao.id}>
-              <Link
-                to={`/adm/reunioes/${reuniao.id}`}
-                state={estado}
-                className="flex min-h-[var(--touch-min)] flex-col justify-center rounded-botao px-2 py-2 hover:bg-superficie-suave focus-visible:outline-2 focus-visible:outline-marca"
-              >
-                <span className="text-base font-semibold text-texto">{dataPorExtenso(reuniao.data)}</span>
-                <span className="text-sm text-texto-2">
-                  {reuniao.presentes} de {reuniao.total} presentes
-                  {reuniao.atrasos > 0 && ` · ${plural(reuniao.atrasos, 'atraso', 'atrasos')}`}
-                  {faltas > 0 && ` · ${plural(faltas, 'falta', 'faltas')}`}
+              <LinhaQueNavega to={`/adm/reunioes/${reuniao.id}`} state={estado}>
+                <span className="flex flex-col">
+                  <span className="text-base font-semibold text-texto">{dataPorExtenso(reuniao.data)}</span>
+                  <span className="text-sm text-texto-2">
+                    {reuniao.presentes} de {reuniao.total} presentes
+                    {reuniao.atrasos > 0 && ` · ${plural(reuniao.atrasos, 'atraso', 'atrasos')}`}
+                    {faltas > 0 && ` · ${plural(faltas, 'falta', 'faltas')}`}
+                  </span>
                 </span>
-              </Link>
+              </LinhaQueNavega>
             </li>
           )
         })}

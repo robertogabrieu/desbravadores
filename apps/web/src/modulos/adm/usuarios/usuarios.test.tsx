@@ -1,5 +1,6 @@
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
 import type { Usuario } from '../../../api/usuarios'
 import { caixa } from '../../../testes/handlers/caixa'
@@ -274,5 +275,42 @@ describe('desativar na ficha', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Desativar neste clube' }))
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Desativar' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('O clube precisa de pelo menos um Adm ativo.')
+  })
+})
+
+describe('lista de usuários: filtro, ficha e erro', () => {
+  it('o filtro de papéis são abas de verdade: as setas do teclado trocam o papel', async () => {
+    const consultas: URLSearchParams[] = []
+    abrir(TRES, consultas)
+    const todos = await screen.findByRole('tab', { name: 'Todos · 3' })
+    act(() => todos.focus())
+    await userEvent.keyboard('{ArrowRight}')
+    await waitFor(() => expect(screen.getByRole('tab', { name: /^Adm/ })).toHaveAttribute('aria-selected', 'true'))
+    expect(screen.getByRole('tab', { name: /^Adm/ })).toHaveFocus()
+    await waitFor(() => expect(consultas.at(-1)?.get('papel')).toBe('ADM'))
+    await userEvent.keyboard('{ArrowLeft}')
+    await waitFor(() => expect(screen.getByRole('tab', { name: /^Todos/ })).toHaveAttribute('aria-selected', 'true'))
+  })
+
+  it('o nome do usuário traz o ícone de abrir a ficha, e o nome acessível continua sendo o nome', async () => {
+    abrir()
+    const link = await screen.findByRole('link', { name: 'Priscila Andrade' })
+    expect(link).toHaveAttribute('href', `/adm/usuarios/${uuid(703)}`)
+    expect(link.querySelector('[data-sinal="abre-ficha"]')).not.toBeNull()
+  })
+
+  it('erro ao carregar mostra a mensagem da API e repete a busca pelo "Tentar de novo"', async () => {
+    servidor.use(
+      ...handlersSessao(),
+      http.get('/api/usuarios', () => HttpResponse.json({ codigo: 'ERRO_INTERNO', mensagem: 'Falha ao listar usuários.' }, { status: 500 })),
+      handlerCatalogoUsuarios(),
+      handlerUnidades([AGUIAS, LEOES]),
+      handlerClasses([AMIGO, COMPANHEIRO]),
+    )
+    renderizarRotas(rotasAdmUsuarios, '/adm/usuarios')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Falha ao listar usuários.')
+    servidor.use(handlerListaUsuarios(TRES))
+    await userEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }))
+    expect(await screen.findByRole('link', { name: 'Priscila Andrade' })).toBeInTheDocument()
   })
 })

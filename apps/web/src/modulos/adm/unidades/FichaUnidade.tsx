@@ -1,4 +1,3 @@
-import { ExternalLink } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useMembrosUnidade, useSemMembros } from '../../../api/leitura'
@@ -12,6 +11,8 @@ import { Cartao } from '../../../ui/Cartao'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/EstadosDeCarga'
 import { EstadoNaoEncontrado, ehNaoEncontrado } from '../../../ui/EstadoNaoEncontrado'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
+import { LinhaQueNavega } from '../../../ui/LinhaQueNavega'
+import { NomeDaFicha } from '../../../ui/LinkDeFicha'
 import { ListaDePares } from '../../../ui/ListaDePares'
 import { juntarNomes } from '../formatos'
 import { useEstadoDeVolta, useVoltar } from '../navegacao'
@@ -50,22 +51,17 @@ function LinhaDoMembro({ membro, unidadeNome }: { membro: Membro; unidadeNome: s
   const estado = useEstadoDeVolta(unidadeNome)
   return (
     <li>
-      <Link
-        to={`/adm/desbravadores/${membro.dbvId}`}
-        state={estado}
-        className="flex min-h-[var(--touch-min)] items-center justify-between gap-3 rounded-botao px-2 py-2 hover:bg-superficie-suave focus-visible:outline-2 focus-visible:outline-marca"
-      >
-        <span className="flex min-w-0 flex-col">
-          <span className="flex items-center gap-1.5 text-base font-semibold break-words text-texto">
-            {membro.nome}
-            <ExternalLink aria-hidden className="size-4 shrink-0 text-marca" />
+      <LinhaQueNavega to={`/adm/desbravadores/${membro.dbvId}`} state={estado} sinal="ficha">
+        <span className="flex items-center justify-between gap-3">
+          <span className="flex min-w-0 flex-col">
+            <NomeDaFicha nome={membro.nome} className="text-base font-semibold break-words text-texto" />
+            <span className="text-sm text-texto-2">
+              {membro.classeAtual?.nome ?? 'Sem classe'} · {membro.idade} anos
+            </span>
           </span>
-          <span className="text-sm text-texto-2">
-            {membro.classeAtual?.nome ?? 'Sem classe'} · {membro.idade} anos
-          </span>
+          <span className="text-base font-semibold text-texto">{membro.frequencia == null ? '—' : `${membro.frequencia}%`}</span>
         </span>
-        <span className="text-base font-semibold text-texto">{membro.frequencia == null ? '—' : `${membro.frequencia}%`}</span>
-      </Link>
+      </LinhaQueNavega>
     </li>
   )
 }

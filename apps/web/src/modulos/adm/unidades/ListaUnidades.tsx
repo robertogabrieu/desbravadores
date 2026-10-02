@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom'
 import { useUnidades } from '../../../api/leitura'
 import type { Unidade } from '../../../api/leitura'
 import { estiloDoBotao } from '../../../ui/Botao'
-import { Cartao } from '../../../ui/Cartao'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
+import { ErroDeCarga } from '../../../ui/EstadosDeCarga'
+import { LinhaQueNavega } from '../../../ui/LinhaQueNavega'
 import { useEstadoDeVolta } from '../navegacao'
 import { rotuloDoTipo } from './tipos'
 
@@ -40,22 +41,13 @@ export function ListaUnidades() {
       </header>
 
       {unidades.isPending && <p className="text-base text-texto-2">Carregando…</p>}
-      {unidades.isError && (
-        <p role="alert" className="text-base font-medium text-perigo">
-          Não foi possível carregar as unidades. Tente de novo.
-        </p>
-      )}
+      {unidades.isError && <ErroDeCarga erro={unidades.error} aoTentarDeNovo={() => void unidades.refetch()} />}
       {unidades.data && lista.length === 0 && <EstadoVazio titulo="Nenhuma unidade ainda" descricao="Crie a primeira unidade para organizar os desbravadores." />}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {lista.map((unidade) => (
-          <Link
-            key={unidade.id}
-            to={`/adm/unidades/${unidade.id}`}
-            state={estadoDeVolta}
-            className="block rounded-cartao focus-visible:outline-2 focus-visible:outline-marca"
-          >
-            <Cartao className="flex h-full flex-col gap-2 hover:bg-superficie-suave">
+          <LinhaQueNavega key={unidade.id} to={`/adm/unidades/${unidade.id}`} state={estadoDeVolta} forma="cartao" className="h-full">
+            <div className="flex flex-col gap-2">
               <div className="flex items-start justify-between gap-2">
                 <h2 className="font-titulo text-lg font-bold text-texto">{unidade.nome}</h2>
                 {!unidade.ativa && <span className="rounded-full bg-superficie-suave px-2.5 py-0.5 text-sm font-semibold text-texto-2">Inativa</span>}
@@ -64,8 +56,8 @@ export function ListaUnidades() {
               <p className="text-base text-texto">{frasesDosConselheiros(unidade)}</p>
               {unidade.gritoDeGuerra && <p className="text-sm italic text-texto-2">“{unidade.gritoDeGuerra}”</p>}
               <p className="text-base font-semibold text-texto">{plural(unidade.totalMembros, 'DBV', 'DBVs')}</p>
-            </Cartao>
-          </Link>
+            </div>
+          </LinhaQueNavega>
         ))}
       </div>
     </div>

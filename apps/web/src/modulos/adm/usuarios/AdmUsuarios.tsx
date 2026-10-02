@@ -5,21 +5,23 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { POR_PAGINA_USUARIOS, useUsuarios } from '../../../api/usuarios'
 import type { Usuario } from '../../../api/usuarios'
+import { Abas } from '../../../ui/Abas'
 import { estiloDoBotao } from '../../../ui/Botao'
 import { Campo } from '../../../ui/Campo'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
+import { ErroDeCarga } from '../../../ui/EstadosDeCarga'
+import { LinkDeFicha } from '../../../ui/LinkDeFicha'
 import { Tabela } from '../../../ui/Tabela'
 import type { ColunaTabela } from '../../../ui/Tabela'
-import { cn } from '../../../ui/cn'
 import { rotuloDoPapel } from '../../acesso/papeis'
 import { useEstadoDeVolta, useFiltrosNaUrl } from '../navegacao'
 import { SITUACAO } from './FichaUsuario'
 
-const ABAS: { papel: Papel | undefined; rotulo: string; contagem: 'todos' | Papel }[] = [
-  { papel: undefined, rotulo: 'Todos', contagem: 'todos' },
-  { papel: 'ADM', rotulo: 'Adm', contagem: 'ADM' },
-  { papel: 'CONSELHEIRO', rotulo: 'Conselheiros', contagem: 'CONSELHEIRO' },
-  { papel: 'INSTRUTOR', rotulo: 'Instrutores', contagem: 'INSTRUTOR' },
+const ABAS: { id: 'todos' | Papel; rotulo: string }[] = [
+  { id: 'todos', rotulo: 'Todos' },
+  { id: 'ADM', rotulo: 'Adm' },
+  { id: 'CONSELHEIRO', rotulo: 'Conselheiros' },
+  { id: 'INSTRUTOR', rotulo: 'Instrutores' },
 ]
 
 /** Papéis distintos dos vínculos ativos, na ordem em que aparecem. */
@@ -58,9 +60,7 @@ export function AdmUsuarios() {
       titulo: 'Usuário',
       celula: (u) => (
         <div className="flex flex-col">
-          <Link to={`/adm/usuarios/${u.id}`} state={estadoDeVolta} className="font-semibold text-marca underline-offset-2 hover:underline">
-            {u.nome}
-          </Link>
+          <LinkDeFicha to={`/adm/usuarios/${u.id}`} state={estadoDeVolta} nome={u.nome} />
           <span className="text-sm text-texto-2">{u.email}</span>
         </div>
       ),
@@ -91,27 +91,15 @@ export function AdmUsuarios() {
         </Link>
       </header>
 
-      <div role="tablist" aria-label="Filtrar por papel" className="flex flex-wrap gap-2">
-        {ABAS.map((aba) => {
-          const selecionada = aba.papel === papel
-          const contagem = usuarios.data?.contagens[aba.contagem]
-          return (
-            <button
-              key={aba.rotulo}
-              type="button"
-              role="tab"
-              aria-selected={selecionada}
-              onClick={() => filtros.mudar({ papel: aba.papel ?? '', pagina: '' })}
-              className={cn(
-                'min-h-[var(--touch-min)] rounded-full border px-4 text-sm font-bold',
-                selecionada ? 'border-texto bg-texto text-white' : 'border-borda bg-superficie text-texto',
-              )}
-            >
-              {contagem === undefined ? aba.rotulo : `${aba.rotulo} · ${contagem}`}
-            </button>
-          )
+      <Abas
+        rotulo="Filtrar por papel"
+        abas={ABAS.map((aba) => {
+          const contagem = usuarios.data?.contagens[aba.id]
+          return { id: aba.id, rotulo: contagem === undefined ? aba.rotulo : `${aba.rotulo} · ${contagem}` }
         })}
-      </div>
+        ativa={papel ?? 'todos'}
+        aoMudar={(id) => filtros.mudar({ papel: id === 'todos' ? '' : id, pagina: '' })}
+      />
 
       <Campo
         rotulo="Buscar usuário"
@@ -123,7 +111,7 @@ export function AdmUsuarios() {
       {usuarios.isPending ? (
         <p role="status">Carregando…</p>
       ) : usuarios.isError ? (
-        <p role="alert">Não foi possível carregar os usuários. Tente de novo.</p>
+        <ErroDeCarga erro={usuarios.error} aoTentarDeNovo={() => void usuarios.refetch()} />
       ) : (
         <Tabela
           colunas={colunas}

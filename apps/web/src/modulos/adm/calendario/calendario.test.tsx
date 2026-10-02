@@ -91,6 +91,30 @@ describe('A6 · grade', () => {
     expect(grade.getByText('+1')).toBeInTheDocument()
   })
 
+  it('no celular a grade só informa: o evento vira faixa sem toque e a reunião ganha o ícone da legenda', async () => {
+    abrir(handlerCalendario({ eventos: [carnaval], diasDeReuniao: ['2026-10-03'] }))
+    const grupo = await screen.findByRole('group', { name: 'Outubro de 2026' })
+    const links = within(grupo).getAllByRole('link', { name: 'Acampamento do clube' })
+    for (const link of links) expect(link).toHaveClass('max-sm:hidden')
+    const faixas = grupo.querySelectorAll('[data-faixa-do-evento]')
+    expect(faixas).toHaveLength(links.length)
+    for (const faixa of faixas) {
+      expect(faixa.tagName).toBe('SPAN')
+      expect(faixa).toHaveAttribute('aria-hidden', 'true')
+      expect(faixa).toHaveClass('sm:hidden')
+    }
+    expect(grupo.querySelectorAll('[data-marca="reuniao"]')).toHaveLength(1)
+    const legenda = screen.getByRole('list', { name: 'Legenda' })
+    expect(within(legenda).getByText('Reunião regular').querySelector('[data-marca="reuniao"]')).not.toBeNull()
+    expect(screen.getByText('Para abrir um evento, toque nele na lista abaixo.')).toBeInTheDocument()
+  })
+
+  it('o cartão do evento na lista mostra a seta de que abre', async () => {
+    abrir(handlerCalendario({ eventos: [carnaval] }))
+    const lista = within(await screen.findByRole('list', { name: 'Eventos de Outubro' }))
+    expect(lista.getByRole('link', { name: /Acampamento do clube/ }).querySelector('[data-sinal="navega"]')).not.toBeNull()
+  })
+
   it('trocar de mês pela faixa mostra os eventos daquele mês', async () => {
     abrir(handlerCalendario({ eventos: [carnaval] }))
     await screen.findByRole('list', { name: 'Eventos de Outubro' })

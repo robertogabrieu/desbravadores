@@ -1,4 +1,5 @@
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Users } from 'lucide-react'
+import { Fragment } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { hojeDoClube } from '../../../api/desbravadores'
@@ -11,6 +12,7 @@ import { Botao, estiloDoBotao } from '../../../ui/Botao'
 import { Cartao } from '../../../ui/Cartao'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { Esqueleto } from '../../../ui/Esqueleto'
+import { LinhaQueNavega } from '../../../ui/LinhaQueNavega'
 import { cn } from '../../../ui/cn'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/EstadosDeCarga'
 import { dataCivilBr } from '../formatos'
@@ -66,7 +68,10 @@ export function AdmCalendario() {
             aria-label="Legenda"
             className="flex flex-wrap gap-3 text-sm font-semibold text-texto-3"
           >
-            <li className={cn('rounded-full px-2.5 py-0.5', COR_DA_REUNIAO)}>Reunião regular</li>
+            <li className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5', COR_DA_REUNIAO)}>
+              <MarcaDeReuniao />
+              Reunião regular
+            </li>
             {Object.entries(ROTULOS_DO_TIPO).map(([tipo, rotulo]) => (
               <li
                 key={tipo}
@@ -101,6 +106,7 @@ export function AdmCalendario() {
               />
             ))}
           </div>
+          <p className="text-sm text-texto-2 sm:hidden">Para abrir um evento, toque nele na lista abaixo.</p>
         </Cartao>
         {eventosDesteMes.length === 0 ? (
           <EstadoVazio
@@ -111,22 +117,16 @@ export function AdmCalendario() {
           <ul aria-label={`Eventos de ${MESES[mes]}`} className="flex flex-col gap-2">
             {eventosDesteMes.map((evento) => (
               <li key={evento.id}>
-                <Cartao className="relative flex flex-col gap-0.5">
-                  <Link
-                    to={fichaDoEvento(evento)}
-                    state={estadoDeVolta}
-                    className="text-base font-bold text-texto after:absolute after:inset-0 focus-visible:outline-2 focus-visible:outline-marca"
-                  >
-                    {evento.nome}
-                  </Link>
-                  <div className="flex flex-col gap-0.5">
+                <LinhaQueNavega to={fichaDoEvento(evento)} state={estadoDeVolta} forma="cartao">
+                  <span className="flex flex-col gap-0.5">
+                    <span className="text-base font-bold text-texto">{evento.nome}</span>
                     <span className="text-sm text-texto-2">
                       {ROTULOS_DO_TIPO[evento.tipo]} · {periodo(evento)}
                       {evento.horario && ` · ${evento.horario}`}
                       {evento.local && ` · ${evento.local}`}
                     </span>
-                  </div>
-                </Cartao>
+                  </span>
+                </LinhaQueNavega>
               </li>
             ))}
           </ul>
@@ -204,17 +204,18 @@ function CelulaDoDia({
   if (dia === null || data === null)
     return <div aria-hidden className="min-h-24 rounded-controle bg-superficie-suave/50" />
   const doDia = eventosDoDia(eventos, data)
-  // No celular a célula tem ~45 px: a reunião pinta o número do dia e cada evento vira uma faixa da cor
-  // do tipo; o nome completo está na lista de eventos abaixo da grade.
+  // No celular a célula tem ~45 px e a grade é só para ver: a reunião pinta o número do dia e ganha o
+  // ícone da legenda, e cada evento vira uma faixa da cor do tipo, sem toque. Abrir é pela lista abaixo.
   return (
     <div className="flex min-h-16 flex-col gap-1 rounded-controle border border-divisor p-1 sm:min-h-24 sm:p-1.5">
       <span
         className={cn(
-          'w-fit rounded-controle text-sm font-bold text-texto max-sm:px-1',
+          'flex w-fit items-center gap-0.5 rounded-controle text-sm font-bold text-texto max-sm:px-1',
           ehReuniao && 'max-sm:bg-[var(--cal-reuniao-bg)] max-sm:text-[var(--cal-reuniao-fg)]',
         )}
       >
         {dia}
+        {ehReuniao && <MarcaDeReuniao className="sm:hidden" />}
       </span>
       {ehReuniao && (
         <span
@@ -227,21 +228,28 @@ function CelulaDoDia({
         </span>
       )}
       {doDia.slice(0, MAXIMO_POR_DIA).map((evento) => (
-        <Link
-          key={evento.id}
-          to={fichaDoEvento(evento)}
-          state={estadoDeVolta}
-          className={cn(
-            'truncate rounded-controle px-1.5 py-0.5 text-left text-sm font-semibold focus-visible:outline-2 focus-visible:outline-marca max-sm:h-2 max-sm:p-0',
-            CORES_DO_TIPO[evento.tipo],
-          )}
-        >
-          <span className="max-sm:sr-only">{evento.nome}</span>
-        </Link>
+        <Fragment key={evento.id}>
+          <Link
+            to={fichaDoEvento(evento)}
+            state={estadoDeVolta}
+            className={cn(
+              'truncate rounded-controle px-1.5 py-0.5 text-left text-sm font-semibold focus-visible:outline-2 focus-visible:outline-marca max-sm:hidden',
+              CORES_DO_TIPO[evento.tipo],
+            )}
+          >
+            {evento.nome}
+          </Link>
+          <span aria-hidden data-faixa-do-evento className={cn('h-2 rounded-controle sm:hidden', CORES_DO_TIPO[evento.tipo])} />
+        </Fragment>
       ))}
       {doDia.length > MAXIMO_POR_DIA && (
         <span className="text-sm font-semibold text-texto-2">+{doDia.length - MAXIMO_POR_DIA}</span>
       )}
     </div>
   )
+}
+
+/** Marca da reunião que não depende só da cor: o mesmo ícone na legenda e no dia. */
+function MarcaDeReuniao({ className }: { className?: string }) {
+  return <Users aria-hidden data-marca="reuniao" className={cn('size-3.5 shrink-0', className)} />
 }

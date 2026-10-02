@@ -9,7 +9,9 @@ import { BarraProgresso } from '../../../ui/BarraProgresso'
 import { Cartao } from '../../../ui/Cartao'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/EstadosDeCarga'
+import { LinhaQueNavega } from '../../../ui/LinhaQueNavega'
 import { cn } from '../../../ui/cn'
+import { useEstadoDeVolta } from '../navegacao'
 
 const plural = (n: number, singular: string, muitos: string): string => `${n} ${n === 1 ? singular : muitos}`
 const sinal = (n: number): string => (n > 0 ? `+${n}` : String(n))
@@ -112,6 +114,14 @@ function AtividadeRecente({ visao }: { visao: Visao }) {
   )
 }
 
+const NOVO_DESBRAVADOR = '/adm/desbravadores/novo'
+
+/** O leitor de tela ouve o que o cartão mostra: nome, contagem e frequência, e o aviso que a cor dá. */
+function nomeDoCartaoDaUnidade(unidade: Visao['unidadesResumo'][number], abaixo: boolean): string {
+  const frequencia = unidade.frequenciaMes === null ? 'sem frequência no mês' : `frequência do mês ${unidade.frequenciaMes}%`
+  return `${unidade.nome} · ${plural(unidade.totalDbvs, 'DBV', 'DBVs')} · ${frequencia}${abaixo ? ', abaixo do limite' : ''}`
+}
+
 /** `limiar` ausente (configuração ainda carregando ou com erro): nenhuma unidade recebe destaque. */
 function UnidadesDoClube({ visao, limiar }: { visao: Visao; limiar: number | undefined }) {
   return (
@@ -122,8 +132,8 @@ function UnidadesDoClube({ visao, limiar }: { visao: Visao; limiar: number | und
         {visao.unidadesResumo.map((unidade) => {
           const abaixo = limiar !== undefined && unidade.frequenciaMes !== null && unidade.frequenciaMes < limiar
           return (
-            <Link key={unidade.id} to={`/adm/unidades/${unidade.id}`} aria-label={unidade.nome} className="block rounded-cartao focus-visible:outline-2 focus-visible:outline-marca">
-              <Cartao className="flex flex-col gap-1">
+            <LinhaQueNavega key={unidade.id} to={`/adm/unidades/${unidade.id}`} aria-label={nomeDoCartaoDaUnidade(unidade, abaixo)} forma="cartao">
+              <span className="flex flex-col gap-1">
                 <span className="font-titulo text-lg font-bold text-texto">{unidade.nome}</span>
                 <span className="text-sm text-texto-2">{unidade.conselheiros.length === 0 ? 'Sem conselheiro' : unidade.conselheiros.join(', ')}</span>
                 <span className="flex justify-between text-base text-texto">
@@ -132,8 +142,8 @@ function UnidadesDoClube({ visao, limiar }: { visao: Visao; limiar: number | und
                     {unidade.frequenciaMes === null ? '—' : `${unidade.frequenciaMes}%`}
                   </span>
                 </span>
-              </Cartao>
-            </Link>
+              </span>
+            </LinhaQueNavega>
           )
         })}
       </div>
@@ -143,13 +153,14 @@ function UnidadesDoClube({ visao, limiar }: { visao: Visao; limiar: number | und
 
 function Conteudo({ visao }: { visao: Visao }) {
   const configuracao = useConfiguracaoClube()
+  const estadoDeVolta = useEstadoDeVolta()
   if (visao.dbvsAtivos === 0 && visao.unidadesResumo.length === 0) {
     return (
       <EstadoVazio
         titulo="O clube ainda não tem desbravadores"
         descricao="Cadastre o primeiro desbravador para ver os números do clube aqui."
         acao={
-          <Link to="/adm/desbravadores" className="text-base font-semibold text-marca underline">
+          <Link to={NOVO_DESBRAVADOR} state={estadoDeVolta} className="text-base font-semibold text-marca underline">
             Cadastrar desbravador
           </Link>
         }
@@ -172,6 +183,7 @@ function Conteudo({ visao }: { visao: Visao }) {
 export function VisaoGeral() {
   const consulta = useVisaoGeral()
   const { modo } = useConexao()
+  const estadoDeVolta = useEstadoDeVolta()
 
   let corpo: ReactNode
   if (consulta.data) corpo = <Conteudo visao={consulta.data} />
@@ -183,7 +195,7 @@ export function VisaoGeral() {
     <div className="flex flex-col gap-5 p-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-titulo text-2xl font-bold text-texto">Visão geral do clube</h1>
-        <Link to="/adm/desbravadores" className="inline-flex min-h-[var(--touch-min)] items-center gap-2 rounded-botao bg-marca px-5 text-base font-semibold text-white hover:bg-marca-escura">
+        <Link to={NOVO_DESBRAVADOR} state={estadoDeVolta} className="inline-flex min-h-[var(--touch-min)] items-center gap-2 rounded-botao bg-marca px-5 text-base font-semibold text-white hover:bg-marca-escura">
           <Plus aria-hidden className="size-5" />
           Novo desbravador
         </Link>
