@@ -118,7 +118,7 @@ function FormularioNovaObservacao({ classeId }: { classeId: string }) {
   }
 
   return (
-    <form onSubmit={salvar} className="flex flex-col gap-3 rounded-cartao border border-borda bg-superficie p-4">
+    <form onSubmit={salvar} className="flex flex-col gap-3 rounded-cartao border border-borda-controle bg-superficie p-4">
       <div role="radiogroup" aria-label="Sobre o quê" className="flex gap-4">
         {(['AULA', 'DBV'] as const).map((opcao) => (
           <label key={opcao} className="flex min-h-[var(--touch-min)] items-center gap-2 text-base font-semibold text-texto">

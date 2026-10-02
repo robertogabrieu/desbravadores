@@ -234,7 +234,7 @@ function FormularioDeEnvio({ unidades, unidadeId, aoTrocarUnidade, reuniaoDoLink
                 onClick={() => setEscolhida(opcao.chave)}
                 className={cn('flex min-h-[var(--touch-min)] items-center gap-3 rounded-cartao border-2 px-3.5 py-2 text-left', marcada ? 'border-marca bg-marca-suave' : 'border-superficie bg-superficie')}
               >
-                <span className={cn('size-5 shrink-0 rounded-full', marcada ? 'border-[6px] border-marca bg-superficie' : 'border-2 border-borda')} />
+                <span className={cn('size-5 shrink-0 rounded-full', marcada ? 'border-[6px] border-marca bg-superficie' : 'border-2 border-borda-controle')} />
                 <span className="flex flex-col">
                   <span className="text-base font-semibold text-texto">{opcao.titulo}</span>
                   <span className="text-sm text-texto-2">{opcao.subtitulo}</span>

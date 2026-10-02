@@ -111,7 +111,7 @@ export function MenuCabecalho({ rotulo, itens, rotuloAcessivel, className, class
           role="menu"
           onKeyDown={andarComTeclado}
           style={deslocamento ? { transform: `translateX(${deslocamento}px)` } : undefined}
-          className="absolute right-0 z-40 mt-1 w-max max-w-[calc(100vw-1rem)] min-w-56 rounded-cartao border border-borda bg-superficie py-1 text-texto shadow-lg"
+          className="absolute right-0 z-40 mt-1 w-max max-w-[calc(100vw-1rem)] min-w-56 rounded-cartao border border-borda-controle bg-superficie py-1 text-texto shadow-lg"
         >
           {itens.map((item) => (
             <button

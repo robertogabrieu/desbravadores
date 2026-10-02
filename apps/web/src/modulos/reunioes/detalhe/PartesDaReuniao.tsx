@@ -39,7 +39,7 @@ function Marca({ ligada, children }: { ligada: boolean; children: string }) {
 function LinhaDbv({ linha, mostrarLicao }: { linha: Linha; mostrarLicao: boolean }) {
   const presente = ehPresente(linha)
   return (
-    <li className="flex items-center gap-3 rounded-cartao border border-borda bg-superficie p-3">
+    <li className="flex items-center gap-3 rounded-cartao border border-borda-controle bg-superficie p-3">
       <span aria-hidden className={cn('size-2.5 shrink-0 rounded-full', presente ? 'bg-sucesso' : 'bg-perigo')} />
       <span className="flex min-w-0 flex-1 flex-col gap-1">
         <span className={cn('font-bold', !presente && 'text-texto-2')}>{linha.nome}</span>

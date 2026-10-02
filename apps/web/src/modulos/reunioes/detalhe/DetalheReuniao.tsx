@@ -47,7 +47,7 @@ export function DetalheReuniao() {
         )}
       </header>
 
-      <section className="flex flex-col gap-3 rounded-cartao border border-borda bg-superficie p-4">
+      <section className="flex flex-col gap-3 rounded-cartao border border-borda-controle bg-superficie p-4">
         <p className="text-sm text-texto-2">{`Registrada por ${dados.registradaPor.nome} às ${horaNoFuso(dados.registradaEm, fuso)}`}</p>
         {dados.alterada && <p className="text-sm text-texto-2">{`Alterada por ${dados.alterada.por} às ${horaNoFuso(dados.alterada.em, fuso)}`}</p>}
         {dados.alterada?.conflito && <p className="text-sm font-semibold text-alerta">Houve conflito entre aparelhos</p>}

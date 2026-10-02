@@ -130,7 +130,7 @@ export function PaginaFila() {
           <h2 id="titulo-lista-fila" className="text-sm font-bold uppercase text-texto-2">
             Neste aparelho
           </h2>
-          <ul className="rounded-cartao border border-borda bg-superficie">
+          <ul className="rounded-cartao border border-borda-controle bg-superficie">
             {fila.itens.map((item) => (
               <ItemDaLista key={item.id} item={item} aoTentarDeNovo={() => void fila.tentarDeNovo(item.id)} aoDescartar={() => definirADescartar(item)} />
             ))}

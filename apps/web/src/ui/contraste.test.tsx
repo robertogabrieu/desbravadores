@@ -86,3 +86,36 @@ describe('tamanho de letra', () => {
     expect(abaixo).toEqual([])
   })
 })
+
+// Contorno de caixa (cartão, menu, tabela, marcador) precisa de 3:1: usa `border-borda-controle`.
+// A borda clara `border-borda` só serve de divisória — linha de um lado só (`border-t`, `border-b`…).
+// Exceções ainda não migradas, contadas por arquivo: corrigir uma delas exige tirá-la daqui.
+const CONTORNO_CLARO_PENDENTE: Record<string, number> = {
+  'modulos/especialidades/TelaEspecialidades.tsx': 1,
+  'modulos/cronograma/TelaCronograma.tsx': 1,
+  'modulos/aulas/FormularioAula.tsx': 3,
+  'modulos/adm/classes/DetalheDaClasse.tsx': 1,
+  'modulos/reunioes/detalhe/DetalheReuniao.tsx': 1,
+  'modulos/reunioes/detalhe/PartesDaReuniao.tsx': 1,
+  'modulos/reunioes/chamada/FormularioChamada.tsx': 2,
+  'ui/Chip.tsx': 1,
+}
+
+function ehContornoClaro(linha: string): boolean {
+  const bordaClara = /\bborder-borda(?![\w-])/.test(linha)
+  const divisoria = /\bborder-[btlrxyse](?![a-z])|\bdivide-/.test(linha)
+  return bordaClara && !divisoria
+}
+
+describe('contorno de caixa', () => {
+  it('borda clara só como divisória, nunca contornando a caixa inteira', () => {
+    const contornos: Record<string, number> = {}
+    for (const caminho of arquivosTsx(PASTA_SRC)) {
+      const relativo = relative(PASTA_SRC, caminho).split('\\').join('/')
+      if (!relativo.startsWith('modulos/') && !relativo.startsWith('ui/')) continue
+      const total = readFileSync(caminho, 'utf8').split('\n').filter(ehContornoClaro).length
+      if (total > 0) contornos[relativo] = total
+    }
+    expect(contornos).toEqual(CONTORNO_CLARO_PENDENTE)
+  })
+})

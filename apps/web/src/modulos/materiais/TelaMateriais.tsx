@@ -196,7 +196,7 @@ function LinhaDoMaterial({ material, aoEscolher }: { material: Material; aoEscol
     { rotulo: 'Apagar', aoEscolher: () => aoEscolher('apagar') },
   ]
   return (
-    <li className="flex items-center gap-3 rounded-cartao border border-borda bg-superficie p-3">
+    <li className="flex items-center gap-3 rounded-cartao border border-borda-controle bg-superficie p-3">
       <span aria-hidden className="flex size-11 shrink-0 items-center justify-center rounded-botao bg-marca-suave text-xs font-extrabold text-marca">{SELOS[material.tipo]}</span>
       <span className="flex min-w-0 flex-1 flex-col">
         <a href={material.url} target="_blank" rel="noopener noreferrer" className="truncate text-base font-semibold text-texto underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-marca">
