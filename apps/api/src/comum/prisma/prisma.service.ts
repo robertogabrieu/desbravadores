@@ -10,7 +10,8 @@ import { guardaClube } from './guarda-clube'
  */
 export class PrismaService extends PrismaClient {
   constructor(connectionString: string = variavel('DATABASE_URL')) {
-    super({ adapter: new PrismaPg({ connectionString }) })
+    // Curto: o formato longo imprime os argumentos da consulta (nome, nascimento, e-mail) no log e no Sentry.
+    super({ adapter: new PrismaPg({ connectionString }), errorFormat: 'minimal' })
     return this.$extends(guardaClube) as unknown as PrismaService
   }
 }

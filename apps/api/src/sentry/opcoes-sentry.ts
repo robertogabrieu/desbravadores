@@ -1,3 +1,4 @@
+import { urlSemSegredo } from '@desbravadores/shared'
 import type { NodeOptions } from '@sentry/nestjs'
 
 // O DSN só diz para onde mandar o erro, não dá acesso a nada: é público por desenho. O site usa o mesmo.
@@ -15,7 +16,7 @@ export function opcoesSentry(env: NodeJS.ProcessEnv): NodeOptions {
     release: env['VERSAO_APP'] || undefined,
     // Esta versão do SDK coleta tudo por padrão (o antigo `sendDefaultPii: false` não existe mais): aqui se
     // desliga cada dado que pode identificar ou expor um membro — usuário, cookies, cabeçalhos, corpo,
-    // parâmetros da URL, dados de consulta ao banco e variáveis locais da pilha.
+    // dados de consulta ao banco e variáveis locais da pilha. O endereço quem limpa é o beforeSend.
     dataCollection: {
       userInfo: false,
       cookies: false,
@@ -27,5 +28,13 @@ export function opcoesSentry(env: NodeJS.ProcessEnv): NodeOptions {
       stackFrameVariables: false,
     },
     initialScope: { tags: { app: 'api' } },
+    // O token de convite e de primeiro acesso viaja no caminho (/api/acesso/:token), e a assinatura de
+    // arquivo, na query: nenhum dos dois pode chegar ao Sentry.
+    beforeSend(evento) {
+      if (evento.request?.url) evento.request.url = urlSemSegredo(evento.request.url)
+      if (evento.request) delete evento.request.query_string
+      if (evento.transaction) evento.transaction = urlSemSegredo(evento.transaction)
+      return evento
+    },
   }
 }

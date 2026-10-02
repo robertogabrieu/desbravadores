@@ -44,8 +44,14 @@ export default defineConfig(({ mode }) => {
                   { src: '/maskable-icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
                 ],
               },
-              // icone-fonte.png só alimenta o gerador de ícones (npm run icones): não vai para o cache do aparelho.
-              injectManifest: { globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'], globIgnores: ['**/icone-fonte.png'] },
+              // O service worker é gerado depois de o plugin do Sentry apagar os mapas: sem isto, o sw.js.map
+              // herdaria o 'hidden' e ficaria no dist, servido a quem pedir.
+              injectManifest: {
+                globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
+                // icone-fonte.png só alimenta o gerador de ícones (npm run icones): não vai para o cache do aparelho.
+                globIgnores: ['**/icone-fonte.png'],
+                sourcemap: false,
+              },
             }),
             // Por último: sobe os mapas do código para o Sentry apontar a linha do erro, e os apaga do dist.
             sentryVitePlugin({

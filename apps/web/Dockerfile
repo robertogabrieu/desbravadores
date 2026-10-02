@@ -16,7 +16,9 @@ COPY apps/web apps/web
 ARG SENTRY_AUTH_TOKEN=""
 ARG SENTRY_PROJECT=""
 ARG SENTRY_RELEASE=""
-RUN npm run build -w packages/shared && npm run build -w web
+# Rede de segurança: mapa do código nunca vai para o nginx, mesmo se o upload falhar no meio.
+RUN npm run build -w packages/shared && npm run build -w web \
+  && find apps/web/dist -name '*.map' -delete
 
 FROM nginx:1.27-alpine
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
