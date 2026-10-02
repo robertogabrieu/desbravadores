@@ -1,5 +1,5 @@
 import { TipoPessoa } from '@desbravadores/shared'
-import { FileSpreadsheet, Plus } from 'lucide-react'
+import { ExternalLink, FileSpreadsheet, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { POR_PAGINA, useDesbravadores } from '../../../api/desbravadores'
@@ -74,9 +74,10 @@ export function ListaDesbravadores() {
         <Link
           to={`/adm/desbravadores/${d.id}`}
           state={estadoDeVolta}
-          className="font-semibold text-marca underline-offset-2 hover:underline"
+          className="inline-flex items-center gap-1.5 font-semibold text-marca underline-offset-2 hover:underline"
         >
           {d.nome}
+          <ExternalLink aria-hidden className="size-4 shrink-0" />
         </Link>
       ),
     },

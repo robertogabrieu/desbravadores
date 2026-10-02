@@ -1,3 +1,4 @@
+import { ExternalLink } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useMembrosUnidade, useSemMembros } from '../../../api/leitura'
@@ -55,7 +56,10 @@ function LinhaDoMembro({ membro, unidadeNome }: { membro: Membro; unidadeNome: s
         className="flex min-h-[var(--touch-min)] items-center justify-between gap-3 rounded-botao px-2 py-2 hover:bg-superficie-suave focus-visible:outline-2 focus-visible:outline-marca"
       >
         <span className="flex min-w-0 flex-col">
-          <span className="text-base font-semibold break-words text-texto">{membro.nome}</span>
+          <span className="flex items-center gap-1.5 text-base font-semibold break-words text-texto">
+            {membro.nome}
+            <ExternalLink aria-hidden className="size-4 shrink-0 text-marca" />
+          </span>
           <span className="text-sm text-texto-2">
             {membro.classeAtual?.nome ?? 'Sem classe'} · {membro.idade} anos
           </span>
