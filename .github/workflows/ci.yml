@@ -104,15 +104,20 @@ jobs:
             "${DEPLOY_USER}@${DEPLOY_HOST}" \
             "cat > ~/deploy-ci-desbravadores.sh" < scripts/deploy-ci.sh
 
+      # O build do site roda no servidor. O token do Sentry vai pela entrada padrao (o roteiro le a
+      # primeira linha), para nao aparecer na linha de comando la; o nome do projeto nao e segredo.
       - name: Atualizar o servidor
         env:
           DEPLOY_USER: ${{ vars.DEPLOY_USER }}
           DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
           DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: |
-          ssh -n -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
             "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "cd '${DEPLOY_PATH}' && bash ~/deploy-ci-desbravadores.sh '${GITHUB_SHA}'"
+            "cd '${DEPLOY_PATH}' && SENTRY_PROJECT='${SENTRY_PROJECT}' bash ~/deploy-ci-desbravadores.sh '${GITHUB_SHA}'" \
+            <<<"${SENTRY_AUTH_TOKEN}"
 
       # O codigo de saida do roteiro nao basta como prova: um roteiro interrompido no meio tambem sai
       # com zero. Quem decide se o deploy aconteceu e o servidor, dizendo em que versao ele ficou.

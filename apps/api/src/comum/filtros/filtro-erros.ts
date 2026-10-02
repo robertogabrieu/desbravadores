@@ -1,4 +1,5 @@
 import { Catch, HttpException, Logger, type ArgumentsHost, type ExceptionFilter } from '@nestjs/common'
+import { captureException } from '@sentry/nestjs'
 import type { Response } from 'express'
 import type { ErroApi } from '@desbravadores/shared'
 import type { z } from 'zod'
@@ -30,6 +31,8 @@ export class FiltroErros implements ExceptionFilter<unknown> {
   catch(erro: unknown, host: ArgumentsHost): void {
     const resposta = host.switchToHttp().getResponse<Response>()
     const { status, corpo } = this.traduzir(erro)
+    // Só falha do servidor vai ao Sentry: erro de regra ou de quem chamou é esperado e gasta a cota.
+    if (status >= 500) captureException(erro)
     resposta.status(status).json(corpo)
   }
 

@@ -1,4 +1,5 @@
 import { resolve } from 'node:path'
+import { sentryVitePlugin } from '@sentry/vite-plugin'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -9,6 +10,9 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, resolve(__dirname, '../..'), '')
   const portaApi = env['PORTA_API'] ?? '3001'
   const emTeste = mode === 'test'
+  // Sem o token (build local, CI de verificação) não há para onde mandar os mapas: o build nem os gera,
+  // e nenhum .map fica no dist para ser servido.
+  const tokenSentry = process.env['SENTRY_AUTH_TOKEN']
 
   return {
     plugins: [
@@ -40,11 +44,28 @@ export default defineConfig(({ mode }) => {
                   { src: '/maskable-icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
                 ],
               },
-              // icone-fonte.png só alimenta o gerador de ícones (npm run icones): não vai para o cache do aparelho.
-              injectManifest: { globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'], globIgnores: ['**/icone-fonte.png'] },
+              // O service worker é gerado depois de o plugin do Sentry apagar os mapas: sem isto, o sw.js.map
+              // herdaria o 'hidden' e ficaria no dist, servido a quem pedir.
+              injectManifest: {
+                globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
+                // icone-fonte.png só alimenta o gerador de ícones (npm run icones): não vai para o cache do aparelho.
+                globIgnores: ['**/icone-fonte.png'],
+                sourcemap: false,
+              },
+            }),
+            // Por último: sobe os mapas do código para o Sentry apontar a linha do erro, e os apaga do dist.
+            sentryVitePlugin({
+              org: 'roberto-almeida-developer',
+              project: process.env['SENTRY_PROJECT'],
+              authToken: tokenSentry,
+              release: { name: process.env['SENTRY_RELEASE'] || undefined },
+              sourcemaps: { filesToDeleteAfterUpload: ['./dist/**/*.map'] },
+              telemetry: false,
             }),
           ]),
     ],
+    // 'hidden': os mapas existem para o upload, mas o bundle não aponta para eles.
+    build: { sourcemap: tokenSentry ? 'hidden' : false },
     resolve: {
       alias: { '@desbravadores/shared': resolve(__dirname, '../../packages/shared/src/index.ts') },
     },

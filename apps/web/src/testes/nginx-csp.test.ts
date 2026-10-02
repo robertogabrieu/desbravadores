@@ -15,6 +15,11 @@ describe('nginx.conf: política de segurança de conteúdo', () => {
     expect(imgSrc?.[1]).toContain('blob:')
   })
 
+  it.each([0, 1, 2, 3])('o bloco %i libera o envio de erros ao Sentry em connect-src', (indice) => {
+    const connectSrc = /connect-src([^;]*);/.exec(politicas[indice] ?? '')
+    expect(connectSrc?.[1]).toContain('https://o4512184671272960.ingest.us.sentry.io')
+  })
+
   it('o bloco do service worker libera as fontes do Google em connect-src', () => {
     const blocoSw = conteudo.split('location').find((trecho) => trecho.includes('sw\\.js')) ?? ''
     const connectSrc = /connect-src([^;]*);/.exec(blocoSw)?.[1] ?? ''

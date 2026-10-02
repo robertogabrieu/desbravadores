@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common'
+import { SentryModule } from '@sentry/nestjs/setup'
 import { AulasModule } from './aulas/aulas.module'
 import { ArquivosModule } from './arquivos/arquivos.module'
 import { AtividadesModule } from './atividades/atividades.module'
@@ -39,6 +40,7 @@ import { VisaoGeralModule } from './visao-geral/visao-geral.module'
 // Um módulo por linha: cada pacote (e cada fase) preenche a pasta do seu sem editar este arquivo.
 @Module({
   imports: [
+    SentryModule.forRoot(),
     PrismaModule,
     SessaoModule,
     EmailModule,

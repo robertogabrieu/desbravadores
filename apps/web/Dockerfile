@@ -11,7 +11,14 @@ RUN npm ci --ignore-scripts -w web -w @desbravadores/shared
 COPY tsconfig.base.json ./
 COPY packages/shared packages/shared
 COPY apps/web apps/web
-RUN npm run build -w packages/shared && npm run build -w web
+# Só neste estágio: o token sobe os mapas do código ao Sentry e não chega à imagem final. Vazio, o
+# build segue sem mapas.
+ARG SENTRY_AUTH_TOKEN=""
+ARG SENTRY_PROJECT=""
+ARG SENTRY_RELEASE=""
+# Rede de segurança: mapa do código nunca vai para o nginx, mesmo se o upload falhar no meio.
+RUN npm run build -w packages/shared && npm run build -w web \
+  && find apps/web/dist -name '*.map' -delete
 
 FROM nginx:1.27-alpine
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf

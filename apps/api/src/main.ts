@@ -1,3 +1,5 @@
+// Primeiro de tudo: o Sentry precisa estar de pé antes de o Nest e o Express serem carregados.
+import './instrument'
 import 'reflect-metadata'
 import { NestFactory } from '@nestjs/core'
 import type { NestExpressApplication } from '@nestjs/platform-express'

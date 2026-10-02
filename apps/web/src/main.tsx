@@ -4,10 +4,15 @@ import { createRoot } from 'react-dom/client'
 import { RouterProvider, createBrowserRouter } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { ErroDaApi, configurarCliente } from './api/cliente'
+import { TelaErroDeRota } from './modulos/erro/TelaErroDeRota'
 import './offline/tipos/todos'
 import { rotas } from './rotas'
+import { iniciarSentry } from './sentry'
 import { ProvedorSessao } from './sessao/ProvedorSessao'
 import './ui/tema.css'
+
+// Antes de montar qualquer coisa, para pegar também o erro da primeira renderização.
+iniciarSentry()
 
 const MAXIMO_DE_TENTATIVAS = 2
 
@@ -28,7 +33,8 @@ const clienteConsultas = new QueryClient({
   },
 })
 
-const roteador = createBrowserRouter(rotas)
+// A rota raiz, sem caminho, só existe para a tela de erro valer para todas as páginas.
+const roteador = createBrowserRouter([{ errorElement: <TelaErroDeRota />, children: rotas }])
 configurarCliente({ navegar: (caminho) => void roteador.navigate(caminho) })
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
