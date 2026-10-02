@@ -113,6 +113,13 @@ describe('A0 · conteúdo', () => {
     expect(tigres.getByText('Sem conselheiro')).toBeInTheDocument()
   })
 
+  it('o cartão da unidade leva à ficha dela', async () => {
+    servidor.use(handlerVisaoGeral(duasUnidades), handlerConfiguracao(criarConfiguracao()))
+    abrir()
+    expect(await screen.findByRole('link', { name: 'Águias' })).toHaveAttribute('href', `/adm/unidades/${uuid(11)}`)
+    expect(screen.getByRole('link', { name: 'Tigres' })).toHaveAttribute('href', `/adm/unidades/${uuid(12)}`)
+  })
+
   it('limiar diferente de 70: com 90, 87% passa a ser marcado; com 60, 68% deixa de ser', async () => {
     servidor.use(handlerVisaoGeral(duasUnidades), handlerConfiguracao(criarConfiguracao({ limiarFrequenciaAlerta: 90 })))
     const primeira = abrir()

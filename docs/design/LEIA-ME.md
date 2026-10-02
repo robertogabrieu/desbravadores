@@ -69,8 +69,8 @@ Os arquivos ficam em `telas/`. As telas de celular têm 390×844; as de desktop,
 | Arquivo | Tela |
 |---|---|
 | `Adm-Inicio.dc.html` | Visão geral: indicadores, progresso por classe, atividade recente, unidades |
-| `Adm-Desbravadores.dc.html` | Tabela + painel lateral de edição (unidade, classe, responsável) |
-| `Adm-Usuarios.dc.html` | Usuários + painel de **perfil e permissões** (as permissões mudam conforme o perfil) |
+| `Adm-Desbravadores.dc.html` | Tabela + painel lateral de edição (unidade, classe, responsável). Na implementação o painel virou ficha de leitura e tela de edição próprias (ver README, "O Adm") |
+| `Adm-Usuarios.dc.html` | Usuários + painel de **perfil e permissões** (as permissões mudam conforme o perfil). Na implementação, ficha e tela de edição próprias |
 | `Adm-Unidades.dc.html` | Cards de unidades + mover membros entre "na unidade" e "sem unidade" |
 | `Adm-Classes.dc.html` | Classes (seções e requisitos do caderno) e catálogo de especialidades por área |
 | `Adm-Calendario.dc.html` | **Calendário anual do clube** (mês a mês) + formulário de evento |

@@ -2,6 +2,8 @@ import type { Papel } from '@desbravadores/shared'
 import { HttpResponse, http } from 'msw'
 import type { CatalogoPermissao } from '../../api/leitura'
 import type { Usuario, VinculoUsuario } from '../../api/usuarios'
+import { lerPorId } from './caixa'
+import type { Caixa } from './caixa'
 import { uuid } from './sessao'
 
 export function criarVinculoUsuario(papel: Papel, n = 1, parcial: Partial<VinculoUsuario> = {}): VinculoUsuario {
@@ -15,6 +17,7 @@ export function criarUsuario(parcial: Partial<Usuario> = {}): Usuario {
     email: 'thiago@clube.test',
     genero: 'M',
     situacao: 'ATIVO',
+    ultimoAcessoEm: null,
     vinculos: [criarVinculoUsuario('CONSELHEIRO')],
     ...parcial,
   }
@@ -85,3 +88,6 @@ export const handlerConvite = (chamadas: string[] = []) =>
 /** Recusa com 422 e o código dado, em qualquer método/caminho de escrita de usuários. */
 export const handlerRegra422 = (metodo: 'post' | 'put' | 'patch', caminho: string, codigo: string, mensagem = 'Recusado') =>
   http[metodo](caminho, () => HttpResponse.json({ codigo, mensagem }, { status: 422 }))
+
+export const handlerUsuario = (...caixas: Caixa<Usuario>[]) =>
+  http.get('/api/usuarios/:id', ({ params }) => lerPorId(String(params['id']), caixas, 'Usuário não encontrado.'))

@@ -24,6 +24,8 @@ interface Propriedades {
   dbvId: string
   nome: string
   sexo: Sexo
+  /** Falso (desbravador inativo): só informa, sem oferecer link. */
+  podeConvidar: boolean
 }
 
 type Sexo = z.infer<typeof SexoContrato>
@@ -32,8 +34,8 @@ const FUSO_DO_CLUBE = 'America/Sao_Paulo'
 const dataCurta = (instante: string): string => new Date(instante).toLocaleDateString('pt-BR', { timeZone: FUSO_DO_CLUBE })
 const primeiroNome = (nome: string): string => nome.trim().split(/\s+/)[0] ?? nome
 
-/** Seção "Acesso ao app" do painel de editar: gerar, enviar e cancelar o convite por link. */
-export function AcessoAoApp({ dbvId, nome, sexo }: Propriedades) {
+/** Seção "Acesso ao app" da ficha: gerar, enviar e cancelar o convite por link. */
+export function AcessoAoApp({ dbvId, nome, sexo, podeConvidar }: Propriedades) {
   const idTitulo = useId()
   const situacao = useSituacaoAcesso(dbvId)
   const [escolhendo, setEscolhendo] = useState(false)
@@ -58,16 +60,28 @@ export function AcessoAoApp({ dbvId, nome, sexo }: Propriedades) {
   } else if (escolhendo) {
     conteudo = <EscolhaDoConvite dbvId={dbvId} aoVoltar={() => setEscolhendo(false)} aoGerar={() => setEscolhendo(false)} />
   } else if (situacao.data.convite) {
-    conteudo = <ConviteAberto dbvId={dbvId} nome={nome} sexo={sexo} convite={situacao.data.convite} aoGerarOutro={() => setEscolhendo(true)} />
+    conteudo = (
+      <ConviteAberto
+        dbvId={dbvId}
+        nome={nome}
+        sexo={sexo}
+        convite={situacao.data.convite}
+        aoGerarOutro={podeConvidar ? () => setEscolhendo(true) : undefined}
+      />
+    )
   } else {
     conteudo = (
       <>
         <p className="text-base text-texto-2">
-          {`${primeiroNome(nome)} ainda não tem acesso ao app. Gere um link e envie pelo WhatsApp: a própria pessoa cria o acesso com e-mail e senha.`}
+          {podeConvidar
+            ? `${primeiroNome(nome)} ainda não tem acesso ao app. Gere um link e envie pelo WhatsApp: a própria pessoa cria o acesso com e-mail e senha.`
+            : `${primeiroNome(nome)} não tem acesso ao app.`}
         </p>
-        <Botao variante="secundario" className="self-start" onClick={() => setEscolhendo(true)}>
-          Gerar convite de acesso
-        </Botao>
+        {podeConvidar && (
+          <Botao variante="secundario" className="self-start" onClick={() => setEscolhendo(true)}>
+            Gerar link de acesso
+          </Botao>
+        )}
       </>
     )
   }
@@ -163,7 +177,7 @@ function ConviteAberto({
   nome: string
   sexo: Sexo
   convite: ConviteAcesso
-  aoGerarOutro: () => void
+  aoGerarOutro?: () => void
 }) {
   const { vinculoAtivo } = useSessao()
   const cancelar = useCancelarConviteAcesso(dbvId)
@@ -228,9 +242,11 @@ function ConviteAberto({
         </p>
       )}
       <div className="flex flex-wrap gap-2">
-        <Botao variante="secundario" onClick={aoGerarOutro}>
-          Gerar outro
-        </Botao>
+        {aoGerarOutro && (
+          <Botao variante="secundario" onClick={aoGerarOutro}>
+            Gerar outro
+          </Botao>
+        )}
         <Botao variante="texto" carregando={cancelar.isPending} onClick={() => setConfirmando(true)}>
           Cancelar convite
         </Botao>

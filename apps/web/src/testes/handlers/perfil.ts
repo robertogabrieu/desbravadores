@@ -1,5 +1,8 @@
 import { HttpResponse, http } from 'msw'
+import type { Desbravador } from '../../api/desbravadores'
 import type { PerfilDbv } from '../../api/perfil'
+import { lerPorId } from './caixa'
+import type { Caixa } from './caixa'
 import { uuid } from './sessao'
 
 export const CLASSE_COMPANHEIRO = { id: uuid(301), nome: 'Companheiro', tipo: 'REGULAR' as const, trilha: 'INDIVIDUAL' as const, corToken: '--classe-companheiro' }
@@ -42,3 +45,12 @@ export const handlerPerfil = (perfil: PerfilDbv = criarPerfil()) =>
 
 export const handlerErroPerfil = (status: number, erro: { codigo: string; mensagem: string }) =>
   http.get('/api/desbravadores/:id/perfil', () => HttpResponse.json(erro, { status }))
+
+/** Perfil montado sobre o desbravador da caixa: a ficha mostra o que a última gravação deixou. */
+export const handlerPerfilDe = (dbvs: Caixa<Desbravador>[], parcial: Partial<PerfilDbv> = {}) =>
+  http.get('/api/desbravadores/:id/perfil', ({ params }) => {
+    const id = String(params['id'])
+    const achado = dbvs.find((c) => c.atual.id === id)
+    if (!achado) return lerPorId(id, dbvs, 'Desbravador não encontrado.')
+    return HttpResponse.json(criarPerfil({ ...parcial, dbv: achado.atual }))
+  })

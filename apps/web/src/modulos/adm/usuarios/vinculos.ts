@@ -1,7 +1,8 @@
 import type { Papel } from '@desbravadores/shared'
 import { ErroDaApi } from '../../../api/cliente'
 import type { CatalogoPermissao } from '../../../api/leitura'
-import type { NovoVinculo, VinculoUsuario } from '../../../api/usuarios'
+import type { EdicaoVinculo, NovoVinculo, VinculoUsuario } from '../../../api/usuarios'
+import { juntarNomes } from '../formatos'
 
 /** O que o Adm está montando num bloco de vínculo. `ajustes` guarda só o que difere do padrão do papel. */
 export interface RascunhoVinculo {
@@ -44,6 +45,47 @@ export const entradaDoVinculo = (rascunho: RascunhoVinculo): NovoVinculo => ({
   classeIds: rascunho.papel === 'INSTRUTOR' ? rascunho.classeIds : [],
   ajustes: ajustesDoRascunho(rascunho),
 })
+
+/** Mesmo papel, mesmos escopos (em qualquer ordem) e mesmos ajustes. */
+export function mesmoRascunho(a: RascunhoVinculo, b: RascunhoVinculo): boolean {
+  const mesmosIds = (x: string[], y: string[]) => x.length === y.length && x.every((id) => y.includes(id))
+  const ajustesA = Object.entries(a.ajustes)
+  return (
+    a.papel === b.papel &&
+    mesmosIds(a.unidadeIds, b.unidadeIds) &&
+    mesmosIds(a.classeIds, b.classeIds) &&
+    ajustesA.length === Object.keys(b.ajustes).length &&
+    ajustesA.every(([permissao, concedida]) => b.ajustes[permissao] === concedida)
+  )
+}
+
+/** O corpo do PUT do vínculo: o escopo do papel e os ajustes (o papel não muda). */
+export const corpoDaEdicao = (rascunho: RascunhoVinculo): EdicaoVinculo => ({
+  ...(rascunho.papel === 'CONSELHEIRO' && { unidadeIds: rascunho.unidadeIds }),
+  ...(rascunho.papel === 'INSTRUTOR' && { classeIds: rascunho.classeIds }),
+  ajustes: ajustesDoRascunho(rascunho),
+})
+
+/** Rótulos do catálogo das permissões que o vínculo tem ligadas, já com os ajustes aplicados. */
+export function oQuePodeFazer(vinculo: VinculoUsuario, catalogo: CatalogoPermissao[]): string[] {
+  const rascunho = rascunhoDoVinculo(vinculo)
+  return permissoesDoPapel(catalogo, vinculo.papel)
+    .filter((permissao) => permissaoLigada(permissao, rascunho))
+    .map((permissao) => permissao.rotulo)
+}
+
+/** "Unidade Águias" | "Classes Amigo e Companheiro" | "Todo o clube" */
+export function escopoDoPapel(vinculo: VinculoUsuario): string {
+  if (vinculo.papel === 'ADM') return 'Todo o clube'
+  if (vinculo.papel === 'CONSELHEIRO') {
+    const nomes = vinculo.unidades.map((u) => u.nome)
+    if (nomes.length === 0) return 'Nenhuma unidade'
+    return `${nomes.length === 1 ? 'Unidade' : 'Unidades'} ${juntarNomes(nomes)}`
+  }
+  const nomes = vinculo.classes.map((c) => c.nome)
+  if (nomes.length === 0) return 'Nenhuma classe'
+  return `${nomes.length === 1 ? 'Classe' : 'Classes'} ${juntarNomes(nomes)}`
+}
 
 const MENSAGENS: Record<string, string> = {
   ULTIMO_ADM: 'O clube precisa de pelo menos um Adm ativo. Torne outra pessoa Adm antes de mudar esta.',

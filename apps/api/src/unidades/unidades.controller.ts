@@ -26,6 +26,12 @@ export class UnidadesController {
   }
 
   @Pode('dbv.ver')
+  @Get(':id')
+  obter(@SessaoDoClube() sessao: SessaoLogada, @Param('id', IdDaRota) id: string) {
+    return this.unidades.obter(sessao, id)
+  }
+
+  @Pode('dbv.ver')
   @Get(':id/membros')
   membros(@SessaoDoClube() sessao: SessaoLogada, @Param('id', IdDaRota) id: string) {
     return this.unidades.membros(sessao, id)

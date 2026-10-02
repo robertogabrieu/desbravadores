@@ -1,6 +1,7 @@
 import { UsuarioCriarEntrada, UsuarioEditarEntrada, UsuarioLista, UsuarioSaida, VinculoEditarEntrada, VinculoEntrada } from '@desbravadores/shared'
 import type { Papel } from '@desbravadores/shared'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { QueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { montarConsulta, requisitar, requisitarSemResposta } from './cliente'
 
@@ -23,6 +24,11 @@ export interface FiltroUsuarios {
 export const chavesUsuarios = {
   todas: ['usuarios'] as const,
   lista: (filtro: FiltroUsuarios) => ['usuarios', 'lista', filtro] as const,
+  um: (id: string) => ['usuarios', id] as const,
+}
+
+export function useUsuario(id: string, habilitada = true) {
+  return useQuery({ queryKey: chavesUsuarios.um(id), queryFn: () => requisitar(`/api/usuarios/${id}`, UsuarioSaida), enabled: habilitada })
 }
 
 export function useUsuarios(filtro: FiltroUsuarios) {
@@ -34,34 +40,44 @@ export function useUsuarios(filtro: FiltroUsuarios) {
   })
 }
 
-/** Toda escrita de usuário ou vínculo refaz as listas (incluindo o resumo dos seletores). */
-function useEscrita<V, R>(escrever: (variaveis: V) => Promise<R>) {
+/** Toda escrita refaz as listas; a que devolve o usuário já deixa a ficha dele com o dado novo. */
+function useEscrita<V, R>(escrever: (variaveis: V) => Promise<R>, aoGravar?: (cliente: QueryClient, resposta: R) => void) {
   const cliente = useQueryClient()
   return useMutation({
     mutationFn: escrever,
-    onSuccess: () => cliente.invalidateQueries({ queryKey: chavesUsuarios.todas }),
+    onSuccess: (resposta) => {
+      aoGravar?.(cliente, resposta)
+      return cliente.invalidateQueries({ queryKey: chavesUsuarios.todas })
+    },
   })
 }
 
-export const useCriarUsuario = () =>
-  useEscrita((corpo: NovoUsuario) => requisitar('/api/usuarios', UsuarioSaida, { metodo: 'POST', corpo }))
+const naFicha = (cliente: QueryClient, usuario: Usuario) => cliente.setQueryData(chavesUsuarios.um(usuario.id), usuario)
+
+/** A resposta da criação é eco para e-mail que já existia: a ficha do criado lê do servidor, não dela. */
+export const useCriarUsuario = () => useEscrita((corpo: NovoUsuario) => requisitar('/api/usuarios', UsuarioSaida, { metodo: 'POST', corpo }))
 
 export const useEditarUsuario = () =>
-  useEscrita(({ id, corpo }: { id: string; corpo: EdicaoUsuario }) =>
-    requisitar(`/api/usuarios/${id}`, UsuarioSaida, { metodo: 'PATCH', corpo }),
+  useEscrita(
+    ({ id, corpo }: { id: string; corpo: EdicaoUsuario }) => requisitar(`/api/usuarios/${id}`, UsuarioSaida, { metodo: 'PATCH', corpo }),
+    naFicha,
   )
 
 export const useDesativarUsuario = () =>
-  useEscrita((id: string) => requisitar(`/api/usuarios/${id}/desativar`, UsuarioSaida, { metodo: 'POST' }))
+  useEscrita((id: string) => requisitar(`/api/usuarios/${id}/desativar`, UsuarioSaida, { metodo: 'POST' }), naFicha)
 
 export const useAcrescentarVinculo = () =>
-  useEscrita(({ usuarioId, corpo }: { usuarioId: string; corpo: NovoVinculo }) =>
-    requisitar(`/api/usuarios/${usuarioId}/vinculos`, UsuarioSaida, { metodo: 'POST', corpo }),
+  useEscrita(
+    ({ usuarioId, corpo }: { usuarioId: string; corpo: NovoVinculo }) =>
+      requisitar(`/api/usuarios/${usuarioId}/vinculos`, UsuarioSaida, { metodo: 'POST', corpo }),
+    naFicha,
   )
 
 export const useEditarVinculo = () =>
-  useEscrita(({ vinculoId, corpo }: { vinculoId: string; corpo: EdicaoVinculo }) =>
-    requisitar(`/api/vinculos/${vinculoId}`, UsuarioSaida, { metodo: 'PUT', corpo }),
+  useEscrita(
+    ({ vinculoId, corpo }: { vinculoId: string; corpo: EdicaoVinculo }) =>
+      requisitar(`/api/vinculos/${vinculoId}`, UsuarioSaida, { metodo: 'PUT', corpo }),
+    naFicha,
   )
 
 export const useReenviarConvite = () =>

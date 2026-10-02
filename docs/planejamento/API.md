@@ -45,7 +45,8 @@ Convenções: listas paginadas com `?pagina=&porPagina=`; datas em `YYYY-MM-DD`;
 
 | Método e rota | O que faz | Permissão |
 |---|---|---|
-| `GET /usuarios?papel=` | Lista com papéis, vínculos e status | `usuario.gerenciar` |
+| `GET /usuarios?papel=` | Lista com papéis, vínculos, status e `ultimoAcessoEm` | `usuario.gerenciar` |
+| `GET /usuarios/{id}` | Um usuário, com todos os vínculos do clube (inclusive inativos) e `ultimoAcessoEm` | `usuario.gerenciar` |
 | `POST /usuarios` | Cria e envia convite (nome, e-mail, vínculos) | `usuario.gerenciar` |
 | `PATCH /usuarios/{id}` | Nome, status (inativar) | `usuario.gerenciar` |
 | `POST /usuarios/{id}/convite` | Reenvia convite | `usuario.gerenciar` |
@@ -56,7 +57,8 @@ Convenções: listas paginadas com `?pagina=&porPagina=`; datas em `YYYY-MM-DD`;
 
 | Método e rota | O que faz | Permissão |
 |---|---|---|
-| `GET /unidades` | Cards: nome, tipo, conselheiros, nº de DBVs, frequência do mês | logado |
+| `GET /unidades` | Cards: nome, tipo, conselheiros, nº de DBVs (só desbravador ativo com passagem aberta; diretoria e inativos não contam), frequência do mês | logado |
+| `GET /unidades/{id}` | Uma unidade, no formato do card (mesmo `totalMembros`); inativa só para o Adm | `dbv.ver` + escopo |
 | `POST /unidades` · `PATCH /unidades/{id}` | Cria e edita (inclui grito de guerra) | `unidade.gerenciar` |
 | `GET /unidades/{id}/membros` | Membros atuais com frequência e classe | `dbv.ver` + escopo |
 | `GET /unidades/sem-membros` | DBVs ativos sem unidade (coluna "Sem unidade") | `unidade.gerenciar` |
@@ -89,6 +91,7 @@ Convenções: listas paginadas com `?pagina=&porPagina=`; datas em `YYYY-MM-DD`;
 |---|---|---|
 | `GET /calendario?ano=` | Eventos + domingos de reunião implícitos, já resolvidos | logado |
 | `POST /calendario/eventos` | Cria; responde com as aulas em conflito e dispara notificações | `calendario.gerenciar` |
+| `GET /calendario/eventos/{id}` | Um evento do clube (404 se removido ou de outro clube) | logado |
 | `PATCH` / `DELETE /calendario/eventos/{id}` | Edita / exclui; idem conflitos | `calendario.gerenciar` |
 | `GET /calendario/proxima-reuniao?unidadeId=` | Data, hora e local da próxima reunião (card do Início) | logado |
 

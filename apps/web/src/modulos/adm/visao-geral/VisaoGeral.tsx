@@ -122,7 +122,7 @@ function UnidadesDoClube({ visao, limiar }: { visao: Visao; limiar: number | und
         {visao.unidadesResumo.map((unidade) => {
           const abaixo = limiar !== undefined && unidade.frequenciaMes !== null && unidade.frequenciaMes < limiar
           return (
-            <Link key={unidade.id} to="/adm/unidades" aria-label={unidade.nome} className="block rounded-cartao focus-visible:outline-2 focus-visible:outline-marca">
+            <Link key={unidade.id} to={`/adm/unidades/${unidade.id}`} aria-label={unidade.nome} className="block rounded-cartao focus-visible:outline-2 focus-visible:outline-marca">
               <Cartao className="flex flex-col gap-1">
                 <span className="font-titulo text-lg font-bold text-texto">{unidade.nome}</span>
                 <span className="text-sm text-texto-2">{unidade.conselheiros.length === 0 ? 'Sem conselheiro' : unidade.conselheiros.join(', ')}</span>

@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common'
-import { CalendarioFiltro, EventoEntrada, MARCACOES_PADRAO, Uuid, type CalendarioSaida, type EventoGravadoSaida } from '@desbravadores/shared'
+import { CalendarioFiltro, EventoEntrada, MARCACOES_PADRAO, Uuid, type CalendarioSaida, type EventoGravadoSaida, type EventoSaida } from '@desbravadores/shared'
 import { z } from 'zod'
 import { Logado } from '../comum/decorators/logado.decorator'
 import { Pode } from '../comum/decorators/pode.decorator'
@@ -41,6 +41,12 @@ export class EventosController {
     @Query(new ZodValidationPipe(CalendarioFiltro)) filtro: z.infer<typeof CalendarioFiltro>,
   ): Promise<z.infer<typeof CalendarioSaida>> {
     return this.eventos.doAno(sessao.clubeId, filtro.ano)
+  }
+
+  @Logado()
+  @Get('eventos/:id')
+  obter(@SessaoDoClube() sessao: SessaoLogada, @Param('id', IdDaRota) id: string): Promise<z.infer<typeof EventoSaida>> {
+    return this.eventos.obter(sessao.clubeId, id)
   }
 
   @Pode('calendario.gerenciar')

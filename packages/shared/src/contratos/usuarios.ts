@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { Papel, Sexo } from '../enums'
-import { Email, Paginacao, TextoCurto, Uuid, pagina } from './comum'
+import { Email, InstanteIso, Paginacao, TextoCurto, Uuid, pagina } from './comum'
 import { RefClasse, RefUnidade } from './auth'
 
 export const AjustePermissao = z.object({ permissao: z.string(), concedida: z.boolean() })
@@ -52,6 +52,8 @@ export const UsuarioSaida = z.object({
   genero: Sexo.nullable(),
   /** CONVIDADO = nunca definiu senha; INATIVO = sem vínculo ativo NESTE clube. Nunca o status global. */
   situacao: z.enum(SITUACOES_NO_CLUBE),
+  /** Último login ou aceite de convite; null = nunca entrou. No eco de e-mail já cadastrado, sempre null. */
+  ultimoAcessoEm: InstanteIso.nullable(),
   vinculos: z.array(VinculoSaida), // só os deste clube
 })
 export const UsuarioFiltro = Paginacao.extend({

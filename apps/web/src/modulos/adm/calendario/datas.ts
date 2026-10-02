@@ -1,3 +1,4 @@
+import { MesCivil } from '@desbravadores/shared'
 import type { EventoCalendario } from '../../../api/calendario'
 
 export const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
@@ -31,5 +32,12 @@ export function eventosDoMes(eventos: EventoCalendario[], ano: number, mes: numb
 /** `AAAA-MM-DD` → `DD/MM`. */
 export const diaEMes = (data: string): string => `${data.slice(8, 10)}/${data.slice(5, 7)}`
 
-/** `AAAA-MM-DD` → `DD/MM/AAAA`. */
-export const dataBrasileira = (data: string): string => `${diaEMes(data)}/${data.slice(0, 4)}`
+/** `AAAA-MM` do endereço → ano e mês (0 a 11); valor ausente ou inválido cai no mês de `hoje` (`AAAA-MM-DD`). */
+export function mesDoEndereco(valor: string, hoje: string): { ano: number; mes: number } {
+  const valido = MesCivil.safeParse(valor).success
+  const referencia = valido ? valor : hoje
+  return { ano: Number(referencia.slice(0, 4)), mes: Number(referencia.slice(5, 7)) - 1 }
+}
+
+/** `AAAA-MM` de um ano e mês (0 a 11). */
+export const chaveDoMes = (ano: number, mes: number): string => `${ano}-${doisDigitos(mes + 1)}`

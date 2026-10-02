@@ -1,8 +1,10 @@
 import type { PacoteSaida } from '@desbravadores/shared'
 import { Horario, hojeNoFuso } from '@desbravadores/shared'
 import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import type { z } from 'zod'
 import { useSalvarChamada } from '../../../api/reunioes'
+import type { EntradaSalvarChamada } from '../../../api/reunioes'
 import { gravarRascunho, itensDaChave, lerRascunho, useConexao, useFila } from '../../../offline'
 import { useSessao } from '../../../sessao/useSessao'
 import { Botao } from '../../../ui/Botao'
@@ -15,7 +17,23 @@ import { alternarAtraso, alternarJustificada, alternarPresenca, comporEstado, ed
 import type { BaseReuniao, EstadoChamada, Marca } from './estado'
 
 type Pacote = z.infer<typeof PacoteSaida>
-export type UnidadeDoPacote = Pacote['unidades'][number]
+
+/** O que a chamada precisa saber da unidade: o pacote cabe, e a ficha do Adm monta a sua das linhas da reunião. */
+export interface UnidadeDaChamada {
+  id: string
+  nome: string
+  membros: { dbvId: string; nome: string }[]
+}
+
+/** Modo do Adm: o envio sai direto para a API, sem fila nem rascunho do aparelho. */
+export interface EnvioDireto {
+  enviar: (entrada: EntradaSalvarChamada) => void
+  enviando: boolean
+  /** Depois de salvo com avisos: Salvar desligado; o retorno fica na tela. */
+  bloqueado: boolean
+  /** Recusa, conflito e nomes descartados, mostrados acima do botão. */
+  retorno: ReactNode
+}
 
 const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
@@ -85,10 +103,11 @@ function LinhaDbv({ nome, marca, licaoAtiva, aoMudar }: PropriedadesLinha) {
 interface Propriedades {
   pacote: Pacote
   baixadoEm: number | null
-  unidade: UnidadeDoPacote
+  unidade: UnidadeDaChamada
   data: string
   /** A reunião como o servidor a tem; `null` = ainda não existe (chamada nova). */
   base: BaseReuniao | null
+  envioDireto?: EnvioDireto
 }
 
 /** Carrega a fila e o rascunho da chave antes de mostrar; muda a chave (unidade ou data), remonta. */
@@ -101,7 +120,7 @@ export function FormularioChamada(props: Propriedades) {
   useEffect(() => {
     let cancelado = false
     const usuarioId = eu?.usuario.id
-    void Promise.all([itensDaChave(chave), usuarioId ? lerRascunho(usuarioId, chave) : null]).then(([itens, rascunho]) => {
+    void Promise.all([props.envioDireto ? [] : itensDaChave(chave), props.envioDireto || !usuarioId ? null : lerRascunho(usuarioId, chave)]).then(([itens, rascunho]) => {
       if (cancelado) return
       const fila = itensPendentes(itens)
       if (!props.base && fila[0]) reuniaoId.current = fila[0].reuniaoId
@@ -131,7 +150,7 @@ interface PropriedadesCorpo extends Propriedades {
   inicial: EstadoChamada
 }
 
-function CorpoChamada({ pacote, baixadoEm, unidade, data, base, chave, reuniaoId, inicial }: PropriedadesCorpo) {
+function CorpoChamada({ pacote, baixadoEm, unidade, data, base, envioDireto, chave, reuniaoId, inicial }: PropriedadesCorpo) {
   const { eu } = useSessao()
   const { modo } = useConexao()
   const { avisos } = useFila()
@@ -144,16 +163,19 @@ function CorpoChamada({ pacote, baixadoEm, unidade, data, base, chave, reuniaoId
   const nadaTocado = estado.tocadas.length === 0 && !estado.cabecalhoTocado
   const faltam = exigeTodos ? resumo.semMarca : 0
   const horarioValido = Horario.safeParse(estado.cabecalho.horario).success
-  const podeSalvar = !salvar.isPending && horarioValido && (exigeTodos ? faltam === 0 : !nadaTocado)
+  const enviando = envioDireto?.enviando ?? salvar.isPending
+  const podeSalvar = !enviando && !envioDireto?.bloqueado && horarioValido && (exigeTodos ? faltam === 0 : !nadaTocado)
 
   function mudar(proximo: EstadoChamada) {
     setEstado(proximo)
-    if (eu) void gravarRascunho(eu.usuario.id, chave, rascunhoDe(proximo))
+    if (eu && !envioDireto) void gravarRascunho(eu.usuario.id, chave, rascunhoDe(proximo))
   }
 
   function aoSalvar() {
     const entrada = montarEntrada({ estado, membros: unidade.membros, base, reuniaoId, unidade, data, pontos: resumo.pontos })
-    if (entrada) salvar.mutate(entrada)
+    if (!entrada) return
+    if (envioDireto) envioDireto.enviar(entrada)
+    else salvar.mutate(entrada)
   }
 
   const atualizada = listaAtualizada(baixadoEm, pacote.clube.fuso)
@@ -161,14 +183,16 @@ function CorpoChamada({ pacote, baixadoEm, unidade, data, base, chave, reuniaoId
 
   return (
     <div className="flex flex-col gap-4">
-      {modo === 'SEM_CONEXAO' && (
+      {!envioDireto && modo === 'SEM_CONEXAO' && (
         <FaixaAviso>Sem conexão. A chamada fica guardada no aparelho e é enviada quando a internet voltar.</FaixaAviso>
       )}
-      <header className="flex flex-col gap-1">
-        <h1 className="font-titulo text-2xl font-extrabold">Registro de reunião</h1>
-        <p className="text-sm text-texto-2">{`${diaDaSemana(data)} ${dataCurta(data)} · ${unidade.nome}`}</p>
-        {atualizada && <p className="text-sm text-texto-2">{atualizada}</p>}
-      </header>
+      {!envioDireto && (
+        <header className="flex flex-col gap-1">
+          <h1 className="font-titulo text-2xl font-extrabold">Registro de reunião</h1>
+          <p className="text-sm text-texto-2">{`${diaDaSemana(data)} ${dataCurta(data)} · ${unidade.nome}`}</p>
+          {atualizada && <p className="text-sm text-texto-2">{atualizada}</p>}
+        </header>
+      )}
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm font-semibold">
         <span>{`${resumo.presentes}/${unidade.membros.length} presentes`}</span>
         <span>{`${resumo.atrasos} atrasos`}</span>
@@ -193,7 +217,7 @@ function CorpoChamada({ pacote, baixadoEm, unidade, data, base, chave, reuniaoId
         <Campo rotulo="Observações" value={cabecalho.observacoes} maxLength={2000} onChange={(e) => mudar(editarCabecalho(estado, { observacoes: e.target.value }))} />
       </section>
       <div className="flex flex-col gap-2 border-t border-borda pt-4">
-        {modo === 'SEM_CONEXAO' && avisos.instalarNaTelaInicial && (
+        {!envioDireto && modo === 'SEM_CONEXAO' && avisos.instalarNaTelaInicial && (
           <FaixaAviso>Instale o app na tela inicial para não perder chamadas guardadas</FaixaAviso>
         )}
         {faltam > 0 && <p className="text-sm text-texto-2">{faltam === 1 ? 'Marque o 1 que falta' : `Marque os ${faltam} que faltam`}</p>}
@@ -201,7 +225,8 @@ function CorpoChamada({ pacote, baixadoEm, unidade, data, base, chave, reuniaoId
           <span className="font-semibold">{`${resumo.pontos} pts`}</span>
           <span className="rounded-full bg-alerta-fundo px-2 py-0.5 text-alerta">provisório</span>
         </p>
-        <Botao largura="total" disabled={!podeSalvar} carregando={salvar.isPending} onClick={aoSalvar}>
+        {envioDireto?.retorno}
+        <Botao largura="total" disabled={!podeSalvar} carregando={enviando} onClick={aoSalvar}>
           {`Salvar chamada · ${resumo.pontos} pts`}
         </Botao>
       </div>

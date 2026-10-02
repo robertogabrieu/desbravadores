@@ -7,8 +7,11 @@ import {
   criarConviteAcesso,
   handlersConviteAcesso,
 } from '../../../testes/handlers/convite-acesso'
-import { criarDesbravador, handlerDesbravadores } from '../../../testes/handlers/desbravadores'
+import { caixa } from '../../../testes/handlers/caixa'
+import { criarDesbravador, handlerDesbravador } from '../../../testes/handlers/desbravadores'
 import { criarClasse, criarUnidade, handlerClasses, handlerUnidades } from '../../../testes/handlers/leitura'
+import { handlerPerfilDe } from '../../../testes/handlers/perfil'
+import { handlerProgressoDbv } from '../../../testes/handlers/progresso'
 import { uuid } from '../../../testes/handlers/sessao'
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
@@ -20,23 +23,17 @@ const amigo = criarClasse({ id: uuid(101), nome: 'Amigo', corToken: '--classe-am
 const paulo = criarDesbravador({ id: uuid(310), nome: 'Paulo Henrique Souza', sexo: 'M', idade: 17 })
 
 async function abrirAcesso(situacao?: SituacaoAcesso, registro = { gerados: [] as unknown[], cancelados: 0 }, dbv = paulo) {
-  servidor.use(
-    handlerDesbravadores([dbv]),
-    handlerUnidades([aguias]),
-    handlerClasses([amigo]),
-    ...handlersConviteAcesso(situacao, registro),
-  )
-  renderizarRotas(rotasAdmDesbravadores, '/adm/desbravadores')
-  await userEvent.click(await screen.findByRole('button', { name: `Editar ${dbv.nome}` }))
-  const painel = within(await screen.findByRole('dialog', { name: `Editar ${dbv.nome}` }))
-  const secao = within(await painel.findByRole('region', { name: 'Acesso ao app' }))
+  const registroDbv = caixa(dbv)
+  servidor.use(handlerDesbravador(registroDbv), handlerPerfilDe([registroDbv]), handlerProgressoDbv(), handlerUnidades([aguias]), handlerClasses([amigo]), ...handlersConviteAcesso(situacao, registro))
+  renderizarRotas(rotasAdmDesbravadores, `/adm/desbravadores/${dbv.id}`)
+  const secao = within(await screen.findByRole('region', { name: 'Acesso ao app' }))
   return { secao, registro }
 }
 
 describe('acesso ao app · sem conta e sem convite', () => {
   it('gera convite de conselheiro com a unidade escolhida e mostra o link, copiar e WhatsApp', async () => {
     const { secao, registro } = await abrirAcesso()
-    await userEvent.click(await secao.findByRole('button', { name: 'Gerar convite de acesso' }))
+    await userEvent.click(await secao.findByRole('button', { name: 'Gerar link de acesso' }))
     expect(secao.getByLabelText('Papel')).toHaveValue('CONSELHEIRO')
     await userEvent.click(await secao.findByRole('checkbox', { name: 'Águias' }))
     await userEvent.click(secao.getByRole('button', { name: 'Gerar link' }))
@@ -56,7 +53,7 @@ describe('acesso ao app · sem conta e sem convite', () => {
 
   it('gera convite de instrutor com a classe escolhida', async () => {
     const { secao, registro } = await abrirAcesso()
-    await userEvent.click(await secao.findByRole('button', { name: 'Gerar convite de acesso' }))
+    await userEvent.click(await secao.findByRole('button', { name: 'Gerar link de acesso' }))
     await userEvent.selectOptions(secao.getByLabelText('Papel'), 'INSTRUTOR')
     await userEvent.click(await secao.findByRole('checkbox', { name: 'Amigo' }))
     await userEvent.click(secao.getByRole('button', { name: 'Gerar link' }))
@@ -69,7 +66,7 @@ describe('acesso ao app · sem conta e sem convite', () => {
 
   it('sem unidade marcada não gera e diz o que falta', async () => {
     const { secao, registro } = await abrirAcesso()
-    await userEvent.click(await secao.findByRole('button', { name: 'Gerar convite de acesso' }))
+    await userEvent.click(await secao.findByRole('button', { name: 'Gerar link de acesso' }))
     await userEvent.click(secao.getByRole('button', { name: 'Gerar link' }))
     expect(await secao.findByText('Escolha pelo menos uma unidade.')).toBeInTheDocument()
     expect(registro.gerados).toEqual([])
@@ -78,7 +75,7 @@ describe('acesso ao app · sem conta e sem convite', () => {
   it('copiar link põe o link na área de transferência e confirma', async () => {
     const usuario = userEvent.setup()
     const { secao } = await abrirAcesso()
-    await usuario.click(await secao.findByRole('button', { name: 'Gerar convite de acesso' }))
+    await usuario.click(await secao.findByRole('button', { name: 'Gerar link de acesso' }))
     await usuario.click(await secao.findByRole('checkbox', { name: 'Águias' }))
     await usuario.click(secao.getByRole('button', { name: 'Gerar link' }))
     await usuario.click(await secao.findByRole('button', { name: 'Copiar link' }))
@@ -99,7 +96,7 @@ describe('acesso ao app · convite aberto', () => {
     const confirmacao = within(await screen.findByRole('dialog', { name: 'Cancelar o convite?' }))
     await userEvent.click(confirmacao.getByRole('button', { name: 'Sim, cancelar convite' }))
     await waitFor(() => expect(registro.cancelados).toBe(1))
-    expect(await secao.findByRole('button', { name: 'Gerar convite de acesso' })).toBeInTheDocument()
+    expect(await secao.findByRole('button', { name: 'Gerar link de acesso' })).toBeInTheDocument()
   })
 })
 
@@ -108,7 +105,7 @@ describe('acesso ao app · ficha de uma menina', () => {
 
   it('convite aberto e mensagem do WhatsApp no feminino', async () => {
     const { secao } = await abrirAcesso({ convite: null, conta: null }, { gerados: [], cancelados: 0 }, ana)
-    await userEvent.click(await secao.findByRole('button', { name: 'Gerar convite de acesso' }))
+    await userEvent.click(await secao.findByRole('button', { name: 'Gerar link de acesso' }))
     await userEvent.click(await secao.findByRole('checkbox', { name: 'Águias' }))
     await userEvent.click(secao.getByRole('button', { name: 'Gerar link' }))
     expect(await secao.findByText(/Convite aberto para conselheira da unidade Águias/)).toBeInTheDocument()
@@ -123,7 +120,7 @@ describe('acesso ao app · com conta ligada', () => {
   it('mostra e-mail e papel, sem botões de convite', async () => {
     const { secao } = await abrirAcesso({ convite: null, conta: { email: 'paulo@exemplo.org', papeis: ['CONSELHEIRO', 'INSTRUTOR'] } })
     expect(await secao.findByText('Tem acesso: paulo@exemplo.org · Conselheiro, Instrutor')).toBeInTheDocument()
-    expect(secao.queryByRole('button', { name: 'Gerar convite de acesso' })).not.toBeInTheDocument()
+    expect(secao.queryByRole('button', { name: 'Gerar link de acesso' })).not.toBeInTheDocument()
     expect(secao.queryByRole('button', { name: 'Cancelar convite' })).not.toBeInTheDocument()
   })
 })
@@ -135,9 +132,9 @@ describe('acesso ao app · erro ao carregar', () => {
         HttpResponse.json({ codigo: 'ERRO_INTERNO', mensagem: 'Falhou agora.' }, { status: 500 }),
       ),
     )
-    servidor.use(handlerDesbravadores([paulo]), handlerUnidades([aguias]), handlerClasses([amigo]))
-    renderizarRotas(rotasAdmDesbravadores, '/adm/desbravadores')
-    await userEvent.click(await screen.findByRole('button', { name: 'Editar Paulo Henrique Souza' }))
+    const registroDbv = caixa(paulo)
+    servidor.use(handlerDesbravador(registroDbv), handlerPerfilDe([registroDbv]), handlerProgressoDbv(), handlerUnidades([aguias]), handlerClasses([amigo]))
+    renderizarRotas(rotasAdmDesbravadores, `/adm/desbravadores/${paulo.id}`)
     const secao = within(await screen.findByRole('region', { name: 'Acesso ao app' }))
     expect(await secao.findByRole('button', { name: 'Tentar de novo' })).toBeInTheDocument()
   })

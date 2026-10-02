@@ -1,14 +1,11 @@
 import type { Papel } from '@desbravadores/shared'
 import { PAPEIS } from '@desbravadores/shared'
-import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useClasses, useCatalogoPermissoes, useUnidades } from '../../../api/leitura'
-import type { Usuario } from '../../../api/usuarios'
-import { Botao } from '../../../ui/Botao'
 import { CaixaMarcacao } from '../../../ui/CaixaMarcacao'
 import { Selecao } from '../../../ui/Selecao'
 import { rotuloDoPapel } from '../../acesso/papeis'
-import { alternarPermissao, mensagemDeErro, permissaoLigada, permissoesDoPapel, rascunhoVazio } from './vinculos'
+import { alternarPermissao, permissaoLigada, permissoesDoPapel, rascunhoVazio } from './vinculos'
 import type { RascunhoVinculo } from './vinculos'
 
 const alternar = (lista: string[], id: string): string[] => (lista.includes(id) ? lista.filter((x) => x !== id) : [...lista, id])
@@ -19,7 +16,7 @@ interface PropriedadesBloco {
   aoMudar: (rascunho: RascunhoVinculo) => void
   papelTravado?: boolean
   erro?: string
-  /** Botões do rodapé do bloco (salvar, remover). */
+  /** Botões do rodapé do bloco (remover). */
   acoes?: ReactNode
 }
 
@@ -85,47 +82,5 @@ export function BlocoVinculo({ indice, rascunho, aoMudar, papelTravado = false, 
       )}
       {acoes && <div className="flex flex-wrap gap-2">{acoes}</div>}
     </section>
-  )
-}
-
-interface PropriedadesSalvavel {
-  indice: number
-  inicial: RascunhoVinculo
-  papelTravado?: boolean
-  salvar: (rascunho: RascunhoVinculo) => Promise<Usuario>
-  aoSalvo: (usuario: Usuario) => void
-}
-
-/** Bloco de usuário que já existe: guarda o próprio rascunho e o próprio erro, e salva sozinho. */
-export function BlocoSalvavel({ indice, inicial, papelTravado, salvar, aoSalvo }: PropriedadesSalvavel) {
-  const [rascunho, setRascunho] = useState(inicial)
-  const [erro, setErro] = useState<string>()
-  const [salvando, setSalvando] = useState(false)
-
-  const aoClicar = async () => {
-    setErro(undefined)
-    setSalvando(true)
-    try {
-      aoSalvo(await salvar(rascunho))
-    } catch (falha) {
-      setErro(mensagemDeErro(falha))
-    } finally {
-      setSalvando(false)
-    }
-  }
-
-  return (
-    <BlocoVinculo
-      indice={indice}
-      rascunho={rascunho}
-      aoMudar={setRascunho}
-      papelTravado={papelTravado}
-      erro={erro}
-      acoes={
-        <Botao carregando={salvando} onClick={() => void aoClicar()}>
-          Salvar vínculo
-        </Botao>
-      }
-    />
   )
 }

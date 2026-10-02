@@ -3,9 +3,11 @@ import {
   GradeFrequenciaSaida,
   MarcacaoChamadaEnvio,
   ReuniaoDetalhe,
+  ReuniaoEnvio,
+  ReuniaoEnvioSaida,
   ReuniaoResumo,
 } from '@desbravadores/shared'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -13,6 +15,8 @@ import { apagarRascunho, enfileirar, useConexao } from '../offline'
 import type { PayloadReuniaoFila } from '../offline/tipos/reuniao'
 import { useSessao } from '../sessao/useSessao'
 import { montarConsulta, requisitar } from './cliente'
+import { chavesLeitura } from './leitura'
+import { chavesVisaoGeral } from './visao-geral'
 
 // Dividido entre dois pacotes: B5 é dono das leituras, B4 da mutação. Cada um edita só o seu bloco.
 
@@ -99,5 +103,34 @@ export function useSalvarChamada() {
       })
       void navegar('/reunioes')
     },
+  })
+}
+
+// ── Correção do Adm ──────────────────────────────────────────────────────────
+
+/**
+ * Raízes que a fila invalida depois de enviar uma reunião (`offline/tipos/reuniao.ts`), mais a ficha do
+ * desbravador e o que o Adm lê da frequência: a ficha da unidade (% dos membros) e a visão geral.
+ */
+const RAIZES_DA_CORRECAO = ['reunioes', 'reuniao', 'grade', 'inicio', 'ranking', 'perfil', chavesLeitura.semMembros[0], chavesVisaoGeral.todas[0]] as const
+
+/** O Adm corrige com internet: o mesmo PUT da fila, sem passar por ela. */
+export function useCorrigirChamada() {
+  const cliente = useQueryClient()
+  return useMutation({
+    mutationFn: (entrada: EntradaSalvarChamada) =>
+      requisitar(`/api/sync/reunioes/${entrada.reuniaoId}`, ReuniaoEnvioSaida, {
+        metodo: 'PUT',
+        corpo: ReuniaoEnvio.parse({
+          versaoPayload: 1,
+          envioId: crypto.randomUUID(),
+          unidadeId: entrada.unidadeId,
+          data: entrada.data,
+          feitaNoAparelhoEm: new Date().toISOString(),
+          cabecalho: entrada.cabecalho,
+          linhas: entrada.linhas,
+        }),
+      }),
+    onSuccess: () => Promise.all(RAIZES_DA_CORRECAO.map((raiz) => cliente.invalidateQueries({ queryKey: [raiz] }))),
   })
 }

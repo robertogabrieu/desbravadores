@@ -1,30 +1,23 @@
 import { TipoPessoa } from '@desbravadores/shared'
 import { FileSpreadsheet, Plus } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
-import { POR_PAGINA, useDesbravadores, useReativarDesbravador } from '../../../api/desbravadores'
-import type { Aviso, Desbravador, SituacaoDesbravador, TipoDesbravador } from '../../../api/desbravadores'
+import { useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { POR_PAGINA, useDesbravadores } from '../../../api/desbravadores'
+import type { Desbravador, SituacaoDesbravador, TipoDesbravador } from '../../../api/desbravadores'
 import { useClasses, useUnidades } from '../../../api/leitura'
-import { Botao } from '../../../ui/Botao'
+import { Botao, estiloDoBotao } from '../../../ui/Botao'
 import { Campo } from '../../../ui/Campo'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
-import { FaixaAviso } from '../../../ui/FaixaAviso'
-import { FolhaLateral } from '../../../ui/FolhaLateral'
 import { Selecao } from '../../../ui/Selecao'
 import { Tabela } from '../../../ui/Tabela'
 import type { ColunaTabela } from '../../../ui/Tabela'
-import { AcessoAoApp } from './AcessoAoApp'
+import { useEstadoDeVolta, useFiltrosNaUrl } from '../navegacao'
 import { ChipClasse } from './ChipClasse'
-import { MENSAGEM_GENERICA, lerErroDaApi } from './erros'
-import { FormularioDesbravador } from './FormularioDesbravador'
-import { FormularioInativar } from './FormularioInativar'
 import type { ResultadoDaImportacao } from './ImportarDesbravadores'
-
-type Painel = { tipo: 'novo' } | { tipo: 'editar' | 'inativar'; desbravador: Desbravador } | null
 
 const SEM_UNIDADE = 'sem'
 
-const NOME_DO_TIPO: Record<TipoDesbravador, string> = { DBV: 'Desbravador', DIRETORIA: 'Diretoria', LIDER: 'Líder' }
+export const NOME_DO_TIPO: Record<TipoDesbravador, string> = { DBV: 'Desbravador', DIRETORIA: 'Diretoria', LIDER: 'Líder' }
 
 /** O valor da seleção vira Tipo; "Todos" (vazio) não filtra. */
 const lerTipo = (valor: string): TipoDesbravador | '' => {
@@ -36,20 +29,23 @@ function ehResultadoDaImportacao(estado: unknown): estado is ResultadoDaImportac
   return typeof estado === 'object' && estado !== null && 'importados' in estado && typeof estado.importados === 'number'
 }
 
+/** Sem o parâmetro, a lista mostra só os ativos. */
+const lerSituacao = (valor: string): SituacaoDesbravador => (valor === 'false' || valor === 'todos' ? valor : 'true')
+
 export function ListaDesbravadores() {
-  const [busca, setBusca] = useState('')
-  const [unidade, setUnidade] = useState('')
-  const [classeId, setClasseId] = useState('')
-  const [situacao, setSituacao] = useState<SituacaoDesbravador>('true')
-  const [tipo, setTipo] = useState<TipoDesbravador | ''>('')
-  const [pagina, setPagina] = useState(1)
-  const [painel, setPainel] = useState<Painel>(null)
-  const [avisos, setAvisos] = useState<Aviso[]>([])
-  const [erroAcao, setErroAcao] = useState<string | null>(null)
+  const { ler, mudar } = useFiltrosNaUrl()
   const navegar = useNavigate()
   const local = useLocation()
+  const estadoDeVolta = useEstadoDeVolta()
   const estadoDaRota: unknown = local.state
   const [importados] = useState(() => (ehResultadoDaImportacao(estadoDaRota) ? estadoDaRota.importados : null))
+
+  const busca = ler('busca')
+  const unidade = ler('unidade')
+  const classeId = ler('classe')
+  const situacao = lerSituacao(ler('situacao'))
+  const tipo = lerTipo(ler('tipo'))
+  const pagina = Math.max(1, Number.parseInt(ler('pagina'), 10) || 1)
 
   // O resultado chega no estado da navegação, que sobrevive ao recarregar: lido uma vez, sai do histórico.
   useEffect(() => {
@@ -58,7 +54,6 @@ export function ListaDesbravadores() {
 
   const unidades = useUnidades({ todas: true })
   const classes = useClasses({ tipo: 'REGULAR' })
-  const reativar = useReativarDesbravador()
   const consulta = useDesbravadores({
     busca: busca.trim() || undefined,
     unidadeId: unidade && unidade !== SEM_UNIDADE ? unidade : undefined,
@@ -69,57 +64,29 @@ export function ListaDesbravadores() {
     pagina,
   })
 
-  const filtrar = <T,>(definir: (valor: T) => void) => (valor: T) => {
-    definir(valor)
-    setPagina(1)
-  }
-
-  const fecharPainel = useCallback(() => setPainel(null), [])
-
-  async function reativarDesbravador(desbravador: Desbravador) {
-    setErroAcao(null)
-    try {
-      await reativar.mutateAsync(desbravador.id)
-    } catch (falha) {
-      setErroAcao(lerErroDaApi(falha).geral ?? MENSAGEM_GENERICA)
-    }
-  }
+  const filtrar = (chave: string) => (valor: string) => mudar({ [chave]: valor, pagina: '' })
 
   const colunas: ColunaTabela<Desbravador>[] = [
     {
       chave: 'nome',
       titulo: 'Nome',
-      celula: (d) => <span className="font-semibold">{d.nome}</span>,
+      celula: (d) => (
+        <Link
+          to={`/adm/desbravadores/${d.id}`}
+          state={estadoDeVolta}
+          className="font-semibold text-marca underline-offset-2 hover:underline"
+        >
+          {d.nome}
+        </Link>
+      ),
     },
     { chave: 'idade', titulo: 'Idade', celula: (d) => d.idade },
     { chave: 'unidade', titulo: 'Unidade', celula: (d) => (d.tipo === 'DBV' ? (d.unidade?.nome ?? 'Sem unidade') : '—') },
     { chave: 'classe', titulo: 'Classe', celula: (d) => (d.classeAtual ? <ChipClasse classe={d.classeAtual} /> : '—') },
     { chave: 'tipo', titulo: 'Tipo', celula: (d) => NOME_DO_TIPO[d.tipo] },
-    {
-      chave: 'acoes',
-      titulo: 'Ações',
-      celula: (d) => (
-        <div className="flex gap-1">
-          <Botao variante="texto" aria-label={`Editar ${d.nome}`} onClick={() => setPainel({ tipo: 'editar', desbravador: d })}>
-            Editar
-          </Botao>
-          {d.ativo ? (
-            <Botao variante="texto" aria-label={`Inativar ${d.nome}`} onClick={() => setPainel({ tipo: 'inativar', desbravador: d })}>
-              Inativar
-            </Botao>
-          ) : (
-            <Botao variante="texto" aria-label={`Reativar ${d.nome}`} onClick={() => void reativarDesbravador(d)}>
-              Reativar
-            </Botao>
-          )}
-        </div>
-      ),
-    },
   ]
 
   const total = consulta.data?.total ?? 0
-  const tituloDoPainel =
-    painel?.tipo === 'novo' ? 'Novo desbravador' : painel ? `${painel.tipo === 'editar' ? 'Editar' : 'Inativar'} ${painel.desbravador.nome}` : ''
 
   return (
     <div className="flex flex-col gap-5 p-4">
@@ -133,10 +100,10 @@ export function ListaDesbravadores() {
             <FileSpreadsheet aria-hidden className="size-5" />
             Importar planilha
           </Botao>
-          <Botao onClick={() => setPainel({ tipo: 'novo' })}>
+          <Link to="/adm/desbravadores/novo" state={estadoDeVolta} className={estiloDoBotao()}>
             <Plus aria-hidden className="size-5" />
             Novo desbravador
-          </Botao>
+          </Link>
         </div>
       </header>
 
@@ -146,25 +113,9 @@ export function ListaDesbravadores() {
         </p>
       )}
 
-      {avisos.length > 0 && (
-        <div className="flex flex-col gap-2">
-          {avisos.map((aviso) => (
-            <FaixaAviso key={`${aviso.codigo}-${aviso.mensagem}`}>{aviso.mensagem}</FaixaAviso>
-          ))}
-          <Botao variante="texto" className="self-start" onClick={() => setAvisos([])}>
-            Dispensar avisos
-          </Botao>
-        </div>
-      )}
-      {erroAcao && (
-        <p role="alert" className="text-sm font-medium text-perigo">
-          {erroAcao}
-        </p>
-      )}
-
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <Campo rotulo="Buscar por nome" type="search" value={busca} onChange={(e) => filtrar(setBusca)(e.target.value)} />
-        <Selecao rotulo="Unidade" value={unidade} onChange={(e) => filtrar(setUnidade)(e.target.value)}>
+        <Campo rotulo="Buscar por nome" type="search" value={busca} onChange={(e) => filtrar('busca')(e.target.value)} />
+        <Selecao rotulo="Unidade" value={unidade} onChange={(e) => filtrar('unidade')(e.target.value)}>
           <option value="">Todas as unidades</option>
           <option value={SEM_UNIDADE}>Sem unidade</option>
           {unidades.data?.map((u) => (
@@ -173,7 +124,7 @@ export function ListaDesbravadores() {
             </option>
           ))}
         </Selecao>
-        <Selecao rotulo="Classe" value={classeId} onChange={(e) => filtrar(setClasseId)(e.target.value)}>
+        <Selecao rotulo="Classe" value={classeId} onChange={(e) => filtrar('classe')(e.target.value)}>
           <option value="">Todas as classes</option>
           {classes.data?.map((c) => (
             <option key={c.id} value={c.id}>
@@ -184,13 +135,13 @@ export function ListaDesbravadores() {
         <Selecao
           rotulo="Situação"
           value={situacao}
-          onChange={(e) => filtrar(setSituacao)(e.target.value === 'false' ? 'false' : e.target.value === 'todos' ? 'todos' : 'true')}
+          onChange={(e) => filtrar('situacao')(e.target.value === 'true' ? '' : e.target.value)}
         >
           <option value="true">Ativos</option>
           <option value="false">Inativos</option>
           <option value="todos">Todos</option>
         </Selecao>
-        <Selecao rotulo="Tipo" value={tipo} onChange={(e) => filtrar(setTipo)(lerTipo(e.target.value))}>
+        <Selecao rotulo="Tipo" value={tipo} onChange={(e) => filtrar('tipo')(lerTipo(e.target.value))}>
           <option value="">Todos</option>
           <option value="DBV">{NOME_DO_TIPO.DBV}</option>
           <option value="DIRETORIA">{NOME_DO_TIPO.DIRETORIA}</option>
@@ -212,35 +163,11 @@ export function ListaDesbravadores() {
           pagina={pagina}
           porPagina={POR_PAGINA}
           total={total}
-          aoMudarPagina={setPagina}
+          aoMudarPagina={(nova) => mudar({ pagina: nova === 1 ? '' : String(nova) })}
           vazio={<EstadoVazio titulo="Nenhum desbravador encontrado" descricao="Mude os filtros ou cadastre um novo desbravador." />}
         />
       )}
 
-      <FolhaLateral aberta={painel !== null} titulo={tituloDoPainel} aoFechar={fecharPainel}>
-        {(painel?.tipo === 'novo' || painel?.tipo === 'editar') && (
-          <FormularioDesbravador
-            key={painel.tipo === 'editar' ? painel.desbravador.id : 'novo'}
-            desbravador={painel.tipo === 'editar' ? painel.desbravador : undefined}
-            aoConcluir={(novosAvisos) => {
-              setAvisos(novosAvisos)
-              fecharPainel()
-            }}
-            aoCancelar={fecharPainel}
-          />
-        )}
-        {painel?.tipo === 'editar' && (
-          <AcessoAoApp
-            key={painel.desbravador.id}
-            dbvId={painel.desbravador.id}
-            nome={painel.desbravador.nome}
-            sexo={painel.desbravador.sexo}
-          />
-        )}
-        {painel?.tipo === 'inativar' && (
-          <FormularioInativar desbravador={painel.desbravador} aoConcluir={fecharPainel} aoCancelar={fecharPainel} />
-        )}
-      </FolhaLateral>
     </div>
   )
 }

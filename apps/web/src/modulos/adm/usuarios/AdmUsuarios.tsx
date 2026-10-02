@@ -1,19 +1,19 @@
+import { Papel as EsquemaPapel } from '@desbravadores/shared'
 import type { Papel } from '@desbravadores/shared'
 import { Plus } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { POR_PAGINA_USUARIOS, useUsuarios } from '../../../api/usuarios'
 import type { Usuario } from '../../../api/usuarios'
-import { Botao } from '../../../ui/Botao'
+import { estiloDoBotao } from '../../../ui/Botao'
 import { Campo } from '../../../ui/Campo'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
-import { FolhaLateral } from '../../../ui/FolhaLateral'
 import { Tabela } from '../../../ui/Tabela'
 import type { ColunaTabela } from '../../../ui/Tabela'
 import { cn } from '../../../ui/cn'
 import { rotuloDoPapel } from '../../acesso/papeis'
-import { PainelUsuario } from './PainelUsuario'
-
-const SITUACAO: Record<Usuario['situacao'], string> = { ATIVO: 'Ativo', CONVIDADO: 'Convite enviado', INATIVO: 'Inativo' }
+import { useEstadoDeVolta, useFiltrosNaUrl } from '../navegacao'
+import { SITUACAO } from './FichaUsuario'
 
 const ABAS: { papel: Papel | undefined; rotulo: string; contagem: 'todos' | Papel }[] = [
   { papel: undefined, rotulo: 'Todos', contagem: 'todos' },
@@ -25,20 +25,32 @@ const ABAS: { papel: Papel | undefined; rotulo: string; contagem: 'todos' | Pape
 /** Papéis distintos dos vínculos ativos, na ordem em que aparecem. */
 const papeisDe = (usuario: Usuario): Papel[] => [...new Set(usuario.vinculos.filter((v) => v.ativo).map((v) => v.papel))]
 
-type Painel = { aberto: false } | { aberto: true; usuario: Usuario | null }
-
 export function AdmUsuarios() {
-  const [papel, setPapel] = useState<Papel>()
-  const [pagina, setPagina] = useState(1)
-  const [busca, setBusca] = useState('')
-  const [buscaAplicada, setBuscaAplicada] = useState('')
-  const [painel, setPainel] = useState<Painel>({ aberto: false })
+  const filtros = useFiltrosNaUrl()
+  const estadoDeVolta = useEstadoDeVolta()
+  const papelNoEndereco = EsquemaPapel.safeParse(filtros.ler('papel'))
+  const papel = papelNoEndereco.success ? papelNoEndereco.data : undefined
+  const buscaAplicada = filtros.ler('busca')
+  const pagina = Number(filtros.ler('pagina')) || 1
+  const [busca, setBusca] = useState(buscaAplicada)
+  const aplicadaPeloCampo = useRef(buscaAplicada)
   const usuarios = useUsuarios({ papel, busca: buscaAplicada.trim(), pagina })
 
+  // Busca que mudou por fora do campo (limpar pelo menu, voltar e avançar no navegador) passa para o campo.
   useEffect(() => {
-    const espera = setTimeout(() => setBuscaAplicada(busca), 300)
+    if (buscaAplicada === aplicadaPeloCampo.current) return
+    aplicadaPeloCampo.current = buscaAplicada
+    setBusca(buscaAplicada)
+  }, [buscaAplicada])
+
+  useEffect(() => {
+    if (busca === buscaAplicada) return
+    const espera = setTimeout(() => {
+      aplicadaPeloCampo.current = busca
+      filtros.mudar({ busca, pagina: '' })
+    }, 300)
     return () => clearTimeout(espera)
-  }, [busca])
+  }, [busca, buscaAplicada])
 
   const colunas: ColunaTabela<Usuario>[] = [
     {
@@ -46,9 +58,9 @@ export function AdmUsuarios() {
       titulo: 'Usuário',
       celula: (u) => (
         <div className="flex flex-col">
-          <button type="button" onClick={() => setPainel({ aberto: true, usuario: u })} className="text-left font-semibold text-marca underline-offset-2 hover:underline">
+          <Link to={`/adm/usuarios/${u.id}`} state={estadoDeVolta} className="font-semibold text-marca underline-offset-2 hover:underline">
             {u.nome}
-          </button>
+          </Link>
           <span className="text-sm text-texto-2">{u.email}</span>
         </div>
       ),
@@ -73,10 +85,10 @@ export function AdmUsuarios() {
     <main className="flex flex-col gap-4 p-6">
       <header className="flex items-end justify-between gap-4">
         <h1 className="font-titulo text-3xl font-extrabold">Usuários</h1>
-        <Botao onClick={() => setPainel({ aberto: true, usuario: null })}>
+        <Link to="/adm/usuarios/novo" state={estadoDeVolta} className={estiloDoBotao()}>
           <Plus aria-hidden className="size-5" />
           Convidar usuário
-        </Botao>
+        </Link>
       </header>
 
       <div role="tablist" aria-label="Filtrar por papel" className="flex flex-wrap gap-2">
@@ -89,10 +101,7 @@ export function AdmUsuarios() {
               type="button"
               role="tab"
               aria-selected={selecionada}
-              onClick={() => {
-                setPapel(aba.papel)
-                setPagina(1)
-              }}
+              onClick={() => filtros.mudar({ papel: aba.papel ?? '', pagina: '' })}
               className={cn(
                 'min-h-[var(--touch-min)] rounded-full border px-4 text-sm font-bold',
                 selecionada ? 'border-texto bg-texto text-white' : 'border-borda bg-superficie text-texto',
@@ -108,10 +117,7 @@ export function AdmUsuarios() {
         rotulo="Buscar usuário"
         type="search"
         value={busca}
-        onChange={(evento) => {
-          setBusca(evento.target.value)
-          setPagina(1)
-        }}
+        onChange={(evento) => setBusca(evento.target.value)}
       />
 
       {usuarios.isPending ? (
@@ -126,25 +132,10 @@ export function AdmUsuarios() {
           pagina={pagina}
           porPagina={POR_PAGINA_USUARIOS}
           total={usuarios.data.total}
-          aoMudarPagina={setPagina}
+          aoMudarPagina={(proxima) => filtros.mudar({ pagina: proxima > 1 ? String(proxima) : '' })}
           vazio={<EstadoVazio titulo="Nenhum usuário encontrado" descricao="Mude o filtro ou a busca, ou convide alguém." />}
         />
       )}
-
-      <FolhaLateral
-        aberta={painel.aberto}
-        titulo={painel.aberto && painel.usuario ? painel.usuario.nome : 'Novo usuário'}
-        aoFechar={() => setPainel({ aberto: false })}
-      >
-        {painel.aberto && (
-          <PainelUsuario
-            key={painel.usuario?.id ?? 'novo'}
-            usuario={painel.usuario}
-            aoAtualizar={(usuario) => setPainel({ aberto: true, usuario })}
-            aoFechar={() => setPainel({ aberto: false })}
-          />
-        )}
-      </FolhaLateral>
     </main>
   )
 }

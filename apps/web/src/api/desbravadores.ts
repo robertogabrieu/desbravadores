@@ -13,8 +13,12 @@ import {
   hojeNoFuso,
 } from '@desbravadores/shared'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { QueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { montarConsulta, requisitar } from './cliente'
+import { chavesPerfil } from './perfil'
+import type { PerfilDbv } from './perfil'
+import { chavesProgresso } from './progresso'
 import { invalidarUnidades } from './unidades'
 
 export type Desbravador = z.infer<typeof DesbravadorSaida>
@@ -44,6 +48,32 @@ export const hojeDoClube = (): string => hojeNoFuso(FUSO_PADRAO, new Date())
 export const chavesDesbravadores = {
   todos: ['desbravadores'] as const,
   lista: (filtro: FiltroDesbravadores) => ['desbravadores', 'lista', filtro] as const,
+  um: (id: string) => ['desbravadores', id] as const,
+}
+
+const lerDesbravador = (id: string) => requisitar(`/api/desbravadores/${id}`, DesbravadorSaida)
+
+/** `habilitada: false` não consulta (a tela de cadastro novo não tem id). */
+export function useDesbravador(id: string, habilitada = true) {
+  return useQuery({
+    queryKey: chavesDesbravadores.um(id),
+    queryFn: () => lerDesbravador(id),
+    enabled: habilitada,
+  })
+}
+
+/** Ficha (perfil e progresso), listas e contagem das unidades mudam com qualquer gravação de desbravador. */
+function aposGravar(cliente: QueryClient, gravado?: Desbravador): Promise<unknown> {
+  if (gravado) {
+    cliente.setQueryData(chavesDesbravadores.um(gravado.id), gravado)
+    cliente.setQueryData(chavesPerfil.dbv(gravado.id), (atual: PerfilDbv | undefined) => (atual ? { ...atual, dbv: gravado } : atual))
+  }
+  return Promise.all([
+    cliente.invalidateQueries({ queryKey: chavesDesbravadores.todos }),
+    cliente.invalidateQueries({ queryKey: chavesPerfil.dbv('').slice(0, 1) }),
+    cliente.invalidateQueries({ queryKey: chavesProgresso.dbv('').slice(0, 2) }),
+    invalidarUnidades(cliente),
+  ])
 }
 
 export function useDesbravadores(filtro: FiltroDesbravadores) {
@@ -77,8 +107,7 @@ export function useCriarDesbravador() {
         metodo: 'POST',
         corpo: DesbravadorCriarEntrada.parse(entrada),
       }),
-    onSuccess: () =>
-      Promise.all([cliente.invalidateQueries({ queryKey: chavesDesbravadores.todos }), invalidarUnidades(cliente)]),
+    onSuccess: (resposta) => aposGravar(cliente, resposta.dados),
   })
 }
 
@@ -91,8 +120,7 @@ export function useEditarDesbravador() {
         corpo: DesbravadorEditarEntrada.parse(entrada),
       }),
     // Trocar o Tipo para Diretoria ou Líder encerra a unidade: a contagem das unidades muda.
-    onSuccess: () =>
-      Promise.all([cliente.invalidateQueries({ queryKey: chavesDesbravadores.todos }), invalidarUnidades(cliente)]),
+    onSuccess: (resposta) => aposGravar(cliente, resposta.dados),
   })
 }
 
@@ -104,8 +132,7 @@ export function useInativarDesbravador() {
         metodo: 'POST',
         corpo: InativarEntrada.parse({ saidaEm }),
       }),
-    onSuccess: () =>
-      Promise.all([cliente.invalidateQueries({ queryKey: chavesDesbravadores.todos }), invalidarUnidades(cliente)]),
+    onSuccess: (inativado) => aposGravar(cliente, inativado),
   })
 }
 
@@ -113,7 +140,7 @@ export function useReativarDesbravador() {
   const cliente = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => requisitar(`/api/desbravadores/${id}/reativar`, DesbravadorSaida, { metodo: 'POST' }),
-    onSuccess: () => cliente.invalidateQueries({ queryKey: chavesDesbravadores.todos }),
+    onSuccess: (reativado) => aposGravar(cliente, reativado),
   })
 }
 
@@ -129,8 +156,11 @@ export function useMatricular() {
         metodo: 'POST',
         corpo: MatriculaEntrada.parse(entrada),
       }),
-    onSuccess: () =>
-      Promise.all([cliente.invalidateQueries({ queryKey: chavesDesbravadores.todos }), invalidarUnidades(cliente)]),
+    // A matrícula muda a classe do ano, que o desbravador gravado antes dela ainda não traz: relê para a ficha abrir com a nova.
+    onSuccess: async (_, { id }) => {
+      const relido = await cliente.fetchQuery({ queryKey: chavesDesbravadores.um(id), queryFn: () => lerDesbravador(id), staleTime: 0 }).catch(() => undefined)
+      return aposGravar(cliente, relido)
+    },
   })
 }
 
@@ -143,7 +173,6 @@ export function useMoverUnidade() {
         metodo: 'PUT',
         corpo: MoverUnidadeEntrada.parse({ unidadeId, desde: hojeDoClube() }),
       }),
-    onSuccess: () =>
-      Promise.all([cliente.invalidateQueries({ queryKey: chavesDesbravadores.todos }), invalidarUnidades(cliente)]),
+    onSuccess: (movido) => aposGravar(cliente, movido),
   })
 }

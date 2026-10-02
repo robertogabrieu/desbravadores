@@ -20,36 +20,33 @@ async function definirSenhaDoConvite(page: Page, caminho: string): Promise<void>
 // As telas do Adm seguem a SPEC 8.3; os rótulos usados aqui são os da interface.
 async function criarUnidade(page: Page, nome: string): Promise<void> {
   await page.goto('/adm/unidades')
-  await page.getByRole('button', { name: 'Nova unidade' }).click()
-  const painel = page.getByRole('dialog')
-  await painel.getByLabel('Nome', { exact: true }).fill(nome)
-  await painel.getByRole('button', { name: 'Salvar' }).click()
-  await expect(page.getByRole('heading', { name: nome })).toBeVisible()
+  await page.getByRole('link', { name: 'Nova unidade' }).click()
+  await page.getByLabel('Nome', { exact: true }).fill(nome)
+  await page.getByRole('button', { name: 'Salvar' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: nome })).toBeVisible()
 }
 
 async function criarDesbravador(page: Page, nome: string, unidade: string): Promise<void> {
   await page.goto('/adm/desbravadores')
-  await page.getByRole('button', { name: 'Novo desbravador' }).click()
-  const painel = page.getByRole('dialog')
-  await painel.getByLabel('Nome completo').fill(nome)
-  await painel.getByLabel('Nascimento').fill('2014-03-10')
-  await painel.getByLabel('Sexo').selectOption('F')
-  await painel.getByLabel('Entrada no clube').fill('2026-02-01')
-  await painel.getByLabel('Unidade').selectOption({ label: unidade })
-  await painel.getByRole('button', { name: 'Salvar' }).click()
-  await expect(page.getByText(nome).first()).toBeVisible()
+  await page.getByRole('link', { name: 'Novo desbravador' }).click()
+  await page.getByLabel('Nome completo').fill(nome)
+  await page.getByLabel('Nascimento').fill('2014-03-10')
+  await page.getByLabel('Sexo').selectOption('F')
+  await page.getByLabel('Entrada no clube').fill('2026-02-01')
+  await page.getByLabel('Unidade').selectOption({ label: unidade })
+  await page.getByRole('button', { name: 'Salvar' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: nome })).toBeVisible()
 }
 
 async function convidarConselheiro(page: Page, nome: string, email: string, unidade: string): Promise<void> {
   await page.goto('/adm/usuarios')
-  await page.getByRole('button', { name: 'Convidar usuário' }).click()
-  const painel = page.getByRole('dialog')
-  await painel.getByLabel('Nome', { exact: true }).fill(nome)
-  await painel.getByLabel('E-mail').fill(email)
-  await painel.getByLabel('Papel').selectOption({ label: 'Conselheiro' })
-  await painel.getByLabel(unidade).check()
-  await painel.getByRole('button', { name: 'Salvar', exact: true }).click()
-  await expect(page.getByText(email)).toBeVisible()
+  await page.getByRole('link', { name: 'Convidar usuário' }).click()
+  await page.getByLabel('Nome', { exact: true }).fill(nome)
+  await page.getByLabel('E-mail').fill(email)
+  await page.getByLabel('Papel').selectOption({ label: 'Conselheiro' })
+  await page.getByLabel(unidade).check()
+  await page.getByRole('button', { name: 'Salvar', exact: true }).click()
+  await expect(page.getByRole('heading', { level: 1, name: nome })).toBeVisible()
 }
 
 test('a instalação PWA existe: manifesto e service worker registrados', async ({ page }) => {
