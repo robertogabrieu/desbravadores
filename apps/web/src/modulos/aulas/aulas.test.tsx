@@ -10,13 +10,14 @@ import { ContextoDaSessao } from '../../sessao/useSessao'
 import type { ContextoSessao } from '../../sessao/useSessao'
 import { CLASSE_COMPANHEIRO, criarClasseInstrutor, criarDetalheAula, criarResumoAula, handlerAula, handlerAulas, handlerErroAula } from '../../testes/handlers/aulas'
 import { criarAulaDoCronograma, criarCronograma, handlerCronograma } from '../../testes/handlers/cronograma'
-import { criarPacote } from '../../testes/handlers/offline'
+import { criarPacote, criarPacoteInstrutor, criarPacoteInstrutorAntigo, handlerPacote } from '../../testes/handlers/offline'
 import { criarEu, criarVinculo, uuid } from '../../testes/handlers/sessao'
 import { servidor } from '../../testes/servidor'
 import { TelaRegistroAula } from './TelaRegistroAula'
 
 const estado = vi.hoisted(() => ({
   modo: 'ONLINE' as ModoConexao,
+  podeMarcar: true,
   pacote: { pacote: null, carregando: false, baixadoEm: null } as PacoteGuardado,
   itens: [] as ItemFila[],
   rascunhos: new Map<string, unknown>(),
@@ -43,6 +44,7 @@ vi.mock('../../offline', () => ({
   registrarTipo: vi.fn(),
 }))
 
+const pacoteBaixado = { total: 0 }
 const ANA = uuid(301)
 const BRUNO = uuid(302)
 const LIA = uuid(303)
@@ -56,7 +58,9 @@ const DATA = '2030-03-10'
 const membro = (dbvId: string, nome: string, tipo: 'DBV' | 'LIDER' = 'DBV', concluidos: string[] = [], conclusoes?: { requisitoId: string; concluidoEm: string; registroAulaId: string | null }[], voce = false) => ({
   dbvId, nome, nomePublico: nome, sexo: 'F' as const, idade: 11, classeAtual: null, autorizacaoImagem: true, tipo, concluidos, voce,
   conclusoes: conclusoes ?? concluidos.map((requisitoId) => ({ requisitoId, concluidoEm: '2030-02-20', registroAulaId: null })),
+  especialidades: [],
 })
+type Catalogo = { id: string; nome: string; area: string }[]
 const requisito = (id: string, codigo: string) => ({ id, codigo, texto: `Texto de ${codigo}`, campo: false, secaoCodigo: 'DE' })
 
 function classe(parcial: Parameters<typeof criarClasseInstrutor>[0] = {}) {
@@ -68,9 +72,9 @@ function classe(parcial: Parameters<typeof criarClasseInstrutor>[0] = {}) {
   })
 }
 
-function guardar(classes = [classe()], pontos = { pontos: 5, ativo: true }) {
+function guardar(classes = [classe()], pontos = { pontos: 5, ativo: true }, catalogo: Catalogo = []) {
   estado.pacote = {
-    pacote: criarPacote({ instrutor: { classes, pontosRequisito: pontos } }),
+    pacote: criarPacote({ instrutor: criarPacoteInstrutor({ classes, pontosRequisito: pontos, especialidades: catalogo }) }),
     carregando: false,
     baixadoEm: Date.parse('2030-03-15T12:05:00.000Z'),
   }
@@ -79,7 +83,7 @@ function guardar(classes = [classe()], pontos = { pontos: 5, ativo: true }) {
 function montar(rota: string) {
   const vinculo = criarVinculo('INSTRUTOR', 1, { classes: [CLASSE_COMPANHEIRO] })
   const eu = criarEu([vinculo], vinculo.id)
-  const sessao = { situacao: 'autenticada', eu, vinculoAtivo: vinculo, papel: 'INSTRUTOR', vinculos: [vinculo] } as unknown as ContextoSessao
+  const sessao = { situacao: 'autenticada', eu, vinculoAtivo: vinculo, papel: 'INSTRUTOR', vinculos: [vinculo], pode: (permissao: string) => permissao !== 'requisito.marcar' || estado.podeMarcar } as unknown as ContextoSessao
   const roteador = createMemoryRouter(
     [
       { path: '/aulas/nova', element: <TelaRegistroAula /> },
@@ -101,18 +105,20 @@ const NOVA = `/aulas/nova?classe=${CLASSE_COMPANHEIRO.id}&data=${DATA}`
 const linha = (nome: string) => within(screen.getByRole('listitem', { name: nome }))
 const presenca = (nome: string) => linha(nome).getByRole('button', { name: new RegExp(`^${nome}`) })
 const celula = (nome: string, codigo: string) => linha(nome).getByRole('button', { name: new RegExp(`^${codigo} · `) })
-const botaoSalvar = () => screen.getByRole('button', { name: /^Salvar aula/ })
+const botaoSalvar = () => screen.getByRole('button', { name: /^Salvar classe/ })
 const enviado = () => (estado.enfileirar.mock.calls[0]?.[0] as { chave: string; payload: { correcao: boolean; registroAulaId: string; corpo: { presencas: { dbvId: string; presente: boolean; versaoVista: string | null }[]; requisitosMarcados: { dbvId: string; requisitoId: string }[]; requisitosDesmarcados: unknown[]; aulaPlanejadaId: string | null } } })
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'], now: new Date(`${HOJE}T12:10:00.000Z`) })
   estado.modo = 'ONLINE'
+  estado.podeMarcar = true
+  pacoteBaixado.total = 0
   estado.itens = []
   estado.rascunhos.clear()
   estado.enfileirar.mockClear()
   estado.aviso.success.mockClear()
   guardar()
-  servidor.use(handlerAulas([]), handlerCronograma(criarCronograma({ aulas: [] })))
+  servidor.use(handlerAulas([]), handlerCronograma(criarCronograma({ aulas: [] })), handlerPacote(criarPacote(), pacoteBaixado))
 })
 afterEach(() => vi.useRealTimers())
 
@@ -124,7 +130,7 @@ describe('Registro de aula nova', () => {
     expect(screen.getByText('Texto de R1')).toBeInTheDocument()
     expect(screen.queryByText('Texto de R3')).not.toBeInTheDocument()
     await waitFor(() => expect(botaoSalvar()).toBeEnabled())
-    expect(botaoSalvar()).toHaveTextContent('Salvar aula · 3 presentes')
+    expect(botaoSalvar()).toHaveTextContent('Salvar classe · 3 presentes')
     expect(screen.getByText('Lista atualizada hoje às 09:05')).toBeInTheDocument()
   })
 
@@ -145,7 +151,7 @@ describe('Registro de aula nova', () => {
       { dbvId: LIA, presente: false, versaoVista: null },
     ])
     expect(payload.corpo.requisitosMarcados).toEqual([{ dbvId: ANA, requisitoId: R1 }])
-    expect(estado.aviso.success).toHaveBeenCalledWith('Aula salva', expect.anything())
+    expect(estado.aviso.success).toHaveBeenCalledWith('Classe salva', expect.anything())
     await waitFor(() => expect(roteador.state.location.pathname).toBe('/inicio'))
   })
 
@@ -209,10 +215,10 @@ describe('Registro de aula nova', () => {
     expect(enviado().payload.corpo.aulaPlanejadaId).toBe(PASSADA)
   })
 
-  it('enquanto o cronograma da data carrega, Salvar aula fica desabilitado', async () => {
+  it('enquanto o cronograma da data carrega, Salvar classe fica desabilitado', async () => {
     servidor.use(http.get('/api/classes/:id/cronograma', () => new Promise<Response>(() => undefined)))
     montar(NOVA)
-    await screen.findByText('Registro de aula')
+    await screen.findByText('Registro de classe')
     expect(botaoSalvar()).toBeDisabled()
   })
 
@@ -287,10 +293,11 @@ describe('Registro de aula nova', () => {
   it('"+ Requisito" acrescenta um requisito ativo da classe', async () => {
     montar(`/aulas/nova?classe=${CLASSE_COMPANHEIRO.id}&data=${HOJE}`)
     await screen.findByText('Ana Clara')
-    await userEvent.selectOptions(screen.getByLabelText('+ Requisito'), R3)
+    const daClasse = within(screen.getByRole('region', { name: 'Requisitos desta classe' }))
+    await userEvent.selectOptions(daClasse.getByLabelText('+ Requisito'), R3)
     expect(screen.getByText('Texto de R3')).toBeInTheDocument()
     expect(celula('Ana Clara', 'R3')).toBeEnabled()
-    expect(screen.queryByLabelText('+ Requisito')).not.toBeInTheDocument()
+    expect(daClasse.queryByLabelText('+ Requisito')).not.toBeInTheDocument()
   })
 
   it('o que já está na fila e o rascunho entram por cima', async () => {
@@ -333,10 +340,10 @@ describe('Registro de aula nova', () => {
     servidor.use(http.all('/api/*', () => HttpResponse.error()))
     montar(NOVA)
     expect(await screen.findByText('Ana Clara')).toBeInTheDocument()
-    expect(screen.getByText(/Sem conexão\. A aula fica guardada/)).toBeInTheDocument()
+    expect(screen.getByText(/Sem conexão\. A classe fica guardada/)).toBeInTheDocument()
     await userEvent.click(botaoSalvar())
     await waitFor(() => expect(estado.enfileirar).toHaveBeenCalledOnce())
-    expect(estado.aviso.success).toHaveBeenCalledWith('Aula salva', { description: 'Vai ser enviada quando houver internet.' })
+    expect(estado.aviso.success).toHaveBeenCalledWith('Classe salva', { description: 'Vai ser enviada quando houver internet.' })
   })
 
   it('já existe aula da data no servidor: abre como correção, sem o que ninguém tocou', async () => {
@@ -374,6 +381,25 @@ describe('Edição de aula', () => {
     expect(payload.registroAulaId).toBe(uuid(700))
     expect(payload.corpo.presencas).toEqual([{ dbvId: BRUNO, presente: true, versaoVista: '2030-03-10T12:01:00.000Z' }])
     expect(payload.corpo.requisitosMarcados).toEqual([{ dbvId: BRUNO, requisitoId: R1 }])
+  })
+
+  it('correção de cobrança em que todos entregaram: a entrega aparece no bloco da tarefa, com desfazer, e o requisito não volta à grade', async () => {
+    const anterior = { id: uuid(602), registroAulaId: uuid(701), data: '2030-03-03', encerrada: false, itens: [{ requisitoId: R3 }] }
+    guardar([classe({ tarefas: [anterior] })])
+    servidor.use(
+      handlerAula(
+        criarDetalheAula({
+          presencas,
+          requisitosDaAula: [requisito(R3, 'R3')],
+          concluidosNaAula: [{ dbvId: ANA, requisitoId: R3 }, { dbvId: BRUNO, requisitoId: R3 }],
+        }),
+      ),
+    )
+    montar(`/aulas/${uuid(700)}/editar`)
+    await screen.findByRole('listitem', { name: 'Ana Clara' })
+    const bloco = within(screen.getByRole('region', { name: 'Cobrar tarefa de 03/03' }))
+    expect(bloco.getByRole('button', { name: 'Entregue em 10/03 · Ana Clara · desfazer' })).toBeInTheDocument()
+    expect(within(screen.getByRole('listitem', { name: 'Ana Clara' })).queryByRole('button', { name: /^R3 · / })).not.toBeInTheDocument()
   })
 
   it('desmarcar o que foi concluído nesta aula vai em requisitosDesmarcados', async () => {
@@ -423,7 +449,7 @@ describe('Edição de aula', () => {
   it('sem conexão e sem a aula no aparelho, avisa que precisa de internet', async () => {
     estado.modo = 'SEM_CONEXAO'
     montar(`/aulas/${uuid(999)}/editar`)
-    expect(await screen.findByText('Esta aula não está neste aparelho')).toBeInTheDocument()
+    expect(await screen.findByText('Esta classe não está neste aparelho')).toBeInTheDocument()
   })
 
   it('erro do servidor sem cópia no aparelho mostra o erro com "Tentar de novo"', async () => {
@@ -441,11 +467,142 @@ describe('Edição de aula', () => {
   })
 })
 
+describe('Para casa no registro', () => {
+  const OUTRO_REGISTRO = uuid(710)
+  const TAREFA_ANTERIOR = { id: uuid(600), registroAulaId: OUTRO_REGISTRO, data: '2030-03-01', encerrada: false, itens: [{ requisitoId: R3 }] }
+  const NOS = { id: uuid(21), nome: 'Nós e Amarras', area: 'Artes e habilidades manuais' }
+  const paraCasa = () => within(screen.getByRole('region', { name: 'Para casa' }))
+  const corpoEnviado = () => (estado.enfileirar.mock.calls[0]?.[0] as { payload: { especialidades?: Record<string, string>; corpo: { tarefaId: string | null; tarefaItensAcrescentados: unknown[]; tarefaItensRetirados: unknown[]; presencas: unknown[] } } }).payload
+  const precede = (antes: HTMLElement, depois: HTMLElement) => Boolean(antes.compareDocumentPosition(depois) & Node.DOCUMENT_POSITION_FOLLOWING)
+
+  it('as seções vêm na ordem: cabeçalho, presença, requisitos desta classe, o que falta, para casa e salvar', async () => {
+    montar(`/aulas/nova?classe=${CLASSE_COMPANHEIRO.id}&data=${HOJE}`)
+    await screen.findByText('Ana Clara')
+    const ordem = [
+      screen.getByRole('heading', { name: 'Registro de classe' }),
+      screen.getByRole('region', { name: 'Presença e requisitos' }),
+      screen.getByRole('heading', { name: 'Requisitos desta classe' }),
+      screen.getByRole('heading', { name: 'O que falta fazer' }),
+      screen.getByRole('heading', { name: 'Para casa' }),
+      botaoSalvar(),
+    ]
+    ordem.slice(1).forEach((secao, i) => expect(precede(ordem[i], secao), `${i + 1}`).toBe(true))
+  })
+
+  it('abrir com conexão rebaixa o pacote', async () => {
+    montar(NOVA)
+    await screen.findByText('Ana Clara')
+    await waitFor(() => expect(pacoteBaixado.total).toBe(1))
+  })
+
+  it('sem conexão ao abrir, o pacote não é pedido', async () => {
+    estado.modo = 'SEM_CONEXAO'
+    montar(NOVA)
+    await screen.findByText('Ana Clara')
+    expect(pacoteBaixado.total).toBe(0)
+  })
+
+  it('"Passar o que faltou" passa os requisitos do dia que algum presente não cumpriu, e salvar leva a tarefa no mesmo envio', async () => {
+    montar(`/aulas/nova?classe=${CLASSE_COMPANHEIRO.id}&data=${HOJE}`)
+    await screen.findByText('Ana Clara')
+    expect(paraCasa().getByText('Nada para casa.')).toBeInTheDocument()
+    await userEvent.click(celula('Ana Clara', 'R1'))
+    await userEvent.click(paraCasa().getByRole('button', { name: 'Passar o que faltou' }))
+    expect(paraCasa().getByText('R1 · Texto de R1')).toBeInTheDocument()
+    expect(paraCasa().getByText('R2 · Texto de R2')).toBeInTheDocument()
+    await userEvent.click(botaoSalvar())
+    await waitFor(() => expect(estado.enfileirar).toHaveBeenCalledOnce())
+    const { corpo } = corpoEnviado()
+    expect(corpo.tarefaItensAcrescentados).toEqual([{ requisitoId: R1 }, { requisitoId: R2 }])
+    expect(corpo.tarefaItensRetirados).toEqual([])
+    expect(corpo.tarefaId).toMatch(/^[0-9a-f-]{36}$/)
+  })
+
+  it('sem internet o item da fila leva os itens da tarefa; "Tirar" desfaz o que acabou de passar', async () => {
+    estado.modo = 'SEM_CONEXAO'
+    montar(`/aulas/nova?classe=${CLASSE_COMPANHEIRO.id}&data=${HOJE}`)
+    await screen.findByText('Ana Clara')
+    await userEvent.selectOptions(paraCasa().getByLabelText('+ Requisito'), R3)
+    await userEvent.selectOptions(paraCasa().getByLabelText('+ Requisito'), R1)
+    await userEvent.click(paraCasa().getByRole('button', { name: 'Tirar R1' }))
+    await userEvent.click(botaoSalvar())
+    await waitFor(() => expect(estado.enfileirar).toHaveBeenCalledOnce())
+    expect(corpoEnviado().corpo.tarefaItensAcrescentados).toEqual([{ requisitoId: R3 }])
+    expect(estado.aviso.success).toHaveBeenCalledWith('Classe salva', { description: 'Vai ser enviada quando houver internet.' })
+  })
+
+  it('"+ Requisito" do Para casa não oferece o item de tarefa aberta de outro registro', async () => {
+    guardar([classe({ tarefas: [TAREFA_ANTERIOR] })])
+    montar(NOVA)
+    await screen.findByRole('listitem', { name: 'Ana Clara' })
+    const opcoes = within(paraCasa().getByLabelText('+ Requisito')).getAllByRole('option')
+    expect(opcoes.map((o) => o.textContent)).toEqual(['Escolha um requisito', 'R1 · Texto de R1', 'R2 · Texto de R2'])
+  })
+
+  it('"Passar o que faltou" ignora o requisito que já está em tarefa aberta da classe', async () => {
+    guardar([classe({ tarefas: [{ ...TAREFA_ANTERIOR, itens: [{ requisitoId: R1 }] }] })])
+    montar(`/aulas/nova?classe=${CLASSE_COMPANHEIRO.id}&data=${HOJE}`)
+    await screen.findByRole('listitem', { name: 'Ana Clara' })
+    await userEvent.click(paraCasa().getByRole('button', { name: 'Passar o que faltou' }))
+    expect(paraCasa().queryByText('R1 · Texto de R1')).not.toBeInTheDocument()
+    expect(paraCasa().getByText('R2 · Texto de R2')).toBeInTheDocument()
+  })
+
+  it('edição só da tarefa: os itens da tarefa do registro aparecem, "Tirar" habilita Salvar e o envio usa o id da tarefa existente', async () => {
+    estado.modo = 'SEM_CONEXAO'
+    const propria = { id: uuid(601), registroAulaId: uuid(700), data: DATA, encerrada: false, itens: [{ requisitoId: R3 }] }
+    guardar([classe({ tarefas: [propria], registrosRecentes: [{ id: uuid(700), data: DATA, aulaPlanejadaId: null, presencas: [{ dbvId: ANA, presente: true, versao: '2030-03-10T12:00:00.000Z' }] }] })])
+    montar(`/aulas/${uuid(700)}/editar`)
+    await screen.findByText('Ana Clara')
+    expect(paraCasa().getByText('R3 · Texto de R3')).toBeInTheDocument()
+    expect(botaoSalvar()).toBeDisabled()
+    await userEvent.click(paraCasa().getByRole('button', { name: 'Tirar R3' }))
+    await userEvent.click(botaoSalvar())
+    await waitFor(() => expect(estado.enfileirar).toHaveBeenCalledOnce())
+    const { corpo } = corpoEnviado()
+    expect(corpo.tarefaId).toBe(uuid(601))
+    expect(corpo.tarefaItensRetirados).toEqual([{ requisitoId: R3 }])
+    expect(corpo.presencas).toEqual([])
+  })
+
+  it('especialidade: busca no catálogo do pacote, passa, e o payload guarda o nome dela', async () => {
+    guardar([classe()], { pontos: 5, ativo: true }, [NOS])
+    montar(NOVA)
+    await screen.findByText('Ana Clara')
+    await userEvent.click(paraCasa().getByRole('button', { name: '+ Especialidade' }))
+    await userEvent.type(paraCasa().getByRole('searchbox', { name: 'Buscar especialidade' }), 'nos')
+    await userEvent.click(paraCasa().getByRole('button', { name: /Nós e Amarras/ }))
+    expect(paraCasa().getByText('Nós e Amarras')).toBeInTheDocument()
+    await userEvent.click(botaoSalvar())
+    await waitFor(() => expect(estado.enfileirar).toHaveBeenCalledOnce())
+    expect(corpoEnviado().corpo.tarefaItensAcrescentados).toEqual([{ especialidadeId: NOS.id }])
+    expect(corpoEnviado().especialidades).toEqual({ [NOS.id]: 'Nós e Amarras' })
+  })
+
+  it('sem permissão de marcar requisito não há parte de especialidade', async () => {
+    estado.podeMarcar = false
+    guardar([classe()], { pontos: 5, ativo: true }, [NOS])
+    montar(NOVA)
+    await screen.findByText('Ana Clara')
+    expect(paraCasa().queryByRole('button', { name: '+ Especialidade' })).not.toBeInTheDocument()
+    expect(paraCasa().getByLabelText('+ Requisito')).toBeInTheDocument()
+  })
+
+  it('pacote antigo, sem catálogo: pede internet uma vez e o botão some', async () => {
+    guardar([classe()])
+    if (estado.pacote.pacote) estado.pacote.pacote.instrutor = criarPacoteInstrutorAntigo({ classes: [classe()] })
+    montar(NOVA)
+    await screen.findByText('Ana Clara')
+    expect(paraCasa().getByText('Para passar especialidade, abra o app com internet uma vez')).toBeInTheDocument()
+    expect(paraCasa().queryByRole('button', { name: '+ Especialidade' })).not.toBeInTheDocument()
+  })
+})
+
 describe('Estados da tela', () => {
   it('carregando: o pacote ainda está sendo lido', () => {
     estado.pacote = { pacote: null, carregando: true, baixadoEm: null }
     montar(NOVA)
-    expect(screen.getByRole('status', { name: 'Carregando a aula' })).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'Carregando a classe' })).toBeInTheDocument()
   })
 
   it('vazio: instrutor sem classes', async () => {

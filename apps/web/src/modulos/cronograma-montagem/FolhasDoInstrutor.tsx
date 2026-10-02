@@ -92,7 +92,7 @@ export function FolhaMover({ titulo, requisito, datas, desabilitado, aoEscolher,
   return (
     <FolhaLateral aberta titulo={titulo ?? `Mover ${requisito.codigo} para`} aoFechar={aoFechar}>
       <div className="flex flex-col gap-2">
-        {destinos.length === 0 && <p className="py-6 text-center text-base text-texto-2">Nenhuma outra data aceita aula.</p>}
+        {destinos.length === 0 && <p className="py-6 text-center text-base text-texto-2">Nenhuma outra data aceita classe.</p>}
         {destinos.map((dado) => (
           <OpcaoDeData key={dado.data} dado={dado} desabilitado={desabilitado} aoEscolher={escolher} />
         ))}

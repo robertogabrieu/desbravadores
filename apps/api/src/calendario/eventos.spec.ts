@@ -29,6 +29,13 @@ function dia(deslocamento: number): string {
   return data.toISOString().slice(0, 10)
 }
 
+/** O domingo de hoje+8 em diante, mais `deslocamento` dias (-1 = o sábado antes, 3 = a quarta depois). */
+function proximoDomingo(deslocamento = 0): string {
+  const base = new Date(`${dia(8)}T00:00:00Z`)
+  base.setUTCDate(base.getUTCDate() + ((7 - base.getUTCDay()) % 7) + deslocamento)
+  return base.toISOString().slice(0, 10)
+}
+
 async function requisitosDa(classeId: string, quantos: number): Promise<string[]> {
   const requisitos = await prismaDeTeste().requisito.findMany({
     where: { secao: { classeId }, ativo: true },
@@ -80,7 +87,7 @@ describe('calendário do clube — eventos', () => {
       const resposta = await http.post('/api/calendario/eventos', adm.autorizacao, evento())
       expect(resposta.status).toBe(201)
       const { evento: criado, aulasAfetadas } = corpo<Gravado>(resposta)
-      expect(criado).toMatchObject({ tipo: 'ACAMPAMENTO', cancelaReuniao: true, bloqueiaAula: false, bomParaCampo: true, inicio: dia(10) })
+      expect(criado).toMatchObject({ tipo: 'ACAMPAMENTO', temReuniao: false, temClasse: true, bomParaCampo: true, inicio: dia(10) })
       expect(aulasAfetadas).toEqual([])
       const atividades = await prismaDeTeste().atividade.findMany({ where: { clubeId: clube.id } })
       expect(atividades.map((a) => a.tipo)).toEqual(['EVENTO_CRIADO'])
@@ -88,14 +95,85 @@ describe('calendário do clube — eventos', () => {
 
     it('marcações enviadas valem mais que o padrão', async () => {
       const { adm } = await cenario()
-      const resposta = await http.post('/api/calendario/eventos', adm.autorizacao, evento({ tipo: 'FERIADO', bloqueiaAula: true }))
-      expect(corpo<Gravado>(resposta).evento).toMatchObject({ cancelaReuniao: false, bloqueiaAula: true, bomParaCampo: false })
+      const resposta = await http.post('/api/calendario/eventos', adm.autorizacao, evento({ tipo: 'FERIADO', temClasse: false }))
+      expect(corpo<Gravado>(resposta).evento).toMatchObject({ temReuniao: true, temClasse: false, bomParaCampo: false })
+    })
+
+    it('marcações omitidas valem o padrão do tipo, no positivo', async () => {
+      const { adm } = await cenario()
+      const resposta = await http.post('/api/calendario/eventos', adm.autorizacao, evento({ tipo: 'EVENTO' }))
+      expect(corpo<Gravado>(resposta).evento).toMatchObject({ temReuniao: true, temClasse: false, bomParaCampo: false })
+    })
+
+    it('Férias grava sempre o padrão; extra grava campo = não', async () => {
+      const { adm } = await cenario()
+      const ferias = await http.post('/api/calendario/eventos', adm.autorizacao, evento({ tipo: 'FERIAS', temReuniao: true, bomParaCampo: true }))
+      expect(corpo<Gravado>(ferias).evento).toMatchObject({ temReuniao: false, temClasse: true, bomParaCampo: false })
+      const extra = await http.post('/api/calendario/eventos', adm.autorizacao, evento({ tipo: 'REUNIAO_EXTRA', bomParaCampo: true }))
+      expect(corpo<Gravado>(extra).evento).toMatchObject({ bomParaCampo: false })
+    })
+
+    it('a validação roda depois do padrão: extra sem marcações enviadas vale reunião e classe', async () => {
+      const { adm } = await cenario()
+      const resposta = await http.post('/api/calendario/eventos', adm.autorizacao, evento({ tipo: 'REUNIAO_EXTRA' }))
+      expect(resposta.status).toBe(201)
+      expect(corpo<Gravado>(resposta).evento).toMatchObject({ temReuniao: true, temClasse: true })
+    })
+
+    it('extra com fim diferente do início ou sem as duas caixas → 400 com o campo', async () => {
+      const { adm } = await cenario()
+      const longa = await http.post('/api/calendario/eventos', adm.autorizacao, evento({ tipo: 'REUNIAO_EXTRA', fim: dia(11) }))
+      expect(longa.status).toBe(400)
+      expect(longa.body).toMatchObject({ codigo: 'VALIDACAO', campos: { fim: 'A reunião extra é de um dia só.' } })
+      const vazia = await http.post('/api/calendario/eventos', adm.autorizacao, evento({ tipo: 'REUNIAO_EXTRA', temReuniao: false, temClasse: false }))
+      expect(vazia.status).toBe(400)
+      expect(vazia.body).toMatchObject({ campos: { temReuniao: 'Marque Terá reunião, Terá classe ou as duas.' } })
+    })
+
+    it('aba antiga que manda cancelaReuniao ou bloqueiaAula → 400 geral, sem campos', async () => {
+      const { adm } = await cenario()
+      for (const antiga of [{ cancelaReuniao: true }, { bloqueiaAula: false }]) {
+        const resposta = await http.post('/api/calendario/eventos', adm.autorizacao, evento(antiga))
+        expect(resposta.status).toBe(400)
+        expect(resposta.body).toMatchObject({ codigo: 'VALIDACAO', mensagem: 'Atualize o app para salvar este evento.' })
+        expect((resposta.body as { campos?: unknown }).campos).toBeUndefined()
+      }
+    })
+
+    it('uma extra por data: a segunda é recusada; editar a própria, extra removida ou de outro clube não contam', async () => {
+      const { clube, adm } = await cenario()
+      const outro = await criarClube()
+      const primeira = corpo<Gravado>(await http.post('/api/calendario/eventos', adm.autorizacao, evento({ tipo: 'REUNIAO_EXTRA' }))).evento
+      const segunda = await http.post('/api/calendario/eventos', adm.autorizacao, evento({ tipo: 'REUNIAO_EXTRA' }))
+      expect(segunda.status).toBe(400)
+      expect(segunda.body).toMatchObject({ campos: { inicio: 'Já há uma reunião extra nesta data.' } })
+
+      const propria = await http.patch(`/api/calendario/eventos/${primeira.id}`, adm.autorizacao, evento({ tipo: 'REUNIAO_EXTRA', nome: 'Editada' }))
+      expect(propria.status).toBe(200)
+
+      await criarEvento({ clubeId: outro.id, tipo: 'REUNIAO_EXTRA', inicio: dia(20) })
+      expect((await http.post('/api/calendario/eventos', adm.autorizacao, evento({ tipo: 'REUNIAO_EXTRA', inicio: dia(20), fim: dia(20) }))).status).toBe(201)
+
+      const removida = await criarEvento({ clubeId: clube.id, tipo: 'REUNIAO_EXTRA', inicio: dia(21) })
+      await prismaDeTeste().eventoCalendario.update({ where: { id: removida.id }, data: { removidoEm: new Date() } })
+      expect((await http.post('/api/calendario/eventos', adm.autorizacao, evento({ tipo: 'REUNIAO_EXTRA', inicio: dia(21), fim: dia(21) }))).status).toBe(201)
+    })
+
+    it('calendário do ano: a quarta da extra com reunião entra nos dias de reunião e os domingos das férias saem', async () => {
+      const { clube, adm } = await cenario()
+      await criarEvento({ clubeId: clube.id, tipo: 'REUNIAO_EXTRA', inicio: '2030-01-23' })
+      await criarEvento({ clubeId: clube.id, tipo: 'FERIAS', inicio: '2030-02-01', fim: '2030-02-11' })
+      const { diasDeReuniao } = corpo<Ano>(await http.get('/api/calendario?ano=2030', adm.autorizacao))
+      expect(diasDeReuniao).toEqual(expect.arrayContaining(['2030-01-06', '2030-01-23', '2030-01-27', '2030-02-17']))
+      expect(diasDeReuniao).not.toContain('2030-02-03')
+      expect(diasDeReuniao).not.toContain('2030-02-10')
     })
 
     it('rejeita fim antes do início', async () => {
       const { adm } = await cenario()
       const resposta = await http.post('/api/calendario/eventos', adm.autorizacao, evento({ inicio: dia(5), fim: dia(4) }))
       expect(resposta.status).toBe(400)
+      expect(resposta.body).toMatchObject({ codigo: 'VALIDACAO', campos: { fim: expect.any(String) as string } })
     })
 
     it('edita, lista no ano e remove logicamente (sem atividade nova ao editar)', async () => {
@@ -103,7 +181,7 @@ describe('calendário do clube — eventos', () => {
       const { evento: criado } = corpo<Gravado>(await http.post('/api/calendario/eventos', adm.autorizacao, evento()))
       const editado = await http.patch(`/api/calendario/eventos/${criado.id}`, adm.autorizacao, evento({ nome: 'Novo nome', tipo: 'EVENTO' }))
       expect(editado.status).toBe(200)
-      expect(corpo<Gravado>(editado).evento).toMatchObject({ id: criado.id, nome: 'Novo nome', bloqueiaAula: true })
+      expect(corpo<Gravado>(editado).evento).toMatchObject({ id: criado.id, nome: 'Novo nome', temClasse: false })
       expect(await prismaDeTeste().atividade.count({ where: { clubeId: clube.id } })).toBe(1)
 
       const ano = Number(dia(10).slice(0, 4))
@@ -264,6 +342,60 @@ describe('calendário do clube — eventos', () => {
       const { aulasAfetadas } = corpo<Gravado>(await http.post('/api/calendario/eventos', adm.autorizacao, evento({ tipo: 'SEM_REUNIAO' })))
       expect(aulasAfetadas).toHaveLength(1)
       expect(await notificacoesDe(instrutorAlheio.usuario.id)).toEqual([])
+    })
+
+    it('Férias sobre a classe de um domingo avisa com o texto de classe', async () => {
+      const { clube, amigo, adm, instrutor, requisitos } = await cenario()
+      const domingo = proximoDomingo()
+      await criarCronograma({ clubeId: clube.id, classeId: amigo.id, aulas: [{ data: domingo, requisitoIds: requisitos }] })
+      const resposta = await http.post('/api/calendario/eventos', adm.autorizacao, evento({ tipo: 'FERIAS', inicio: domingo, fim: domingo }))
+      expect(corpo<Gravado>(resposta).aulasAfetadas.map((a) => a.data)).toEqual([domingo])
+      const [aviso] = await notificacoesDe(instrutor.usuario.id)
+      expect(aviso.titulo).toBe('Classe em conflito com o calendário')
+      expect(aviso.texto).toMatch(/deixou de ser dia de classe\.$/)
+    })
+
+    it('acampamento dentro das férias não afeta a classe do sábado dele', async () => {
+      const { clube, amigo, adm, instrutor, requisitos } = await cenario()
+      const sabado = proximoDomingo(-1)
+      await criarEvento({ clubeId: clube.id, tipo: 'FERIAS', inicio: dia(-3), fim: dia(40) })
+      await criarCronograma({ clubeId: clube.id, classeId: amigo.id, aulas: [{ data: sabado, requisitoIds: requisitos }] })
+      const resposta = await http.post('/api/calendario/eventos', adm.autorizacao, evento({ tipo: 'ACAMPAMENTO', inicio: sabado, fim: sabado }))
+      expect(corpo<Gravado>(resposta).aulasAfetadas).toEqual([])
+      expect(await notificacoesDe(instrutor.usuario.id)).toEqual([])
+    })
+
+    it('excluir a extra com classe dentro das férias põe a classe daquela data em conflito e avisa', async () => {
+      const { clube, amigo, adm, instrutor, requisitos } = await cenario()
+      const quarta = proximoDomingo(3)
+      await criarEvento({ clubeId: clube.id, tipo: 'FERIAS', inicio: dia(-3), fim: dia(40) })
+      const extra = await criarEvento({ clubeId: clube.id, tipo: 'REUNIAO_EXTRA', inicio: quarta })
+      await criarCronograma({ clubeId: clube.id, classeId: amigo.id, aulas: [{ data: quarta, requisitoIds: requisitos }] })
+      expect((await apagar(`/api/calendario/eventos/${extra.id}`, adm.autorizacao)).status).toBe(204)
+      expect((await notificacoesDe(instrutor.usuario.id)).map((n) => n.titulo)).toEqual(['Classe em conflito com o calendário'])
+    })
+
+    it('excluir extra com classe numa quarta com classe planejada avisa; sem classe planejada, não avisa ninguém', async () => {
+      const { clube, amigo, adm, instrutor, requisitos } = await cenario()
+      const quarta = proximoDomingo(3)
+      const extra = await criarEvento({ clubeId: clube.id, tipo: 'REUNIAO_EXTRA', inicio: quarta })
+      await criarCronograma({ clubeId: clube.id, classeId: amigo.id, aulas: [{ data: quarta, requisitoIds: requisitos }] })
+      expect((await apagar(`/api/calendario/eventos/${extra.id}`, adm.autorizacao)).status).toBe(204)
+      expect((await notificacoesDe(instrutor.usuario.id)).map((n) => n.titulo)).toEqual(['Classe em conflito com o calendário'])
+
+      const quinta = proximoDomingo(4)
+      const outra = await criarEvento({ clubeId: clube.id, tipo: 'REUNIAO_EXTRA', inicio: quinta })
+      expect((await apagar(`/api/calendario/eventos/${outra.id}`, adm.autorizacao)).status).toBe(204)
+      expect(await notificacoesDe(instrutor.usuario.id)).toHaveLength(1)
+    })
+
+    it('mover a extra com classe para outra data devolve a aula da data antiga em aulasAfetadas', async () => {
+      const { clube, amigo, adm, requisitos } = await cenario()
+      const quarta = proximoDomingo(3)
+      const extra = await criarEvento({ clubeId: clube.id, tipo: 'REUNIAO_EXTRA', inicio: quarta })
+      const cronograma = await criarCronograma({ clubeId: clube.id, classeId: amigo.id, aulas: [{ data: quarta, requisitoIds: requisitos }] })
+      const resposta = await http.patch(`/api/calendario/eventos/${extra.id}`, adm.autorizacao, evento({ tipo: 'REUNIAO_EXTRA', inicio: proximoDomingo(4), fim: proximoDomingo(4), temReuniao: true, temClasse: true }))
+      expect(corpo<Gravado>(resposta).aulasAfetadas.map((a) => a.aulaId)).toEqual([cronograma.aulas[0].id])
     })
 
     it('remover um evento não avisa ninguém', async () => {

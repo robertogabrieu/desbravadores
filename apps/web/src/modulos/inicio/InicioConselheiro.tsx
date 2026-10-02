@@ -1,6 +1,6 @@
-import { hojeNoFuso } from '@desbravadores/shared'
+import { feriasAte, hojeNoFuso, horarioELocalDoDia, proximaReuniao, situacaoDaData } from '@desbravadores/shared'
 import type { Papel } from '@desbravadores/shared'
-import { CalendarDays, ClipboardCheck, Image, Trophy, Users } from 'lucide-react'
+import { CalendarDays, ClipboardCheck, Image, Sun, Trophy, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
@@ -18,6 +18,7 @@ import { Esqueleto } from '../../ui/Esqueleto'
 import { LinhaQueNavega } from '../../ui/LinhaQueNavega'
 import { NomeDaFicha } from '../../ui/LinkDeFicha'
 import { Selecao } from '../../ui/Selecao'
+import { Selo } from '../../ui/Selo'
 import { rotuloDoPapel } from '../acesso/papeis'
 import { ConviteInstalacao } from './ConviteInstalacao'
 import { Carregando, ErroDeCarga } from '../../ui/EstadosDeCarga'
@@ -26,7 +27,6 @@ type ProximaReuniao = NonNullable<InicioDaApi['proximaReuniao']>
 type Pacote = NonNullable<PacoteGuardado['pacote']>
 
 const TRACO = '—'
-const MS_POR_DIA = 24 * 60 * 60 * 1000
 
 const ATALHOS: Array<{ rotulo: string; para: string; icone: LucideIcon }> = [
   { rotulo: 'Unidade', para: '/unidade', icone: Users },
@@ -48,19 +48,43 @@ function formatarHorario(horario: string): string {
   return minuto === '00' ? `${Number(hora)}h` : `${Number(hora)}h${minuto}`
 }
 
-/** Próxima reunião calculada do pacote guardado: o próximo dia da semana do clube, hoje inclusive. A chamada também conta como feita se está na fila (descartada, sai da fila). */
-function proximaReuniaoDoPacote(pacote: Pacote, unidadeId: string, chavesNaFila: Set<string>): ProximaReuniao {
+interface ReuniaoDoCartao {
+  reuniao: ProximaReuniao | null
+  feriasAte: string | null
+}
+
+/** "2030-02-01" vira "01/02". */
+const diaEMes = (data: string): string => `${data.slice(8, 10)}/${data.slice(5, 7)}`
+
+/** "calendário de dd/mm": o dia, no fuso do clube, em que o pacote foi baixado. */
+function dataDoPacote(baixadoEm: number, fuso: string): string {
+  return diaEMes(hojeNoFuso(fuso, new Date(baixadoEm)))
+}
+
+/**
+ * Próxima reunião calculada do pacote guardado, pela mesma regra da API: dia da semana do clube, férias e extras, hoje inclusive.
+ * A chamada também conta como feita se está na fila (descartada, sai da fila). Pacote de antes do calendário não tem o campo.
+ */
+function proximaReuniaoDoPacote(pacote: Pacote, unidadeId: string, chavesNaFila: Set<string>): ReuniaoDoCartao {
   const { fuso, diaReuniao, horaReuniao, localReuniaoPadrao } = pacote.clube
   const hoje = hojeNoFuso(fuso, new Date())
-  const inicioDeHoje = new Date(`${hoje}T00:00:00Z`)
-  const diasAteReuniao = (diaReuniao - inicioDeHoje.getUTCDay() + 7) % 7
-  const data = new Date(inicioDeHoje.getTime() + diasAteReuniao * MS_POR_DIA).toISOString().slice(0, 10)
+  const eventos = pacote.calendario ?? []
+  const fimDasFerias = feriasAte(hoje, diaReuniao, eventos)
+  const proxima = proximaReuniao(hoje, diaReuniao, eventos)
+  if (!proxima) return { reuniao: null, feriasAte: fimDasFerias }
+
+  const { horario, local } = horarioELocalDoDia(situacaoDaData(proxima.data, diaReuniao, eventos), { horario: horaReuniao, local: localReuniaoPadrao })
+  const { data } = proxima
   return {
-    data,
-    horario: horaReuniao,
-    local: localReuniaoPadrao,
-    ehHoje: data === hoje,
-    chamadaFeita: chavesNaFila.has(`${unidadeId}:${data}`) || pacote.reunioesRecentes.some((reuniao) => reuniao.unidadeId === unidadeId && reuniao.data === data),
+    reuniao: {
+      data,
+      horario,
+      local,
+      nome: proxima.extra?.nome ?? null,
+      ehHoje: data === hoje,
+      chamadaFeita: chavesNaFila.has(`${unidadeId}:${data}`) || pacote.reunioesRecentes.some((reuniao) => reuniao.unidadeId === unidadeId && reuniao.data === data),
+    },
+    feriasAte: fimDasFerias,
   }
 }
 
@@ -69,8 +93,16 @@ function chavesDaChamadaFeita(itens: ItemFilaNaTela[]): Set<string> {
   return new Set(itens.filter((item) => item.estado !== 'ERRO').map((item) => item.chave))
 }
 
-function CartaoProximaReuniao({ reuniao }: { reuniao: ProximaReuniao | null }) {
-  if (!reuniao) return <Cartao className="text-base text-texto-2">Nenhuma reunião marcada.</Cartao>
+interface PropriedadesDoCartao extends ReuniaoDoCartao {
+  /** Quando o cálculo veio do pacote guardado: o dia (dd/mm) em que o calendário foi baixado. */
+  calendarioDe?: string
+}
+
+function CartaoProximaReuniao({ reuniao, feriasAte: fimDasFerias, calendarioDe }: PropriedadesDoCartao) {
+  if (!reuniao) {
+    const texto = fimDasFerias ? `Férias até ${diaEMes(fimDasFerias)} · nenhuma reunião marcada nos próximos 4 meses.` : 'Nenhuma reunião marcada.'
+    return <Cartao className="text-base text-texto-2">{texto}</Cartao>
+  }
   const detalhe = [formatarHorario(reuniao.horario), reuniao.local].filter(Boolean).join(' · ')
   return (
     <Cartao className="flex flex-col gap-3">
@@ -78,8 +110,15 @@ function CartaoProximaReuniao({ reuniao }: { reuniao: ProximaReuniao | null }) {
         <CalendarDays aria-hidden className="size-4" />
         Próxima reunião
       </div>
+      {fimDasFerias && (
+        <Selo className="self-start bg-[var(--cal-ferias-bg)] text-[var(--cal-ferias-fg)]">
+          <Sun aria-hidden className="size-4" />
+          Férias até {diaEMes(fimDasFerias)}
+        </Selo>
+      )}
       <div className="flex flex-col">
         <span className="font-titulo text-lg font-bold text-texto">{formatarData(reuniao.data)}</span>
+        {reuniao.nome && <span className="text-base font-semibold text-texto">{reuniao.nome}</span>}
         <span className="text-base text-texto-2">{detalhe}</span>
       </div>
       {reuniao.chamadaFeita ? (
@@ -98,6 +137,7 @@ function CartaoProximaReuniao({ reuniao }: { reuniao: ProximaReuniao | null }) {
           </Link>
         )
       )}
+      {calendarioDe && <span className="text-sm text-texto-2">calendário de {calendarioDe}</span>}
     </Cartao>
   )
 }
@@ -179,7 +219,7 @@ function PainelDaUnidade({ unidades, papel, primeiroNome }: PropriedadesPainel) 
   const nomeDaUnidade = unidades.find((u) => u.id === unidadeId)?.nome ?? unidades[0].nome
   const consulta = useInicioConselheiro(unidadeId)
   const { modo } = useConexao()
-  const { pacote } = usePacote()
+  const { pacote, baixadoEm } = usePacote()
   const { itens: itensDaFila } = useFila()
 
   const falhaDeRede = consulta.error instanceof ErroDaApi && consulta.error.classe === 'REDE'
@@ -188,7 +228,7 @@ function PainelDaUnidade({ unidades, papel, primeiroNome }: PropriedadesPainel) 
   if (consulta.data) {
     conteudo = (
       <>
-        <CartaoProximaReuniao reuniao={consulta.data.proximaReuniao} />
+        <CartaoProximaReuniao reuniao={consulta.data.proximaReuniao} feriasAte={consulta.data.feriasAte} />
         <Numeros dados={consulta.data} />
         <Atalhos />
         <Destaques destaques={consulta.data.destaques} />
@@ -198,7 +238,10 @@ function PainelDaUnidade({ unidades, papel, primeiroNome }: PropriedadesPainel) 
     if (pacote) {
       conteudo = (
         <>
-          <CartaoProximaReuniao reuniao={proximaReuniaoDoPacote(pacote, unidadeId, chavesDaChamadaFeita(itensDaFila))} />
+          <CartaoProximaReuniao
+            {...proximaReuniaoDoPacote(pacote, unidadeId, chavesDaChamadaFeita(itensDaFila))}
+            calendarioDe={baixadoEm === null ? undefined : dataDoPacote(baixadoEm, pacote.clube.fuso)}
+          />
           <Numeros dados={null} />
           <Atalhos />
         </>

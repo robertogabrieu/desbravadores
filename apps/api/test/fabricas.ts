@@ -19,6 +19,8 @@ import type {
   Observacao,
   RegistroAula,
   RequisitoConcluido,
+  TarefaCasa,
+  TarefaItem,
   Chamada,
   Clube,
   ConfiguracaoClube,
@@ -404,7 +406,7 @@ export async function criarFoto(dados: {
   })
 }
 
-type Marcacoes = { cancelaReuniao: boolean; bloqueiaAula: boolean; bomParaCampo: boolean }
+type Marcacoes = { temReuniao: boolean; temClasse: boolean; bomParaCampo: boolean }
 
 /** Evento do calendario; sem `marcacoes`, valem as do tipo (`MARCACOES_PADRAO`). */
 export async function criarEvento(dados: {
@@ -565,6 +567,7 @@ export async function criarEspecialidadeConcluida(dados: {
   dbvId: string
   especialidadeId: string
   concluidaEm?: string
+  registroAulaId?: string | null
 }): Promise<EspecialidadeConcluida> {
   return prismaDeTeste().especialidadeConcluida.create({
     data: {
@@ -572,7 +575,48 @@ export async function criarEspecialidadeConcluida(dados: {
       dbvId: dados.dbvId,
       especialidadeId: dados.especialidadeId,
       concluidaEm: dataCivil(dados.concluidaEm ?? '2026-03-01'),
+      registroAulaId: dados.registroAulaId ?? null,
       marcadoPorId: (await criarUsuario()).id,
+    },
+  })
+}
+
+/** Um requisito da classe OU uma especialidade (o banco recusa os dois e nenhum). */
+type ItemDeTarefa = { requisitoId: string } | { especialidadeId: string }
+
+/** Tarefa para casa passada no registro `registroAulaId`, com um `TarefaItem` por item. */
+export async function criarTarefa(dados: {
+  clubeId: string
+  classeId: string
+  registroAulaId: string
+  anoClube?: number
+  itens?: ItemDeTarefa[]
+  encerrada?: boolean
+}): Promise<TarefaCasa> {
+  const criadaPorId = (await criarUsuario()).id
+  const tarefa = await prismaDeTeste().tarefaCasa.create({
+    data: {
+      clubeId: dados.clubeId,
+      classeId: dados.classeId,
+      registroAulaId: dados.registroAulaId,
+      anoClube: dados.anoClube ?? anoCorrente(),
+      criadaPorId,
+      encerradaEm: dados.encerrada ? new Date() : null,
+      encerradaPorId: dados.encerrada ? criadaPorId : null,
+    },
+  })
+  for (const item of dados.itens ?? []) await criarTarefaItem({ clubeId: dados.clubeId, tarefaId: tarefa.id, ...item })
+  return tarefa
+}
+
+export async function criarTarefaItem(dados: { clubeId: string; tarefaId: string } & ItemDeTarefa): Promise<TarefaItem> {
+  return prismaDeTeste().tarefaItem.create({
+    data: {
+      clubeId: dados.clubeId,
+      tarefaId: dados.tarefaId,
+      requisitoId: 'requisitoId' in dados ? dados.requisitoId : null,
+      especialidadeId: 'especialidadeId' in dados ? dados.especialidadeId : null,
+      criadoPorId: (await criarUsuario()).id,
     },
   })
 }

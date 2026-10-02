@@ -40,21 +40,29 @@ export class ClubeService {
     return this.prisma.configuracaoClube.update({ where: { clubeId }, data: entrada, select: CAMPOS_DA_CONFIGURACAO })
   }
 
-  /** G9: aula futura e ativa de classe individual no dia de reuniao de hoje impede trocar o dia. */
+  /** G9: classe individual futura e ativa no dia de reuniao de hoje impede trocar o dia. */
   private async exigirSemAulaNoDiaDeReuniao(clubeId: string, atual: Saida): Promise<void> {
     const hoje = hojeNoFuso(atual.fuso, new Date())
     const aulas = await this.prisma.aulaPlanejada.findMany({
       where: { clubeId, removidaEm: null, data: { gte: daDataCivil(hoje) }, cronograma: { classe: { trilha: 'INDIVIDUAL' } } },
       select: { data: true, cronograma: { select: { classe: { select: { nome: true, ordem: true } } } } },
     })
+    const datasDasClasses = aulas.map((aula) => aula.data)
+    const extrasComClasse = await this.prisma.eventoCalendario.findMany({
+      where: { clubeId, removidoEm: null, tipo: 'REUNIAO_EXTRA', temClasse: true, inicio: { in: datasDasClasses } },
+      select: { inicio: true },
+    })
+    const datasComExtra = new Set(extrasComClasse.map((extra) => paraDataCivil(extra.inicio)))
     const classes = new Map<string, number>()
     for (const aula of aulas) {
-      if (diaDaSemana(paraDataCivil(aula.data)) !== atual.diaReuniao) continue
+      const data = paraDataCivil(aula.data)
+      if (diaDaSemana(data) !== atual.diaReuniao) continue
+      if (datasComExtra.has(data)) continue
       const { nome, ordem } = aula.cronograma.classe
       classes.set(nome, ordem)
     }
     if (classes.size === 0) return
     const nomes = [...classes.entries()].sort((a, b) => a[1] - b[1]).map(([nome]) => nome)
-    throw new ErroApp('REGRA', `Há aulas marcadas no dia atual de reunião: ${nomes.join(', ')}. Mova-as antes.`)
+    throw new ErroApp('REGRA', `Há classes marcadas no dia atual de reunião: ${nomes.join(', ')}. Mova-as antes.`)
   }
 }

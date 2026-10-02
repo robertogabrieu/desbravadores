@@ -23,19 +23,21 @@ const offline = vi.hoisted(() => ({
   modo: 'ONLINE' as ModoConexao,
   pacote: null as PacoteGuardado['pacote'],
   fila: [] as ItemFilaNaTela[],
+  baixadoEm: null as number | null,
 }))
 
 vi.mock('../../offline', async (importarOriginal) => ({
   ...(await importarOriginal<typeof import('../../offline')>()),
   useConexao: () => ({ modo: offline.modo }),
   useFila: () => ({ itens: offline.fila }),
-  usePacote: () => ({ pacote: offline.pacote, carregando: false, baixadoEm: null }),
+  usePacote: () => ({ pacote: offline.pacote, carregando: false, baixadoEm: offline.baixadoEm }),
 }))
 
 beforeEach(() => {
   offline.modo = 'ONLINE'
   offline.pacote = null
   offline.fila = []
+  offline.baixadoEm = null
 })
 
 afterEach(() => {
@@ -107,6 +109,7 @@ describe('convite de instalação', () => {
   })
 })
 
+type EventoDoPacote = NonNullable<PacoteGuardado['pacote']>['calendario'][number]
 type ReunioesDoPacote = NonNullable<PacoteGuardado['pacote']>['reunioesRecentes']
 
 const CONSELHEIRO = criarVinculo('CONSELHEIRO', 1, { unidades: [UNIDADE_AGUIAS] })
@@ -151,7 +154,7 @@ describe('início do conselheiro', () => {
   })
 
   it('reunião que não é hoje: sem "Fazer chamada"', async () => {
-    const proxima = { data: '2030-10-06', horario: '08:30' as const, local: null, ehHoje: false, chamadaFeita: false }
+    const proxima = { data: '2030-10-06', horario: '08:30' as const, local: null, nome: null, ehHoje: false, chamadaFeita: false }
     servidor.use(...handlersSessao([CONSELHEIRO]), handlerInicioConselheiro(criarInicioConselheiro({ proximaReuniao: proxima })))
     renderizarRotas(rotasInicio, '/inicio')
     await screen.findByText('Domingo, 6 de outubro')
@@ -159,7 +162,7 @@ describe('início do conselheiro', () => {
   })
 
   it('chamada já feita hoje: sem "Fazer chamada" e avisa que está feita', async () => {
-    const proxima = { data: '2030-09-29', horario: '08:30' as const, local: null, ehHoje: true, chamadaFeita: true }
+    const proxima = { data: '2030-09-29', horario: '08:30' as const, local: null, nome: null, ehHoje: true, chamadaFeita: true }
     servidor.use(...handlersSessao([CONSELHEIRO]), handlerInicioConselheiro(criarInicioConselheiro({ proximaReuniao: proxima })))
     renderizarRotas(rotasInicio, '/inicio')
     expect(await screen.findByText('Chamada feita')).toBeInTheDocument()
@@ -222,6 +225,39 @@ describe('início do conselheiro', () => {
     servidor.use(handlerInicioConselheiro())
     await userEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }))
     expect(await screen.findByText('DBVs na unidade')).toBeInTheDocument()
+  })
+
+  describe('pelo calendário, com internet', () => {
+    it('em férias: "Férias até 01/02" acima da data da próxima reunião', async () => {
+      const proxima = { data: '2030-02-03', horario: '09:00' as const, local: 'Salão da Igreja Central', nome: null, ehHoje: false, chamadaFeita: false }
+      servidor.use(...handlersSessao([CONSELHEIRO]), handlerInicioConselheiro(criarInicioConselheiro({ proximaReuniao: proxima, feriasAte: '2030-02-01' })))
+      renderizarRotas(rotasInicio, '/inicio')
+      const ferias = await screen.findByText('Férias até 01/02')
+      const data = screen.getByText('Domingo, 3 de fevereiro')
+      expect(ferias.compareDocumentPosition(data) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(screen.getByText('9h · Salão da Igreja Central')).toBeInTheDocument()
+    })
+
+    it('reunião extra: data, nome, horário e local da extra e "Fazer chamada" no dia', async () => {
+      const proxima = { data: '2030-01-25', horario: '15:00' as const, local: 'Parque Ecológico do Tietê', nome: 'Encontro de início de ano', ehHoje: true, chamadaFeita: false }
+      servidor.use(...handlersSessao([CONSELHEIRO]), handlerInicioConselheiro(criarInicioConselheiro({ proximaReuniao: proxima })))
+      renderizarRotas(rotasInicio, '/inicio')
+      expect(await screen.findByText('Sexta-feira, 25 de janeiro')).toBeInTheDocument()
+      expect(screen.getByText('Encontro de início de ano')).toBeInTheDocument()
+      expect(screen.getByText('15h · Parque Ecológico do Tietê')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Fazer chamada' })).toBeInTheDocument()
+      expect(screen.queryByText(/calendário de/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/Férias até/)).not.toBeInTheDocument()
+    })
+
+    it('nada em 120 dias, em férias: diz até quando e que não há reunião nos próximos 4 meses', async () => {
+      servidor.use(
+        ...handlersSessao([CONSELHEIRO]),
+        handlerInicioConselheiro(criarInicioConselheiro({ proximaReuniao: null, feriasAte: '2030-03-15' })),
+      )
+      renderizarRotas(rotasInicio, '/inicio')
+      expect(await screen.findByText('Férias até 15/03 · nenhuma reunião marcada nos próximos 4 meses.')).toBeInTheDocument()
+    })
   })
 
   describe('online, mas a falha é classificada como rede (portal de Wi-Fi, resposta fora do contrato)', () => {
@@ -318,6 +354,59 @@ describe('início do conselheiro', () => {
       servidor.use(...handlersSessao([CONSELHEIRO]))
       renderizarRotas(rotasInicio, '/inicio')
       expect(await screen.findByText('Chamada feita')).toBeInTheDocument()
+    })
+
+    describe('pelo calendário do pacote', () => {
+      const emDias = (dias: number): string => new Date(new Date(`${hoje}T00:00:00Z`).getTime() + dias * 86_400_000).toISOString().slice(0, 10)
+      const diaEMes = (data: string): string => `${data.slice(8, 10)}/${data.slice(5, 7)}`
+      const evento = (parcial: Partial<EventoDoPacote>): EventoDoPacote => ({
+        nome: 'Evento', tipo: 'EVENTO', inicio: hoje, fim: hoje, horario: null, local: null, temReuniao: true, temClasse: false, bomParaCampo: false, ...parcial,
+      })
+      const pacoteComCalendario = (calendario: EventoDoPacote[]) =>
+        criarPacote({ clube: { ...criarPacote().clube, diaReuniao: (diaDeHoje + 3) % 7, horaReuniao: '09:00', localReuniaoPadrao: 'Salão' }, calendario })
+
+      it('extra hoje: mesma data, nome, horário e local da extra, "Fazer chamada" e "calendário de dd/mm"', async () => {
+        offline.modo = 'SEM_CONEXAO'
+        offline.baixadoEm = Date.UTC(2030, 0, 24, 15)
+        offline.pacote = pacoteComCalendario([
+          evento({ tipo: 'REUNIAO_EXTRA', nome: 'Encontro de início de ano', horario: '15:00', local: 'Parque Ecológico do Tietê' }),
+        ])
+        servidor.use(...handlersSessao([CONSELHEIRO]))
+        renderizarRotas(rotasInicio, '/inicio')
+        expect(await screen.findByText('Encontro de início de ano')).toBeInTheDocument()
+        expect(screen.getByText('15h · Parque Ecológico do Tietê')).toBeInTheDocument()
+        expect(screen.getByRole('link', { name: 'Fazer chamada' })).toBeInTheDocument()
+        expect(screen.getByText('calendário de 24/01')).toBeInTheDocument()
+      })
+
+      it('em férias: "Férias até" o fim e a próxima reunião é a depois delas', async () => {
+        offline.modo = 'SEM_CONEXAO'
+        offline.pacote = pacoteComCalendario([evento({ tipo: 'FERIAS', nome: 'Férias', inicio: emDias(-1), fim: emDias(10), temReuniao: false })])
+        servidor.use(...handlersSessao([CONSELHEIRO]))
+        renderizarRotas(rotasInicio, '/inicio')
+        expect(await screen.findByText(`Férias até ${diaEMes(emDias(10))}`)).toBeInTheDocument()
+        expect(screen.queryByRole('link', { name: 'Fazer chamada' })).not.toBeInTheDocument()
+      })
+
+      it('férias além de 120 dias: avisa que não há reunião nos próximos 4 meses', async () => {
+        offline.modo = 'SEM_CONEXAO'
+        offline.pacote = pacoteComCalendario([evento({ tipo: 'FERIAS', nome: 'Férias', inicio: emDias(-1), fim: emDias(130), temReuniao: false })])
+        servidor.use(...handlersSessao([CONSELHEIRO]))
+        renderizarRotas(rotasInicio, '/inicio')
+        expect(await screen.findByText(`Férias até ${diaEMes(emDias(130))} · nenhuma reunião marcada nos próximos 4 meses.`)).toBeInTheDocument()
+      })
+
+      it('pacote guardado antes do calendário (sem o campo): cai na regra do dia da semana, sem quebrar', async () => {
+        offline.modo = 'SEM_CONEXAO'
+        const antigo: Partial<NonNullable<PacoteGuardado['pacote']>> = pacoteDeHoje()
+        delete antigo.calendario
+        offline.pacote = antigo as NonNullable<PacoteGuardado['pacote']>
+        servidor.use(...handlersSessao([CONSELHEIRO]))
+        renderizarRotas(rotasInicio, '/inicio')
+        expect(await screen.findByText('9h · Salão')).toBeInTheDocument()
+        expect(screen.getByRole('link', { name: 'Fazer chamada' })).toBeInTheDocument()
+        expect(screen.queryByText(/Férias até/)).not.toBeInTheDocument()
+      })
     })
 
     it('sem pacote guardado: "Disponível quando houver internet"', async () => {

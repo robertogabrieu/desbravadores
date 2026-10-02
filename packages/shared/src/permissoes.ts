@@ -18,7 +18,7 @@ export const CATALOGO_PERMISSOES = {
   'foto.enviar': { rotulo: 'Enviar fotos na galeria', padrao: { ADM: true, CONSELHEIRO: true } },
   'foto.ver': { rotulo: 'Ver a galeria', padrao: { ADM: true, CONSELHEIRO: true } },
   'relatorio.unidade': { rotulo: 'Ver relatórios da unidade', padrao: { ADM: true, CONSELHEIRO: false } },
-  'aula.registrar': { rotulo: 'Registrar aulas', padrao: { ADM: true, INSTRUTOR: true } },
+  'aula.registrar': { rotulo: 'Registrar classes', padrao: { ADM: true, INSTRUTOR: true } },
   'requisito.marcar': { rotulo: 'Marcar requisitos e especialidades', padrao: { ADM: true, INSTRUTOR: true } },
   'material.enviar': { rotulo: 'Enviar materiais de apoio', padrao: { ADM: true, INSTRUTOR: true } },
   'classe.ver_relatorio': { rotulo: 'Ver relatórios da classe', padrao: { ADM: true, INSTRUTOR: true } },

@@ -68,7 +68,7 @@ export function PainelAdm({ montagem, cronograma, classe, ano, aoAtualizar }: Pr
 
       {acoes.erro && <FaixaDeMontagem erro={acoes.erro} aoAtualizar={() => { acoes.limparErro(); aoAtualizar() }} />}
 
-      <div className="grid gap-4 min-[900px]:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 min-[900px]:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <section aria-label="Requisitos" className="flex flex-col gap-3 rounded-cartao border border-borda-controle bg-superficie p-4">
           <div className="flex items-baseline justify-between">
             <h2 className="font-titulo text-lg font-bold text-texto">Requisitos da classe</h2>
@@ -108,14 +108,14 @@ export function PainelAdm({ montagem, cronograma, classe, ano, aoAtualizar }: Pr
             <h2 className="font-titulo text-lg font-bold text-texto">Datas</h2>
             {montagem.datasLivres && (
               <Botao variante="secundario" onClick={() => setAulaEmEdicao({ data: null, aulaId: null, dados: { horario: null, local: null, titulo: null } })}>
-                + Nova aula
+                + Novo dia de classe
               </Botao>
             )}
           </div>
           {montagem.datas.length === 0 ? (
             <EstadoVazio
-              titulo={montagem.datasLivres ? 'Nenhuma aula ainda' : 'Nenhuma data de aula neste período'}
-              descricao={montagem.datasLivres ? 'Crie uma aula para poder colocar requisitos nela.' : undefined}
+              titulo={montagem.datasLivres ? 'Nenhum dia de classe ainda' : 'Nenhuma data de classe neste período'}
+              descricao={montagem.datasLivres ? 'Crie um dia de classe para poder colocar requisitos nele.' : undefined}
             />
           ) : (
             <ul className="flex flex-col gap-2">

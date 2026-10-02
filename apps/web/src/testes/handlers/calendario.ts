@@ -13,8 +13,8 @@ export function criarEvento(n: number, parcial: Partial<EventoCalendario> = {}):
     fim: '2026-10-10',
     horario: null,
     local: null,
-    cancelaReuniao: false,
-    bloqueiaAula: true,
+    temReuniao: true,
+    temClasse: false,
     bomParaCampo: false,
     ...parcial,
   }

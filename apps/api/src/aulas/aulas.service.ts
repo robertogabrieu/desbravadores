@@ -14,7 +14,7 @@ import { exigirClasseNoEscopo, intervaloDoAnoClube, resumosDeRequisitos } from '
 type Resumo = z.infer<typeof AulaResumo>
 type Detalhe = z.infer<typeof AulaDetalhe>
 
-const NAO_ENCONTRADA = 'Aula não encontrada.'
+const NAO_ENCONTRADA = 'Registro de classe não encontrado.'
 
 @Injectable()
 export class AulasService {
@@ -69,7 +69,8 @@ export class AulasService {
       this.prisma.configuracaoClube.findUniqueOrThrow({ where: { clubeId } }),
       this.requisitosPlanejados(clubeId, registro.aulaPlanejadaId),
     ])
-    const idsDosRequisitos = [...new Set([...planejados, ...registro.requisitos.map((conclusao) => conclusao.requisitoId)])]
+    const marcadosNaAula = registro.requisitos.map((conclusao) => conclusao.requisitoId)
+    const idsDosRequisitos = [...new Set([...planejados, ...marcadosNaAula])]
     const requisitosDaAula = await resumosDeRequisitos(this.prisma, clubeId, { id: { in: idsDosRequisitos } }, false)
 
     return {

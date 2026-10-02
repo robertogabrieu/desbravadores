@@ -95,7 +95,7 @@ test('adm: evento em conflito avisa o instrutor, ele monta e envia, o Adm public
     aulas: [{ data: domingoDoConflito, requisitoIds: [primeiro.id, segundo.id] }],
   })
 
-  // Adm cria o "Sem reunião" no domingo da aula e vê o aviso de quantas aulas isso afeta.
+  // Adm cria o "Sem reunião" no domingo da classe e vê o aviso de quantas classes isso afeta.
   const paginaAdm = await novaSessao(browser, adm.usuario.email)
   await paginaAdm.goto('/adm/calendario')
   await paginaAdm.getByRole('link', { name: 'Novo evento' }).click()
@@ -105,13 +105,13 @@ test('adm: evento em conflito avisa o instrutor, ele monta e envia, o Adm public
   await paginaAdm.getByLabel('Fim').fill(domingoDoConflito)
   await paginaAdm.getByRole('button', { name: 'Salvar', exact: true }).click()
   await expect(paginaAdm.getByRole('heading', { level: 1, name: 'Sem reunião' })).toBeVisible()
-  await expect(paginaAdm.getByText(`1 aula estava marcada nessas datas: Amigo (${diaMes(domingoDoConflito)}). Os instrutores foram avisados.`)).toBeVisible()
+  await expect(paginaAdm.getByText(`1 classe estava marcada nessas datas: Amigo (${diaMes(domingoDoConflito)}). Os instrutores foram avisados.`)).toBeVisible()
 
-  // O instrutor vê o aviso no sino e a aula em conflito na leitura do cronograma.
+  // O instrutor vê o aviso no sino e a classe em conflito na leitura do cronograma.
   const paginaInstrutor = await novaSessao(browser, instrutor.usuario.email, CELULAR)
   await paginaInstrutor.goto('/notificacoes')
-  await expect(paginaInstrutor.getByText('Aula em conflito com o calendário')).toBeVisible()
-  await expect(paginaInstrutor.getByText(`Amigo: ${diaMes(domingoDoConflito)} deixou de ser dia de aula.`)).toBeVisible()
+  await expect(paginaInstrutor.getByText('Classe em conflito com o calendário')).toBeVisible()
+  await expect(paginaInstrutor.getByText(`Amigo: ${diaMes(domingoDoConflito)} deixou de ser dia de classe.`)).toBeVisible()
 
   const apiInstrutor = await apiDo(instrutor.autorizacao)
   const leituraEmConflito = await lerCronograma(apiInstrutor, amigo.id)

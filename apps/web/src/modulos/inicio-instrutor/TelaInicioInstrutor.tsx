@@ -1,5 +1,5 @@
 import { hojeNoFuso } from '@desbravadores/shared'
-import { CalendarDays, ClipboardCheck, Folder, MessageSquare, Medal, BarChart3 } from 'lucide-react'
+import { CalendarDays, ClipboardCheck, ClipboardList, Folder, MessageSquare, Medal, BarChart3 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useInicioInstrutor } from '../../api/instrutor'
@@ -14,7 +14,8 @@ import { FaixaAviso } from '../../ui/FaixaAviso'
 import { LinhaQueNavega } from '../../ui/LinhaQueNavega'
 import { ClassesSemConexao } from '../aulas/RegistroSemConexao'
 import { corDaClasse } from '../classes/cores'
-import { TRACO, formatarDataCurta, formatarHorario } from '../cronograma/formatos'
+import { dataCurta } from '../aulas/datas'
+import { TRACO, formatarHorario } from '../cronograma/formatos'
 
 interface Atalho {
   rotulo: string
@@ -27,7 +28,7 @@ const comClasse = (caminho: string) => (classeId: string | undefined) => (classe
 
 const ATALHOS: Atalho[] = [
   { rotulo: 'Cronograma', icone: CalendarDays, para: comClasse('/cronograma') },
-  { rotulo: 'Registrar aula', icone: ClipboardCheck, para: comClasse('/aulas/nova') },
+  { rotulo: 'Registrar classe', icone: ClipboardCheck, para: comClasse('/aulas/nova') },
   { rotulo: 'Materiais', icone: Folder, para: (classeId) => (classeId ? `/classes/${classeId}/materiais` : '/classes') },
   { rotulo: 'Observações', icone: MessageSquare, para: comClasse('/observacoes') },
   { rotulo: 'Progresso', icone: BarChart3, para: (classeId) => (classeId ? `/classes/${classeId}/progresso` : '/classes') },
@@ -42,11 +43,20 @@ const ehAgrupada = (classe: ClasseDoInstrutor): boolean => classe.classe.trilha 
 /** Data de hoje na tela do instrutor quando não há aula planejada para carregar a data. */
 const hojeLocal = (): string => hojeNoFuso(Intl.DateTimeFormat().resolvedOptions().timeZone, new Date())
 
+const partesDoLembrete = (paraCobrar: NonNullable<ClasseDoInstrutor['paraCobrar']>): string[] =>
+  [
+    { total: paraCobrar.requisitos, singular: 'requisito', plural: 'requisitos' },
+    { total: paraCobrar.especialidades, singular: 'especialidade', plural: 'especialidades' },
+    { total: paraCobrar.desbravadores, singular: 'desbravador', plural: 'desbravadores' },
+  ]
+    .filter(({ total }) => total > 0)
+    .map(({ total, singular, plural }) => `${total} ${total === 1 ? singular : plural}`)
+
 function CartaoProximaAula({ item }: { item: ClasseDoInstrutor }) {
-  const { classe, proximaAula, aulaHoje, aulaHojeRegistrada, totalDbvs } = item
+  const { classe, proximaAula, aulaHoje, aulaHojeRegistrada, totalDbvs, paraCobrar } = item
   const dataDaAula = proximaAula?.data ?? hojeLocal()
   return (
-    <section aria-label={`Próxima aula de ${classe.nome}`} className="flex flex-col overflow-hidden rounded-cartao border border-borda-controle bg-superficie">
+    <section aria-label={`Próxima classe de ${classe.nome}`} className="flex flex-col overflow-hidden rounded-cartao border border-borda-controle bg-superficie">
       <div className="h-1.5" style={corDaClasse(classe.corToken)} />
       <div className="flex flex-col gap-3 p-4">
         <div className="flex flex-wrap items-center gap-2">
@@ -55,30 +65,36 @@ function CartaoProximaAula({ item }: { item: ClasseDoInstrutor }) {
           </span>
           {proximaAula && (
             <span className="text-sm font-semibold text-texto-2">
-              Próxima aula · {formatarDataCurta(proximaAula.data)}
+              Próxima classe · {dataCurta(proximaAula.data)}
               {proximaAula.horario && ` · ${formatarHorario(proximaAula.horario)}`}
             </span>
           )}
         </div>
         {proximaAula ? (
           <div className="flex flex-col gap-1">
-            <span className="font-titulo text-xl font-bold text-texto">{proximaAula.titulo ?? 'Aula sem título'}</span>
+            <span className="font-titulo text-xl font-bold text-texto">{proximaAula.titulo ?? 'Classe sem título'}</span>
             <span className="text-base text-texto-2">
               {proximaAula.totalRequisitos} requisitos planejados · {totalDbvs} desbravadores
             </span>
           </div>
         ) : (
-          <span className="text-base text-texto-2">Nenhuma aula publicada ainda</span>
+          <span className="text-base text-texto-2">Nenhuma classe publicada ainda</span>
+        )}
+        {paraCobrar && (
+          <p className="flex items-center gap-2 text-base font-semibold text-texto">
+            <ClipboardList aria-hidden className="size-5" />
+            Para cobrar: {partesDoLembrete(paraCobrar).join(' · ')}
+          </p>
         )}
         {aulaHoje && aulaHojeRegistrada && (
           <span className="flex items-center gap-2 text-base font-semibold text-sucesso">
             <ClipboardCheck aria-hidden className="size-5" />
-            Aula de hoje registrada
+            Classe de hoje registrada
           </span>
         )}
         {aulaHoje && !aulaHojeRegistrada && (
           <Link to={`/aulas/nova?classe=${classe.id}&data=${dataDaAula}`} className={LINK_PRIMARIO}>
-            Registrar aula
+            Registrar classe
           </Link>
         )}
       </div>
@@ -129,7 +145,7 @@ function AlertaDeFaltas({ alertas }: { alertas: InicioInstrutor['alertaFaltas'] 
         .filter((alerta) => alerta.dbvs.length > 0)
         .map((alerta) => (
           <FaixaAviso key={alerta.classe.id}>
-            {alerta.dbvs.length} desbravadores faltaram às duas últimas aulas de {alerta.classe.nome}: {alerta.dbvs.map((dbv) => dbv.nome).join(', ')}.
+            {alerta.dbvs.length} desbravadores faltaram às duas últimas classes de {alerta.classe.nome}: {alerta.dbvs.map((dbv) => dbv.nome).join(', ')}.
           </FaixaAviso>
         ))}
     </>

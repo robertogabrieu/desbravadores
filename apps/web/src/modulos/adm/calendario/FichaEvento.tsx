@@ -1,3 +1,5 @@
+import { datasDoIntervalo, situacaoDaData } from '@desbravadores/shared'
+import { Sun } from 'lucide-react'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -14,9 +16,11 @@ import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/Esta
 import { EstadoNaoEncontrado, ehNaoEncontrado } from '../../../ui/EstadoNaoEncontrado'
 import { FaixaAviso } from '../../../ui/FaixaAviso'
 import { ListaDePares } from '../../../ui/ListaDePares'
+import type { Par } from '../../../ui/ListaDePares'
 import { lerErroDaApi } from '../desbravadores/erros'
-import { horaCurta, juntarNomes, periodoPorExtenso } from '../formatos'
+import { horaCurta, periodoPorExtenso } from '../formatos'
 import { useAvisosDaFicha, useVoltarPara } from '../navegacao'
+import { datasDoDiaDaSemana, diaDaSemana, diaPorExtenso, dosDiasDeReuniao, textoDosDias } from './datas'
 import { ROTULOS_DO_TIPO } from './tipos'
 
 const CALENDARIO = '/adm/calendario'
@@ -24,25 +28,38 @@ const TRACO = '—'
 
 const simOuNao = (valor: boolean): string => (valor ? 'Sim' : 'Não')
 
-const NOMES_DO_DIA = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado']
-
-/** Os dias de `inicio` a `fim` (AAAA-MM-DD) que caem em `diaDaSemana` (0 = domingo), como número do dia: sex 16 a dom 18, domingo → [18]. */
-function diasDaSemanaNoPeriodo(inicio: string, fim: string, diaDaSemana: number): number[] {
-  const dias: number[] = []
-  const dia = new Date(`${inicio}T00:00:00Z`)
-  const ultimo = new Date(`${fim}T00:00:00Z`)
-  for (; dia <= ultimo; dia.setUTCDate(dia.getUTCDate() + 1)) {
-    if (dia.getUTCDay() === diaDaSemana) dias.push(dia.getUTCDate())
-  }
-  return dias
+/** Reunião ou classe pela regra do dia aplicada só a este evento: "Sim (domingo 18)", "Não (domingos 11 e 18)". */
+function textoDaMarcacao(evento: EventoCalendario, diaReuniao: number | undefined, marcacao: 'temReuniao' | 'temClasse'): string {
+  if (diaReuniao === undefined) return simOuNao(evento[marcacao])
+  const datasComMarcacao = datasDoIntervalo(evento.inicio, evento.fim).filter((data) => situacaoDaData(data, diaReuniao, [evento])[marcacao])
+  if (datasComMarcacao.length > 0) return `Sim (${textoDosDias(datasComMarcacao)})`
+  const diasDeReuniao = datasDoDiaDaSemana(evento.inicio, evento.fim, diaReuniao)
+  if (diasDeReuniao.length === 0) return `Não há ${dosDiasDeReuniao(diaReuniao).nome} no período`
+  return `Não (${textoDosDias(diasDeReuniao)})`
 }
 
-/** "Cancela a reunião de sábado 17"; sem dia de reunião no período (ou sem cancelar, ou sem saber o dia), o rótulo simples. */
-function rotuloDoCancelamento(evento: EventoCalendario, diaReuniao: number | undefined): string {
-  const dias = evento.cancelaReuniao && diaReuniao !== undefined ? diasDaSemanaNoPeriodo(evento.inicio, evento.fim, diaReuniao) : []
-  if (dias.length === 0) return 'Cancela a reunião'
-  const nome = NOMES_DO_DIA[diaReuniao ?? 0]
-  return dias.length === 1 ? `Cancela a reunião de ${nome} ${dias[0]}` : `Cancela as reuniões de ${nome} ${juntarNomes(dias.map(String))}`
+/** A extra só acrescenta: no dia normal "Sim" é o horário e o local dela, e "Não" deixa o calendário como está. */
+function textoDaMarcacaoDaExtra(evento: EventoCalendario, diaReuniao: number | undefined, marcacao: 'temReuniao' | 'temClasse'): string {
+  if (diaReuniao === undefined) return simOuNao(evento[marcacao])
+  const dia = diaPorExtenso(evento.inicio)
+  const noDiaNormal = diaDaSemana(evento.inicio) === diaReuniao
+  if (!evento[marcacao]) return noDiaNormal ? `Não acrescenta — ${dia} segue o calendário` : 'Não'
+  if (marcacao === 'temReuniao' && noDiaNormal) return `Sim — ${dia} já tem reunião; vale o horário e o local deste evento`
+  return `Sim (${dia})`
+}
+
+function paresDoQueMuda(evento: EventoCalendario, diaReuniao: number | undefined): Par[] {
+  if (evento.tipo === 'REUNIAO_EXTRA') {
+    return [
+      { rotulo: 'Terá reunião', valor: textoDaMarcacaoDaExtra(evento, diaReuniao, 'temReuniao') },
+      { rotulo: 'Terá classe', valor: textoDaMarcacaoDaExtra(evento, diaReuniao, 'temClasse') },
+    ]
+  }
+  return [
+    { rotulo: 'Terá reunião', valor: textoDaMarcacao(evento, diaReuniao, 'temReuniao') },
+    { rotulo: 'Terá classe', valor: textoDaMarcacao(evento, diaReuniao, 'temClasse') },
+    { rotulo: 'Terá atividade de campo', valor: simOuNao(evento.bomParaCampo) },
+  ]
 }
 
 function Conteudo({ evento }: { evento: EventoCalendario }) {
@@ -85,8 +102,8 @@ function Conteudo({ evento }: { evento: EventoCalendario }) {
       />
 
       {avisos.length > 0 && (
-        <section aria-label="Aulas afetadas" className="flex flex-col gap-2">
-          <h2 className="font-titulo text-lg font-bold text-texto">Aulas afetadas</h2>
+        <section aria-label="Classes afetadas" className="flex flex-col gap-2">
+          <h2 className="font-titulo text-lg font-bold text-texto">Classes afetadas</h2>
           {avisos.map((aviso) => (
             <FaixaAviso key={aviso}>{aviso}</FaixaAviso>
           ))}
@@ -107,7 +124,7 @@ function Conteudo({ evento }: { evento: EventoCalendario }) {
           <ListaDePares
             colunas={3}
             pares={[
-              { rotulo: 'Datas', valor: periodoPorExtenso(evento.inicio, evento.fim) },
+              { rotulo: evento.tipo === 'REUNIAO_EXTRA' ? 'Data' : 'Datas', valor: periodoPorExtenso(evento.inicio, evento.fim) },
               { rotulo: 'Horário', valor: evento.horario ? horaCurta(evento.horario) : TRACO },
               { rotulo: 'Local', valor: evento.local ?? TRACO },
             ]}
@@ -118,13 +135,14 @@ function Conteudo({ evento }: { evento: EventoCalendario }) {
       <section aria-label="O que muda no calendário">
         <Cartao className="flex flex-col gap-4">
           <h2 className="font-titulo text-lg font-bold text-texto">O que muda no calendário</h2>
-          <ListaDePares
-            pares={[
-              { rotulo: rotuloDoCancelamento(evento, configuracao.data?.diaReuniao), valor: simOuNao(evento.cancelaReuniao) },
-              { rotulo: 'Bloqueia aulas nessas datas', valor: simOuNao(evento.bloqueiaAula) },
-              { rotulo: 'Bom para requisitos de campo', valor: simOuNao(evento.bomParaCampo) },
-            ]}
-          />
+          {evento.tipo === 'FERIAS' ? (
+            <p className="flex items-center gap-2 text-base text-texto">
+              <Sun aria-hidden className="size-5 shrink-0 text-[var(--cal-ferias-fg)]" />
+              {`Sem reunião e sem classe ${dosDiasDeReuniao(configuracao.data?.diaReuniao).nos} do período; acampamentos continuam valendo.`}
+            </p>
+          ) : (
+            <ListaDePares pares={paresDoQueMuda(evento, configuracao.data?.diaReuniao)} />
+          )}
         </Cartao>
       </section>
 

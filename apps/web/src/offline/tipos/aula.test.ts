@@ -19,6 +19,8 @@ type Corpo = z.infer<typeof AulaEnvio>
 type Saida = z.infer<typeof AulaEnvioSaida>
 
 const presenca = (n: number, presente: boolean, versaoVista: string | null = null) => ({ dbvId: uuid(n), presente, versaoVista })
+const requisitoItem = (n: number) => ({ requisitoId: uuid(n) })
+const especialidadeItem = (n: number) => ({ especialidadeId: uuid(n) })
 const par = (dbv: number, req: number) => ({ dbvId: uuid(dbv), requisitoId: uuid(req) })
 
 function payload(parcial: Partial<Corpo> = {}, extras: Partial<PayloadAulaFila> = {}): PayloadAulaFila {
@@ -38,6 +40,12 @@ function payload(parcial: Partial<Corpo> = {}, extras: Partial<PayloadAulaFila> 
       presencas: [presenca(1, true), presenca(2, false), presenca(3, true)],
       requisitosMarcados: [par(1, 11), par(3, 12)],
       requisitosDesmarcados: [],
+      tarefaId: null,
+      tarefaItensAcrescentados: [],
+      tarefaItensRetirados: [],
+      especialidadesMarcadas: [],
+      especialidadesDesmarcadas: [],
+      tarefasEncerradas: [],
       ...parcial,
     },
     ...extras,
@@ -48,8 +56,8 @@ describe('tipo AULA da fila', () => {
   const tipo = obterTipo('AULA')
 
   it('registra o tipo com rótulo e detalhe de aula nova e de correção', () => {
-    expect(tipo?.rotulo(payload())).toBe('Aula · Companheiro · 10/03')
-    expect(tipo?.rotulo(payload({}, { correcao: true }))).toBe('Correção na aula · Companheiro · 10/03')
+    expect(tipo?.rotulo(payload())).toBe('Classe · Companheiro · 10/03')
+    expect(tipo?.rotulo(payload({}, { correcao: true }))).toBe('Correção na classe · Companheiro · 10/03')
     expect(tipo?.detalhe(payload())).toBe('2 presentes · 2 requisitos')
   })
 
@@ -98,6 +106,55 @@ describe('tipo AULA da fila', () => {
       expect(Object.keys(fundido.codigos)).toHaveLength(2)
       expect(fundido.corpo.aulaPlanejadaId).toBe(uuid(50))
     })
+
+    it('itens da tarefa: a última ação por item vence e o tarefaId é o do item anterior', () => {
+      const anterior = payload({ tarefaId: uuid(600), tarefaItensAcrescentados: [requisitoItem(11), especialidadeItem(21)], tarefaItensRetirados: [requisitoItem(12)] })
+      const novo = payload({ tarefaId: uuid(601), tarefaItensAcrescentados: [requisitoItem(12)], tarefaItensRetirados: [requisitoItem(11)] })
+      const fundido = fundir(anterior, novo)
+      expect(fundido.corpo.tarefaItensAcrescentados).toEqual([especialidadeItem(21), requisitoItem(12)])
+      expect(fundido.corpo.tarefaItensRetirados).toEqual([requisitoItem(11)])
+      expect(fundido.corpo.tarefaId).toBe(uuid(600))
+    })
+
+    it('sem tarefa no anterior, vale a do novo; juntam-se os nomes das especialidades', () => {
+      const anterior = payload({}, { especialidades: { [uuid(21)]: 'Nós e amarras' } })
+      const novo = payload({ tarefaId: uuid(601), tarefaItensAcrescentados: [especialidadeItem(22)] }, { especialidades: { [uuid(22)]: 'Aves' } })
+      const fundido = fundir(anterior, novo)
+      expect(fundido.corpo.tarefaId).toBe(uuid(601))
+      expect(fundido.especialidades).toEqual({ [uuid(21)]: 'Nós e amarras', [uuid(22)]: 'Aves' })
+    })
+
+    it('item antigo da fila, sem os campos da tarefa, funde e envia sem quebrar', () => {
+      const antigo = payload()
+      const corpoAntigo = Object.fromEntries(Object.entries(antigo.corpo).filter(([campo]) => !campo.startsWith('tarefa')))
+      const semCampos = { ...antigo, corpo: corpoAntigo } as unknown as PayloadAulaFila
+      const fundido = fundir(semCampos, payload({ tarefaItensAcrescentados: [requisitoItem(11)] }))
+      expect(fundido.corpo.tarefaItensAcrescentados).toEqual([requisitoItem(11)])
+      expect(fundido.corpo.tarefaItensRetirados).toEqual([])
+      expect(fundido.corpo.tarefaId).toBeNull()
+      expect(fundir(payload({ tarefaItensRetirados: [requisitoItem(11)] }), semCampos).corpo.tarefaItensRetirados).toEqual([requisitoItem(11)])
+    })
+
+    it('especialidades entregues: a última ação por desbravador e especialidade vence; encerradas, a união', () => {
+      const marca = (dbv: number, esp: number) => ({ dbvId: uuid(dbv), especialidadeId: uuid(esp) })
+      const anterior = payload({ especialidadesMarcadas: [marca(1, 21), marca(2, 21)], especialidadesDesmarcadas: [marca(3, 21)], tarefasEncerradas: [uuid(600)] })
+      const novo = payload({ especialidadesMarcadas: [marca(3, 21)], especialidadesDesmarcadas: [marca(1, 21)], tarefasEncerradas: [uuid(600), uuid(601)] })
+      const fundido = fundir(anterior, novo)
+      expect(fundido.corpo.especialidadesMarcadas).toEqual([marca(2, 21), marca(3, 21)])
+      expect(fundido.corpo.especialidadesDesmarcadas).toEqual([marca(1, 21)])
+      expect(fundido.corpo.tarefasEncerradas).toEqual([uuid(600), uuid(601)])
+    })
+
+    it('item antigo da fila, sem os campos de cobrança, funde sem quebrar', () => {
+      const antigo = payload()
+      const corpoAntigo: Partial<typeof antigo.corpo> = { ...antigo.corpo }
+      delete corpoAntigo.especialidadesMarcadas
+      delete corpoAntigo.especialidadesDesmarcadas
+      delete corpoAntigo.tarefasEncerradas
+      const fundido = fundir({ ...antigo, corpo: corpoAntigo } as unknown as PayloadAulaFila, payload({ tarefasEncerradas: [uuid(600)] }))
+      expect(fundido.corpo.especialidadesMarcadas).toEqual([])
+      expect(fundido.corpo.tarefasEncerradas).toEqual([uuid(600)])
+    })
   })
 
   describe('aoEnviar', () => {
@@ -112,6 +169,9 @@ describe('tipo AULA da fila', () => {
       requisitosSemEfeito: [],
       avisos: [],
       totalPontos: 0,
+      tarefaId: null,
+      tarefaItensSemEfeito: [],
+      especialidadesSemEfeito: [],
       ...parcial,
     })
 
@@ -155,6 +215,35 @@ describe('tipo AULA da fila', () => {
       expect(novo?.corpo.presencas).toEqual([presenca(1, false, '2030-03-10T12:05:00.000Z'), presenca(3, true, null)])
     })
 
+    it('troca o tarefaId dos itens seguintes pelo id real da tarefa; sem tarefa no seguinte, não inventa uma', async () => {
+      const comTarefa = { id: 'a', payload: payload({ tarefaId: uuid(601), tarefaItensAcrescentados: [requisitoItem(11)] }) } as ItemFila<PayloadAulaFila>
+      const semTarefa = { id: 'b', payload: payload() } as ItemFila<PayloadAulaFila>
+      const { ctx, atualizarPayload } = contexto([comTarefa, semTarefa])
+      await aoEnviar(saida({ tarefaId: uuid(602) }), ctx)
+      expect(atualizarPayload.mock.calls[0]?.[1].corpo.tarefaId).toBe(uuid(602))
+      expect(atualizarPayload.mock.calls[1]?.[1].corpo.tarefaId).toBeNull()
+    })
+
+    it('avisa os itens que não entraram na tarefa, com o código do requisito e o nome da especialidade', async () => {
+      avisos.warning.mockClear()
+      const item = { payload: payload({}, { especialidades: { [uuid(21)]: 'Nós e amarras' }, codigos: { [uuid(11)]: '3a' } }) } as ItemFila<PayloadAulaFila>
+      const { ctx } = contexto()
+      await aoEnviar(
+        saida({ tarefaItensSemEfeito: [{ item: requisitoItem(11), motivo: 'ITEM_INVALIDO' }, { item: especialidadeItem(21), motivo: 'JA_EM_TAREFA' }] }),
+        { ...ctx, item },
+      )
+      expect(avisos.warning).toHaveBeenCalledWith('Não entrou na tarefa porque não vale mais ou já está em outra tarefa: 3a, Nós e amarras.')
+    })
+
+    it('item sem nome conhecido ainda é avisado, e tarefa sem recusa não avisa', async () => {
+      avisos.warning.mockClear()
+      await aoEnviar(saida({ tarefaItensSemEfeito: [{ item: especialidadeItem(99), motivo: 'ITEM_INVALIDO' }] }), contexto().ctx)
+      expect(avisos.warning).toHaveBeenCalledWith('Não entrou na tarefa porque não vale mais ou já está em outra tarefa: especialidade.')
+      avisos.warning.mockClear()
+      await aoEnviar(saida({ tarefaId: uuid(602) }), contexto().ctx)
+      expect(avisos.warning).not.toHaveBeenCalled()
+    })
+
     it('sem nada a avisar, não avisa', async () => {
       avisos.warning.mockClear()
       await aoEnviar(saida(), contexto().ctx)
@@ -184,6 +273,33 @@ describe('tipo AULA da fila', () => {
       expect(textos.some((t) => t.includes('Bruno Lima (R2)') && t.includes('Faltaram'))).toBe(true)
       expect(textos.some((t) => t.includes('Bruno Lima (R1)') && t.includes('não é mais da classe'))).toBe(true)
       expect(textos).toContain('Esta aula foi registrada fora do cronograma publicado.')
+    })
+
+    describe('avisos de especialidade', () => {
+      const comNomes = { payload: payload({}, { especialidades: { [uuid(21)]: 'Primeiros socorros' } }) } as ItemFila<PayloadAulaFila>
+      const semEfeito = (motivo: Saida['especialidadesSemEfeito'][number]['motivo'], concluidaEm: string | null = null) => ({ dbvId: uuid(1), especialidadeId: uuid(21), motivo, concluidaEm })
+      async function avisosDe(parcial: Partial<Saida>): Promise<string[]> {
+        avisos.warning.mockClear()
+        await aoEnviar(saida(parcial), { ...contexto().ctx, item: comNomes })
+        return avisos.warning.mock.calls.map(([texto]) => texto)
+      }
+
+      it('já concluída, com a data; faltou ao encontro; não está mais ativa', async () => {
+        expect(await avisosDe({ especialidadesSemEfeito: [semEfeito('JA_CONCLUIDA', '2030-09-12')] })).toEqual(['Já estava concluída e ficou como estava: Ana Clara (Primeiros socorros) em 12/09.'])
+        expect(await avisosDe({ especialidadesSemEfeito: [semEfeito('AUSENTE')] })).toEqual(['Faltou ao encontro, então a entrega não valeu: Ana Clara (Primeiros socorros).'])
+        expect(await avisosDe({ especialidadesSemEfeito: [semEfeito('ESPECIALIDADE_INVALIDA')] })).toEqual(['Especialidade que não está mais ativa ficou de fora: Primeiros socorros.'])
+      })
+
+      it('sem permissão: um aviso só, venha da entrega ou do item da tarefa', async () => {
+        const texto = 'Sem permissão para marcar especialidades; elas ficaram de fora.'
+        expect(await avisosDe({ especialidadesSemEfeito: [semEfeito('SEM_PERMISSAO')] })).toEqual([texto])
+        expect(await avisosDe({ tarefaItensSemEfeito: [{ item: especialidadeItem(21), motivo: 'SEM_PERMISSAO' }] })).toEqual([texto])
+        expect(await avisosDe({ especialidadesSemEfeito: [semEfeito('SEM_PERMISSAO')], tarefaItensSemEfeito: [{ item: especialidadeItem(21), motivo: 'SEM_PERMISSAO' }] })).toEqual([texto])
+      })
+
+      it('a própria ficha não gera aviso', async () => {
+        expect(await avisosDe({ especialidadesSemEfeito: [semEfeito('PROPRIA_FICHA')] })).toEqual([])
+      })
     })
   })
 })

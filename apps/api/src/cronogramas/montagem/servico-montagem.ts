@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { datasDeAula, type MontagemSaida } from '@desbravadores/shared'
+import { datasDeClasse, type MontagemSaida } from '@desbravadores/shared'
 import type { z } from 'zod'
 import type { SessaoLogada } from '../../comum/decorators/sessao.decorator'
 import { ErroApp } from '../../comum/erros'
@@ -25,7 +25,7 @@ interface Contexto {
 /** O que a mutação muda no cronograma além do que toda edição muda (voltar a rascunho e renovar `atualizadoEm`). */
 type MudancaDoCronograma = Prisma.CronogramaUncheckedUpdateManyInput
 
-const AULA_DADA = 'Esta aula já foi dada.'
+const AULA_DADA = 'Esta classe já foi dada.'
 const CLASSE_DESATIVADA = 'Esta classe está desativada no clube.'
 const OUTRA_PESSOA_MUDOU = 'Outra pessoa acabou de mudar esta data. Atualize a tela.'
 const CRONOGRAMA_MUDOU = 'O cronograma mudou desde que você abriu. Revise antes de publicar.'
@@ -77,7 +77,7 @@ export class ServicoMontagem {
         select: { data: true },
       })
       const fora = aulas.map((aula) => paraDataCivil(aula.data)).filter((data) => data < periodo.inicio || data > periodo.fim).sort()
-      if (fora.length > 0) throw regra(`Há aulas fora do novo período: ${fora.map(diaEMes).join(', ')}. Mova-as antes.`)
+      if (fora.length > 0) throw regra(`Há classes fora do novo período: ${fora.map(diaEMes).join(', ')}. Mova-as antes.`)
       return { inicio: daDataCivil(periodo.inicio), fim: daDataCivil(periodo.fim) }
     })
   }
@@ -99,7 +99,7 @@ export class ServicoMontagem {
         await this.exigirDataDeAula(tx, cronograma, data)
         destino ??= await tx.aulaPlanejada.create({ data: { clubeId, cronogramaId: cronograma.id, data: daDataCivil(data) } })
       } else if (!destino) {
-        throw regra('Crie a aula desta data antes de colocar o requisito.')
+        throw regra('Crie o dia de classe desta data antes de colocar o requisito.')
       }
       if (origem?.id === destino.id) return
 
@@ -125,14 +125,14 @@ export class ServicoMontagem {
     entrada: { data: string; horario: string | null; local: string | null; titulo: string | null },
   ): Promise<Saida> {
     return this.executar(sessao, cronogramaId, 'MONTAR', async ({ tx, cronograma, trilha }) => {
-      if (trilha !== 'AGRUPADAS') throw regra('Só as classes agrupadas criam aula em qualquer data.')
+      if (trilha !== 'AGRUPADAS') throw regra('Só as classes agrupadas aceitam qualquer data.')
       this.exigirNoPeriodo(cronograma, entrada.data)
       await this.exigirAulaNaoDada(tx, cronograma, entrada.data)
       const existente = await tx.aulaPlanejada.findFirst({
         where: { clubeId: cronograma.clubeId, cronogramaId: cronograma.id, data: daDataCivil(entrada.data), removidaEm: null },
         select: { id: true },
       })
-      if (existente) throw new ErroApp('CONFLITO', 'Já existe uma aula nesta data.')
+      if (existente) throw new ErroApp('CONFLITO', 'Já existe dia de classe nesta data.')
       await tx.aulaPlanejada.create({
         data: {
           clubeId: cronograma.clubeId,
@@ -310,13 +310,13 @@ export class ServicoMontagem {
       where: { clubeId: sessao.clubeId, id: aulaId, removidaEm: null },
       select: { cronogramaId: true },
     })
-    if (!aula) throw new ErroApp('NAO_ENCONTRADO', 'Aula não encontrada.')
+    if (!aula) throw new ErroApp('NAO_ENCONTRADO', 'Dia de classe não encontrado.')
     return aula.cronogramaId
   }
 
   private async aulaAtiva(tx: Tx, cronograma: Cronograma, aulaId: string) {
     const aula = await tx.aulaPlanejada.findFirst({ where: { clubeId: cronograma.clubeId, id: aulaId, removidaEm: null } })
-    if (!aula) throw new ErroApp('NAO_ENCONTRADO', 'Aula não encontrada.')
+    if (!aula) throw new ErroApp('NAO_ENCONTRADO', 'Dia de classe não encontrado.')
     return aula
   }
 
@@ -353,18 +353,18 @@ export class ServicoMontagem {
     }
   }
 
-  /** B5: só dia de reunião mantida ou data boa para campo, sem bloqueio, aceita aula das individuais. */
+  /** B5: só a data que a regra do dia marca com classe (reunião mantida, campo ou extra com classe) aceita dia de classe das individuais. */
   private async exigirDataDeAula(tx: Tx, cronograma: Cronograma, data: string): Promise<void> {
     this.exigirNoPeriodo(cronograma, data)
     const { clubeId } = cronograma
     const configuracao = await tx.configuracaoClube.findUniqueOrThrow({ where: { clubeId } })
     const eventos = await tx.eventoCalendario.findMany({
       where: { clubeId, removidoEm: null, inicio: { lte: daDataCivil(data) }, fim: { gte: daDataCivil(data) } },
-      select: { nome: true, inicio: true, fim: true, cancelaReuniao: true, bloqueiaAula: true, bomParaCampo: true },
+      select: { nome: true, tipo: true, inicio: true, fim: true, horario: true, local: true, temReuniao: true, temClasse: true, bomParaCampo: true },
     })
     const doCalendario = eventos.map((evento) => ({ ...evento, inicio: paraDataCivil(evento.inicio), fim: paraDataCivil(evento.fim) }))
-    if (datasDeAula(data, data, configuracao.diaReuniao, doCalendario).length === 0) {
-      throw regra('Esta data não é dia de aula.')
+    if (datasDeClasse(data, data, configuracao.diaReuniao, doCalendario).length === 0) {
+      throw regra('Esta data não é dia de classe.')
     }
   }
 

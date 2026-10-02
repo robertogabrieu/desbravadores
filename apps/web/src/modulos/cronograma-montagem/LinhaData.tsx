@@ -58,9 +58,9 @@ export function LinhaData({ dado, requisitos, destaqueCampo = false, desabilitad
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         {texto && <span className="text-sm font-semibold text-texto-2">{texto}</span>}
         {dado.conflito && (
-          <span className="text-sm font-bold text-perigo">Conflito: não há aula de classe nesta data. Mova os requisitos.</span>
+          <span className="text-sm font-bold text-perigo">Conflito: não há classe nesta data. Mova os requisitos.</span>
         )}
-        {dado.aulaDada && <Selo className="self-start">Aula dada</Selo>}
+        {dado.aulaDada && <Selo className="self-start">Classe dada</Selo>}
         {detalhe && <span className="text-sm text-texto-2">{detalhe}</span>}
 
         {requisitos.map((requisito) => (
@@ -98,7 +98,7 @@ export function LinhaData({ dado, requisitos, destaqueCampo = false, desabilitad
         {podeEditar && (
           <Botao variante="texto" className="self-start px-2 text-perigo" disabled={desabilitada} onClick={() => setConfirmandoRemocao(true)}>
             <Trash2 aria-hidden className="size-4" />
-            Remover aula
+            Remover dia de classe
           </Botao>
         )}
       </div>
@@ -107,7 +107,7 @@ export function LinhaData({ dado, requisitos, destaqueCampo = false, desabilitad
 
       <Confirmacao
         aberta={confirmandoRemocao}
-        titulo="Remover esta aula?"
+        titulo="Remover este dia de classe?"
         rotuloConfirmar="Remover"
         perigo
         aoConfirmar={() => {
@@ -116,7 +116,7 @@ export function LinhaData({ dado, requisitos, destaqueCampo = false, desabilitad
         }}
         aoCancelar={() => setConfirmandoRemocao(false)}
       >
-        Os requisitos desta aula voltam a ficar sem data.
+        Os requisitos deste dia de classe voltam a ficar sem data.
       </Confirmacao>
     </li>
   )

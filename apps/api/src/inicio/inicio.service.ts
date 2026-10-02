@@ -1,5 +1,13 @@
 import { Injectable } from '@nestjs/common'
-import type { InicioConselheiroFiltro, InicioConselheiroSaida } from '@desbravadores/shared'
+import {
+  feriasAte,
+  horarioELocalDoDia,
+  JANELA_DO_CALENDARIO_EM_DIAS,
+  proximaReuniao,
+  situacaoDaData,
+  type InicioConselheiroFiltro,
+  type InicioConselheiroSaida,
+} from '@desbravadores/shared'
 import type { z } from 'zod'
 import { ErroApp } from '../comum/erros'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
@@ -11,14 +19,6 @@ import { CalculoRanking } from '../ranking/calculo-ranking'
 type Saida = z.infer<typeof InicioConselheiroSaida>
 
 const TOTAL_DE_DESTAQUES = 3
-
-/** Primeira data a partir de `hoje` cujo dia da semana e `diaDaSemana` (0 = domingo). */
-function proximaData(hoje: string, diaDaSemana: number): string {
-  const data = daDataCivil(hoje)
-  const espera = (diaDaSemana - data.getUTCDay() + 7) % 7
-  data.setUTCDate(data.getUTCDate() + espera)
-  return paraDataCivil(data)
-}
 
 @Injectable()
 export class InicioService {
@@ -41,17 +41,18 @@ export class InicioService {
     const escolhida = filtro.unidadeId ? unidades.find((unidade) => unidade.id === filtro.unidadeId) : unidades[0]
     if (filtro.unidadeId && !escolhida) throw new ErroApp('NAO_ENCONTRADO', 'Unidade não encontrada.')
     if (!escolhida) {
-      return { unidade: null, unidades, proximaReuniao: null, totalDbvs: 0, frequenciaMes: null, posicaoUnidade: null, destaques: [] }
+      return { unidade: null, unidades, proximaReuniao: null, feriasAte: null, totalDbvs: 0, frequenciaMes: null, posicaoUnidade: null, destaques: [] }
     }
 
     const mes = relogio.hoje.slice(0, 7)
     const entradas = await this.calculo.doMes(clubeId, mes, relogio.anoClube, escolhida.id)
     const ranking = await this.calculo.unidades(clubeId, mes, relogio.anoClube)
     const posicaoNoRanking = ranking.findIndex((media) => media.unidade.id === escolhida.id)
+    const calendario = await this.proximaReuniaoEFerias(clubeId, escolhida.id, relogio.hoje)
     return {
       unidade: escolhida,
       unidades,
-      proximaReuniao: await this.proximaReuniao(clubeId, escolhida.id, relogio.hoje),
+      ...calendario,
       totalDbvs: entradas.length,
       frequenciaMes: await this.calculo.frequenciaDaUnidade(clubeId, escolhida.id, mes),
       posicaoUnidade: posicaoNoRanking < 0 ? null : { posicao: posicaoNoRanking + 1, total: ranking.length },
@@ -62,16 +63,33 @@ export class InicioService {
     }
   }
 
-  private async proximaReuniao(clubeId: string, unidadeId: string, hoje: string): Promise<Saida['proximaReuniao']> {
+  private async proximaReuniaoEFerias(clubeId: string, unidadeId: string, hoje: string): Promise<Pick<Saida, 'proximaReuniao' | 'feriasAte'>> {
     const configuracao = await this.prisma.configuracaoClube.findUniqueOrThrow({ where: { clubeId } })
-    const data = proximaData(hoje, configuracao.diaReuniao)
-    const feitas = await this.prisma.reuniao.count({ where: { clubeId, unidadeId, data: daDataCivil(data) } })
-    return {
-      data,
+    const limite = paraDataCivil(new Date(daDataCivil(hoje).getTime() + JANELA_DO_CALENDARIO_EM_DIAS * 86_400_000))
+    const eventos = (
+      await this.prisma.eventoCalendario.findMany({
+        where: { clubeId, removidoEm: null, inicio: { lte: daDataCivil(limite) }, fim: { gte: daDataCivil(hoje) } },
+      })
+    ).map((evento) => ({ ...evento, inicio: paraDataCivil(evento.inicio), fim: paraDataCivil(evento.fim) }))
+    const fimDasFerias = feriasAte(hoje, configuracao.diaReuniao, eventos)
+    const proxima = proximaReuniao(hoje, configuracao.diaReuniao, eventos)
+    if (!proxima) return { proximaReuniao: null, feriasAte: fimDasFerias }
+
+    const { horario, local } = horarioELocalDoDia(situacaoDaData(proxima.data, configuracao.diaReuniao, eventos), {
       horario: configuracao.horaReuniao,
       local: configuracao.localReuniaoPadrao,
-      ehHoje: data === hoje,
-      chamadaFeita: feitas > 0,
+    })
+    const feitas = await this.prisma.reuniao.count({ where: { clubeId, unidadeId, data: daDataCivil(proxima.data) } })
+    return {
+      proximaReuniao: {
+        data: proxima.data,
+        horario,
+        local,
+        nome: proxima.extra?.nome ?? null,
+        ehHoje: proxima.data === hoje,
+        chamadaFeita: feitas > 0,
+      },
+      feriasAte: fimDasFerias,
     }
   }
 }

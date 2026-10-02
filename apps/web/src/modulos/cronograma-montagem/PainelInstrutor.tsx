@@ -85,11 +85,11 @@ export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Prop
           <p className="text-sm text-texto-2">Toque em “Adicionar requisito” numa data para agendar.</p>
           {montagem.datasLivres && (
             <Botao variante="secundario" onClick={() => setAulaEmEdicao(AULA_VAZIA)}>
-              + Nova aula
+              + Novo dia de classe
             </Botao>
           )}
           {montagem.datas.length === 0 ? (
-            <EstadoVazio titulo={montagem.datasLivres ? 'Nenhuma aula ainda' : 'Nenhuma data de aula neste período'} />
+            <EstadoVazio titulo={montagem.datasLivres ? 'Nenhum dia de classe ainda' : 'Nenhuma data de classe neste período'} />
           ) : (
             <ul className="flex flex-col gap-2">
               {montagem.datas.map((dado) => (

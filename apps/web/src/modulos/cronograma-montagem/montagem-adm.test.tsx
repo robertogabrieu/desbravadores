@@ -16,6 +16,7 @@ import {
   criarMontagemDeExemplo,
   handlerErroMontagem,
   handlersMontagem,
+  situacaoDoDia,
 } from '../../testes/handlers/montagem'
 import { criarVinculo, handlersSessao, uuid } from '../../testes/handlers/sessao'
 import { renderizarRotas } from '../../testes/renderizar'
@@ -71,6 +72,15 @@ describe('A7 · quatro estados', () => {
   it('vazio: sem cronograma oferece "Criar cronograma"', async () => {
     abrir(criarMontagem({ cronograma: null }))
     expect(await screen.findByRole('button', { name: 'Criar cronograma' })).toBeInTheDocument()
+  })
+})
+
+describe('A7 · largura no celular', () => {
+  it('as seções ocupam uma coluna que nunca passa da largura da tela, mesmo com texto que não quebra', async () => {
+    abrir()
+    await screen.findByText(/agendados/)
+    const colunas = screen.getByRole('region', { name: 'Datas' }).parentElement as HTMLElement
+    expect(colunas.className).toContain('grid-cols-[minmax(0,1fr)]')
   })
 })
 
@@ -161,7 +171,7 @@ describe('A7 · montar', () => {
     await screen.findByText(/agendados/)
     const bloqueada = linha('2026-10-11')
     expect(bloqueada).toHaveAttribute('data-estado', 'bloqueada')
-    expect(within(bloqueada).getByText('Feriado prolongado · sem aula de classe')).toBeInTheDocument()
+    expect(within(bloqueada).getByText('Feriado prolongado · sem classe')).toBeInTheDocument()
     expect(within(bloqueada).queryByRole('button', { name: /Colocar aqui/ })).not.toBeInTheDocument()
   })
 
@@ -195,7 +205,7 @@ describe('A7 · montar', () => {
     await screen.findByText(/agendados/)
     expect(linha('2026-10-25')).toHaveAttribute('data-estado', 'conflito')
     const dada = linha('2026-11-01')
-    expect(within(dada).getByText('Aula dada')).toBeInTheDocument()
+    expect(within(dada).getByText('Classe dada')).toBeInTheDocument()
     expect(within(dada).queryByRole('button')).not.toBeInTheDocument()
   })
 
@@ -215,10 +225,10 @@ describe('A7 · montar', () => {
     })
   })
 
-  it('Agrupadas: "+ Nova aula" cria a aula na data escolhida', async () => {
+  it('Agrupadas: "+ Novo dia de classe" cria o dia de classe na data escolhida', async () => {
     const registro = abrir(criarMontagemDeExemplo({ datasLivres: true, datas: [criarDataMontagem('2026-10-04', { aulaId: uuid(2001) })] }))
     const usuario = userEvent.setup()
-    await usuario.click(await screen.findByRole('button', { name: '+ Nova aula' }))
+    await usuario.click(await screen.findByRole('button', { name: '+ Novo dia de classe' }))
     await usuario.type(screen.getByLabelText('Data'), '2026-12-20')
     await usuario.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(registro.chamadas).toHaveLength(1))
@@ -242,7 +252,7 @@ describe('A7 · montar', () => {
   })
 })
 
-const SEM_REUNIAO = { cancelaReuniao: true, bloqueiaAula: false, bomParaCampo: false, eventos: ['Retiro da igreja'] }
+const SEM_REUNIAO = situacaoDoDia('2026-10-11', [{ nome: 'Retiro da igreja', tipo: 'SEM_REUNIAO' }])
 
 describe('A7 · achados de montagem', () => {
   it('dia de reunião cancelado sem aula: hachurado, com o texto e sem "Colocar aqui"', async () => {
@@ -250,7 +260,7 @@ describe('A7 · achados de montagem', () => {
     await screen.findByText(/agendados/)
     const bloqueada = linha('2026-10-11')
     expect(bloqueada).toHaveAttribute('data-estado', 'bloqueada')
-    expect(within(bloqueada).getByText('Retiro da igreja · sem aula de classe')).toBeInTheDocument()
+    expect(within(bloqueada).getByText('Retiro da igreja · sem classe')).toBeInTheDocument()
     expect(within(bloqueada).queryByRole('button', { name: /Colocar aqui/ })).not.toBeInTheDocument()
   })
 
@@ -270,12 +280,12 @@ describe('A7 · achados de montagem', () => {
     expect(screen.getByRole('button', { name: 'Colocar aqui em 18/10' })).toBeInTheDocument()
   })
 
-  it('"Remover aula" pede confirmação e chama DELETE da aula; aula dada não tem o botão', async () => {
+  it('"Remover dia de classe" pede confirmação e chama DELETE da aula; aula dada não tem o botão', async () => {
     const registro = abrir()
     const usuario = userEvent.setup()
     await screen.findByText(/agendados/)
-    expect(within(linha('2026-11-01')).queryByRole('button', { name: 'Remover aula' })).not.toBeInTheDocument()
-    await usuario.click(within(linha('2026-10-04')).getByRole('button', { name: 'Remover aula' }))
+    expect(within(linha('2026-11-01')).queryByRole('button', { name: 'Remover dia de classe' })).not.toBeInTheDocument()
+    await usuario.click(within(linha('2026-10-04')).getByRole('button', { name: 'Remover dia de classe' }))
     expect(registro.chamadas).toHaveLength(0)
     await usuario.click(screen.getByRole('button', { name: 'Remover' }))
     await waitFor(() => expect(registro.chamadas).toHaveLength(1))
@@ -332,5 +342,64 @@ describe('A7 · concorrência e publicação', () => {
     })
     expect(await screen.findByText('Publicado')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Publicar' })).toBeDisabled()
+  })
+})
+
+describe('Calendário novo · montagem', () => {
+  const colocarAqui = (data: string) => within(linha(data)).queryByRole('button', { name: /Colocar aqui/ })
+
+  it('rótulos: reunião mantida, reunião extra e ótimo para campo vêm da regra do dia', async () => {
+    abrir(
+      criarMontagem({
+        requisitos: [REQ_LIVRE],
+        datas: [
+          criarDataMontagem('2026-10-04', { situacao: situacaoDoDia('2026-10-04', [{ nome: 'Dia do Desbravador', tipo: 'FERIADO' }]) }),
+          criarDataMontagem('2026-10-07', { situacao: situacaoDoDia('2026-10-07', [{ nome: 'Reunião da investidura', tipo: 'REUNIAO_EXTRA' }]) }),
+          criarDataMontagem('2026-10-18', { situacao: situacaoDoDia('2026-10-18', [{ nome: 'Acampamento', tipo: 'ACAMPAMENTO' }]) }),
+        ],
+      }),
+    )
+    await screen.findByText(/agendados/)
+    expect(within(linha('2026-10-04')).getByText('Dia do Desbravador · reunião mantida')).toBeInTheDocument()
+    expect(within(linha('2026-10-07')).getByText('Reunião da investidura · reunião extra')).toBeInTheDocument()
+    expect(within(linha('2026-10-18')).getByText('Acampamento · ótimo para campo')).toBeInTheDocument()
+  })
+
+  it('evento que tira a classe bloqueia a data mesmo com classe marcada', async () => {
+    const evento = situacaoDoDia('2026-10-04', [{ nome: 'Ensaio', tipo: 'EVENTO' }])
+    abrir(criarMontagem({ datasLivres: true, requisitos: [REQ_LIVRE], datas: [criarDataMontagem('2026-10-04', { aulaId: uuid(2001), situacao: evento })] }))
+    await screen.findByText(/agendados/)
+    expect(linha('2026-10-04')).toHaveAttribute('data-estado', 'bloqueada')
+    expect(colocarAqui('2026-10-04')).not.toBeInTheDocument()
+  })
+
+  it('domingo em férias com classe marcada não é bloqueado; sem classe marcada, é', async () => {
+    const ferias = situacaoDoDia('2026-10-04', [{ nome: 'Férias', tipo: 'FERIAS' }])
+    abrir(
+      criarMontagem({
+        datasLivres: true,
+        requisitos: [REQ_LIVRE],
+        datas: [
+          criarDataMontagem('2026-10-04', { aulaId: uuid(2001), situacao: ferias }),
+          criarDataMontagem('2026-10-11', { situacao: situacaoDoDia('2026-10-11', [{ nome: 'Férias', tipo: 'FERIAS' }]) }),
+        ],
+      }),
+    )
+    await screen.findByText(/agendados/)
+    expect(linha('2026-10-04')).toHaveAttribute('data-estado', 'livre')
+    expect(colocarAqui('2026-10-04')).toBeInTheDocument()
+    expect(linha('2026-10-11')).toHaveAttribute('data-estado', 'bloqueada')
+    expect(colocarAqui('2026-10-11')).not.toBeInTheDocument()
+  })
+
+  it('vazio: individuais dizem que não há data de classe; agrupadas ensinam a criar o dia de classe', async () => {
+    abrir(criarMontagem({ datas: [] }))
+    expect(await screen.findByText('Nenhuma data de classe neste período')).toBeInTheDocument()
+  })
+
+  it('vazio nas agrupadas: "Nenhum dia de classe ainda" e a instrução de criar', async () => {
+    abrir(criarMontagem({ datas: [], datasLivres: true }))
+    expect(await screen.findByText('Nenhum dia de classe ainda')).toBeInTheDocument()
+    expect(screen.getByText('Crie um dia de classe para poder colocar requisitos nele.')).toBeInTheDocument()
   })
 })

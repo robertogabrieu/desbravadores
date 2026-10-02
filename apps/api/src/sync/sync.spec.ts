@@ -9,6 +9,7 @@ import {
   criarAlbum,
   criarClube,
   criarDbv,
+  criarEvento,
   criarMatricula,
   criarMembro,
   criarReuniao,
@@ -77,6 +78,22 @@ describe('GET /api/sync/pacote', () => {
       expect(pacote.reunioesRecentes).toEqual([])
       expect(pacote.albunsRecentes).toEqual([])
     }
+  })
+
+  it('INSTRUTOR recebe as chaves de tarefa e especialidade; ADM e CONSELHEIRO ficam com instrutor nulo', async () => {
+    const { clube, unidade } = await clubeComConselheiro()
+    const classe = await classeOficial('Amigo')
+    const instrutor = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [classe.id] })
+    const doInstrutor = (await baixar(instrutor.autorizacao)).instrutor
+    expect(doInstrutor?.classes[0]).toMatchObject({ tarefas: [] })
+    expect(doInstrutor?.classes[0]?.membros).toEqual([])
+    expect(doInstrutor?.especialidades).toEqual(expect.any(Array))
+    expect(doInstrutor?.pontosEspecialidade).toEqual({ pontos: expect.any(Number) as number, ativo: expect.any(Boolean) as boolean })
+
+    const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+    const conselheiro = await criarAcesso({ clubeId: clube.id, papel: 'CONSELHEIRO', unidadeIds: [unidade.id] })
+    expect((await baixar(adm.autorizacao)).instrutor).toBeNull()
+    expect((await baixar(conselheiro.autorizacao)).instrutor).toBeNull()
   })
 
   it('membros: so DBV ativo e membro atual, com nome, idade, classe e autorizacao de imagem', async () => {
@@ -170,6 +187,70 @@ describe('GET /api/sync/pacote', () => {
     await criarReuniao({ unidadeId: unidade.id, data: hoje(), chamada: [{ dbvId: dbv.id }] })
     const aposReuniao = await baixar(acesso.autorizacao)
     expect(aposReuniao.versao).not.toBe(aposNome.versao)
+  })
+
+  describe('calendario', () => {
+    function emDias(dias: number): string {
+      return diasAtras(-dias)
+    }
+
+    it('traz os eventos da janela de 120 dias, com tipo, nome, datas, horario, local e marcacoes', async () => {
+      const { clube, acesso } = await clubeComConselheiro()
+      const extra = await criarEvento({ clubeId: clube.id, tipo: 'REUNIAO_EXTRA', inicio: emDias(10) })
+      await prismaDeTeste().eventoCalendario.update({ where: { id: extra.id }, data: { nome: 'Encontro', horario: '15:00', local: 'Parque' } })
+      const ferias = await criarEvento({ clubeId: clube.id, tipo: 'FERIAS', inicio: emDias(-5), fim: emDias(3) })
+      const noLimite = await criarEvento({ clubeId: clube.id, tipo: 'ACAMPAMENTO', inicio: emDias(120) })
+
+      const pacote = await baixar(acesso.autorizacao)
+
+      expect(pacote.calendario).toHaveLength(3)
+      expect(pacote.calendario).toContainEqual({
+        nome: 'Encontro',
+        tipo: 'REUNIAO_EXTRA',
+        inicio: emDias(10),
+        fim: emDias(10),
+        horario: '15:00',
+        local: 'Parque',
+        temReuniao: extra.temReuniao,
+        temClasse: extra.temClasse,
+        bomParaCampo: extra.bomParaCampo,
+      })
+      expect(pacote.calendario.map((evento) => evento.nome).sort()).toEqual(['Encontro', ferias.nome, noLimite.nome].sort())
+    })
+
+    it('fora da janela, ja encerrado, removido ou de outro clube nao entra', async () => {
+      const { clube, acesso } = await clubeComConselheiro()
+      const outroClube = await criarClube()
+      await criarEvento({ clubeId: clube.id, tipo: 'EVENTO', inicio: emDias(121) })
+      await criarEvento({ clubeId: clube.id, tipo: 'EVENTO', inicio: emDias(-9), fim: emDias(-1) })
+      const removido = await criarEvento({ clubeId: clube.id, tipo: 'EVENTO', inicio: emDias(5) })
+      await prismaDeTeste().eventoCalendario.update({ where: { id: removido.id }, data: { removidoEm: new Date() } })
+      await criarEvento({ clubeId: outroClube.id, tipo: 'EVENTO', inicio: emDias(5) })
+
+      const pacote = await baixar(acesso.autorizacao)
+
+      expect(pacote.calendario).toEqual([])
+    })
+
+    it('vai para os tres papeis', async () => {
+      const { clube } = await clubeComConselheiro()
+      await criarEvento({ clubeId: clube.id, tipo: 'FERIAS', inicio: emDias(7), fim: emDias(14) })
+      for (const papel of ['ADM', 'CONSELHEIRO', 'INSTRUTOR'] as const) {
+        const acesso = await criarAcesso({ clubeId: clube.id, papel })
+        const pacote = await baixar(acesso.autorizacao)
+        expect(pacote.calendario).toHaveLength(1)
+      }
+    })
+
+    it('versao muda quando o calendario muda', async () => {
+      const { clube, acesso } = await clubeComConselheiro()
+
+      const antes = await baixar(acesso.autorizacao)
+      await criarEvento({ clubeId: clube.id, tipo: 'EVENTO', inicio: emDias(5) })
+      const depois = await baixar(acesso.autorizacao)
+
+      expect(depois.versao).not.toBe(antes.versao)
+    })
   })
 
   it('nao mostra dado de outro clube', async () => {

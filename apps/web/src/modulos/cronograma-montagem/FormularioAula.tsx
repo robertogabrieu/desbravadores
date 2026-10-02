@@ -40,7 +40,7 @@ export function FormularioAula({ aula, desabilitado, aoSalvar, aoFechar }: Propr
   }
 
   return (
-    <FolhaLateral aberta titulo={nova ? 'Nova aula' : 'Editar aula'} aoFechar={aoFechar}>
+    <FolhaLateral aberta titulo={nova ? 'Novo dia de classe' : 'Editar dia de classe'} aoFechar={aoFechar}>
       <form onSubmit={(evento) => void enviar(evento)} className="flex flex-col gap-4">
         {nova && <CampoData rotulo="Data" value={data} onChange={(evento) => setData(evento.target.value)} required />}
         <Campo rotulo="Horário" type="time" value={horario} onChange={(evento) => setHorario(evento.target.value)} />

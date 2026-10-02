@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -13,7 +13,7 @@ import {
   handlerErroGravarEvento,
   handlerEvento,
 } from '../../../testes/handlers/calendario'
-import { handlerConfiguracao } from '../../../testes/handlers/clube'
+import { criarConfiguracao, handlerConfiguracao, handlerErroConfiguracao } from '../../../testes/handlers/clube'
 import { uuid } from '../../../testes/handlers/sessao'
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
@@ -31,18 +31,22 @@ vi.mock('../../../api/desbravadores', async (importarOriginal) => ({
   hojeDoClube: () => '2026-10-05',
 }))
 
-const carnaval = criarEvento(1, { nome: 'Acampamento do clube', tipo: 'ACAMPAMENTO', inicio: '2026-10-16', fim: '2026-10-18', cancelaReuniao: true, bloqueiaAula: false, bomParaCampo: true })
+const carnaval = criarEvento(1, { nome: 'Acampamento do clube', tipo: 'ACAMPAMENTO', inicio: '2026-10-16', fim: '2026-10-18', temReuniao: false, temClasse: true, bomParaCampo: true })
 
 beforeEach(() => {
   estado.modo = 'ONLINE'
+  diaReuniao = 0
+  configuracaoComErro = false
 })
 
 function abrir(...extras: Parameters<typeof servidor.use>) {
   return abrirEm('/adm/calendario?mes=2026-10', ...extras)
 }
 
+let diaReuniao = 0
+let configuracaoComErro = false
 function abrirEm(rota: string, ...extras: Parameters<typeof servidor.use>) {
-  servidor.use(handlerConfiguracao(), ...extras)
+  servidor.use(configuracaoComErro ? handlerErroConfiguracao() : handlerConfiguracao(criarConfiguracao({ diaReuniao, horaReuniao: '15:00' })), ...extras)
   return renderizarRotas(rotasAdmCalendario, rota)
 }
 
@@ -105,7 +109,7 @@ describe('A6 · grade', () => {
     }
     expect(grupo.querySelectorAll('[data-marca="reuniao"]')).toHaveLength(1)
     const legenda = screen.getByRole('list', { name: 'Legenda' })
-    expect(within(legenda).getByText('Reunião regular').querySelector('[data-marca="reuniao"]')).not.toBeNull()
+    expect(within(legenda).getByText(/^Reunião regular/).querySelector('[data-marca="reuniao"]')).not.toBeNull()
     expect(screen.getByText('Para abrir um evento, toque nele na lista abaixo.')).toBeInTheDocument()
   })
 
@@ -178,10 +182,10 @@ describe('A6 · criar', () => {
 
     await userEvent.type(screen.getByLabelText('Nome'), 'Acampamento de unidades')
     await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'ACAMPAMENTO')
-    expect(screen.getByLabelText('Não há reunião do clube')).toBeChecked()
-    expect(screen.getByLabelText('Não há aula de classe')).not.toBeChecked()
-    expect(screen.getByLabelText('Bom para requisitos de campo')).toBeChecked()
-    await userEvent.click(screen.getByLabelText('Não há aula de classe'))
+    expect(screen.getByLabelText('Terá reunião')).not.toBeChecked()
+    expect(screen.getByLabelText('Terá classe')).toBeChecked()
+    expect(screen.getByLabelText('Terá atividade de campo')).toBeChecked()
+    await userEvent.click(screen.getByLabelText('Terá reunião'))
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
 
     await waitFor(() => expect(corpo).toMatchObject({
@@ -191,8 +195,8 @@ describe('A6 · criar', () => {
       fim: '2026-10-01',
       horario: null,
       local: null,
-      cancelaReuniao: true,
-      bloqueiaAula: true,
+      temReuniao: true,
+      temClasse: true,
       bomParaCampo: true,
     }))
     expect(await screen.findByRole('heading', { level: 1, name: 'Evento 99' })).toBeInTheDocument()
@@ -268,11 +272,190 @@ describe('A6 · editar', () => {
   })
 })
 
+const TEXTO_EVENTO = 'Evento do clube: a reunião acontece e não há classe, salvo se você marcar. Para um período sem reuniões, escolha Férias; para uma reunião fora do domingo, Reunião extra.'
+const TEXTO_FERIAS = 'Férias: sem reunião e sem classe nos domingos do período; acampamentos continuam valendo.'
+const TEXTO_EXTRA = 'Reunião extra: uma data fora do domingo, com chamada da unidade, classe ou as duas.'
+const CAIXAS = ['Terá reunião', 'Terá classe', 'Terá atividade de campo']
+
+describe('P3 · formulário', () => {
+  it('Evento mostra o texto de apoio e as caixas positivas, na ordem, com a legenda', async () => {
+    await abrirNovoEvento(handlerCalendario())
+    expect(await screen.findByText(TEXTO_EVENTO)).toBeInTheDocument()
+    const grupo = screen.getByRole('group', { name: 'Para a reunião e as classes' })
+    expect(within(grupo).getAllByRole('checkbox').map((c) => c.closest('label')?.textContent)).toEqual(CAIXAS)
+    expect(screen.getByLabelText('Terá reunião')).toBeChecked()
+    expect(screen.getByLabelText('Terá classe')).not.toBeChecked()
+    expect(screen.getByText(/Se já houver classes marcadas no período, o instrutor é avisado\./)).toBeInTheDocument()
+  })
+
+  it('Férias esconde as caixas e mostra o texto de apoio', async () => {
+    await abrirNovoEvento(handlerCalendario())
+    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'FERIAS')
+    expect(await screen.findByText(TEXTO_FERIAS)).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+  })
+
+  it('o dia do texto de apoio vem da configuração; sem ela, "nos dias de reunião"', async () => {
+    diaReuniao = 6
+    await abrirNovoEvento(handlerCalendario())
+    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'FERIAS')
+    expect(await screen.findByText('Férias: sem reunião e sem classe nos sábados do período; acampamentos continuam valendo.')).toBeInTheDocument()
+  })
+
+  it('Férias grava o padrão do tipo (sem reunião, com classe)', async () => {
+    let corpo: Record<string, unknown> = {}
+    await abrirNovoEvento(handlerCalendario(), handlerCriarEvento([], (c) => (corpo = c as Record<string, unknown>)))
+    await userEvent.type(screen.getByLabelText('Nome'), 'Férias de verão')
+    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'FERIAS')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    await waitFor(() => expect(corpo).toMatchObject({ tipo: 'FERIAS', temReuniao: false, temClasse: true, bomParaCampo: false }))
+  })
+
+  it('Reunião extra: campo Data, sem Início e Fim, duas caixas, e envia fim igual ao início', async () => {
+    let corpo: Record<string, unknown> = {}
+    await abrirNovoEvento(handlerCalendario(), handlerCriarEvento([], (c) => (corpo = c as Record<string, unknown>)))
+    await userEvent.type(screen.getByLabelText('Nome'), 'Encontro')
+    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'REUNIAO_EXTRA')
+    expect(await screen.findByText(TEXTO_EXTRA)).toBeInTheDocument()
+    expect(screen.getByLabelText('Data')).toHaveValue('2026-10-01')
+    expect(screen.queryByLabelText('Início')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Fim')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('checkbox').map((c) => c.closest('label')?.textContent)).toEqual(CAIXAS.slice(0, 2))
+    fireEvent.change(screen.getByLabelText('Data'), { target: { value: '2026-10-21' } })
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    await waitFor(() => expect(corpo).toMatchObject({ tipo: 'REUNIAO_EXTRA', inicio: '2026-10-21', fim: '2026-10-21', temReuniao: true, temClasse: true, bomParaCampo: false }))
+  })
+
+  it('API recusa duas extras na mesma data: o erro aparece sob a Data', async () => {
+    await abrirNovoEvento(handlerCalendario(),
+      http.post('/api/calendario/eventos', () =>
+        HttpResponse.json({ codigo: 'VALIDACAO', mensagem: 'Dados inválidos', campos: { inicio: 'Já há uma reunião extra nesta data.' } }, { status: 400 }),
+      ),
+    )
+    await userEvent.type(screen.getByLabelText('Nome'), 'Encontro')
+    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'REUNIAO_EXTRA')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    expect(await screen.findByText('Já há uma reunião extra nesta data.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Data')).toHaveAccessibleDescription('Já há uma reunião extra nesta data.')
+  })
+
+  it('extra sem caixas: o erro fica no grupo, ligado ao fieldset, sem chamar a API', async () => {
+    let chamadas = 0
+    await abrirNovoEvento(handlerCalendario(), handlerCriarEvento([], () => chamadas++))
+    await userEvent.type(screen.getByLabelText('Nome'), 'Encontro')
+    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'REUNIAO_EXTRA')
+    await userEvent.click(screen.getByLabelText('Terá reunião'))
+    await userEvent.click(screen.getByLabelText('Terá classe'))
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    const alerta = await screen.findByRole('alert')
+    expect(alerta).toHaveTextContent('Marque Terá reunião, Terá classe ou as duas.')
+    const grupo = screen.getByRole('group', { name: 'Para a reunião e as classes' })
+    expect(grupo).toContainElement(alerta)
+    expect(grupo).toHaveAttribute('aria-describedby', alerta.id)
+    expect(chamadas).toBe(0)
+  })
+
+  it('extra no dia da reunião avisa sob a Data; fora dele, não', async () => {
+    await abrirNovoEvento(handlerCalendario())
+    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'REUNIAO_EXTRA')
+    fireEvent.change(screen.getByLabelText('Data'), { target: { value: '2026-10-18' } })
+    expect(screen.getByLabelText('Data')).toHaveAccessibleDescription('Domingo já tem reunião: esta reunião extra só muda nome, horário e local.')
+    fireEvent.change(screen.getByLabelText('Data'), { target: { value: '2026-10-21' } })
+    expect(screen.queryByText(/já tem reunião/)).not.toBeInTheDocument()
+  })
+
+  it('Terá classe sem reunião e sem campo avisa, e a caixa não muda sozinha', async () => {
+    await abrirNovoEvento(handlerCalendario())
+    expect(screen.queryByText('Sem reunião e sem campo, não há classe nesses dias.')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByLabelText('Terá classe'))
+    await userEvent.click(screen.getByLabelText('Terá reunião'))
+    expect(screen.getByText('Sem reunião e sem campo, não há classe nesses dias.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Terá classe')).toBeChecked()
+  })
+
+  it('API recusa aba antiga (400 sem campos): mensagem geral', async () => {
+    await abrirNovoEvento(handlerCalendario(), ...handlerErroGravarEvento(400, { codigo: 'VALIDACAO', mensagem: 'Atualize o app para salvar este evento.' }))
+    await userEvent.type(screen.getByLabelText('Nome'), 'Evento')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    expect(await screen.findByText('Atualize o app para salvar este evento.')).toBeInTheDocument()
+  })
+})
+
+describe('P3 · calendário', () => {
+  const ferias = criarEvento(20, { nome: 'Férias de verão', tipo: 'FERIAS', inicio: '2026-10-04', fim: '2026-10-25', temReuniao: false, temClasse: true })
+  const extraQuarta = criarEvento(21, { nome: 'Encontro', tipo: 'REUNIAO_EXTRA', inicio: '2026-10-21', fim: '2026-10-21', horario: '19:30', temReuniao: true, temClasse: true })
+
+  it('férias saem como faixa, com a cor de férias, e o domingo sem o selo de reunião', async () => {
+    abrir(handlerCalendario({ eventos: [ferias], diasDeReuniao: [] }))
+    const grade = within(await screen.findByRole('group', { name: 'Outubro de 2026' }))
+    const faixas = grade.getAllByRole('link', { name: 'Férias de verão' })
+    expect(faixas[0]?.className).toContain('--cal-ferias-bg')
+    expect(grade.queryByText(/^Reunião \d/)).not.toBeInTheDocument()
+  })
+
+  it('selo da extra com o horário dela; extra só com classe diz "Classe extra"', async () => {
+    const soClasse = criarEvento(22, { nome: 'Classe especial', tipo: 'REUNIAO_EXTRA', inicio: '2026-10-22', fim: '2026-10-22', horario: '19:30', temReuniao: false, temClasse: true })
+    abrir(handlerCalendario({ eventos: [extraQuarta, soClasse], diasDeReuniao: ['2026-10-21'] }))
+    const grade = within(await screen.findByRole('group', { name: 'Outubro de 2026' }))
+    expect(grade.getByText('Reunião extra 19h30')).toBeInTheDocument()
+    expect(grade.getByText('Classe extra 19h30')).toBeInTheDocument()
+  })
+
+  it('extra no dia normal: só o selo da extra, sem o regular duplicado', async () => {
+    const noDomingo = criarEvento(23, { nome: 'Encontro', tipo: 'REUNIAO_EXTRA', inicio: '2026-10-11', fim: '2026-10-11', horario: null, temReuniao: true, temClasse: false })
+    abrir(handlerCalendario({ eventos: [noDomingo], diasDeReuniao: ['2026-10-11'] }))
+    const grade = within(await screen.findByRole('group', { name: 'Outubro de 2026' }))
+    expect(grade.getByText('Reunião extra 15h')).toBeInTheDocument()
+    expect(grade.queryByText('Reunião 15:00')).not.toBeInTheDocument()
+  })
+
+  it('a legenda traz Reunião extra e Férias', async () => {
+    abrir(handlerCalendario({ eventos: [carnaval] }))
+    const legenda = within(await screen.findByRole('list', { name: 'Legenda' }))
+    expect(legenda.getByText('Reunião extra')).toBeInTheDocument()
+    expect(legenda.getByText('Férias')).toBeInTheDocument()
+  })
+
+  it('a legenda diz a reunião regular com o horário do clube, e sem horário não inventa um', async () => {
+    abrir(handlerCalendario({ eventos: [carnaval] }))
+    expect(await within(await screen.findByRole('list', { name: 'Legenda' })).findByText('Reunião regular · 15h')).toBeInTheDocument()
+  })
+
+  it('sem a configuração do clube, a legenda diz só "Reunião regular"', async () => {
+    configuracaoComErro = true
+    abrir(handlerCalendario({ eventos: [carnaval] }))
+    expect(within(await screen.findByRole('list', { name: 'Legenda' })).getByText('Reunião regular')).toBeInTheDocument()
+  })
+
+  it('no dia com extra e férias, a extra vem antes de "Férias"', async () => {
+    abrir(handlerCalendario({ eventos: [ferias, extraQuarta], diasDeReuniao: [] }))
+    const grade = within(await screen.findByRole('group', { name: 'Outubro de 2026' }))
+    const celula = grade.getByText('21', { selector: 'span' }).parentElement as HTMLElement
+    const textos = within(celula).getAllByRole('link').map((link) => link.textContent)
+    expect(textos).toEqual(['Encontro', 'Férias de verão'])
+  })
+
+  it('a lista mostra período e horário no formato curto do modelo', async () => {
+    const longas = criarEvento(24, { nome: 'Férias de fim de ano', tipo: 'FERIAS', inicio: '2026-10-07', fim: '2026-10-25', temReuniao: false, temClasse: true })
+    const dezembro = criarEvento(25, { nome: 'Recesso', tipo: 'FERIAS', inicio: '2026-09-07', fim: '2027-02-01', temReuniao: false, temClasse: true })
+    abrir(handlerCalendario({ eventos: [dezembro, longas, extraQuarta], diasDeReuniao: [] }))
+    const lista = within(await screen.findByRole('list', { name: 'Eventos de Outubro' }))
+    expect(lista.getByText('Férias · 7/09 a 1/02')).toBeInTheDocument()
+    expect(lista.getByText('Férias · 7/10 a 25/10')).toBeInTheDocument()
+    expect(lista.getByText('Reunião extra · 21/10 · 19h30')).toBeInTheDocument()
+  })
+
+  it('mês vazio explica o que cadastrar', async () => {
+    abrir(handlerCalendario())
+    expect(await screen.findByText('Cadastre feriados, férias, acampamentos, dias sem reunião e reuniões extras para que o cronograma das classes os respeite.')).toBeInTheDocument()
+  })
+})
+
 describe('textoDasAulasAfetadas', () => {
   it('singular e plural, com os nomes juntados', () => {
-    expect(textoDasAulasAfetadas([criarAulaAfetada(1)])).toBe('1 aula estava marcada nessas datas: Amigo (18/10). Os instrutores foram avisados.')
+    expect(textoDasAulasAfetadas([criarAulaAfetada(1)])).toBe('1 classe estava marcada nessas datas: Amigo (18/10). Os instrutores foram avisados.')
     expect(textoDasAulasAfetadas([criarAulaAfetada(1), criarAulaAfetada(2), criarAulaAfetada(3, { data: '2026-10-19' })])).toBe(
-      '3 aulas estavam marcadas nessas datas: Amigo (18/10), Amigo (18/10) e Amigo (19/10). Os instrutores foram avisados.',
+      '3 classes estavam marcadas nessas datas: Amigo (18/10), Amigo (18/10) e Amigo (19/10). Os instrutores foram avisados.',
     )
   })
 })

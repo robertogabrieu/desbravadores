@@ -41,6 +41,13 @@ export interface EntradaSalvarAula {
   requisitosDesmarcados: PayloadAulaFila['corpo']['requisitosDesmarcados']
   nomes: PayloadAulaFila['nomes']
   codigos: PayloadAulaFila['codigos']
+  especialidades: Record<string, string>
+  especialidadesMarcadas: PayloadAulaFila['corpo']['especialidadesMarcadas']
+  especialidadesDesmarcadas: PayloadAulaFila['corpo']['especialidadesDesmarcadas']
+  tarefasEncerradas: PayloadAulaFila['corpo']['tarefasEncerradas']
+  tarefaId: PayloadAulaFila['corpo']['tarefaId']
+  tarefaItensAcrescentados: PayloadAulaFila['corpo']['tarefaItensAcrescentados']
+  tarefaItensRetirados: PayloadAulaFila['corpo']['tarefaItensRetirados']
 }
 
 /** Não chama a API: guarda a aula na fila (que a envia, com ou sem internet) e volta ao Início. */
@@ -58,6 +65,7 @@ export function useSalvarAula() {
         classeNome: entrada.classeNome,
         nomes: entrada.nomes,
         codigos: entrada.codigos,
+        especialidades: entrada.especialidades,
         corpo: {
           versaoPayload: 1,
           envioId: crypto.randomUUID(),
@@ -68,6 +76,12 @@ export function useSalvarAula() {
           presencas: entrada.presencas,
           requisitosMarcados: entrada.requisitosMarcados,
           requisitosDesmarcados: entrada.requisitosDesmarcados,
+          tarefaId: entrada.tarefaId,
+          tarefaItensAcrescentados: entrada.tarefaItensAcrescentados,
+          tarefaItensRetirados: entrada.tarefaItensRetirados,
+          especialidadesMarcadas: entrada.especialidadesMarcadas,
+          especialidadesDesmarcadas: entrada.especialidadesDesmarcadas,
+          tarefasEncerradas: entrada.tarefasEncerradas,
         },
       }
       const chave = `aula:${entrada.classeId}:${entrada.data}`
@@ -75,7 +89,7 @@ export function useSalvarAula() {
       if (eu) await apagarRascunho(eu.usuario.id, chave)
     },
     onSuccess: () => {
-      toast.success('Aula salva', {
+      toast.success('Classe salva', {
         description: modo === 'SEM_CONEXAO' ? 'Vai ser enviada quando houver internet.' : 'Enviando agora.',
       })
       void navegar('/inicio')

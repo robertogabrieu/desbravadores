@@ -17,10 +17,10 @@ import { FormularioEvento } from './FormularioEvento'
 const CALENDARIO = '/adm/calendario'
 const NAO_ENCONTRADO = { para: CALENDARIO, rotulo: 'Ver o calendário' }
 
-/** "2 aulas estavam marcadas nessas datas: Amigo (17/10) e Companheiro (18/10). Os instrutores foram avisados." */
+/** "2 classes estavam marcadas nessas datas: Amigo (17/10) e Companheiro (18/10). Os instrutores foram avisados." */
 export function textoDasAulasAfetadas(aulas: AulaAfetada[]): string {
   const lista = juntarNomes(aulas.map((aula) => `${aula.classe.nome} (${diaEMes(aula.data)})`))
-  const inicio = aulas.length === 1 ? '1 aula estava marcada' : `${aulas.length} aulas estavam marcadas`
+  const inicio = aulas.length === 1 ? '1 classe estava marcada' : `${aulas.length} classes estavam marcadas`
   return `${inicio} nessas datas: ${lista}. Os instrutores foram avisados.`
 }
 

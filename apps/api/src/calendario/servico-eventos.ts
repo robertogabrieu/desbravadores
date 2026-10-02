@@ -52,8 +52,8 @@ function paraSaida(evento: EventoCalendario): Saida {
     fim: paraDataCivil(evento.fim),
     horario: evento.horario,
     local: evento.local,
-    cancelaReuniao: evento.cancelaReuniao,
-    bloqueiaAula: evento.bloqueiaAula,
+    temReuniao: evento.temReuniao,
+    temClasse: evento.temClasse,
     bomParaCampo: evento.bomParaCampo,
   }
 }
@@ -150,6 +150,7 @@ export class ServicoEventos {
       async (tx) => {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('eventos-do-clube'), hashtext(${clubeId}))`
         const antes = id ? await this.eventoDoClube(tx, clubeId, id) : null
+        if (depois?.tipo === 'REUNIAO_EXTRA') await this.exigirUmaExtraPorData(tx, clubeId, depois.inicio, antes?.id)
         const datas = [antes && paraDataCivil(antes.inicio), antes && paraDataCivil(antes.fim), depois?.inicio, depois?.fim].filter(
           (d): d is string => d != null,
         )
@@ -178,16 +179,27 @@ export class ServicoEventos {
                   temRegistro: registros.has(`${aula.classeId}|${aula.data}`),
                   data: aula.data,
                   hoje,
-                  situacaoDaData: situacaoDaData(aula.data, eventos),
+                  situacaoDaData: situacaoDaData(aula.data, configuracao.diaReuniao, eventos),
                 }),
               )
               .map((aula) => aula.aulaId),
           )
         const jaEmConflito = conflitos(eventosAntes)
         const emConflitoDepois = conflitos(eventosDepois)
+        // Data sem evento nunca é conflito; por isso a classe que só cabia numa extra (ou num campo) é avisada pela troca de temClasse.
+        const temClasse = (aula: AulaVista, eventos: EventoDoCalendario[]): boolean =>
+          situacaoDaData(aula.data, configuracao.diaReuniao, eventos).temClasse
+        const perdeuAClasse = (aula: AulaVista): boolean =>
+          aula.trilha === 'INDIVIDUAL' &&
+          aula.temRequisitos &&
+          !registros.has(`${aula.classeId}|${aula.data}`) &&
+          aula.data >= hoje &&
+          temClasse(aula, eventosAntes) &&
+          !temClasse(aula, eventosDepois)
         const entraram = new Map<string, AulaVista>()
         for (const aula of aulas) {
-          if (emConflitoDepois.has(aula.aulaId) && !jaEmConflito.has(aula.aulaId)) entraram.set(aula.aulaId, aula)
+          const entrouEmConflito = emConflitoDepois.has(aula.aulaId) && !jaEmConflito.has(aula.aulaId)
+          if (entrouEmConflito || perdeuAClasse(aula)) entraram.set(aula.aulaId, aula)
         }
 
         await gravacao(tx)
@@ -195,6 +207,13 @@ export class ServicoEventos {
       },
       { timeout: 20_000 },
     )
+  }
+
+  private async exigirUmaExtraPorData(tx: Prisma.TransactionClient, clubeId: string, data: string, idDoProprio?: string): Promise<void> {
+    const jaExiste = await tx.eventoCalendario.count({
+      where: { clubeId, removidoEm: null, tipo: 'REUNIAO_EXTRA', inicio: daDataCivil(data), id: { not: idDoProprio } },
+    })
+    if (jaExiste > 0) throw new ErroApp('VALIDACAO', 'Confira os campos informados.', { inicio: 'Já há uma reunião extra nesta data.' })
   }
 
   /** Aulas do cronograma vivo e da última publicação no intervalo, uma linha por (aula, fonte). */
@@ -300,8 +319,8 @@ export class ServicoEventos {
         clubeId,
         destinos,
         tipo: 'CONFLITO_CRONOGRAMA',
-        titulo: 'Aula em conflito com o calendário',
-        texto: `${classe?.nome ?? 'Classe'}: ${datas.map(diaMes).join(', ')} deixou de ser dia de aula.`,
+        titulo: 'Classe em conflito com o calendário',
+        texto: `${classe?.nome ?? 'Classe'}: ${datas.map(diaMes).join(', ')} deixou de ser dia de classe.`,
       })
     }
 

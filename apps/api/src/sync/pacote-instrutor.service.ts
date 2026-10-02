@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common'
 import { anoClube, idade, type PacoteSaida } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { resumosDeRequisitos } from '../aulas/apoio'
+import { devedoresPorItem, tarefasDaClasse } from '../aulas/tarefas-leitura'
 import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { PrismaService } from '../comum/prisma/prisma.service'
@@ -44,9 +45,29 @@ export class PacoteInstrutorService {
       select: { pontos: true, ativo: true },
     })
 
+    const criterioEspecialidade = await this.prisma.criterioRanking.findFirst({
+      where: { clubeId, gatilho: 'ESPECIALIDADE', padrao: true },
+      select: { pontos: true, ativo: true },
+    })
+
     const doPacote: ClasseDoPacote[] = []
     for (const classe of classes) doPacote.push(await this.classe(sessao, classe, ano, hoje))
-    return { classes: doPacote, pontosRequisito: criterio ?? { pontos: 0, ativo: false } }
+    return {
+      classes: doPacote,
+      especialidades: await this.catalogoDeEspecialidades(clubeId),
+      pontosRequisito: criterio ?? { pontos: 0, ativo: false },
+      pontosEspecialidade: criterioEspecialidade ?? { pontos: 0, ativo: false },
+    }
+  }
+
+  /** Especialidades ativas, oficiais e deste clube, por nome. */
+  private async catalogoDeEspecialidades(clubeId: string): Promise<NonNullable<PacoteInstrutor['especialidades']>> {
+    const especialidades = await this.prisma.especialidade.findMany({
+      where: { ativa: true, OR: [{ clubeId: null }, { clubeId }] },
+      orderBy: [{ nome: 'asc' }, { id: 'asc' }],
+      select: { id: true, nome: true, area: { select: { nome: true } } },
+    })
+    return especialidades.map((especialidade) => ({ id: especialidade.id, nome: especialidade.nome, area: especialidade.area.nome }))
   }
 
   private async classe(
@@ -57,16 +78,21 @@ export class PacoteInstrutorService {
   ): Promise<ClasseDoPacote> {
     const { clubeId } = sessao
     const requisitos = await resumosDeRequisitos(this.prisma, clubeId, { secao: { classeId: classe.id } }, true)
+    const desde = somarDias(hoje, -DIAS_DE_REGISTROS)
+    const devedores = await devedoresPorItem(this.prisma, clubeId, classe.id, ano, sessao)
+    const tarefas = await tarefasDaClasse(this.prisma, clubeId, classe.id, ano, desde, devedores)
+    const especialidadeIds = [...new Set(tarefas.flatMap((tarefa) => tarefa.itens.flatMap((item) => ('especialidadeId' in item ? [item.especialidadeId] : []))))]
     return {
       classe: refClasse(classe),
-      membros: await this.membros(sessao, classe.id, ano, hoje),
+      membros: await this.membros(sessao, classe.id, ano, hoje, especialidadeIds),
       requisitos,
+      tarefas,
       aulasProximas: await this.aulasProximas(clubeId, classe.id, ano, hoje),
-      registrosRecentes: await this.registrosRecentes(clubeId, classe.id, somarDias(hoje, -DIAS_DE_REGISTROS)),
+      registrosRecentes: await this.registrosRecentes(clubeId, classe.id, desde),
     }
   }
 
-  private async membros(sessao: SessaoLogada, classeId: string, ano: number, hoje: string): Promise<ClasseDoPacote['membros']> {
+  private async membros(sessao: SessaoLogada, classeId: string, ano: number, hoje: string, especialidadeIds: string[]): Promise<ClasseDoPacote['membros']> {
     const { clubeId } = sessao
     const matriculas = await this.prisma.matriculaClasse.findMany({
       where: { clubeId, classeId, anoClube: ano, status: 'CURSANDO', dbv: { clubeId, ativo: true, tipo: { in: ['DBV', 'DIRETORIA', 'LIDER'] } } },
@@ -90,6 +116,11 @@ export class PacoteInstrutorService {
               where: { clubeId, removidoEm: null, requisito: { secao: { classeId } } },
               orderBy: { requisitoId: 'asc' },
               select: { requisitoId: true, concluidoEm: true, registroAulaId: true },
+            },
+            especialidadesConcluidas: {
+              where: { clubeId, removidoEm: null, especialidadeId: { in: especialidadeIds } },
+              orderBy: { especialidadeId: 'asc' },
+              select: { especialidadeId: true, registroAulaId: true },
             },
           },
         },
@@ -116,6 +147,7 @@ export class PacoteInstrutorService {
             concluidoEm: paraDataCivil(conclusao.concluidoEm),
             registroAulaId: conclusao.registroAulaId,
           })),
+          especialidades: dbv.especialidadesConcluidas,
         }
       })
   }

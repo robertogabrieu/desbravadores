@@ -20,7 +20,7 @@ export function ClassesSemConexao() {
   if (classes.length === 0) return <DisponivelComInternet />
   return (
     <div className="flex flex-col gap-3">
-      <FaixaAviso>Sem conexão: dá para registrar a aula; o resto volta com a internet.</FaixaAviso>
+      <FaixaAviso>Sem conexão: dá para registrar a classe; o resto volta com a internet.</FaixaAviso>
       {classes.map(({ classe, aulasProximas }) => {
         const proxima = aulasProximas[0]
         return (
@@ -31,10 +31,10 @@ export function ClassesSemConexao() {
                 {classe.nome}
               </span>
               {proxima && (
-                <span className="text-sm font-semibold text-texto-2">{`Próxima aula · ${formatarDataCurta(proxima.data)}${proxima.titulo ? ` · ${proxima.titulo}` : ''}`}</span>
+                <span className="text-sm font-semibold text-texto-2">{`Próxima classe · ${formatarDataCurta(proxima.data)}${proxima.titulo ? ` · ${proxima.titulo}` : ''}`}</span>
               )}
               <Link to={CAMINHO_DO_REGISTRO(classe.id)} className={LINK_PRIMARIO}>
-                Registrar aula
+                Registrar classe
               </Link>
             </div>
           </section>
@@ -51,7 +51,7 @@ export function RegistrarAulaDeHoje({ classeId }: { classeId: string }) {
   if (!noPacote) return null
   return (
     <Link to={CAMINHO_DO_REGISTRO(classeId)} className={LINK_PRIMARIO}>
-      Registrar aula de hoje
+      Registrar classe de hoje
     </Link>
   )
 }

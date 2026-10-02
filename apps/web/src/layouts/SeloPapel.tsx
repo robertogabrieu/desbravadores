@@ -12,7 +12,7 @@ import type { ItemMenu } from '../ui/MenuCabecalho'
 const DURACAO_DO_AVISO_MS = 3000
 
 /** De que são os envios, quando todos são do mesmo tipo: "2 envios da chamada". */
-const ASSUNTO_DO_ENVIO: Partial<Record<string, string>> = { REUNIAO: 'da chamada', AULA: 'da aula', FOTO: 'de fotos' }
+const ASSUNTO_DO_ENVIO: Partial<Record<string, string>> = { REUNIAO: 'da chamada', AULA: 'da classe', FOTO: 'de fotos' }
 
 /**
  * Confirmação da troca, guardada fora do componente: trocar para ou do Adm troca o layout inteiro

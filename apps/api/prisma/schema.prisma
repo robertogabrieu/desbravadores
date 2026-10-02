@@ -133,6 +133,8 @@ enum TipoEvento {
   ACAMPAMENTO
   EVENTO
   FERIADO
+  FERIAS
+  REUNIAO_EXTRA
 }
 
 // FASE 2-3
@@ -212,6 +214,8 @@ model Clube {
   notificacoes             Notificacao[]
   atividades               Atividade[]
   convitesAcesso           ConviteAcesso[]
+  tarefas                  TarefaCasa[]
+  tarefaItens              TarefaItem[]
 }
 
 model ConfiguracaoClube {
@@ -272,6 +276,10 @@ model Usuario {
   materiais               Material[]
   notificacoes            Notificacao[]
   atividades              Atividade[]
+  tarefasCriadas          TarefaCasa[]             @relation("TarefaCriadaPor")
+  tarefasEncerradas       TarefaCasa[]             @relation("TarefaEncerradaPor")
+  tarefaItensCriados      TarefaItem[]             @relation("TarefaItemCriadoPor")
+  tarefaItensRetirados    TarefaItem[]             @relation("TarefaItemRemovidoPor")
 }
 
 model Vinculo {
@@ -498,6 +506,8 @@ model Classe {
   observacoes   Observacao[]
   materiais     Material[]
 
+  tarefas TarefaCasa[]
+
   @@unique([nome, trilha], where: { clubeId: null }, map: "classe_oficial_nome_trilha")
   @@unique([clubeId, nome, trilha])
   @@index([clubeId])
@@ -544,6 +554,8 @@ model Requisito {
   aulas      AulaRequisito[]
   concluidos RequisitoConcluido[]
 
+  tarefaItens TarefaItem[]
+
   @@unique([secaoId, codigo])
 }
 
@@ -579,6 +591,8 @@ model Especialidade {
   clube      Clube?                   @relation(fields: [clubeId], references: [id], onDelete: Restrict)
   area       AreaEspecialidade        @relation(fields: [areaId], references: [id], onDelete: Restrict)
   concluidas EspecialidadeConcluida[]
+
+  tarefaItens TarefaItem[]
 
   @@unique([areaId, nome], where: { clubeId: null }, map: "especialidade_oficial_area_nome")
   @@unique([clubeId, areaId, nome])
@@ -827,21 +841,21 @@ model EnvioProcessado {
 
 // FASE 2-3
 model EventoCalendario {
-  id             String     @id @default(uuid(7)) @db.Uuid
-  clubeId        String     @db.Uuid
-  nome           String
-  tipo           TipoEvento
-  inicio         DateTime   @db.Date
-  fim            DateTime   @db.Date
-  horario        String?
-  local          String?
-  cancelaReuniao Boolean
-  bloqueiaAula   Boolean
-  bomParaCampo   Boolean
-  criadoPorId    String     @db.Uuid
-  criadoEm       DateTime   @default(now()) @db.Timestamptz
-  atualizadoEm   DateTime   @updatedAt @db.Timestamptz
-  removidoEm     DateTime?  @db.Timestamptz
+  id           String     @id @default(uuid(7)) @db.Uuid
+  clubeId      String     @db.Uuid
+  nome         String
+  tipo         TipoEvento
+  inicio       DateTime   @db.Date
+  fim          DateTime   @db.Date
+  horario      String?
+  local        String?
+  temReuniao   Boolean
+  temClasse    Boolean
+  bomParaCampo Boolean
+  criadoPorId  String     @db.Uuid
+  criadoEm     DateTime   @default(now()) @db.Timestamptz
+  atualizadoEm DateTime   @updatedAt @db.Timestamptz
+  removidoEm   DateTime?  @db.Timestamptz
 
   clube     Clube   @relation(fields: [clubeId], references: [id], onDelete: Restrict)
   criadoPor Usuario @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
@@ -940,14 +954,16 @@ model RegistroAula {
   registradoEm    DateTime @default(now()) @db.Timestamptz
   atualizadoEm    DateTime @db.Timestamptz
 
-  clube         Clube                 @relation(fields: [clubeId], references: [id], onDelete: Restrict)
-  classe        Classe                @relation(fields: [classeId], references: [id], onDelete: Restrict)
-  aulaPlanejada AulaPlanejada?        @relation(fields: [clubeId, aulaPlanejadaId], references: [clubeId, id], onDelete: Restrict)
-  registradoPor Usuario               @relation(fields: [registradoPorId], references: [id], onDelete: Restrict)
-  presencas     PresencaAula[]
-  requisitos    RequisitoConcluido[]
-  observacoes   Observacao[]
-  envios        EnvioAulaProcessado[]
+  clube          Clube                    @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  classe         Classe                   @relation(fields: [classeId], references: [id], onDelete: Restrict)
+  aulaPlanejada  AulaPlanejada?           @relation(fields: [clubeId, aulaPlanejadaId], references: [clubeId, id], onDelete: Restrict)
+  registradoPor  Usuario                  @relation(fields: [registradoPorId], references: [id], onDelete: Restrict)
+  presencas      PresencaAula[]
+  requisitos     RequisitoConcluido[]
+  observacoes    Observacao[]
+  envios         EnvioAulaProcessado[]
+  tarefa         TarefaCasa?
+  especialidades EspecialidadeConcluida[]
 
   @@unique([clubeId, classeId, data])
   @@unique([clubeId, id])
@@ -1017,6 +1033,7 @@ model EspecialidadeConcluida {
   dbvId           String    @db.Uuid
   especialidadeId String    @db.Uuid
   concluidaEm     DateTime  @db.Date
+  registroAulaId  String?   @db.Uuid
   marcadoPorId    String    @db.Uuid
   marcadoEm       DateTime  @default(now()) @db.Timestamptz
   removidoEm      DateTime? @db.Timestamptz
@@ -1025,12 +1042,61 @@ model EspecialidadeConcluida {
   clube         Clube         @relation(fields: [clubeId], references: [id], onDelete: Restrict)
   dbv           Desbravador   @relation(fields: [clubeId, dbvId], references: [clubeId, id], onDelete: Restrict)
   especialidade Especialidade @relation(fields: [especialidadeId], references: [id], onDelete: Restrict)
+  registro      RegistroAula? @relation(fields: [clubeId, registroAulaId], references: [clubeId, id], onDelete: Restrict)
   marcadoPor    Usuario       @relation("EspecialidadeMarcadaPor", fields: [marcadoPorId], references: [id], onDelete: Restrict)
   removidoPor   Usuario?      @relation("EspecialidadeRemovidaPor", fields: [removidoPorId], references: [id], onDelete: Restrict)
 
   @@unique([dbvId, especialidadeId], where: { removidoEm: null }, map: "especialidade_concluida_ativa")
   @@index([clubeId, dbvId])
   @@index([clubeId, concluidaEm])
+  @@index([clubeId, registroAulaId])
+}
+
+// Tarefa para casa (SPEC tarefa-de-casa): passada num registro da classe; a pendência é derivada, nunca guardada.
+model TarefaCasa {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  clubeId        String    @db.Uuid
+  classeId       String    @db.Uuid
+  registroAulaId String    @db.Uuid
+  anoClube       Int
+  criadaPorId    String    @db.Uuid
+  criadaEm       DateTime  @default(now()) @db.Timestamptz
+  encerradaEm    DateTime? @db.Timestamptz
+  encerradaPorId String?   @db.Uuid
+
+  clube        Clube        @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  classe       Classe       @relation(fields: [classeId], references: [id], onDelete: Restrict)
+  registro     RegistroAula @relation(fields: [clubeId, registroAulaId], references: [clubeId, id], onDelete: Restrict)
+  criadaPor    Usuario      @relation("TarefaCriadaPor", fields: [criadaPorId], references: [id], onDelete: Restrict)
+  encerradaPor Usuario?     @relation("TarefaEncerradaPor", fields: [encerradaPorId], references: [id], onDelete: Restrict)
+  itens        TarefaItem[]
+
+  @@unique([clubeId, registroAulaId])
+  @@unique([clubeId, id])
+  @@index([clubeId, classeId, anoClube])
+}
+
+/// Exatamente um de requisitoId e especialidadeId: CHECK "tarefa_item_exatamente_um" escrito à mão na migration.
+model TarefaItem {
+  id              String    @id @default(uuid(7)) @db.Uuid
+  clubeId         String    @db.Uuid
+  tarefaId        String    @db.Uuid
+  requisitoId     String?   @db.Uuid
+  especialidadeId String?   @db.Uuid
+  criadoPorId     String    @db.Uuid
+  removidoEm      DateTime? @db.Timestamptz
+  removidoPorId   String?   @db.Uuid
+
+  clube         Clube          @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  tarefa        TarefaCasa     @relation(fields: [clubeId, tarefaId], references: [clubeId, id], onDelete: Restrict)
+  requisito     Requisito?     @relation(fields: [requisitoId], references: [id], onDelete: Restrict)
+  especialidade Especialidade? @relation(fields: [especialidadeId], references: [id], onDelete: Restrict)
+  criadoPor     Usuario        @relation("TarefaItemCriadoPor", fields: [criadoPorId], references: [id], onDelete: Restrict)
+  removidoPor   Usuario?       @relation("TarefaItemRemovidoPor", fields: [removidoPorId], references: [id], onDelete: Restrict)
+
+  @@unique([tarefaId, requisitoId], where: { removidoEm: null }, map: "tarefa_item_requisito_ativo")
+  @@unique([tarefaId, especialidadeId], where: { removidoEm: null }, map: "tarefa_item_especialidade_ativo")
+  @@index([clubeId, tarefaId])
 }
 
 // FASE 2-3 — nunca exposta fora de instrutores e Adm.

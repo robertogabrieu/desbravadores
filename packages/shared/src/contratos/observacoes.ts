@@ -12,7 +12,7 @@ export const ObservacaoEntrada = z
     texto: z.string().trim().min(1).max(4000),
   })
   .refine((o) => (o.alvo === 'AULA' ? o.registroAulaId !== null && o.dbvId === null : o.dbvId !== null && o.registroAulaId === null), {
-    message: 'Escolha a aula ou o desbravador', path: ['alvo'],
+    message: 'Escolha o dia de classe ou o desbravador', path: ['alvo'],
   })
 export const ObservacaoEditarEntrada = z.object({ titulo: z.string().trim().max(80).nullable(), texto: z.string().trim().min(1).max(4000) }).partial()
 export const ObservacaoFiltro = z.object({ classeId: Uuid, alvo: AlvoObservacao.optional(), dbvId: Uuid.optional() })

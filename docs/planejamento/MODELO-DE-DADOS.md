@@ -120,6 +120,7 @@ RequisitoConcluido(id, dbvId, requisitoId, concluidoEm: date,
   UNIQUE(dbvId, requisitoId) entre os não removidos
 
 EspecialidadeConcluida(id, dbvId, especialidadeId, concluidaEm, instrutorId,
+  registroAulaId?,                               # nulo = marcada fora do registro de aula
   removidoEm?, removidoPor?)
 ```
 
@@ -134,19 +135,25 @@ EspecialidadeConcluida(id, dbvId, especialidadeId, concluidaEm, instrutorId,
 ## 5. Calendário e cronograma
 
 ```
-EventoCalendario(id, nome, tipo: SEM_REUNIAO|ACAMPAMENTO|EVENTO|FERIADO,
+EventoCalendario(id, nome, tipo: SEM_REUNIAO|ACAMPAMENTO|EVENTO|FERIADO|FERIAS|REUNIAO_EXTRA,
   inicio: date, fim: date, horario?, local?,
-  bloqueiaAula: bool, bomParaCampo: bool,
-  cancelaReuniao: bool)                          # separa "não há reunião" de "não há aula"
+  temReuniao: bool, temClasse: bool,             # marcações afirmativas: "terá reunião", "terá classe"
+  bomParaCampo: bool)
 ```
-A reunião regular é **implícita**: todo `diaReuniao` sem evento com `cancelaReuniao`. Eventos de
-vários dias valem para **todos os domingos do intervalo**. Com dois eventos na mesma data, basta
-um com `bloqueiaAula` para bloquear; `bomParaCampo` vale se qualquer um tiver.
+A reunião regular é **implícita**: todo `diaReuniao` sem evento com `temReuniao = não`. Eventos de
+vários dias valem para **todos os dias do intervalo**. A regra do dia é única
+(`situacaoDaData`, em `packages/shared/src/formulas/calendario.ts`): entre os eventos comuns (todos
+menos Reunião extra), basta um tirar a reunião ou a classe para tirar; `bomParaCampo` vale se
+qualquer um tiver. Há classe num dia se nenhum comum a tira e o dia é de reunião ou bom para campo.
+A **Reunião extra** só acrescenta: dá reunião e/ou classe numa data fora do dia normal e vence a
+sobreposição com os outros eventos.
 
-Padrões por tipo (editáveis no formulário): SEM_REUNIAO → cancela e bloqueia; EVENTO → bloqueia;
-ACAMPAMENTO → cancela a reunião, bom para campo, **não** bloqueia; FERIADO → nada.
+Padrões por tipo (`MARCACOES_PADRAO`, editáveis no formulário): SEM_REUNIAO → sem reunião e sem
+classe; EVENTO → com reunião, sem classe; ACAMPAMENTO → sem reunião, com classe, bom para campo;
+FERIADO → com reunião e com classe; FERIAS → sem reunião, com classe (a API grava sempre este
+padrão; "com classe" evita que as férias derrubem um acampamento dentro delas, e sem reunião e sem
+campo não há classe); REUNIAO_EXTRA → com reunião e com classe, e nunca bom para campo.
 
-```
 Cronograma(id, classeId, anoClube, inicio: date, fim: date,
   status: RASCUNHO|ENVIADO|PUBLICADO,            # ENVIADO = instrutor mandou para o Adm publicar
   enviadoEm?, enviadoPor?, publicadoEm?, publicadoPor?)
@@ -187,6 +194,16 @@ RegistroAula(id, aulaPlanejadaId?, classeId, data, instrutorId,
   clienteUuid UNIQUE, registradoEm)
   # aulaPlanejadaId nulo = aula extra fora do cronograma
 PresencaAula(registroAulaId, dbvId, presente: bool)
+
+TarefaCasa(id, classeId, registroAulaId UNIQUE, anoClube, criadaPorId, criadaEm,
+  encerradaEm?, encerradaPorId?)                 # tarefa para casa passada num registro de aula
+TarefaItem(id, tarefaId, requisitoId?, especialidadeId?, criadoPorId,
+  removidoEm?, removidoPorId?)                   # CHECK: exatamente um de requisitoId e especialidadeId
+  UNIQUE(tarefaId, requisitoId) e UNIQUE(tarefaId, especialidadeId) entre os não removidos
+```
+A pendência da tarefa (quem ainda deve o quê) é **derivada**, nunca guardada: sai dos itens ativos
+contra o que cada desbravador já concluiu.
+```
 ```
 
 ChamadaAlteracao(id, reuniaoId, dbvId, antes: json, depois: json,
@@ -263,8 +280,8 @@ Atividade(id, autorId, tipo, descricao, link, criadaEm)   # feed da visão geral
 | `Chamada.presente, atrasou, pontos` | `situacao` + `licao`; sem pontos | Falta justificada; pontos só em `LancamentoPontos` (uma fonte) |
 | `Cronograma.semestre` | `anoClube` + `inicio/fim` + `status` | O calendário é anual; publicação tem estado |
 | `AulaPlanejada.requisitoIds[]` | `AulaRequisito` com unicidade | Garante "um requisito, uma data" no banco |
-| `EventoCalendario` | + `cancelaReuniao`, horário, local | "Sem reunião" ≠ "sem aula" (acampamento cancela reunião mas é bom para campo) |
-| `RequisitoConcluido` | + `registroAulaId?` + remoção lógica | Reposição fora da aula; estorno de pontos |
+| `EventoCalendario` | + `temReuniao`, `temClasse`, horário, local; tipos `FERIAS` e `REUNIAO_EXTRA` | "Sem reunião" ≠ "sem classe" (acampamento não tem reunião mas é bom para campo); extra e férias têm tipo próprio |
+| `RequisitoConcluido` e `EspecialidadeConcluida` | + `registroAulaId?` + remoção lógica | Reposição fora da aula; estorno de pontos |
 | `Foto.album` texto | `Album` + `Foto.legenda` | Álbum por reunião, evento ou avulso; legenda do lote |
 | — | `ChamadaAlteracao` | Correção de chamada e conflito entre aparelhos ficam registrados |
 | `Observacao` | + `classeId`, `titulo`, remoção | Instrutor com duas classes; editar/apagar |

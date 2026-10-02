@@ -20,6 +20,7 @@ import {
   diasEntre,
 } from '../reunioes/apoio'
 import { exigirClasseNoEscopo } from './apoio'
+import { TarefasEnvio, requisitosValidos } from './tarefas-envio'
 
 type Envio = z.infer<typeof AulaEnvio>
 type Saida = z.infer<typeof AulaEnvioSaida>
@@ -38,7 +39,7 @@ interface Contexto {
 
 const TEMPO_DA_TRANSACAO_MS = 20_000
 const CODIGOS_DE_CORRIDA = ['P2002', 'P2034']
-const AVISO_FORA_DO_PUBLICADO = 'Esta aula foi registrada fora do cronograma publicado.'
+const AVISO_FORA_DO_PUBLICADO = 'Esta classe foi registrada fora do cronograma publicado.'
 
 function ehCorrida(erro: unknown): boolean {
   return erro instanceof Prisma.PrismaClientKnownRequestError && CODIGOS_DE_CORRIDA.includes(erro.code)
@@ -70,6 +71,7 @@ export class AulasEnvioService {
     private readonly pontos: ServicoPontos,
     private readonly atividades: ServicoAtividade,
     private readonly cronogramas: ServicoCronograma,
+    private readonly tarefas: TarefasEnvio,
   ) {}
 
   /** `PUT /sync/aulas/:uuid` (SPEC Fase 2, 4.1). Corrida de banco vira 503 para a fila repetir. */
@@ -114,9 +116,15 @@ export class AulasEnvioService {
     const contexto: Contexto = { sessao, registro, envio, membros, agora }
     const presencas = await this.aplicarPresencas(tx, contexto)
     const planejada = await this.aulaPlanejadaValida(tx, contexto)
-    const requisitos = await this.aplicarRequisitos(tx, contexto)
+    const ausentes = await this.ausentesGravados(tx, clubeId, registro.id)
+    const requisitos = await this.aplicarRequisitos(tx, contexto, ausentes)
+    const entrega = await this.tarefas.aplicar(tx, {
+      ...contexto,
+      ausentes,
+      anoClube: anoClube(envio.data, configuracao.inicioAnoClube),
+    })
 
-    const gravouAlgo = presencas.gravadas > 0 || requisitos.gravou
+    const gravouAlgo = presencas.gravadas > 0 || requisitos.gravou || entrega.gravou
     const ligarPlanejada = planejada.id !== null && planejada.id !== registro.aulaPlanejadaId
     if (localizado.criada ? ligarPlanejada : gravouAlgo || ligarPlanejada) {
       await tx.registroAula.updateMany({
@@ -128,12 +136,14 @@ export class AulasEnvioService {
     await tx.envioAulaProcessado.create({ data: { envioId: envio.envioId, clubeId, registroAulaId: registro.id } })
     if (localizado.criada) await this.registrarAtividade(tx, sessao, classe.nome)
 
-    const ignorados = await this.nomearIgnorados(tx, clubeId, [...presencas.foraDaAula, ...requisitos.foraDaAula])
+    const ignorados = await this.nomearIgnorados(tx, clubeId, [...presencas.foraDaAula, ...requisitos.foraDaAula, ...entrega.foraDaAula])
     return this.montarSaida(tx, clubeId, registro.id, {
       conflitos: presencas.conflitos,
       ignorados,
       requisitosSemEfeito: requisitos.semEfeito,
-      avisos: planejada.aviso ? [planejada.aviso] : [],
+      avisos: [...(planejada.aviso ? [planejada.aviso] : []), ...entrega.avisos],
+      tarefaItensSemEfeito: entrega.tarefaItensSemEfeito,
+      especialidadesSemEfeito: entrega.especialidadesSemEfeito,
     })
   }
 
@@ -143,7 +153,14 @@ export class AulasEnvioService {
   }
 
   private estadoAtual(tx: Tx, clubeId: string, registroAulaId: string): Promise<Saida> {
-    return this.montarSaida(tx, clubeId, registroAulaId, { conflitos: [], ignorados: [], requisitosSemEfeito: [], avisos: [] })
+    return this.montarSaida(tx, clubeId, registroAulaId, {
+      conflitos: [],
+      ignorados: [],
+      requisitosSemEfeito: [],
+      avisos: [],
+      tarefaItensSemEfeito: [],
+      especialidadesSemEfeito: [],
+    })
   }
 
   /** Passo 2: a aula do :uuid, ou a da (classe, data) do clube, ou uma nova. */
@@ -175,23 +192,23 @@ export class AulasEnvioService {
     if (concorrenteDoUuid) return { registro: this.conferirDoUuid(concorrenteDoUuid, envio), criada: false }
     const concorrenteDaData = await tx.registroAula.findFirst({ where: daData })
     if (concorrenteDaData) return { registro: concorrenteDaData, criada: false }
-    throw regra('Esta aula não pôde ser registrada: o identificador já pertence a outro registro.')
+    throw regra('Esta classe não pôde ser registrada: o identificador já pertence a outro registro.')
   }
 
   private conferirDoUuid(registro: RegistroAula, envio: Envio): RegistroAula {
-    if (registro.classeId !== envio.classeId) throw new ErroApp('NAO_ENCONTRADO', 'Aula não encontrada.')
-    if (paraDataCivil(registro.data) !== envio.data) throw regra('A data de uma aula registrada não muda.')
+    if (registro.classeId !== envio.classeId) throw new ErroApp('NAO_ENCONTRADO', 'Registro de classe não encontrado.')
+    if (paraDataCivil(registro.data) !== envio.data) throw regra('A data de uma classe registrada não muda.')
     return registro
   }
 
   /** Criacao: envio de ate 7 dias atras e data entre hoje-30 e hoje, contados em `feito`. */
   private exigirCriacaoValida(envio: Envio, feito: Date, agora: Date, fuso: string): void {
     if (feito.getTime() < agora.getTime() - DIAS_DE_ENVIO_TARDIO * MS_POR_DIA) {
-      throw regra('Esta aula foi registrada há mais de 7 dias e não pode mais ser enviada.')
+      throw regra('Esta classe foi registrada há mais de 7 dias e não pode mais ser enviada.')
     }
     const atraso = diasEntre(envio.data, hojeNoFuso(fuso, feito))
     if (atraso < 0 || atraso > DIAS_DE_CORRECAO) {
-      throw regra('A data da aula deve estar entre hoje e os últimos 30 dias.')
+      throw regra('A data da classe deve estar entre hoje e os últimos 30 dias.')
     }
   }
 
@@ -200,7 +217,7 @@ export class AulasEnvioService {
     if (sessao.papel === 'ADM') return
     const tardio = feito.getTime() < agora.getTime() - DIAS_DE_ENVIO_TARDIO * MS_POR_DIA
     if (tardio || !dentroDoPrazoDeCorrecao(paraDataCivil(registro.data), feito, fuso)) {
-      throw regra('Esta aula já não pode ser alterada.')
+      throw regra('Esta classe já não pode ser alterada.')
     }
   }
 
@@ -276,7 +293,7 @@ export class AulasEnvioService {
    * F3, F4 e F6: desmarca so o desta aula (estorna), marca o que vale, e o resto vai para `requisitosSemEfeito`.
    * A marca na propria ficha fica sem efeito em vez de recusar a aula: envio antigo da fila nao pode travar a presenca dos outros.
    */
-  private async aplicarRequisitos(tx: Tx, contexto: Contexto) {
+  private async aplicarRequisitos(tx: Tx, contexto: Contexto, ausentes: ReadonlySet<string>) {
     const { sessao, registro, envio, membros } = contexto
     const { clubeId } = sessao
     const semEfeito: SemEfeito[] = []
@@ -305,7 +322,7 @@ export class AulasEnvioService {
       if (membro.tipo === 'DBV') await this.sincronizarPontos(tx, contexto, marca, [])
     }
 
-    const validos = await this.requisitosValidos(tx, clubeId, envio.classeId, marcadas.map((m) => m.requisitoId))
+    const validos = await requisitosValidos(tx, clubeId, envio.classeId, marcadas.map((m) => m.requisitoId))
     const jaConcluidos = new Map(
       (
         await tx.requisitoConcluido.findMany({
@@ -318,7 +335,6 @@ export class AulasEnvioService {
         })
       ).map((conclusao) => [`${conclusao.dbvId}:${conclusao.requisitoId}`, conclusao]),
     )
-    const ausentes = new Set(envio.presencas.filter((p) => !p.presente).map((p) => p.dbvId))
     const criterio = await tx.criterioRanking.findFirst({ where: { clubeId, gatilho: 'REQUISITO', padrao: true } })
 
     for (const marca of marcadas) {
@@ -370,15 +386,10 @@ export class AulasEnvioService {
     return { semEfeito, foraDaAula: [...foraDaAula], gravou }
   }
 
-  /** Requisitos da classe que o clube considera ativos (o ajuste do clube vale sobre o oficial). */
-  private async requisitosValidos(tx: Tx, clubeId: string, classeId: string, ids: string[]): Promise<Set<string>> {
-    if (ids.length === 0) return new Set()
-    const [requisitos, ajustes] = await Promise.all([
-      tx.requisito.findMany({ where: { id: { in: ids }, secao: { classeId } }, select: { id: true, ativo: true } }),
-      tx.requisitoAjuste.findMany({ where: { clubeId, requisitoId: { in: ids } }, select: { requisitoId: true, ativo: true } }),
-    ])
-    const ajustePorId = new Map(ajustes.map((ajuste) => [ajuste.requisitoId, ajuste.ativo]))
-    return new Set(requisitos.filter((r) => ajustePorId.get(r.id) ?? r.ativo).map((r) => r.id))
+  /** Quem esta ausente segundo o banco: numa correcao o envio so traz as presencas tocadas. */
+  private async ausentesGravados(tx: Tx, clubeId: string, registroAulaId: string): Promise<Set<string>> {
+    const ausentes = await tx.presencaAula.findMany({ where: { clubeId, registroAulaId, presente: false }, select: { dbvId: true } })
+    return new Set(ausentes.map((presenca) => presenca.dbvId))
   }
 
   private sincronizarPontos(tx: Tx, { sessao, registro }: Contexto, marca: Marca, devidos: { criterioId: string; pontos: number }[]): Promise<void> {
@@ -399,7 +410,7 @@ export class AulasEnvioService {
       clubeId: sessao.clubeId,
       autorId: sessao.usuarioId,
       tipo: 'AULA_REGISTRADA',
-      descricao: `${usuario.nome} registrou a aula de ${nomeDaClasse}`,
+      descricao: `${usuario.nome} registrou a classe de ${nomeDaClasse}`,
       link: null,
     })
   }
@@ -412,30 +423,34 @@ export class AulasEnvioService {
     return unicos.map((dbvId) => ({ dbvId, nome: nomes.get(dbvId) ?? 'Desbravador não encontrado' }))
   }
 
-  /** Versoes de todas as presencas da aula e os pontos de requisito ativos das conclusoes dela. */
+  /** Versoes de todas as presencas, a tarefa do registro e os pontos ativos de requisito e especialidade das conclusoes dele. */
   private async montarSaida(
     tx: Tx,
     clubeId: string,
     registroAulaId: string,
-    extras: Pick<Saida, 'conflitos' | 'ignorados' | 'requisitosSemEfeito' | 'avisos'>,
+    extras: Pick<Saida, 'conflitos' | 'ignorados' | 'requisitosSemEfeito' | 'avisos' | 'tarefaItensSemEfeito' | 'especialidadesSemEfeito'>,
   ): Promise<Saida> {
-    const [presencas, conclusoes] = await Promise.all([
+    const [presencas, conclusoes, especialidades, tarefa] = await Promise.all([
       tx.presencaAula.findMany({ where: { clubeId, registroAulaId }, select: { dbvId: true, versao: true } }),
       tx.requisitoConcluido.findMany({ where: { clubeId, registroAulaId, removidoEm: null }, select: { dbvId: true, requisitoId: true } }),
+      tx.especialidadeConcluida.findMany({ where: { clubeId, registroAulaId, removidoEm: null }, select: { dbvId: true, especialidadeId: true } }),
+      tx.tarefaCasa.findFirst({ where: { clubeId, registroAulaId }, select: { id: true } }),
     ])
-    const lancamentos = await tx.lancamentoPontos.aggregate({
-      where: {
-        clubeId,
-        origemTipo: 'REQUISITO',
-        origemId: { in: conclusoes.map((c) => `${c.dbvId}:${c.requisitoId}`) },
-        estornadoEm: null,
-      },
-      _sum: { pontos: true },
-    })
+    const somaDe = async (origemTipo: 'REQUISITO' | 'ESPECIALIDADE', origemIds: string[]): Promise<number> => {
+      const lancamentos = await tx.lancamentoPontos.aggregate({
+        where: { clubeId, origemTipo, origemId: { in: origemIds }, estornadoEm: null },
+        _sum: { pontos: true },
+      })
+      return lancamentos._sum.pontos ?? 0
+    }
+    const totalPontos =
+      (await somaDe('REQUISITO', conclusoes.map((c) => `${c.dbvId}:${c.requisitoId}`))) +
+      (await somaDe('ESPECIALIDADE', especialidades.map((e) => `${e.dbvId}:${e.especialidadeId}`)))
     return {
       registroAulaId,
       presencas: presencas.map((p) => ({ dbvId: p.dbvId, versao: p.versao.toISOString() })),
-      totalPontos: lancamentos._sum.pontos ?? 0,
+      totalPontos,
+      tarefaId: tarefa?.id ?? null,
       ...extras,
     }
   }

@@ -3,15 +3,20 @@ import { hojeNoFuso, PacoteSaida } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { criarAppDeTeste } from '../../test/app'
 import {
+  admCriarEspecialidadeClube,
+  admCriarRequisitoAjuste,
   classeOficial,
   criarAcesso,
   criarClube,
   criarCronograma,
   criarDbv,
+  criarEspecialidadeConcluida,
   criarMatricula,
   criarRegistroAula,
   criarRequisitoConcluido,
+  criarTarefa,
   criarUnidade,
+  criterioPorGatilho,
   desconectarPrismaDeTeste,
   prismaDeTeste,
   publicarCronograma,
@@ -148,6 +153,145 @@ describe('GET /api/sync/pacote do instrutor (F11)', () => {
     const classe = pacote.instrutor?.classes[0]
     expect(classe?.membros.map((m) => m.dbvId)).not.toContain(estranho.id)
     expect(classe?.registrosRecentes).toEqual([])
+  })
+
+  describe('tarefas para casa', () => {
+    it('abertas do ano com itens; encerrada com entrega recente vem encerrada; sem entrega recente fica fora', async () => {
+      const c = await cenario()
+      const [r1, r2, r3] = c.requisitos as [string, string, string]
+      const especialidade = await admCriarEspecialidadeClube({ clubeId: c.clube.id })
+      const aberta = await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-3) })
+      const antiga = await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-40) })
+      const velha = await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-45) })
+      const recente = await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-2) })
+      const tAberta = await criarTarefa({ clubeId: c.clube.id, classeId: c.classe.id, registroAulaId: aberta.id, itens: [{ especialidadeId: especialidade.id }, { requisitoId: r1 }] })
+      const tEncerrada = await criarTarefa({ clubeId: c.clube.id, classeId: c.classe.id, registroAulaId: antiga.id, itens: [{ requisitoId: r2 }], encerrada: true })
+      await criarTarefa({ clubeId: c.clube.id, classeId: c.classe.id, registroAulaId: velha.id, itens: [{ requisitoId: r3 }], encerrada: true })
+      await criarRequisitoConcluido({ clubeId: c.clube.id, dbvId: c.bia.id, requisitoId: r2, concluidoEm: dia(-2), registroAulaId: recente.id })
+
+      const classe = (await baixar(c.instrutor.autorizacao)).instrutor?.classes[0]
+
+      expect(classe?.tarefas).toEqual([
+        { id: tEncerrada.id, registroAulaId: antiga.id, data: dia(-40), encerrada: true, itens: [{ requisitoId: r2 }] },
+        { id: tAberta.id, registroAulaId: aberta.id, data: dia(-3), encerrada: false, itens: [{ especialidadeId: especialidade.id }, { requisitoId: r1 }] },
+      ])
+    })
+
+    it('tarefa aberta sem ninguem devendo entra se o registro de origem e recente ou se tem entrega recente; fora disso, nao', async () => {
+      const c = await cenario()
+      const [r1, r2, r3] = c.requisitos as [string, string, string]
+      const daOrigemRecente = await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-5) })
+      const antigaComEntrega = await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-50) })
+      const antigaSemEntrega = await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-51) })
+      const recente = await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-2) })
+      const t1 = await criarTarefa({ clubeId: c.clube.id, classeId: c.classe.id, registroAulaId: daOrigemRecente.id, itens: [{ requisitoId: r1 }] })
+      const t2 = await criarTarefa({ clubeId: c.clube.id, classeId: c.classe.id, registroAulaId: antigaComEntrega.id, itens: [{ requisitoId: r2 }] })
+      await criarTarefa({ clubeId: c.clube.id, classeId: c.classe.id, registroAulaId: antigaSemEntrega.id, itens: [{ requisitoId: r3 }] })
+      const turma = await prismaDeTeste().desbravador.findMany({ where: { clubeId: c.clube.id }, select: { id: true } })
+      for (const { id } of turma) {
+        for (const requisitoId of [r1, r3]) await criarRequisitoConcluido({ clubeId: c.clube.id, dbvId: id, requisitoId })
+        await criarRequisitoConcluido({ clubeId: c.clube.id, dbvId: id, requisitoId: r2, concluidoEm: dia(-2), registroAulaId: recente.id })
+      }
+
+      const classe = (await baixar(c.instrutor.autorizacao)).instrutor?.classes[0]
+
+      expect(classe?.tarefas.map((t) => t.id)).toEqual([t2.id, t1.id])
+    })
+
+    it('encerrada de outro ano do clube nao entra, mesmo com entrega recente; a do ano entra', async () => {
+      const c = await cenario()
+      const [r1, r2] = c.requisitos as [string, string]
+      const [origemDoAno, origemAnterior, recente] = [
+        await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-45) }),
+        await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-44) }),
+        await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-2) }),
+      ]
+      const doAno = await criarTarefa({ clubeId: c.clube.id, classeId: c.classe.id, registroAulaId: origemDoAno.id, itens: [{ requisitoId: r1 }], encerrada: true })
+      await criarTarefa({ clubeId: c.clube.id, classeId: c.classe.id, registroAulaId: origemAnterior.id, itens: [{ requisitoId: r2 }], encerrada: true, anoClube: anoCorrente() - 1 })
+      await criarRequisitoConcluido({ clubeId: c.clube.id, dbvId: c.bia.id, requisitoId: r1, concluidoEm: dia(-2), registroAulaId: recente.id })
+      await criarRequisitoConcluido({ clubeId: c.clube.id, dbvId: c.bia.id, requisitoId: r2, concluidoEm: dia(-2), registroAulaId: recente.id })
+
+      const classe = (await baixar(c.instrutor.autorizacao)).instrutor?.classes[0]
+
+      expect(classe?.tarefas.map((t) => t.id)).toEqual([doAno.id])
+    })
+
+    it('item invalido some; tarefa do ano anterior e a de ninguem devendo, com origem antiga, ficam fora', async () => {
+      const c = await cenario()
+      const [r1, r2, r3] = c.requisitos as [string, string, string]
+      const desativada = await admCriarEspecialidadeClube({ clubeId: c.clube.id })
+      await prismaDeTeste().especialidade.update({ where: { id: desativada.id }, data: { ativa: false } })
+      await admCriarRequisitoAjuste({ clubeId: c.clube.id, requisitoId: r3, ativo: false })
+      const [a, b, d] = [
+        await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-3) }),
+        await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-4) }),
+        await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-50) }),
+      ]
+      const valida = await criarTarefa({ clubeId: c.clube.id, classeId: c.classe.id, registroAulaId: a.id, itens: [{ requisitoId: r1 }, { requisitoId: r3 }, { especialidadeId: desativada.id }] })
+      await criarTarefa({ clubeId: c.clube.id, classeId: c.classe.id, registroAulaId: b.id, itens: [{ requisitoId: r1 }], anoClube: anoCorrente() - 1 })
+      await criarTarefa({ clubeId: c.clube.id, classeId: c.classe.id, registroAulaId: d.id, itens: [{ requisitoId: r2 }] })
+      const turma = await prismaDeTeste().desbravador.findMany({ where: { clubeId: c.clube.id }, select: { id: true } })
+      for (const { id } of turma) await criarRequisitoConcluido({ clubeId: c.clube.id, dbvId: id, requisitoId: r2 })
+
+      const classe = (await baixar(c.instrutor.autorizacao)).instrutor?.classes[0]
+
+      expect(classe?.tarefas.map((t) => [t.id, t.itens])).toEqual([[valida.id, [{ requisitoId: r1 }]]])
+    })
+
+    it('cada membro traz as conclusoes das especialidades das tarefas, com o registro', async () => {
+      const c = await cenario()
+      const dela = await admCriarEspecialidadeClube({ clubeId: c.clube.id })
+      const fora = await admCriarEspecialidadeClube({ clubeId: c.clube.id })
+      const aula = await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-3) })
+      await criarTarefa({ clubeId: c.clube.id, classeId: c.classe.id, registroAulaId: aula.id, itens: [{ especialidadeId: dela.id }] })
+      await criarEspecialidadeConcluida({ clubeId: c.clube.id, dbvId: c.ana.id, especialidadeId: dela.id, registroAulaId: aula.id })
+      await criarEspecialidadeConcluida({ clubeId: c.clube.id, dbvId: c.ana.id, especialidadeId: fora.id })
+
+      const membros = (await baixar(c.instrutor.autorizacao)).instrutor?.classes[0]?.membros
+      const porNome = new Map(membros?.map((m) => [m.nome, m.especialidades]))
+
+      expect(porNome.get('Ana Souza')).toEqual([{ especialidadeId: dela.id, registroAulaId: aula.id }])
+      expect(porNome.get('Bia Lima')).toEqual([])
+    })
+
+    it('catalogo ativo, oficial e do clube, sem outro clube nem desativada; pontos da especialidade do criterio', async () => {
+      const c = await cenario()
+      const doClube = await admCriarEspecialidadeClube({ clubeId: c.clube.id, nome: 'Do Clube' })
+      const desativada = await admCriarEspecialidadeClube({ clubeId: c.clube.id, nome: 'Desativada' })
+      await prismaDeTeste().especialidade.update({ where: { id: desativada.id }, data: { ativa: false } })
+      const outroClube = await criarClube()
+      const alheia = await admCriarEspecialidadeClube({ clubeId: outroClube.id, nome: 'Alheia' })
+      const oficial = await prismaDeTeste().especialidade.findFirstOrThrow({ where: { clubeId: null, ativa: true }, include: { area: true } })
+      const criterio = await criterioPorGatilho(c.clube.id, 'ESPECIALIDADE')
+
+      const instrutor = (await baixar(c.instrutor.autorizacao)).instrutor
+      const ids = instrutor?.especialidades?.map((e) => e.id) ?? []
+
+      expect(ids).toEqual(expect.arrayContaining([oficial.id, doClube.id]))
+      expect(ids).not.toContain(desativada.id)
+      expect(ids).not.toContain(alheia.id)
+      expect(instrutor?.especialidades?.find((e) => e.id === oficial.id)).toEqual({ id: oficial.id, nome: oficial.nome, area: oficial.area.nome })
+      expect(instrutor?.pontosEspecialidade).toEqual({ pontos: criterio.pontos, ativo: criterio.ativo })
+    })
+
+    it('tarefa de outro clube nao aparece e instrutor de outra classe nao a ve', async () => {
+      const c = await cenario()
+      const aula = await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: dia(-3) })
+      await criarTarefa({ clubeId: c.clube.id, classeId: c.classe.id, registroAulaId: aula.id, itens: [{ requisitoId: c.requisitos[0] ?? '' }] })
+      const outroClube = await criarClube()
+      const estranho = await criarDbv({ clubeId: outroClube.id })
+      await criarMatricula({ clubeId: outroClube.id, dbvId: estranho.id, classeId: c.classe.id, anoClube: anoCorrente() })
+      const deLa = await criarRegistroAula({ clubeId: outroClube.id, classeId: c.classe.id, data: dia(-3) })
+      await criarTarefa({ clubeId: outroClube.id, classeId: c.classe.id, registroAulaId: deLa.id, itens: [{ requisitoId: c.requisitos[1] ?? '' }] })
+      const deOutraClasse = await criarAcesso({ clubeId: c.clube.id, papel: 'INSTRUTOR', classeIds: [c.outra.id] })
+
+      const nossa = (await baixar(c.instrutor.autorizacao)).instrutor?.classes[0]
+      const alheia = (await baixar(deOutraClasse.autorizacao)).instrutor?.classes
+
+      expect(nossa?.tarefas.map((t) => t.registroAulaId)).toEqual([aula.id])
+      expect(alheia?.map((x) => x.classe.id)).toEqual([c.outra.id])
+      expect(alheia?.[0]?.tarefas).toEqual([])
+    })
   })
 
   it('conselheiro e Adm ficam como antes: instrutor nulo', async () => {

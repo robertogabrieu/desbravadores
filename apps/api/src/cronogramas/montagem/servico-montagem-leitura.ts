@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common'
 import {
-  datasDoIntervalo,
+  datasDaMontagem,
   emConflito,
+  situacaoDaData,
+  type EventoDoCalendario,
   type MontagemSaida,
 } from '@desbravadores/shared'
 import type { z } from 'zod'
@@ -87,19 +89,25 @@ export class ServicoMontagemLeitura {
     const datasDasAulas = aulas.map((aula) => paraDataCivil(aula.data))
     const [primeira, ultima] = [[inicio, ...datasDasAulas].sort()[0], [fim, ...datasDasAulas].sort().reverse()[0]]
 
-    const [situacoes, registros] = await Promise.all([
+    const [situacoes, eventos, registros] = await Promise.all([
       this.calendario.situacoes(clubeId, primeira, ultima),
+      this.prisma.eventoCalendario.findMany({
+        where: { clubeId, removidoEm: null, inicio: { lte: daDataCivil(fim) }, fim: { gte: daDataCivil(inicio) } },
+        select: { nome: true, tipo: true, inicio: true, fim: true, horario: true, local: true, temReuniao: true, temClasse: true, bomParaCampo: true },
+      }),
       this.prisma.registroAula.findMany({
         where: { clubeId, classeId: classe.id, data: { gte: daDataCivil(primeira), lte: daDataCivil(ultima) } },
         select: { data: true },
       }),
     ])
     const datasDadas = new Set(registros.map((registro) => paraDataCivil(registro.data)))
-    const datasDoPeriodo = classe.trilha === 'INDIVIDUAL' ? datasDoIntervalo(inicio, fim) : []
-    const datasDeReuniao = datasDoPeriodo.filter(
-      (data) => new Date(`${data}T00:00:00Z`).getUTCDay() === configuracao.diaReuniao || situacoes.get(data)?.bomParaCampo === true,
-    )
-    const datas = [...new Set([...datasDeReuniao, ...datasDasAulas])].sort()
+    const eventosDoPeriodo: EventoDoCalendario[] = eventos.map((evento) => ({
+      ...evento,
+      inicio: paraDataCivil(evento.inicio),
+      fim: paraDataCivil(evento.fim),
+    }))
+    const datasDoPeriodo = classe.trilha === 'INDIVIDUAL' ? datasDaMontagem(inicio, fim, configuracao.diaReuniao, eventosDoPeriodo) : []
+    const datas = [...new Set([...datasDoPeriodo, ...datasDasAulas])].sort()
     const aulaPorData = new Map(aulas.map((aula) => [paraDataCivil(aula.data), aula]))
 
     const requisitos = await this.requisitosDaClasse(clubeId, classe.id)
@@ -121,7 +129,7 @@ export class ServicoMontagemLeitura {
       datas: datas.map((data) => {
         const aula = aulaPorData.get(data)
         const requisitoIds = aula ? ligacoes.filter((l) => l.aulaPlanejadaId === aula.id).map((l) => l.requisitoId) : []
-        const situacao = situacoes.get(data) ?? { cancelaReuniao: false, bloqueiaAula: false, bomParaCampo: false, eventos: [] }
+        const situacao = situacoes.get(data) ?? situacaoDaData(data, configuracao.diaReuniao, [])
         const aulaDada = datasDadas.has(data)
         return {
           data,

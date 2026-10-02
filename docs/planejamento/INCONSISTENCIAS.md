@@ -14,7 +14,7 @@ contagem vem do banco, nenhuma é digitada**.
 | 1 | Login | A tela pede para escolher o perfil, mas o papel vem da conta | Seletor sai; quem tem 2 papéis escolhe após entrar (F1) |
 | 2 | Usuários × Montar cronograma | Duas travas para a mesma ação: permissão "Montar cronograma" no usuário e "Quem monta" na classe | Uma trava só, na classe (A5) |
 | 3 | Montar cronograma | O LEIA-ME diz que bloqueio e sugestão vêm das marcações do evento; o protótipo decide pelo **tipo** | Vale a marcação (editável), o tipo só preenche o padrão |
-| 4 | Calendário | Acampamento tira a "Reunião 9h" do dia mas não bloqueia aula — "sem reunião" e "sem aula" eram a mesma coisa | Terceira marcação `cancelaReuniao` |
+| 4 | Calendário | Acampamento tira a "Reunião 9h" do dia mas não bloqueia aula — "sem reunião" e "sem aula" eram a mesma coisa | Marcações afirmativas `temReuniao` e `temClasse` (hoje; na época, `cancelaReuniao`) |
 | 5 | Início Adm × LEIA-ME | Unidade em vermelho abaixo de 75% no painel e abaixo de 70% no resto | Um limiar do clube, padrão 70% |
 | 6 | Reunião | 9h no calendário, 9h15 no cronograma, 8h30 no Início do conselheiro | Dia e hora da reunião na configuração do clube; aula pode ter horário próprio |
 | 7 | Registro de aula × LEIA-ME | Requisito "(reposição)" aparece numa aula diferente da agendada, mas "cada requisito fica em uma data só" | O cronograma continua com uma data por requisito; o **registro** aceita qualquer requisito (reposição) |

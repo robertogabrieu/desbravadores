@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { Injectable } from '@nestjs/common'
-import { anoClube, hojeNoFuso, idade, type PacoteSaida } from '@desbravadores/shared'
+import { anoClube, hojeNoFuso, idade, JANELA_DO_CALENDARIO_EM_DIAS, type PacoteSaida } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
@@ -67,10 +67,35 @@ export class SyncService {
       unidades: await this.unidades(clubeId, unidadeIds, hoje, anoClube(hoje, configuracao.inicioAnoClube)),
       reunioesRecentes: await this.reunioes(clubeId, unidadeIds, somarDias(hoje, -DIAS_DE_REUNIOES)),
       albunsRecentes: await this.albuns(clubeId, unidadeIds, somarDias(hoje, -DIAS_DE_ALBUNS)),
+      calendario: await this.calendario(clubeId, hoje),
       instrutor: sessao.papel === 'INSTRUTOR' ? await this.instrutor.montar(sessao, configuracao, hoje) : null,
     }
     const versao = createHash('sha256').update(JSON.stringify(conteudo)).digest('hex')
     return { versao, geradoEm: agora.toISOString(), ...conteudo }
+  }
+
+  /** Eventos que ainda valem na janela do calendário; ordem estável, para a versão não oscilar. */
+  private async calendario(clubeId: string, hoje: string): Promise<Pacote['calendario']> {
+    const eventos = await this.prisma.eventoCalendario.findMany({
+      where: {
+        clubeId,
+        removidoEm: null,
+        inicio: { lte: daDataCivil(somarDias(hoje, JANELA_DO_CALENDARIO_EM_DIAS)) },
+        fim: { gte: daDataCivil(hoje) },
+      },
+      orderBy: [{ inicio: 'asc' }, { id: 'asc' }],
+    })
+    return eventos.map((evento) => ({
+      nome: evento.nome,
+      tipo: evento.tipo,
+      inicio: paraDataCivil(evento.inicio),
+      fim: paraDataCivil(evento.fim),
+      horario: evento.horario,
+      local: evento.local,
+      temReuniao: evento.temReuniao,
+      temClasse: evento.temClasse,
+      bomParaCampo: evento.bomParaCampo,
+    }))
   }
 
   private async unidades(clubeId: string, unidadeIds: string[], hoje: string, ano: number): Promise<Pacote['unidades']> {

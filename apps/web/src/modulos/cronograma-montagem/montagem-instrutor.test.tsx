@@ -16,6 +16,7 @@ import {
   criarRequisitoMontagem,
   handlerErroMontagem,
   handlersMontagem,
+  situacaoDoDia,
 } from '../../testes/handlers/montagem'
 import { criarVinculo, handlersSessao, uuid } from '../../testes/handlers/sessao'
 import { renderizarRotas } from '../../testes/renderizar'
@@ -65,21 +66,21 @@ describe('I3b · data em conflito', () => {
 
 describe('I3b · achados de montagem', () => {
   it('dia de reunião cancelado sem aula: hachurado, com o texto e sem "+"', async () => {
-    const situacao = { cancelaReuniao: true, bloqueiaAula: false, bomParaCampo: false, eventos: ['Retiro da igreja'] }
+    const situacao = situacaoDoDia('2026-10-11', [{ nome: 'Retiro da igreja', tipo: 'SEM_REUNIAO' }])
     abrir(criarMontagem({ datas: [criarDataMontagem('2026-10-11', { situacao })] }))
     await screen.findByText(/requisitos com data/)
     const bloqueada = linha('2026-10-11')
     expect(bloqueada).toHaveAttribute('data-estado', 'bloqueada')
-    expect(within(bloqueada).getByText('Retiro da igreja · sem aula de classe')).toBeInTheDocument()
+    expect(within(bloqueada).getByText('Retiro da igreja · sem classe')).toBeInTheDocument()
     expect(within(bloqueada).queryByRole('button', { name: 'Adicionar requisito nesta data' })).not.toBeInTheDocument()
   })
 
-  it('"Remover aula" pede confirmação e chama DELETE; aula dada não tem o botão', async () => {
+  it('"Remover dia de classe" pede confirmação e chama DELETE; aula dada não tem o botão', async () => {
     const registro = abrir()
     const usuario = userEvent.setup()
     await screen.findByText(/requisitos com data/)
-    expect(within(linha('2026-11-01')).queryByRole('button', { name: 'Remover aula' })).not.toBeInTheDocument()
-    await usuario.click(within(linha('2026-10-04')).getByRole('button', { name: 'Remover aula' }))
+    expect(within(linha('2026-11-01')).queryByRole('button', { name: 'Remover dia de classe' })).not.toBeInTheDocument()
+    await usuario.click(within(linha('2026-10-04')).getByRole('button', { name: 'Remover dia de classe' }))
     expect(registro.chamadas).toHaveLength(0)
     await usuario.click(screen.getByRole('button', { name: 'Remover' }))
     await waitFor(() => expect(registro.chamadas).toHaveLength(1))
@@ -91,7 +92,7 @@ describe('I3b · achados de montagem', () => {
     const usuario = userEvent.setup()
     await screen.findByText(/requisitos com data/)
     registro.falharProxima(422, { codigo: 'VALIDACAO', mensagem: 'Esta classe está desativada no clube.' })
-    await usuario.click(within(linha('2026-10-04')).getByRole('button', { name: 'Remover aula' }))
+    await usuario.click(within(linha('2026-10-04')).getByRole('button', { name: 'Remover dia de classe' }))
     await usuario.click(screen.getByRole('button', { name: 'Remover' }))
     expect(await screen.findByText('Esta classe está desativada no clube.')).toBeInTheDocument()
   })
@@ -203,13 +204,13 @@ describe('I3b · montar', () => {
     abrir()
     await screen.findByText('3 de 5 requisitos com data')
     expect(within(linha('2026-10-11')).queryByRole('button')).not.toBeInTheDocument()
-    expect(within(linha('2026-10-11')).getByText('Feriado prolongado · sem aula de classe')).toBeInTheDocument()
+    expect(within(linha('2026-10-11')).getByText('Feriado prolongado · sem classe')).toBeInTheDocument()
     const dada = linha('2026-11-01')
-    expect(within(dada).getByText('Aula dada')).toBeInTheDocument()
+    expect(within(dada).getByText('Classe dada')).toBeInTheDocument()
     expect(within(dada).queryByRole('button')).not.toBeInTheDocument()
   })
 
-  it('conflito fica em vermelho e "Mover" leva a uma data que aceita aula', async () => {
+  it('conflito fica em vermelho e "Mover" leva a uma data que aceita classe', async () => {
     const registro = abrir()
     const usuario = userEvent.setup()
     await screen.findByText('3 de 5 requisitos com data')
@@ -279,5 +280,26 @@ describe('I3b · enviar e concorrência', () => {
     expect(await screen.findByText(mensagem)).toBeInTheDocument()
     await usuario.click(screen.getByRole('button', { name: 'Atualizar' }))
     await waitFor(() => expect(registro.leituras).toBe(2))
+  })
+})
+
+describe('Calendário novo · montagem do instrutor', () => {
+  it('reunião extra com classe: o rótulo aparece e a data aceita requisito', async () => {
+    const extra = criarDataMontagem('2026-10-07', { situacao: situacaoDoDia('2026-10-07', [{ nome: 'Reunião da investidura', tipo: 'REUNIAO_EXTRA' }]) })
+    abrir(criarMontagem({ datas: [extra] }))
+    await screen.findByText(/requisitos com data/)
+    expect(within(linha('2026-10-07')).getByText('Reunião da investidura · reunião extra')).toBeInTheDocument()
+    expect(within(linha('2026-10-07')).getByRole('button', { name: 'Adicionar requisito nesta data' })).toBeInTheDocument()
+  })
+
+  it('vazio: individuais mostram "Nenhuma data de classe neste período"; agrupadas, "Nenhum dia de classe ainda"', async () => {
+    abrir(criarMontagem({ datas: [] }))
+    expect(await screen.findByText('Nenhuma data de classe neste período')).toBeInTheDocument()
+  })
+
+  it('agrupadas sem datas: "+ Novo dia de classe" e "Nenhum dia de classe ainda"', async () => {
+    abrir(criarMontagem({ datas: [], datasLivres: true }))
+    expect(await screen.findByText('Nenhum dia de classe ainda')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '+ Novo dia de classe' })).toBeInTheDocument()
   })
 })

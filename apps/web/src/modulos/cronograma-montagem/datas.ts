@@ -12,18 +12,20 @@ export function partesDaData(data: string): { semana: string; dia: string; mes: 
   return { semana, dia: data.slice(8, 10), mes: MESES[Number(data.slice(5, 7)) - 1] ?? '' }
 }
 
-/** Dia sem aula de classe: bloqueio, ou reunião cancelada (que não é dia de campo) sem aula marcada. */
+/** Dia sem classe: o dia não tem classe e (nada marcado nele ou algum evento tira a classe). Férias com classe marcada segue aberta. */
 export const dataBloqueada = ({ situacao, aulaId }: DataDaMontagem): boolean =>
-  situacao.bloqueiaAula || (situacao.cancelaReuniao && !situacao.bomParaCampo && aulaId === null)
+  !situacao.temClasse && (aulaId === null || !situacao.classeLiberada)
 
 /** Nome(s) do evento + rótulo pelas marcações; vazio quando a data não tem nada de especial. */
 export function textoDaData(dado: DataDaMontagem): string {
   const { situacao } = dado
   const bloqueada = dataBloqueada(dado)
   const rotulos: string[] = []
-  if (bloqueada) rotulos.push('sem aula de classe')
+  const temEventoComum = situacao.eventos.length > (situacao.extra ? 1 : 0)
+  if (bloqueada) rotulos.push('sem classe')
   if (situacao.bomParaCampo) rotulos.push('ótimo para campo')
-  if (situacao.eventos.length > 0 && !situacao.cancelaReuniao && !bloqueada) rotulos.push('reunião mantida')
+  if (temEventoComum && situacao.reuniaoMantida && !bloqueada) rotulos.push('reunião mantida')
+  if (situacao.extra?.temClasse) rotulos.push('reunião extra')
   return [situacao.eventos.join(', '), ...rotulos].filter(Boolean).join(' · ')
 }
 

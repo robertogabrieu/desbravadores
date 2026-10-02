@@ -1,0 +1,164 @@
+{
+ "v": 3,
+ "attachments": {},
+ "boards": {
+  "FichaExtra.dc.html": {
+   "h": 820,
+   "title": "Ficha · Reunião extra",
+   "w": 1280,
+   "x": 5960,
+   "y": 0
+  },
+  "FichaFerias.dc.html": {
+   "h": 760,
+   "title": "Ficha · Férias",
+   "w": 1280,
+   "x": 4600,
+   "y": 0
+  },
+  "FormEvento-Evento.dc.html": {
+   "h": 1080,
+   "title": "Formulário · tipo Evento do clube",
+   "w": 1280,
+   "x": 1360,
+   "y": 0
+  },
+  "FormEvento-Extra.dc.html": {
+   "h": 1120,
+   "title": "Formulário · Reunião extra com erro",
+   "w": 390,
+   "x": 3660,
+   "y": 0
+  },
+  "FormEvento-ExtraDomingo.dc.html": {
+   "h": 1120,
+   "title": "Formulário · extra no domingo",
+   "w": 390,
+   "x": 4130,
+   "y": 0
+  },
+  "FormEvento-Ferias.dc.html": {
+   "h": 1040,
+   "title": "Formulário · Férias (celular)",
+   "w": 390,
+   "x": 2720,
+   "y": 0
+  },
+  "InicioConselheiro-Extra.dc.html": {
+   "h": 1060,
+   "title": "Início do conselheiro · extra de sábado",
+   "w": 390,
+   "x": 7790,
+   "y": 0
+  },
+  "InicioConselheiro-ExtraOffline.dc.html": {
+   "h": 1060,
+   "title": "Início do conselheiro · extra sem conexão",
+   "w": 390,
+   "x": 8260,
+   "y": 0
+  },
+  "InicioConselheiro-Ferias.dc.html": {
+   "h": 1000,
+   "title": "Início do conselheiro · férias",
+   "w": 390,
+   "x": 7320,
+   "y": 0
+  },
+  "InicioInstrutor.dc.html": {
+   "h": 980,
+   "title": "Início do instrutor",
+   "w": 390,
+   "x": 0,
+   "y": 1660
+  },
+  "Main.dc.html": {
+   "h": 1240,
+   "title": "Calendário do Adm — janeiro",
+   "w": 1280,
+   "x": 0,
+   "y": 0
+  },
+  "Registro-BuscaEspecialidade.dc.html": {
+   "h": 1000,
+   "title": "Registro · busca de especialidade",
+   "w": 390,
+   "x": 1410,
+   "y": 1660
+  },
+  "Registro-BuscaNada.dc.html": {
+   "h": 520,
+   "title": "Busca · nenhuma encontrada",
+   "w": 390,
+   "x": 1880,
+   "y": 1660
+  },
+  "Registro-Cobrar.dc.html": {
+   "h": 1640,
+   "title": "Registro · cobrar no topo",
+   "w": 390,
+   "x": 470,
+   "y": 1660
+  },
+  "Registro-ParaCasa.dc.html": {
+   "h": 1180,
+   "title": "Registro · Para casa e Salvar",
+   "w": 390,
+   "x": 940,
+   "y": 1660
+  },
+  "FormEvento-Acampamento.dc.html": {
+   "h": 1120,
+   "title": "Formulário · Acampamento (três caixas)",
+   "w": 390,
+   "x": 3190,
+   "y": 0
+  }
+ },
+ "createdOnFiles": {
+  "at": "2026-10-02T15:18:17Z",
+  "v": 1
+ },
+ "designSystems": [],
+ "launch": {
+  "view": "canvas"
+ },
+ "notes": {
+  "grupoCalendario": {
+   "kind": "title1",
+   "maxW": 8000,
+   "text": "Calendário do Adm",
+   "w": 240,
+   "x": 0,
+   "y": -300
+  },
+  "grupoTarefa": {
+   "kind": "title1",
+   "maxW": 2270,
+   "text": "Tarefa para casa — instrutor",
+   "w": 240,
+   "x": 0,
+   "y": 1360
+  }
+ },
+ "order": [
+  "Main.dc.html",
+  "FormEvento-Evento.dc.html",
+  "FormEvento-Ferias.dc.html",
+  "FormEvento-Acampamento.dc.html",
+  "FormEvento-Extra.dc.html",
+  "FormEvento-ExtraDomingo.dc.html",
+  "FichaFerias.dc.html",
+  "FichaExtra.dc.html",
+  "InicioConselheiro-Ferias.dc.html",
+  "InicioConselheiro-Extra.dc.html",
+  "InicioConselheiro-ExtraOffline.dc.html",
+  "InicioInstrutor.dc.html",
+  "Registro-Cobrar.dc.html",
+  "Registro-ParaCasa.dc.html",
+  "Registro-BuscaEspecialidade.dc.html",
+  "Registro-BuscaNada.dc.html"
+ ],
+ "pages": [],
+ "title": "Desbravador — calendário e tarefa para casa"
+}

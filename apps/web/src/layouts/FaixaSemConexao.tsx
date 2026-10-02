@@ -10,7 +10,7 @@ export function FaixaSemConexao() {
   return (
     <div role="status" className="flex items-center gap-3 bg-sem-conexao px-4 py-2 text-sm font-semibold text-sobre-sem-conexao">
       <WifiOff aria-hidden className="size-4 shrink-0" />
-      <span>Sem conexão</span>
+      <span>Sem conexão. Mostrando o que está guardado no aparelho.</span>
     </div>
   )
 }

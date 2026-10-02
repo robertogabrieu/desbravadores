@@ -1,3 +1,4 @@
+import { MARCACOES_PADRAO, situacaoDaData, type TIPOS_EVENTO } from '@desbravadores/shared'
 import { HttpResponse, http } from 'msw'
 import type { HttpHandler } from 'msw'
 import type { DataDaMontagem, Montagem, RequisitoDaMontagem } from '../../api/montagem'
@@ -20,6 +21,13 @@ export function criarRequisitoMontagem(n: number, parcial: Partial<RequisitoDaMo
   }
 }
 
+/** Situação da data pela regra do shared (domingo = dia de reunião), com eventos de um dia no padrão do tipo. */
+export function situacaoDoDia(data: string, eventos: { nome: string; tipo: (typeof TIPOS_EVENTO)[number] }[] = []): DataDaMontagem['situacao'] {
+  return situacaoDaData(data, 0, eventos.map(({ nome, tipo }) => ({
+    nome, tipo, inicio: data, fim: data, horario: null, local: null, ...MARCACOES_PADRAO[tipo],
+  })))
+}
+
 export function criarDataMontagem(data: string, parcial: Partial<DataDaMontagem> = {}): DataDaMontagem {
   return {
     data,
@@ -28,7 +36,7 @@ export function criarDataMontagem(data: string, parcial: Partial<DataDaMontagem>
     local: null,
     titulo: null,
     requisitoIds: [],
-    situacao: { cancelaReuniao: false, bloqueiaAula: false, bomParaCampo: false, eventos: [] },
+    situacao: situacaoDoDia(data),
     conflito: false,
     aulaDada: false,
     ...parcial,
@@ -143,13 +151,13 @@ export function criarMontagemDeExemplo(parcial: Partial<Montagem> = {}): Montage
     requisitos: [REQ_LIVRE, REQ_CAMPO, REQ_COLOCADO, REQ_EM_CONFLITO, REQ_DA_AULA_DADA],
     datas: [
       criarDataMontagem('2026-10-04', { aulaId: uuid(2001), horario: '09:15', local: 'Sala 2', requisitoIds: [REQ_COLOCADO.id] }),
-      criarDataMontagem('2026-10-11', { situacao: { cancelaReuniao: true, bloqueiaAula: true, bomParaCampo: false, eventos: ['Feriado prolongado'] } }),
-      criarDataMontagem('2026-10-18', { situacao: { cancelaReuniao: true, bloqueiaAula: false, bomParaCampo: true, eventos: ['Acampamento do clube'] } }),
+      criarDataMontagem('2026-10-11', { situacao: situacaoDoDia('2026-10-11', [{ nome: 'Feriado prolongado', tipo: 'SEM_REUNIAO' }]) }),
+      criarDataMontagem('2026-10-18', { situacao: situacaoDoDia('2026-10-18', [{ nome: 'Acampamento do clube', tipo: 'ACAMPAMENTO' }]) }),
       criarDataMontagem('2026-10-25', {
         aulaId: uuid(2002),
         requisitoIds: [REQ_EM_CONFLITO.id],
         conflito: true,
-        situacao: { cancelaReuniao: false, bloqueiaAula: true, bomParaCampo: false, eventos: ['Ensaio da investidura'] },
+        situacao: situacaoDoDia('2026-10-25', [{ nome: 'Ensaio da investidura', tipo: 'EVENTO' }]),
       }),
       criarDataMontagem('2026-11-01', { aulaId: uuid(2003), requisitoIds: [REQ_DA_AULA_DADA.id], aulaDada: true }),
     ],

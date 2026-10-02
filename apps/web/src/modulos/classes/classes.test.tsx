@@ -36,6 +36,7 @@ const guardarPacote = () => {
     instrutor: {
       classes: [criarClasseInstrutor({ classe: CLASSE_AMIGO, aulasProximas: [{ aulaPlanejadaId: uuid(50), data: '2030-09-27', horario: '09:15', titulo: 'Descoberta espiritual', requisitoIds: [] }] })],
       pontosRequisito: { pontos: 5, ativo: true },
+      pontosEspecialidade: { pontos: 0, ativo: false },
     },
   })
 }
@@ -59,15 +60,15 @@ describe('minhas classes', () => {
     expect(await cartao.findByText('Classe regular · 10 anos')).toBeInTheDocument()
     expect(cartao.getByText('9 DBVs')).toBeInTheDocument()
     expect(cartao.getByText('64%')).toBeInTheDocument()
-    expect(cartao.getByText('Próxima aula: 27 set')).toBeInTheDocument()
-    expect(cartao.getByText('11 aulas dadas')).toBeInTheDocument()
+    expect(cartao.getByText('Próxima classe: 27 set')).toBeInTheDocument()
+    expect(cartao.getByText('11 classes dadas')).toBeInTheDocument()
     expect(cartao.getByRole('link', { name: 'Cronograma' })).toHaveAttribute('href', `/cronograma?classe=${CLASSE_AMIGO.id}`)
     expect(cartao.getByRole('link', { name: 'Progresso' })).toHaveAttribute('href', `/classes/${CLASSE_AMIGO.id}/progresso`)
     expect(cartao.getByRole('link', { name: 'Materiais' })).toHaveAttribute('href', `/classes/${CLASSE_AMIGO.id}/materiais`)
     const companheiro = within((screen.getByRole('heading', { name: 'Companheiro' })).closest('article') as HTMLElement)
     expect(companheiro.getByText('—')).toBeInTheDocument()
-    expect(companheiro.getByText('1 aula dada')).toBeInTheDocument()
-    expect(companheiro.getByText('Nenhuma aula publicada ainda')).toBeInTheDocument()
+    expect(companheiro.getByText('1 classe dada')).toBeInTheDocument()
+    expect(companheiro.getByText('Nenhuma classe publicada ainda')).toBeInTheDocument()
     expect(screen.getByText('As classes são atribuídas pelo Adm do clube.')).toBeInTheDocument()
   })
 
@@ -103,14 +104,14 @@ describe('minhas classes', () => {
     expect(await screen.findByText('Disponível quando houver internet')).toBeInTheDocument()
   })
 
-  it('sem conexão, com pacote: lista a classe com "Registrar aula" e sem progresso', async () => {
+  it('sem conexão, com pacote: lista a classe com "Registrar classe" e sem progresso', async () => {
     offline.modo = 'SEM_CONEXAO'
     guardarPacote()
     servidor.use(handlerErroInicioInstrutor(500, { codigo: 'ERRO_INTERNO', mensagem: 'x' }))
     abrir()
-    expect(await screen.findByText('Sem conexão: dá para registrar a aula; o resto volta com a internet.')).toBeInTheDocument()
+    expect(await screen.findByText('Sem conexão: dá para registrar a classe; o resto volta com a internet.')).toBeInTheDocument()
     const cartao = screen.getByRole('region', { name: 'Classe Amigo' })
-    expect(within(cartao).getByRole('link', { name: 'Registrar aula' })).toHaveAttribute('href', `/aulas/nova?classe=${CLASSE_AMIGO.id}`)
+    expect(within(cartao).getByRole('link', { name: 'Registrar classe' })).toHaveAttribute('href', `/aulas/nova?classe=${CLASSE_AMIGO.id}`)
     expect(screen.queryByText('Progresso médio')).not.toBeInTheDocument()
   })
 })

@@ -275,7 +275,7 @@ describe('Faixa "Sem conexão"', () => {
     servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO')]))
     renderizarRotas(rotasCelular, '/inicio')
     await screen.findByText('conteúdo')
-    expect(screen.queryByText('Sem conexão')).not.toBeInTheDocument()
+    expect(screen.queryByText('Sem conexão. Mostrando o que está guardado no aparelho.')).not.toBeInTheDocument()
   })
 
   it('celular: em SEM_CONEXAO mostra a faixa', async () => {
@@ -283,7 +283,7 @@ describe('Faixa "Sem conexão"', () => {
     servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO')]))
     renderizarRotas(rotasCelular, '/inicio')
 
-    expect(await screen.findByText('Sem conexão')).toBeInTheDocument()
+    expect(await screen.findByText('Sem conexão. Mostrando o que está guardado no aparelho.')).toBeInTheDocument()
     expect(screen.getByText('conteúdo')).toBeInTheDocument()
   })
 
@@ -291,13 +291,13 @@ describe('Faixa "Sem conexão"', () => {
     offline.modo = 'SEM_CONEXAO'
     servidor.use(...handlersSessao([criarVinculo('ADM')]))
     const { unmount } = renderizarRotas(rotasAdm, '/adm/desbravadores')
-    expect(await screen.findByText('Sem conexão')).toBeInTheDocument()
+    expect(await screen.findByText('Sem conexão. Mostrando o que está guardado no aparelho.')).toBeInTheDocument()
     unmount()
 
     offline.modo = 'ONLINE'
     renderizarRotas(rotasAdm, '/adm/desbravadores')
     await screen.findByText('lista')
-    expect(screen.queryByText('Sem conexão')).not.toBeInTheDocument()
+    expect(screen.queryByText('Sem conexão. Mostrando o que está guardado no aparelho.')).not.toBeInTheDocument()
   })
 })
 
@@ -341,7 +341,7 @@ describe('Faixa "Sessão expirada"', () => {
     renderizarRotas(rotasCelular, '/inicio')
 
     await screen.findByText('Sua sessão expirou — salve e entre de novo')
-    expect(screen.queryByText('Sem conexão')).not.toBeInTheDocument()
+    expect(screen.queryByText('Sem conexão. Mostrando o que está guardado no aparelho.')).not.toBeInTheDocument()
   })
 })
 

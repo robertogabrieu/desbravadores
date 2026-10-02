@@ -76,7 +76,7 @@ export class ObservacoesService {
         where: { clubeId, id: entrada.registroAulaId, classeId: entrada.classeId },
         select: { id: true },
       })
-      if (!registro) throw new ErroApp('NAO_ENCONTRADO', 'Aula não encontrada.')
+      if (!registro) throw new ErroApp('NAO_ENCONTRADO', 'Registro de classe não encontrado.')
     }
     if (entrada.dbvId) {
       const matricula = await this.prisma.matriculaClasse.findFirst({

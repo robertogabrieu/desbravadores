@@ -2,7 +2,8 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { describe, expect, it } from 'vitest'
 import { servidor } from '../testes/servidor'
-import { criarPacote, handlerPacote } from '../testes/handlers/offline'
+import { criarClasseInstrutor } from '../testes/handlers/aulas'
+import { criarPacote, criarPacoteInstrutor, handlerPacote } from '../testes/handlers/offline'
 import { criarEu, criarVinculo } from '../testes/handlers/sessao'
 import { ContextoDaSessao } from '../sessao/useSessao'
 import type { ContextoSessao, Eu } from '../sessao/useSessao'
@@ -10,6 +11,7 @@ import { banco } from './banco'
 import { usePacote } from './index'
 import { baixarPacote } from './pacote'
 
+const uuid = (n: number): string => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
 const vinculoA = criarVinculo('CONSELHEIRO', 1)
 const vinculoB = criarVinculo('CONSELHEIRO', 2)
 const eu = criarEu([vinculoA, vinculoB], vinculoA.id)
@@ -82,6 +84,19 @@ describe('usePacote', () => {
       await baixarPacote(USUARIO, vinculoA.id)
     })
     await waitFor(() => expect(result.current.pacote?.versao).toBe('v-novo'))
+  })
+
+  it('pacote rebaixado com tarefa nova reemite: a tela recebe a versão nova', async () => {
+    const tarefa = { id: uuid(600), registroAulaId: uuid(700), data: '2030-03-10', encerrada: false, itens: [{ requisitoId: uuid(11) }] }
+    const comTarefas = (tarefas: (typeof tarefa)[]) => criarPacote({ versao: `com-${tarefas.length}`, instrutor: criarPacoteInstrutor({ classes: [criarClasseInstrutor({ tarefas })] }) })
+    await banco.pacotes.put({ usuarioId: USUARIO, vinculoId: vinculoA.id, pacote: comTarefas([]), baixadoEm: 1000 })
+    servidor.use(handlerPacote(comTarefas([tarefa])))
+    const { result } = renderHook(() => usePacote(), { wrapper: comSessao(eu) })
+    await waitFor(() => expect(result.current.pacote?.instrutor?.classes[0]?.tarefas).toEqual([]))
+    await act(async () => {
+      await baixarPacote(USUARIO, vinculoA.id)
+    })
+    await waitFor(() => expect(result.current.pacote?.instrutor?.classes[0]?.tarefas).toEqual([tarefa]))
   })
 
   it('isola por vínculo e por usuário', async () => {

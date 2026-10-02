@@ -11,6 +11,8 @@ export const ClasseDoInstrutor = z.object({
   aulaHoje: z.boolean(),
   aulaHojeRegistrada: z.boolean(),
   aulasDadas: z.number().int(),   // RegistroAula no ano do clube
+  /** Tarefas para casa: itens ativos distintos com alguém devendo e desbravadores distintos, sem a própria ficha; null = nada. */
+  paraCobrar: z.object({ requisitos: z.number().int(), especialidades: z.number().int(), desbravadores: z.number().int() }).nullable(),
 })
 export const InicioInstrutorSaida = z.object({
   classes: z.array(ClasseDoInstrutor), // individuais por ordem, depois Agrupadas

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { mediaTurma, type InicioInstrutorSaida } from '@desbravadores/shared'
 import type { z } from 'zod'
+import { devedoresPorItem } from '../aulas/tarefas-leitura'
 import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { ErroApp } from '../comum/erros'
@@ -63,6 +64,7 @@ export class InstrutorService {
         aulaHoje: aulas.some((aula) => aula.data === relogio.hoje),
         aulaHojeRegistrada: hojeRegistrada,
         aulasDadas: registros.length,
+        paraCobrar: await this.paraCobrar(sessao, classe.id, relogio.anoClube),
       })
 
       const faltosos = await this.faltaramAsDuasUltimas(clubeId, registros.slice(0, 2).map((registro) => registro.id))
@@ -70,6 +72,18 @@ export class InstrutorService {
       if (dbvs.length > 0) saida.alertaFaltas.push({ classe: refClasse(classe), dbvs })
     }
     return saida
+  }
+
+  /** Itens e desbravadores distintos com pendencia nas tarefas abertas; null quando ninguem deve nada. */
+  private async paraCobrar(sessao: SessaoLogada, classeId: string, anoClube: number): Promise<Inicio['classes'][number]['paraCobrar']> {
+    const devedores = await devedoresPorItem(this.prisma, sessao.clubeId, classeId, anoClube, sessao)
+    if (devedores.size === 0) return null
+    const chaves = [...devedores.keys()]
+    return {
+      requisitos: chaves.filter((chave) => chave.startsWith('requisito:')).length,
+      especialidades: chaves.filter((chave) => chave.startsWith('especialidade:')).length,
+      desbravadores: new Set([...devedores.values()].flatMap((dbvIds) => [...dbvIds])).size,
+    }
   }
 
   async pedirLiberacao(sessao: SessaoLogada, classeId: string): Promise<void> {
