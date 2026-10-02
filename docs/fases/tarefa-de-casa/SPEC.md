@@ -21,16 +21,16 @@ Textos ao usuário usam **"classe"** onde hoje a interface diz "aula" (a SPEC do
 - **Lembrete no início.** No cartão da classe (`TelaInicioInstrutor.tsx:44-86`), uma linha que só
   informa: **"Para cobrar: 2 requisitos · 5 desbravadores"**. Não é link: o caminho para cobrar é o
   "Registrar classe" que já aparece em dia de classe (`:78-81`).
-- **Cobrar no registro.** Ao registrar a classe, **no topo** aparecem as tarefas em aberto, a mais
+- **Cobrar no registro.** Ao registrar a classe, **logo abaixo da presença** aparecem as tarefas em aberto, a mais
   recente aberta ("Cobrar tarefa de 27/09") e as outras recolhidas ("+2 tarefas anteriores").
   Um item por vez: chips com o nome curto de cada item, o nome inteiro do escolhido, e a lista de
   quem deve com um botão **"Entregou"** por linha. Ao salvar, o requisito fica cumprido ou a
   especialidade concluída, com a data deste registro.
 - **Quem não entregou** continua devendo e reaparece no próximo registro. **Quem está ausente**
-  neste registro não tem "Entregou" e continua devendo.
+  neste registro tem "Entregou" desabilitado, com "faltou hoje", e continua devendo.
 - **Desfazer.** Quem entregou neste registro continua na lista, com "Entregue" e a opção de
   desfazer — mesmo que a tarefa já esteja encerrada ou não tenha mais ninguém devendo.
-- **Encerrar tarefa.** No rodapé do bloco: tira a tarefa do lembrete e do topo. Não desfaz nada
+- **Encerrar tarefa.** No rodapé do bloco: tira a tarefa do lembrete e do registro. Não desfaz nada
   que já foi entregue.
 - **Sem internet** passar, cobrar e encerrar funcionam e entram na fila do registro.
 
@@ -63,8 +63,8 @@ Textos ao usuário usam **"classe"** onde hoje a interface diz "aula" (a SPEC do
    ausente depois desfaz as entregas dele **neste** registro (requisito e especialidade).
 9. **Desfazer** tira só o que foi concluído **neste** registro, como o resto do registro já faz
    com requisito (`aulas-envio.service.ts:293-306`). Conclusão de outra origem fica.
-10. **Sem duplicar:** requisito que é item de tarefa anterior da classe aparece **só no bloco do
-    topo** — não vira coluna em "Requisitos desta aula" nem entra em "O que falta fazer", a menos
+10. **Sem duplicar:** requisito que é item de tarefa anterior da classe aparece **só no bloco de
+    cobrança** — não vira coluna em "Requisitos desta aula" nem entra em "O que falta fazer", a menos
     que esteja planejado para a data. "Passar" ignora item que já está em tarefa aberta da classe.
     O lembrete conta itens distintos.
 11. **Pontos:** especialidade já dá pontos quando marcada fora da classe
@@ -88,7 +88,7 @@ Textos ao usuário usam **"classe"** onde hoje a interface diz "aula" (a SPEC do
 | Permissão | Requisito: **`aula.registrar`**, como hoje no registro (`aulas.controller.ts:19`). Especialidade (passar e entregar): também **`requisito.marcar`** (`permissoes.ts:22`, a que a ficha exige, `especialidades-dbv.controller.ts:21`); sem ela, volta `SEM_PERMISSAO` e a tela esconde a parte de especialidade. |
 | Data da especialidade fora do ano do clube | **Aceita.** A data é a do registro, já validada pelo prazo do envio — como o requisito no registro, que também não passa por `exigirDataDoAnoCorrente` (`conclusoes.ts:14-19`). |
 | Fonte das tarefas no registro | **O pacote, rebaixado ao abrir com conexão** (`baixarPacote`, `offline/pacote.ts:14-25`; a tela se atualiza sozinha, `usePacote.ts:14,24`). Um só caminho de código com e sem internet; o início lê o mesmo banco. Trazer pela API do registro exigiria uma segunda fonte para o modo sem conexão. |
-| Onde encerrar | **Só no bloco do topo**, no envio do registro: funciona offline e sempre acontece num registro real. |
+| Onde encerrar | **Só no bloco de cobrança**, no envio do registro: funciona offline e sempre acontece num registro real. |
 | Item retirado ao corrigir o registro de origem | `TarefaItem` ganha `removidoEm` (nunca se apaga linha). |
 | Item inválido, repetido ou sem permissão; tarefa de outra classe em "encerrar" | **Não grava e volta como aviso** (`tarefaItensSemEfeito`, `especialidadesSemEfeito`), como a marcação inválida já volta (`offline/tipos/aula.ts:92-95`). O envio nunca é recusado por isso. |
 
@@ -161,7 +161,22 @@ Nenhuma rota nova.
 
 Tudo dentro do registro (`FormularioAula.tsx`) e do início. Nenhum elemento fixo ou preso na tela.
 
-**Bloco do topo** — entre o cabeçalho (`:148-152`) e "Requisitos desta aula" (`:154`):
+**Ordem do registro** (pedido do usuário: presença primeiro):
+
+1. cabeçalho (`:148-152`);
+2. **presença e requisitos** — a lista de hoje (`:183-206`), com a linha de códigos (`:186-191`)
+   como legenda das marcações;
+3. **cobrança** (novo);
+4. "Requisitos desta aula" — textos e "+ Requisito" (`:154-181`, sobe de lugar só no código);
+5. "O que falta fazer" (`:208-220`);
+6. **"Para casa"** (novo);
+7. salvar (`:222-240`).
+
+Escolha: a linha do desbravador (`LinhaDbv`, `:256-311`) **fica como está**, com presença e
+marcações juntas, e só as seções mudam de ordem — separar presença e marcações em duas listas
+mudaria o componente e faria o instrutor percorrer os nomes duas vezes.
+
+**Bloco de cobrança** — logo abaixo da presença:
 
 - Entram as tarefas abertas com data **anterior** à do registro e as que têm entrega **neste**
   registro (mesmo encerradas). A mais recente aberta; as outras num botão "+N tarefas anteriores".
@@ -169,14 +184,16 @@ Tudo dentro do registro (`FormularioAula.tsx`) e do início. Nenhum elemento fix
   especialidade cortado) que quebram linha; abaixo, o nome inteiro do item escolhido.
 - **Lista de quem deve o item escolhido**, mais quem o entregou neste registro. Por linha: nome e
   um botão — "Entregou" (aria-label "Entregou: <item> · <nome>"), "Entregue" com "Desfazer"
-  (aria-label "Entregue em <data> · <nome> · desfazer"), ou, ausente, "Faltou hoje" sem botão.
+  (aria-label "Entregue em <data> · <nome> · desfazer"), ou, para quem
+  está marcado ausente acima, "Entregou" desabilitado com "faltou hoje" (aria-label "Entregou:
+  <item> · <nome> · faltou hoje").
   A linha não some ao marcar. Nenhuma grade e nenhuma rolagem lateral.
 - Rodapé: "Encerrar tarefa" (secundário) com confirmação "Encerrar a tarefa de 27/09? Quem não
   entregou deixa de aparecer para cobrar. O que já foi entregue continua registrado." Antes de
   salvar: "Será encerrada ao salvar" com "Desfazer".
 - Sem `requisito.marcar`, chips de especialidade não aparecem.
 
-**Seção "Para casa"** — depois de "O que falta fazer" (`:208-220`):
+**Seção "Para casa"** — no fim, depois de "O que falta fazer" (`:208-220`) e antes de salvar:
 
 - Itens passados com "Tirar"; "Passar o que faltou"; "+ Requisito" (`Selecao`, como `:167-179`,
   sem os que já estão em tarefa aberta); "+ Especialidade" (com `requisito.marcar`): campo de
@@ -221,7 +238,8 @@ hoje; nada da tarefa grava (nem o encerramento) e o item fica na fila com o erro
 - **Pré-requisitos:** classe com desbravadores matriculados (o registro já bloqueia,
   `TelaRegistroAula.tsx:66`); especialidade ativa no catálogo.
 - **Vazio:** "Para casa" ensina com os próprios botões; sem tarefa, nem bloco nem lembrete.
-- **Bloqueio:** ausente mostra "Faltou hoje"; item que deixou de valer some e, se estava no envio,
+- **Bloqueio:** "Entregou" de quem faltou fica desabilitado com "faltou hoje" — a
+  presença já foi marcada acima; item que deixou de valer some e, se estava no envio,
   volta como aviso.
 - **Perfil e escopo:** só o instrutor da classe vê e cobra; a própria ficha aparece como hoje,
   "Outro instrutor ou o Adm registra os seus requisitos" (`FormularioAula.tsx:275`); sem
@@ -251,7 +269,7 @@ hoje; nada da tarefa grava (nem o encerramento) e o item fica na fila com o erro
     de outra classe não a vê.
 - **Web:** passar (manual, "Passar o que faltou", item já em tarefa ignorado); bloco só em data
   posterior, mais recente aberta e as outras recolhidas; chips trocam o item; "Entregou",
-  "Desfazer" e quem entregou continua na lista; ausente sem botão e marcar ausente desfaz a
+  "Desfazer" e quem entregou continua na lista; "Entregou" desabilitado para quem faltou e marcar ausente desfaz a
   entrega; requisito da cobrança fora da grade e de "O que falta fazer"; encerrar e desfazer;
   sem `requisito.marcar` nada de especialidade; busca (vazia, nada encontrado, pacote antigo);
   rascunho; `fundir`; **item antigo da fila** sem os campos novos; avisos novos; lembrete no
@@ -270,7 +288,7 @@ hoje; nada da tarefa grava (nem o encerramento) e o item fica na fila com o erro
 - Migration aplicada contra o banco (com `MODELOS_DE_CLUBE` na mesma); lint, `npm run tipos` e
   suítes de API e web passando; e2e verde no CI.
 - Medido no DOM em 390, 820 e 1280 px, com três tarefas abertas de seis itens: sem rolagem
-  lateral da página **nem dentro do bloco do topo**, e sem elemento `fixed`/`sticky` novo.
+  lateral da página **nem dentro do bloco de cobrança**, e sem elemento `fixed`/`sticky` novo.
 - QA no navegador: passar → início mostra o lembrete → registro seguinte cobra → lembrete some;
   ausente continua devendo; desfazer; encerrar; o mesmo sem conexão até o envio.
 

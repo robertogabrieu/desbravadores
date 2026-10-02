@@ -10,7 +10,7 @@ em `packages/shared`. De quebra, todo texto que o usuário lê troca **"aula" po
 ## O que muda para quem usa
 
 - **Adm, formulário do evento:** dois tipos novos. Os tipos de sempre têm as caixas no positivo —
-  **Terá reunião**, **Terá classe**, **Bom para requisitos de campo** —, já marcadas pelo tipo.
+  **Terá reunião**, **Terá classe**, **Terá atividade de campo** —, já marcadas pelo tipo.
   **Férias** não tem caixa nenhuma. **Reunião extra** tem uma data só e duas caixas (Terá
   reunião, Terá classe), ao menos uma marcada. Sob o seletor de Tipo, uma linha explica o tipo
   escolhido.
@@ -115,7 +115,7 @@ Feriado, Acampamento, Sem reunião, Férias) e **a extra** (a Reunião extra da 
   `TIPOS_EVENTO` (`enums.ts:37`) ganha `'FERIAS', 'REUNIAO_EXTRA'` no fim; `MARCACOES_PADRAO`
   (`enums.ts:57-62`) invertido e acrescido:
 
-| Tipo | Terá reunião | Terá classe | Bom para campo | No formulário |
+| Tipo | Terá reunião | Terá classe | Terá atividade de campo | No formulário |
 |---|---|---|---|---|
 | Sem reunião | não | não | não | três caixas |
 | Evento do clube | sim | não | não | três caixas |
@@ -175,7 +175,7 @@ Feriado, Acampamento, Sem reunião, Férias) e **a extra** (a Reunião extra da 
   do domingo, com chamada da unidade, classe ou as duas." (o dia vem de `useConfiguracaoClube`, já
   usado em `FichaEvento.tsx:54`; sem ele, "nos dias de reunião").
 - Legenda das caixas (`:99`): "Para a reunião e as classes". Caixas (`:100-102`) na ordem Terá
-  reunião, Terá classe, Bom para requisitos de campo; Férias esconde o grupo; Reunião extra mostra
+  reunião, Terá classe, Terá atividade de campo; Férias esconde o grupo; Reunião extra mostra
   só as duas primeiras.
 - **Erro sob o grupo das caixas:** `CaixaMarcacao` não tem erro (`ui/CaixaMarcacao.tsx:5-7`). O
   erro de `temReuniao` sai num `<p id>` com `role="alert"` logo abaixo das caixas, dentro do
@@ -198,7 +198,7 @@ erro), só "Sim"/"Não", sem os parênteses — como o rótulo simples de hoje (
 
 | Tipo | Pares |
 |---|---|
-| Evento, Feriado, Acampamento, Sem reunião | **Terá reunião**: "Sim (domingo 18)", "Não (domingos 11 e 18)", "Não há domingo no período"; **Terá classe**: "Sim (sexta 16 a domingo 18)" com campo, "Não (domingo 18)"; **Bom para requisitos de campo**: Sim/Não |
+| Evento, Feriado, Acampamento, Sem reunião | **Terá reunião**: "Sim (domingo 18)", "Não (domingos 11 e 18)", "Não há domingo no período"; **Terá classe**: "Sim (sexta 16 a domingo 18)" com campo, "Não (domingo 18)"; **Terá atividade de campo**: Sim/Não |
 | Férias | um par só: "Sem reunião e sem classe nos domingos do período; acampamentos continuam valendo." |
 | Reunião extra | tabela abaixo |
 
