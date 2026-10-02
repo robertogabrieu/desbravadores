@@ -22,6 +22,8 @@ export interface ContextoSessao {
   sairDeTodos: () => Promise<void>
   /** Repete a abertura sem a espera de 5 s (botão "Tentar de novo" da rota /conectar). */
   reabrir: () => Promise<void>
+  /** Relê /api/eu (responde mesmo sem papel ativo) e aplica; devolve o que leu. Depois de mexer nos próprios papéis. */
+  relerSessao: () => Promise<Eu>
 }
 
 export const ContextoDaSessao = createContext<ContextoSessao | null>(null)

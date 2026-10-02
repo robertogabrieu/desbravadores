@@ -31,6 +31,7 @@ function contexto(logado: Eu | null): ContextoSessao {
     sair: nada,
     sairDeTodos: nada,
     reabrir: nada,
+    relerSessao: () => Promise.resolve(logado ?? eu),
   }
 }
 
