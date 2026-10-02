@@ -301,6 +301,68 @@ describe('Rascunho', () => {
   })
 })
 
+describe('Cabeçalho padrão pelo calendário', () => {
+  const extraDeHoje = {
+    nome: 'Encontro', tipo: 'REUNIAO_EXTRA' as const, inicio: HOJE, fim: HOJE, horario: '15:00', local: 'Parque',
+    temReuniao: true, temClasse: false, bomParaCampo: false,
+  }
+
+  it('chamada numa data com extra de horário próprio: Horário e Local iniciam com os da extra', async () => {
+    guardar(pacote({ calendario: [extraDeHoje] }))
+    montar('/reunioes/nova')
+    await screen.findByText('Ana Clara')
+    expect(screen.getByLabelText('Horário')).toHaveValue('15:00')
+    expect(screen.getByLabelText('Local')).toHaveValue('Parque')
+  })
+
+  it('extra sem horário e local: valem os do clube, campo a campo', async () => {
+    guardar(pacote({ calendario: [{ ...extraDeHoje, horario: null, local: null }] }))
+    montar('/reunioes/nova')
+    await screen.findByText('Ana Clara')
+    expect(screen.getByLabelText('Horário')).toHaveValue('09:00')
+    expect(screen.getByLabelText('Local')).toHaveValue('')
+  })
+
+  it('rascunho vence o padrão da extra', async () => {
+    guardar(pacote({ calendario: [extraDeHoje] }))
+    estado.rascunhos.set(`${AGUIAS.id}:${HOJE}`, { marcas: {}, cabecalho: { horario: '10:45', local: 'Sala 3', observacoes: '' } })
+    montar('/reunioes/nova')
+    await screen.findByText('Ana Clara')
+    expect(screen.getByLabelText('Horário')).toHaveValue('10:45')
+    expect(screen.getByLabelText('Local')).toHaveValue('Sala 3')
+  })
+
+  it('chamada guardada na fila vence o padrão da extra', async () => {
+    guardar(pacote({ calendario: [extraDeHoje] }))
+    estado.itens = [
+      {
+        estado: 'NA_FILA', criadoEm: 1,
+        payload: {
+          reuniaoId: uuid(711), correcao: false, unidadeNome: 'Águias',
+          corpo: {
+            versaoPayload: 1, envioId: uuid(2), unidadeId: AGUIAS.id, data: HOJE, feitaNoAparelhoEm: '2030-03-15T12:00:00.000Z',
+            cabecalho: { horario: '08:30', local: 'Quadra', observacoes: null, versaoVista: null },
+            linhas: [{ dbvId: ANA, situacao: 'PRESENTE', uniforme: false, biblia: false, licao: false, versaoVista: null }],
+          },
+        },
+      } as unknown as ItemFila,
+    ]
+    montar('/reunioes/nova')
+    await screen.findByText('Ana Clara')
+    expect(screen.getByLabelText('Horário')).toHaveValue('08:30')
+    expect(screen.getByLabelText('Local')).toHaveValue('Quadra')
+  })
+
+  it('pacote guardado sem calendário: padrão do clube, como antes', async () => {
+    const antigo: Partial<ReturnType<typeof pacote>> = pacote()
+    delete antigo.calendario
+    guardar(antigo as ReturnType<typeof pacote>)
+    montar('/reunioes/nova')
+    await screen.findByText('Ana Clara')
+    expect(screen.getByLabelText('Horário')).toHaveValue('09:00')
+  })
+})
+
 describe('Edição', () => {
   const detalhe = criarDetalheReuniao({
     id: uuid(700),

@@ -1,5 +1,5 @@
 import type { PacoteSaida } from '@desbravadores/shared'
-import { Horario, hojeNoFuso } from '@desbravadores/shared'
+import { Horario, hojeNoFuso, horarioELocalDoDia, situacaoDaData } from '@desbravadores/shared'
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { z } from 'zod'
@@ -100,6 +100,14 @@ function LinhaDbv({ nome, marca, licaoAtiva, aoMudar }: PropriedadesLinha) {
   )
 }
 
+/** Horário e local do dia: os da extra que dá a reunião, senão os do clube. Pacote de antes do calendário não tem o campo. */
+function cabecalhoPadraoDaData(pacote: Pacote, data: string) {
+  const { diaReuniao, horaReuniao, localReuniaoPadrao } = pacote.clube
+  const situacao = situacaoDaData(data, diaReuniao, pacote.calendario ?? [])
+  const { horario, local } = horarioELocalDoDia(situacao, { horario: horaReuniao, local: localReuniaoPadrao })
+  return { horario, local: local ?? '', observacoes: '' }
+}
+
 interface Propriedades {
   pacote: Pacote
   baixadoEm: number | null
@@ -127,7 +135,7 @@ export function FormularioChamada(props: Propriedades) {
       setInicial(
         comporEstado({
           membros: props.unidade.membros,
-          cabecalhoPadrao: { horario: props.pacote.clube.horaReuniao, local: props.pacote.clube.localReuniaoPadrao ?? '', observacoes: '' },
+          cabecalhoPadrao: cabecalhoPadraoDaData(props.pacote, props.data),
           base: props.base,
           fila,
           rascunho: lerRascunhoValido(rascunho),

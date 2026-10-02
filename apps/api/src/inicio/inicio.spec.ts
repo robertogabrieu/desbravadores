@@ -8,10 +8,12 @@ import {
   criarDbv,
   criarLancamento,
   criarMembro,
+  criarEvento,
   criarReuniao,
   criarUnidade,
   configurarClube,
   desconectarPrismaDeTeste,
+  prismaDeTeste,
 } from '../../test/fabricas'
 import { clienteHttp, corpo } from '../../test/p6'
 import { congelarRelogio, descongelarRelogio } from '../../test/relogio'
@@ -62,7 +64,9 @@ describe('inicio do conselheiro', () => {
         local: 'Sede do clube',
         ehHoje: true,
         chamadaFeita: false,
+        nome: null,
       })
+      expect(saida.feriasAte).toBeNull()
     })
 
     it('sabado: a proxima e amanha', async () => {
@@ -115,6 +119,72 @@ describe('inicio do conselheiro', () => {
 
       expect(semChamada.proximaReuniao?.chamadaFeita).toBe(false)
       expect(comChamada.proximaReuniao?.chamadaFeita).toBe(true)
+    })
+
+    describe('pelo calendario', () => {
+      async function eventoNoClube(clubeId: string, dados: Omit<Parameters<typeof criarEvento>[0], 'clubeId'>, extras: { nome?: string; horario?: string | null; local?: string | null } = {}) {
+        const evento = await criarEvento({ clubeId, ...dados })
+        if (Object.keys(extras).length > 0) await prismaDeTeste().eventoCalendario.update({ where: { id: evento.id }, data: extras })
+        return evento
+      }
+
+      it('hoje em ferias: a proxima e o domingo depois do fim e feriasAte e o fim das ferias', async () => {
+        congelarRelogio(DOMINGO_MEIO_DIA)
+        const { clube, conselheiro } = await conselheiroComUnidade()
+        await eventoNoClube(clube.id, { tipo: 'FERIAS', inicio: '2026-09-20', fim: '2026-10-02' })
+
+        const saida = corpo<Inicio>(await api.get('/api/inicio/conselheiro', conselheiro.autorizacao))
+
+        expect(saida.proximaReuniao).toMatchObject({ data: '2026-10-04', ehHoje: false, nome: null })
+        expect(saida.feriasAte).toBe('2026-10-02')
+      })
+
+      it('extra numa quarta antes do domingo: data, nome, horario e local da extra; campo nulo cai no do clube', async () => {
+        congelarRelogio('2026-09-24T15:00:00Z')
+        const { clube, conselheiro } = await conselheiroComUnidade()
+        await configurarClube({ clubeId: clube.id, horaReuniao: '09:30', localReuniaoPadrao: 'Sede do clube' })
+        await eventoNoClube(clube.id, { tipo: 'REUNIAO_EXTRA', inicio: '2026-09-25' }, { nome: 'Encontro de inicio', horario: '15:00', local: null })
+
+        const saida = corpo<Inicio>(await api.get('/api/inicio/conselheiro', conselheiro.autorizacao))
+
+        expect(saida.proximaReuniao).toMatchObject({ data: '2026-09-25', nome: 'Encontro de inicio', horario: '15:00', local: 'Sede do clube', ehHoje: false })
+      })
+
+      it('extra no dia de hoje: ehHoje e chamadaFeita pela reuniao gravada nessa data', async () => {
+        congelarRelogio(SABADO_MEIO_DIA)
+        const { clube, unidade, conselheiro } = await conselheiroComUnidade()
+        await eventoNoClube(clube.id, { tipo: 'REUNIAO_EXTRA', inicio: '2026-09-26' }, { nome: 'Extra de sabado' })
+        await criarReuniao({ unidadeId: unidade.id, data: '2026-09-26' })
+
+        const saida = corpo<Inicio>(await api.get('/api/inicio/conselheiro', conselheiro.autorizacao))
+
+        expect(saida.proximaReuniao).toMatchObject({ data: '2026-09-26', ehHoje: true, chamadaFeita: true, nome: 'Extra de sabado' })
+      })
+
+      it('nada em 120 dias: proximaReuniao null e feriasAte preenchido', async () => {
+        congelarRelogio(DOMINGO_MEIO_DIA)
+        const { clube, conselheiro } = await conselheiroComUnidade()
+        await eventoNoClube(clube.id, { tipo: 'FERIAS', inicio: '2026-09-20', fim: '2027-03-15' })
+
+        const saida = corpo<Inicio>(await api.get('/api/inicio/conselheiro', conselheiro.autorizacao))
+
+        expect(saida.proximaReuniao).toBeNull()
+        expect(saida.feriasAte).toBe('2027-03-15')
+      })
+
+      it('evento de outro clube e evento removido nao contam', async () => {
+        congelarRelogio(DOMINGO_MEIO_DIA)
+        const { clube, conselheiro } = await conselheiroComUnidade()
+        const outroClube = await criarClube()
+        await eventoNoClube(outroClube.id, { tipo: 'FERIAS', inicio: '2026-09-20', fim: '2026-10-30' })
+        const removido = await eventoNoClube(clube.id, { tipo: 'FERIAS', inicio: '2026-09-20', fim: '2026-10-30' })
+        await prismaDeTeste().eventoCalendario.update({ where: { id: removido.id }, data: { removidoEm: new Date() } })
+
+        const saida = corpo<Inicio>(await api.get('/api/inicio/conselheiro', conselheiro.autorizacao))
+
+        expect(saida.proximaReuniao).toMatchObject({ data: '2026-09-27', nome: null })
+        expect(saida.feriasAte).toBeNull()
+      })
     })
   })
 
@@ -221,6 +291,7 @@ describe('inicio do conselheiro', () => {
         unidade: null,
         unidades: [],
         proximaReuniao: null,
+        feriasAte: null,
         totalDbvs: 0,
         frequenciaMes: null,
         posicaoUnidade: null,
