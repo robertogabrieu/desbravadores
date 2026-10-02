@@ -292,9 +292,9 @@ Como instrutor, quero marcar quem foi e quem cumpriu cada requisito para acompan
 
 ### A6 · Calendário do clube — `Adm-Calendario.dc.html` · Fase 3
 - Mês a mês, com domingos de reunião implícitos no horário do clube.
-- Evento: nome, tipo, início, fim, horário/local opcionais, e três marcações — "Não há reunião",
-  "Não há aula de classe", "Bom para requisitos de campo" — pré-preenchidas pelo tipo e
-  editáveis.
+- Evento: nome, tipo, início, fim, horário/local opcionais, e três marcações — "Terá reunião",
+  "Terá classe", "Bom para requisitos de campo" — pré-preenchidas pelo tipo e editáveis. Tipos
+  Férias e Reunião extra (um dia só, acrescenta reunião e/ou classe fora do dia normal).
 - Editar e excluir evento.
 - Ao salvar evento que cai em aulas agendadas: "Isto afeta 2 aulas (Amigo 18/10, Guia 18/10).
   Os instrutores serão avisados."

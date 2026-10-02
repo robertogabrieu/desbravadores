@@ -89,7 +89,7 @@ Convenções: listas paginadas com `?pagina=&porPagina=`; datas em `YYYY-MM-DD`;
 
 | Método e rota | O que faz | Permissão |
 |---|---|---|
-| `GET /calendario?ano=` | Eventos + domingos de reunião implícitos, já resolvidos | logado |
+| `GET /calendario?ano=` | Eventos + dias de reunião (domingos implícitos e reuniões extras), já resolvidos | logado |
 | `POST /calendario/eventos` | Cria; responde com as aulas em conflito e dispara notificações | `calendario.gerenciar` |
 | `GET /calendario/eventos/{id}` | Um evento do clube (404 se removido ou de outro clube) | logado |
 | `PATCH` / `DELETE /calendario/eventos/{id}` | Edita / exclui; idem conflitos | `calendario.gerenciar` |
@@ -127,7 +127,7 @@ Instrutor que não monta vê só o cronograma **publicado**.
 |---|---|---|
 | `GET /classes/{id}/aulas?anoClube=` | Aulas registradas ("N aulas dadas"), data decrescente | `aula.registrar` + escopo |
 | `GET /aulas/{id}` | Detalhe: presença e requisitos marcados | `aula.registrar` + escopo |
-| `PUT /sync/aulas/{clienteUuid}` | Grava presença + requisitos cumpridos (idempotente) → pontos | `aula.registrar` + escopo |
+| `PUT /sync/aulas/{clienteUuid}` | Grava presença + requisitos cumpridos, tarefa para casa e entregas de especialidade (idempotente) → pontos | `aula.registrar` + escopo |
 
 ## Sincronização offline
 
