@@ -1,6 +1,6 @@
 import type { AulaDetalhe, PacoteSaida } from '@desbravadores/shared'
 import type { z } from 'zod'
-import { chaveItem } from './estado'
+import { chaveItem, chavePar } from './estado'
 import type { BaseAula } from './estado'
 
 type Pacote = z.infer<typeof PacoteSaida>
@@ -47,3 +47,23 @@ export const catalogoDeEspecialidades = (pacote: Pacote): EspecialidadeDoCatalog
 /** Itens das tarefas abertas da classe, fora a deste registro (os dela a tela mostra à parte). */
 export const itensEmOutraTarefaAberta = (tarefas: Tarefa[], registroAulaId: string): Set<string> =>
   new Set(tarefas.filter((t) => !t.encerrada && t.registroAulaId !== registroAulaId).flatMap((t) => t.itens.map(chaveItem)))
+
+/** Pares `dbvId|especialidadeId` concluídos NESTE registro, como o pacote os guarda em cada membro. */
+export const especialidadesConcluidasNoRegistro = (classe: ClasseDoPacote, registroAulaId: string): Set<string> =>
+  new Set(classe.membros.flatMap((membro) => (membro.especialidades ?? []).filter((conclusao) => conclusao.registroAulaId === registroAulaId).map((conclusao) => chavePar(membro.dbvId, conclusao.especialidadeId))))
+
+interface ParaCobrar {
+  tarefas: Tarefa[]
+  registroAulaId: string
+  data: string
+  /** Chaves (`chaveItem`) dos itens que alguém entregou neste registro. */
+  entregues: ReadonlySet<string>
+}
+
+/** Abertas de data anterior à do registro e as com entrega neste registro (mesmo encerradas); abertas primeiro, da mais recente para a mais antiga. */
+export function tarefasParaCobrar({ tarefas, registroAulaId, data, entregues }: ParaCobrar): Tarefa[] {
+  const entregueAqui = (tarefa: Tarefa): boolean => tarefa.itens.some((item) => entregues.has(chaveItem(item)))
+  return tarefas
+    .filter((tarefa) => tarefa.registroAulaId !== registroAulaId && ((!tarefa.encerrada && tarefa.data < data) || entregueAqui(tarefa)))
+    .sort((a, b) => Number(a.encerrada) - Number(b.encerrada) || b.data.localeCompare(a.data))
+}

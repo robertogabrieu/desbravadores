@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest'
 import type { z } from 'zod'
 import { criarClasseInstrutor } from '../../testes/handlers/aulas'
 import { criarPacote, criarPacoteInstrutor, criarPacoteInstrutorAntigo } from '../../testes/handlers/offline'
-import { baseDoPacote, catalogoDeEspecialidades, tarefasDaClasse } from './fontes'
+import { chaveItem } from './estado'
+import { baseDoPacote, catalogoDeEspecialidades, especialidadesConcluidasNoRegistro, tarefasDaClasse, tarefasParaCobrar } from './fontes'
 
 type ClasseDoPacote = NonNullable<z.infer<typeof PacoteSaida>['instrutor']>['classes'][number]
 type Registro = ClasseDoPacote['registrosRecentes'][number]
@@ -43,5 +44,42 @@ describe('catalogoDeEspecialidades', () => {
   it('pacote antigo, sem catálogo, ou sem parte de instrutor: nulo', () => {
     expect(catalogoDeEspecialidades(criarPacote({ instrutor: criarPacoteInstrutorAntigo() }))).toBeNull()
     expect(catalogoDeEspecialidades(criarPacote())).toBeNull()
+  })
+})
+
+describe('especialidadesConcluidasNoRegistro', () => {
+  const membro = (n: number, especialidades: { especialidadeId: string; registroAulaId: string | null }[] | undefined) =>
+    ({ dbvId: uuid(n), nome: 'Ana', tipo: 'DBV', concluidos: [], especialidades }) as unknown as ClasseDoPacote['membros'][number]
+
+  it('só as conclusões com o registro pedido, por dbvId|especialidadeId', () => {
+    const classe = criarClasseInstrutor({
+      membros: [membro(1, [{ especialidadeId: uuid(21), registroAulaId: uuid(700) }, { especialidadeId: uuid(22), registroAulaId: null }]), membro(2, [{ especialidadeId: uuid(21), registroAulaId: uuid(701) }])],
+    })
+    expect([...especialidadesConcluidasNoRegistro(classe, uuid(700))]).toEqual([`${uuid(1)}|${uuid(21)}`])
+  })
+
+  it('membro guardado sem `especialidades` conta como sem conclusões', () => {
+    expect(especialidadesConcluidasNoRegistro(criarClasseInstrutor({ membros: [membro(1, undefined)] }), uuid(700)).size).toBe(0)
+  })
+})
+
+describe('tarefasParaCobrar', () => {
+  const tarefa = (n: number, data: string, parcial: Partial<ClasseDoPacote['tarefas'][number]> = {}) => ({ id: uuid(600 + n), registroAulaId: uuid(700 + n), data, encerrada: false, itens: [{ requisitoId: uuid(10 + n) }], ...parcial })
+  const cobrar = (tarefas: ClasseDoPacote['tarefas'], entregues: string[] = []) =>
+    tarefasParaCobrar({ tarefas, registroAulaId: uuid(799), data: '2030-10-04', entregues: new Set(entregues) }).map((t) => t.data)
+
+  it('abertas com data anterior à do registro, da mais recente para a mais antiga', () => {
+    expect(cobrar([tarefa(1, '2030-09-13'), tarefa(2, '2030-09-27'), tarefa(3, '2030-10-04'), tarefa(4, '2030-10-11')])).toEqual(['2030-09-27', '2030-09-13'])
+  })
+
+  it('encerrada só entra com entrega neste registro, e depois das abertas', () => {
+    const encerrada = tarefa(5, '2030-09-30', { encerrada: true })
+    expect(cobrar([encerrada, tarefa(1, '2030-09-13')])).toEqual(['2030-09-13'])
+    expect(cobrar([encerrada, tarefa(1, '2030-09-13')], [chaveItem(encerrada.itens[0])])).toEqual(['2030-09-13', '2030-09-30'])
+  })
+
+  it('a tarefa passada neste mesmo registro nunca é cobrada nele', () => {
+    const propria = tarefa(9, '2030-09-20', { registroAulaId: uuid(799) })
+    expect(cobrar([propria], [chaveItem(propria.itens[0])])).toEqual([])
   })
 })

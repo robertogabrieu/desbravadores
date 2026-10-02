@@ -134,6 +134,24 @@ describe('tipo AULA da fila', () => {
       expect(fundido.corpo.tarefaId).toBeNull()
       expect(fundir(payload({ tarefaItensRetirados: [requisitoItem(11)] }), semCampos).corpo.tarefaItensRetirados).toEqual([requisitoItem(11)])
     })
+
+    it('especialidades entregues: a última ação por desbravador e especialidade vence; encerradas, a união', () => {
+      const marca = (dbv: number, esp: number) => ({ dbvId: uuid(dbv), especialidadeId: uuid(esp) })
+      const anterior = payload({ especialidadesMarcadas: [marca(1, 21), marca(2, 21)], especialidadesDesmarcadas: [marca(3, 21)], tarefasEncerradas: [uuid(600)] })
+      const novo = payload({ especialidadesMarcadas: [marca(3, 21)], especialidadesDesmarcadas: [marca(1, 21)], tarefasEncerradas: [uuid(600), uuid(601)] })
+      const fundido = fundir(anterior, novo)
+      expect(fundido.corpo.especialidadesMarcadas).toEqual([marca(2, 21), marca(3, 21)])
+      expect(fundido.corpo.especialidadesDesmarcadas).toEqual([marca(1, 21)])
+      expect(fundido.corpo.tarefasEncerradas).toEqual([uuid(600), uuid(601)])
+    })
+
+    it('item antigo da fila, sem os campos de cobrança, funde sem quebrar', () => {
+      const antigo = payload()
+      const { especialidadesMarcadas: _a, especialidadesDesmarcadas: _b, tarefasEncerradas: _c, ...corpoAntigo } = antigo.corpo
+      const fundido = fundir({ ...antigo, corpo: corpoAntigo } as unknown as PayloadAulaFila, payload({ tarefasEncerradas: [uuid(600)] }))
+      expect(fundido.corpo.especialidadesMarcadas).toEqual([])
+      expect(fundido.corpo.tarefasEncerradas).toEqual([uuid(600)])
+    })
   })
 
   describe('aoEnviar', () => {
@@ -252,6 +270,33 @@ describe('tipo AULA da fila', () => {
       expect(textos.some((t) => t.includes('Bruno Lima (R2)') && t.includes('Faltaram'))).toBe(true)
       expect(textos.some((t) => t.includes('Bruno Lima (R1)') && t.includes('não é mais da classe'))).toBe(true)
       expect(textos).toContain('Esta aula foi registrada fora do cronograma publicado.')
+    })
+
+    describe('avisos de especialidade', () => {
+      const comNomes = { payload: payload({}, { especialidades: { [uuid(21)]: 'Primeiros socorros' } }) } as ItemFila<PayloadAulaFila>
+      const semEfeito = (motivo: Saida['especialidadesSemEfeito'][number]['motivo'], concluidaEm: string | null = null) => ({ dbvId: uuid(1), especialidadeId: uuid(21), motivo, concluidaEm })
+      async function avisosDe(parcial: Partial<Saida>): Promise<string[]> {
+        avisos.warning.mockClear()
+        await aoEnviar(saida(parcial), { ...contexto().ctx, item: comNomes })
+        return avisos.warning.mock.calls.map(([texto]) => texto)
+      }
+
+      it('já concluída, com a data; faltou ao encontro; não está mais ativa', async () => {
+        expect(await avisosDe({ especialidadesSemEfeito: [semEfeito('JA_CONCLUIDA', '2030-09-12')] })).toEqual(['Já estava concluída e ficou como estava: Ana Clara (Primeiros socorros) em 12/09.'])
+        expect(await avisosDe({ especialidadesSemEfeito: [semEfeito('AUSENTE')] })).toEqual(['Faltou ao encontro, então a entrega não valeu: Ana Clara (Primeiros socorros).'])
+        expect(await avisosDe({ especialidadesSemEfeito: [semEfeito('ESPECIALIDADE_INVALIDA')] })).toEqual(['Especialidade que não está mais ativa ficou de fora: Primeiros socorros.'])
+      })
+
+      it('sem permissão: um aviso só, venha da entrega ou do item da tarefa', async () => {
+        const texto = 'Sem permissão para marcar especialidades; elas ficaram de fora.'
+        expect(await avisosDe({ especialidadesSemEfeito: [semEfeito('SEM_PERMISSAO')] })).toEqual([texto])
+        expect(await avisosDe({ tarefaItensSemEfeito: [{ item: especialidadeItem(21), motivo: 'SEM_PERMISSAO' }] })).toEqual([texto])
+        expect(await avisosDe({ especialidadesSemEfeito: [semEfeito('SEM_PERMISSAO')], tarefaItensSemEfeito: [{ item: especialidadeItem(21), motivo: 'SEM_PERMISSAO' }] })).toEqual([texto])
+      })
+
+      it('a própria ficha não gera aviso', async () => {
+        expect(await avisosDe({ especialidadesSemEfeito: [semEfeito('PROPRIA_FICHA')] })).toEqual([])
+      })
     })
   })
 })

@@ -12,9 +12,11 @@ import { Selecao } from '../../ui/Selecao'
 import { cn } from '../../ui/cn'
 import { dataCurta, diaDaSemana, listaAtualizada } from './datas'
 import { EsqueletoAula } from './EstadosAula'
+import { BlocoCobranca } from './BlocoCobranca'
 import { ParaCasa } from './ParaCasa'
 import {
   acrescentarRequisito,
+  alternarEntrega,
   alternarPresenca,
   alternarRequisito,
   chaveItem,
@@ -24,8 +26,12 @@ import {
   concluidosComFila,
   concluidosDoServidor,
   efetivamenteConcluido,
+  encerradasNaFila,
+  encerrarTarefa,
+  especialidadesComFila,
   estaPresente,
   itensDaTarefa,
+  itensEntreguesAqui,
   itensPendentes,
   lerRascunhoValido,
   montarEntrada,
@@ -34,10 +40,11 @@ import {
   pontosProvisorios,
   quemFalta,
   rascunhoDe,
+  reabrirTarefa,
   requisitosVisiveis,
   tirarItem,
 } from './estado'
-import { catalogoDeEspecialidades, itensEmOutraTarefaAberta, tarefasDaClasse } from './fontes'
+import { catalogoDeEspecialidades, especialidadesConcluidasNoRegistro, itensEmOutraTarefaAberta, tarefasDaClasse, tarefasParaCobrar } from './fontes'
 import type { BaseAula, EstadoAula, ItemPendente, Membro, Requisito } from './estado'
 
 type Pacote = z.infer<typeof PacoteSaida>
@@ -123,13 +130,29 @@ function CorpoAula({ pacote, baixadoEm, classe, data, base, chave, registroAulaI
   }, [modo])
   const cronograma = useCronograma(lerCronograma ? classe.classe.id : undefined)
   const planejada = aulaPlanejadaDaData({ cronograma: cronograma.data, aulasProximas: classe.aulasProximas, base, data })
-  const requisitos = requisitosVisiveis({ daClasse: classe.requisitos, base, planejados: planejada?.requisitoIds ?? [], estado })
-  const disponiveis = classe.requisitos.filter((r) => !requisitos.some((v) => v.id === r.id))
 
   const servidor = concluidosDoServidor(base)
   const comFila = concluidosComFila(servidor, fila)
+  const especialidadesNoServidor = especialidadesConcluidasNoRegistro(classe, registroAulaId)
+  const especialidadesFila = especialidadesComFila(especialidadesNoServidor, fila)
+  const tarefas = tarefasDaClasse(classe)
+  const entregues = itensEntreguesAqui({ itens: tarefas.flatMap((tarefa) => tarefa.itens), membros, estado, comFila, especialidadesFila })
+  const tarefasACobrar = tarefasParaCobrar({ tarefas, registroAulaId, data, entregues })
+  const daCobranca = new Set(tarefasACobrar.flatMap((tarefa) => tarefa.itens.flatMap((item) => ('requisitoId' in item ? [item.requisitoId] : []))))
+  const requisitos = requisitosVisiveis({ daClasse: classe.requisitos, base, planejados: planejada?.requisitoIds ?? [], estado, daCobranca })
+  const disponiveis = classe.requisitos.filter((r) => !requisitos.some((v) => v.id === r.id) && !daCobranca.has(r.id))
+
   const presentes = membros.filter((m) => estaPresente(estado, m.dbvId)).length
-  const pontos = pontosProvisorios({ membros, estado, servidor, comFila, requisitos, pontosRequisito: pacote.instrutor?.pontosRequisito ?? { pontos: 0, ativo: false } })
+  const pontosDoPacote = pacote.instrutor
+  const pontos = pontosProvisorios({
+    membros,
+    estado,
+    servidor,
+    comFila,
+    requisitos: [...requisitos, ...classe.requisitos.filter((r) => daCobranca.has(r.id))],
+    pontosRequisito: pontosDoPacote?.pontosRequisito ?? { pontos: 0, ativo: false },
+    especialidades: { servidor: especialidadesNoServidor, comFila: especialidadesFila, pontos: pontosDoPacote?.pontosEspecialidade ?? { pontos: 0, ativo: false } },
+  })
   const catalogo = catalogoDeEspecialidades(pacote)
   const entrada = montarEntrada({
     estado,
@@ -150,9 +173,8 @@ function CorpoAula({ pacote, baixadoEm, classe, data, base, chave, registroAulaI
 
   const atualizada = listaAtualizada(baixadoEm, pacote.clube.fuso)
   const faltas = quemFalta(membros, estado, comFila, requisitos)
-  const pontosAtivos = pacote.instrutor?.pontosRequisito.ativo ?? false
+  const pontosAtivos = (pontosDoPacote?.pontosRequisito.ativo ?? false) || (pontosDoPacote?.pontosEspecialidade.ativo ?? false)
 
-  const tarefas = tarefasDaClasse(classe)
   const itensParaCasa = itensDaTarefa({ daTarefa: tarefas.find((tarefa) => tarefa.registroAulaId === registroAulaId)?.itens ?? [], fila, estado })
   const indisponiveis = new Set([...itensEmOutraTarefaAberta(tarefas, registroAulaId), ...itensParaCasa.map(chaveItem)])
   const haOQueFaltou = faltas.some(({ requisito, nomes }) => nomes.length > 0 && !indisponiveis.has(chaveItem({ requisitoId: requisito.id })))
@@ -184,12 +206,30 @@ function CorpoAula({ pacote, baixadoEm, classe, data, base, chave, registroAulaI
               requisitos={requisitos}
               estado={estado}
               comFila={comFila}
-              aoAlternarPresenca={() => mudar(alternarPresenca(estado, membro.dbvId))}
+              aoAlternarPresenca={() => mudar(alternarPresenca(estado, membro.dbvId, { requisitos: comFila, especialidades: especialidadesFila }))}
               aoAlternarRequisito={(requisitoId) => mudar(alternarRequisito(estado, comFila, membro.dbvId, requisitoId))}
             />
           ))}
         </ul>
       </section>
+
+      <BlocoCobranca
+        tarefas={tarefasACobrar}
+        data={data}
+        registroAulaId={registroAulaId}
+        membros={membros}
+        requisitos={classe.requisitos}
+        catalogo={catalogo}
+        podeEspecialidade={pode('requisito.marcar')}
+        estado={estado}
+        comFila={comFila}
+        especialidadesFila={especialidadesFila}
+        encerradasNaFila={encerradasNaFila(fila)}
+        aoEntregarRequisito={(dbvId, requisitoId) => mudar(alternarRequisito(estado, comFila, dbvId, requisitoId))}
+        aoEntregarEspecialidade={(dbvId, especialidadeId) => mudar(alternarEntrega(estado, especialidadesFila, dbvId, especialidadeId))}
+        aoEncerrar={(tarefaId) => mudar(encerrarTarefa(estado, tarefaId))}
+        aoReabrir={(tarefaId) => mudar(reabrirTarefa(estado, tarefaId))}
+      />
 
       <section aria-labelledby="titulo-requisitos" className="flex flex-col gap-2 rounded-cartao bg-superficie p-3">
         <h2 id="titulo-requisitos" className="text-sm font-bold text-texto-2">

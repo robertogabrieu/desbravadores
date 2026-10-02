@@ -42,6 +42,9 @@ export interface EntradaSalvarAula {
   nomes: PayloadAulaFila['nomes']
   codigos: PayloadAulaFila['codigos']
   especialidades: Record<string, string>
+  especialidadesMarcadas: PayloadAulaFila['corpo']['especialidadesMarcadas']
+  especialidadesDesmarcadas: PayloadAulaFila['corpo']['especialidadesDesmarcadas']
+  tarefasEncerradas: PayloadAulaFila['corpo']['tarefasEncerradas']
   tarefaId: PayloadAulaFila['corpo']['tarefaId']
   tarefaItensAcrescentados: PayloadAulaFila['corpo']['tarefaItensAcrescentados']
   tarefaItensRetirados: PayloadAulaFila['corpo']['tarefaItensRetirados']
@@ -76,9 +79,9 @@ export function useSalvarAula() {
           tarefaId: entrada.tarefaId,
           tarefaItensAcrescentados: entrada.tarefaItensAcrescentados,
           tarefaItensRetirados: entrada.tarefaItensRetirados,
-          especialidadesMarcadas: [],
-          especialidadesDesmarcadas: [],
-          tarefasEncerradas: [],
+          especialidadesMarcadas: entrada.especialidadesMarcadas,
+          especialidadesDesmarcadas: entrada.especialidadesDesmarcadas,
+          tarefasEncerradas: entrada.tarefasEncerradas,
         },
       }
       const chave = `aula:${entrada.classeId}:${entrada.data}`

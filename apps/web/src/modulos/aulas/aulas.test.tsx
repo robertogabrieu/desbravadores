@@ -515,7 +515,7 @@ describe('Para casa no registro', () => {
   it('"+ Requisito" do Para casa não oferece o item de tarefa aberta de outro registro', async () => {
     guardar([classe({ tarefas: [TAREFA_ANTERIOR] })])
     montar(NOVA)
-    await screen.findByText('Ana Clara')
+    await screen.findByRole('listitem', { name: 'Ana Clara' })
     const opcoes = within(paraCasa().getByLabelText('+ Requisito')).getAllByRole('option')
     expect(opcoes.map((o) => o.textContent)).toEqual(['Escolha um requisito', 'R1 · Texto de R1', 'R2 · Texto de R2'])
   })
@@ -523,7 +523,7 @@ describe('Para casa no registro', () => {
   it('"Passar o que faltou" ignora o requisito que já está em tarefa aberta da classe', async () => {
     guardar([classe({ tarefas: [{ ...TAREFA_ANTERIOR, itens: [{ requisitoId: R1 }] }] })])
     montar(`/aulas/nova?classe=${CLASSE_COMPANHEIRO.id}&data=${HOJE}`)
-    await screen.findByText('Ana Clara')
+    await screen.findByRole('listitem', { name: 'Ana Clara' })
     await userEvent.click(paraCasa().getByRole('button', { name: 'Passar o que faltou' }))
     expect(paraCasa().queryByText('R1 · Texto de R1')).not.toBeInTheDocument()
     expect(paraCasa().getByText('R2 · Texto de R2')).toBeInTheDocument()
