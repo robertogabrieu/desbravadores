@@ -3,23 +3,22 @@ import { Horario, TipoEvento } from '../enums'
 import { RefClasse } from './auth'
 import { DataCivil, TextoCurto, Uuid } from './comum'
 
-export const EventoEntrada = z
-  .object({
-    nome: TextoCurto,
-    tipo: TipoEvento,
-    inicio: DataCivil,
-    fim: DataCivil,
-    horario: Horario.nullable(),
-    local: z.string().trim().max(120).nullable(),
-    cancelaReuniao: z.boolean(),
-    bloqueiaAula: z.boolean(),
-    bomParaCampo: z.boolean(),
-  })
-  .refine((e) => e.fim >= e.inicio, { message: 'O fim não pode ser antes do início', path: ['fim'] })
+/** As datas e as regras de cada tipo são conferidas por `validarEvento`, depois do padrão do tipo. */
+export const EventoEntrada = z.object({
+  nome: TextoCurto,
+  tipo: TipoEvento,
+  inicio: DataCivil,
+  fim: DataCivil,
+  horario: Horario.nullable(),
+  local: z.string().trim().max(120).nullable(),
+  temReuniao: z.boolean(),
+  temClasse: z.boolean(),
+  bomParaCampo: z.boolean(),
+})
 export const EventoSaida = z.object({
   id: Uuid, nome: z.string(), tipo: TipoEvento, inicio: DataCivil, fim: DataCivil,
   horario: Horario.nullable(), local: z.string().nullable(),
-  cancelaReuniao: z.boolean(), bloqueiaAula: z.boolean(), bomParaCampo: z.boolean(),
+  temReuniao: z.boolean(), temClasse: z.boolean(), bomParaCampo: z.boolean(),
 })
 export const CalendarioFiltro = z.object({ ano: z.coerce.number().int().min(2000).max(2100) })
 export const CalendarioSaida = z.object({

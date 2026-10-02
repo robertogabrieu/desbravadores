@@ -41,9 +41,15 @@ export const CronogramaCriarEntrada = z
 export const CronogramaPeriodoEntrada = z
   .object({ inicio: DataCivil, fim: DataCivil })
   .refine((c) => c.fim >= c.inicio, { message: 'O fim não pode ser antes do início', path: ['fim'] })
+/** A Reunião extra que cobre a data (no máximo uma). */
+export const ExtraDoDia = z.object({
+  nome: z.string(), temReuniao: z.boolean(), temClasse: z.boolean(), horario: Horario.nullable(), local: z.string().nullable(),
+})
 export const SituacaoData = z.object({
-  cancelaReuniao: z.boolean(), bloqueiaAula: z.boolean(), bomParaCampo: z.boolean(),
-  eventos: z.array(z.string()), // nomes
+  reuniaoMantida: z.boolean(), classeLiberada: z.boolean(), bomParaCampo: z.boolean(),
+  temReuniao: z.boolean(), temClasse: z.boolean(), ferias: z.boolean(),
+  extra: ExtraDoDia.nullable(),
+  eventos: z.array(z.string()), // nomes, inclusive o da extra
 })
 export const DataMontagem = z.object({
   data: DataCivil,

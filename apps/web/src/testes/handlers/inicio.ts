@@ -9,7 +9,8 @@ export function criarInicioConselheiro(parcial: Partial<InicioConselheiro> = {})
   return {
     unidade: UNIDADE_AGUIAS,
     unidades: [UNIDADE_AGUIAS],
-    proximaReuniao: { data: '2030-09-29', horario: '08:30', local: 'Cantinho da unidade', ehHoje: true, chamadaFeita: false },
+    proximaReuniao: { data: '2030-09-29', horario: '08:30', local: 'Cantinho da unidade', nome: null, ehHoje: true, chamadaFeita: false },
+    feriasAte: null,
     totalDbvs: 8,
     frequenciaMes: 87,
     posicaoUnidade: { posicao: 2, total: 4 },

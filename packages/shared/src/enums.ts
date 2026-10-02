@@ -34,7 +34,7 @@ export const MesCivil = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Mês invál
 export const Horario = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Horário inválido')
 
 // Fases 2 e 3
-export const TIPOS_EVENTO = ['SEM_REUNIAO', 'ACAMPAMENTO', 'EVENTO', 'FERIADO'] as const
+export const TIPOS_EVENTO = ['SEM_REUNIAO', 'ACAMPAMENTO', 'EVENTO', 'FERIADO', 'FERIAS', 'REUNIAO_EXTRA'] as const
 export const TipoEvento = z.enum(TIPOS_EVENTO)
 export const STATUS_CRONOGRAMA = ['RASCUNHO', 'ENVIADO', 'PUBLICADO'] as const
 export const StatusCronograma = z.enum(STATUS_CRONOGRAMA)
@@ -53,10 +53,12 @@ export const TipoMaterial = z.enum(TIPOS_MATERIAL)
 export const TIPOS_NOTIFICACAO = ['CONFLITO_CRONOGRAMA', 'CRONOGRAMA_ENVIADO', 'CRONOGRAMA_PUBLICADO', 'PEDIDO_LIBERAR_CRONOGRAMA'] as const
 export const TipoNotificacao = z.enum(TIPOS_NOTIFICACAO)
 
-/** Padrão das três marcações por tipo de evento (editáveis no formulário). */
+/** Padrão das marcações por tipo. Férias: a API grava sempre este; Reunião extra: campo é sempre não. */
 export const MARCACOES_PADRAO = {
-  SEM_REUNIAO: { cancelaReuniao: true, bloqueiaAula: true, bomParaCampo: false },
-  EVENTO: { cancelaReuniao: false, bloqueiaAula: true, bomParaCampo: false },
-  ACAMPAMENTO: { cancelaReuniao: true, bloqueiaAula: false, bomParaCampo: true },
-  FERIADO: { cancelaReuniao: false, bloqueiaAula: false, bomParaCampo: false },
+  SEM_REUNIAO: { temReuniao: false, temClasse: false, bomParaCampo: false },
+  EVENTO: { temReuniao: true, temClasse: false, bomParaCampo: false },
+  ACAMPAMENTO: { temReuniao: false, temClasse: true, bomParaCampo: true },
+  FERIADO: { temReuniao: true, temClasse: true, bomParaCampo: false },
+  FERIAS: { temReuniao: false, temClasse: true, bomParaCampo: false },
+  REUNIAO_EXTRA: { temReuniao: true, temClasse: true, bomParaCampo: false },
 } as const

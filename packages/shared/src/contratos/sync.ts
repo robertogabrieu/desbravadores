@@ -4,6 +4,7 @@ import { DataCivil, InstanteIso, Uuid } from './comum'
 import { RefClasse } from './auth'
 import { MarcacaoChamadaServidor } from './reunioes'
 import { RequisitoResumo } from './cronograma'
+import { EventoSaida } from './calendario'
 
 export const MembroPacote = z.object({
   dbvId: Uuid,
@@ -39,6 +40,9 @@ export const PacoteInstrutor = z.object({
   pontosRequisito: z.object({ pontos: z.number().int(), ativo: z.boolean() }),
 })
 
+/** Evento do calendário no pacote offline: o que a regra do dia precisa, sem o id. */
+export const EventoDoPacote = EventoSaida.omit({ id: true })
+
 export const PacoteSaida = z.object({
   /** SHA-256 do JSON canônico do conteúdo (sem geradoEm; unidades e membros por nome, reuniões por data). */
   versao: z.string(),
@@ -66,6 +70,8 @@ export const PacoteSaida = z.object({
   albunsRecentes: z.array(z.object({
     id: Uuid, unidadeId: Uuid, titulo: z.string(), data: DataCivil, reuniaoId: Uuid.nullable(),
   })),
+  /** Eventos não removidos com inicio <= hoje+120 e fim >= hoje. O default mantém válidos pacotes guardados antes. */
+  calendario: z.array(EventoDoPacote).default([]),
   /** Preenchido só para INSTRUTOR. O default mantém válidos pacotes e mocks que ainda não têm o campo. */
   instrutor: PacoteInstrutor.nullable().default(null),
 })

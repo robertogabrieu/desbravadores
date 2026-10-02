@@ -133,6 +133,8 @@ enum TipoEvento {
   ACAMPAMENTO
   EVENTO
   FERIADO
+  FERIAS
+  REUNIAO_EXTRA
 }
 
 // FASE 2-3
@@ -835,8 +837,8 @@ model EventoCalendario {
   fim            DateTime   @db.Date
   horario        String?
   local          String?
-  cancelaReuniao Boolean
-  bloqueiaAula   Boolean
+  temReuniao     Boolean
+  temClasse      Boolean
   bomParaCampo   Boolean
   criadoPorId    String     @db.Uuid
   criadoEm       DateTime   @default(now()) @db.Timestamptz

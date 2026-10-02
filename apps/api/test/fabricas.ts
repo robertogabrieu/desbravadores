@@ -404,7 +404,7 @@ export async function criarFoto(dados: {
   })
 }
 
-type Marcacoes = { cancelaReuniao: boolean; bloqueiaAula: boolean; bomParaCampo: boolean }
+type Marcacoes = { temReuniao: boolean; temClasse: boolean; bomParaCampo: boolean }
 
 /** Evento do calendario; sem `marcacoes`, valem as do tipo (`MARCACOES_PADRAO`). */
 export async function criarEvento(dados: {
