@@ -6,6 +6,8 @@ não vira nada. Esta SPEC deixa o instrutor **passar para casa** requisitos da c
 especialidades, **lembra** que há o que cobrar, e faz da cobrança o próprio ato de cumprir: marcar
 "Entregou" conclui o requisito ou a especialidade.
 
+O modelo aprovado está em `modelo/` (`.dc.html`; o cartão do início do instrutor, o registro da classe com a presença no topo e a cobrança logo abaixo, a seção "Para casa" e a busca de especialidade). **Ele é o alvo:** se esta SPEC e o modelo divergirem, vale o modelo. Do modelo copia-se estrutura, ordem e texto, **nunca CSS**: as classes saem dos tokens e dos componentes de `ui/`.
+
 Textos ao usuário usam **"classe"** onde hoje a interface diz "aula" (a SPEC do calendário,
 `docs/fases/calendario-ferias-extras/SPEC.md`, faz a troca no resto do app). Nomes internos
 (`RegistroAula`, `AulaPlanejada`, rotas `/aulas/...`) não mudam.

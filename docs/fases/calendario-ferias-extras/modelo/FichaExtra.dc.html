@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Ficha do evento</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;font-family:'Figtree',system-ui,sans-serif;color:#1B221F}
+a{color:#1F4D3A}a:hover{color:#163828}
+.t{font-family:'Bricolage Grotesque',system-ui,sans-serif}
+.card{background:#fff;border:1px solid #D9D3C5;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.h2{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:18px;font-weight:700;margin:0}
+.rot{font-size:13px;font-weight:600;color:#5B645F}
+.val{font-size:16px;color:#1B221F}
+.dl3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 24px}
+.par{display:flex;flex-direction:column;gap:2px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 20px;border-radius:12px;font-size:16px;font-weight:600;text-decoration:none;border:0;font-family:inherit;cursor:pointer;box-sizing:border-box}
+.pri{background:#1F4D3A;color:#fff}
+.sec{background:#fff;color:#1B221F;border:1px solid #D9D3C5}
+.txt{background:transparent;color:#1F4D3A;padding:0 12px}
+.per{background:#fff;color:#B42318;border:1px solid #D9D3C5}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 10px;font-size:13px;font-weight:600}
+.lbl{font-size:14px;font-weight:700;color:#1B221F}
+.in{min-height:44px;border:1px solid #D9D3C5;border-radius:9px;background:#fff;padding:0 14px;font-size:16px;font-family:inherit;color:#1B221F;box-sizing:border-box;width:100%}
+.ajuda{font-size:13px;color:#5B645F}
+.err{font-size:14px;font-weight:600;color:#B42318;margin:0;display:flex;align-items:center;gap:6px}
+.aviso{font-size:14px;color:#9A3412;background:#FBEFE3;border-radius:9px;padding:10px 12px;margin:0;display:flex;gap:8px;align-items:flex-start}
+.cx{display:flex;align-items:center;gap:10px;min-height:44px;font-size:16px}
+.cx input{width:20px;height:20px;margin:0;accent-color:#1F4D3A}
+.lin{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid #EFEBE1}
+.nav{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:12px;color:#CFE0D6;font-weight:600;font-size:16px}
+.nav.on{background:#163828;color:#fff}
+.bnav{flex-grow:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:12px;font-weight:600;color:#5B645F;text-decoration:none}
+.cel{display:flex;flex-direction:column;gap:4px;min-height:96px;border:1px solid #EFEBE1;border-radius:9px;padding:6px;box-sizing:border-box;min-width:0}
+.fx{display:flex;align-items:center;gap:4px;border-radius:9px;padding:2px 6px;font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:999px;font-size:15px;font-weight:700;font-family:inherit;border:1px solid #D9D3C5;background:#fff;color:#1B221F;cursor:pointer}
+.pill.on{background:#1F4D3A;border-color:#1F4D3A;color:#fff}
+</style>
+</helmet>
+<div style="width:1280px;min-height:820px;display:flex;background:#F4F1EA"><aside style="width:248px;flex-shrink:0;background:#1F4D3A;color:#fff;display:flex;flex-direction:column;gap:4px;padding:20px 8px"><div class="t" style="font-size:18px;font-weight:700;padding:0 12px 16px">App do Desbravador</div><nav aria-label="Menu do Adm" style="display:flex;flex-direction:column;gap:4px"><span class="nav">Visão geral</span><span class="nav">Desbravadores</span><span class="nav">Usuários</span><span class="nav">Unidades</span><span class="nav">Classes e especialidades</span><span class="nav on">Calendário do clube</span><span class="nav">Cronogramas</span><span class="nav">Configurações do clube</span><span class="nav">Ranking</span></nav></aside><div style="flex-grow:1;display:flex;flex-direction:column;min-width:0"><header style="display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:8px 32px;background:#fff;border-bottom:1px solid #D9D3C5"><button class="btn txt" aria-label="Notificações" style="color:#1B221F"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg></button><button class="btn txt" style="color:#1B221F;padding:0 12px">Rosa Almeida <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></header><main style="padding:32px 48px;display:flex;flex-direction:column;gap:20px;max-width:1024px;box-sizing:border-box;width:100%"><div style="display:flex;flex-direction:column;gap:8px"><a href="#" style="display:inline-flex;align-items:center;gap:4px;font-weight:600;text-decoration:none;min-height:44px;align-self:flex-start"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg> Calendário do clube</a><div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap"><div style="display:flex;flex-direction:column;gap:4px"><span class="rot">Reunião extra</span><h1 class="t" style="margin:0;font-size:30px;font-weight:800">Encontro de início de ano</h1></div><div style="display:flex;gap:8px"><button class="btn per">Excluir</button><a class="btn pri" href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg> Editar</a></div></div></div><div class="card"><div class="dl3"><div class="par"><span class="rot">Data</span><span class="val">sábado 25 de janeiro</span></div><div class="par"><span class="rot">Horário</span><span class="val">15h</span></div><div class="par"><span class="rot">Local</span><span class="val">Parque Ecológico do Tietê</span></div></div></div><div class="card" style="gap:0"><h2 class="h2" style="padding-bottom:8px">O que muda no calendário</h2><div class="lin"><span class="val">Terá reunião</span><span class="chip" style="background:#E3EEE7;color:#1F4D3A;font-size:14px">Sim (sábado 25)</span></div><div class="lin"><span class="val">Terá classe</span><span class="chip" style="background:#EFEBE1;color:#4A524E;font-size:14px">Não</span></div></div></main></div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":820}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

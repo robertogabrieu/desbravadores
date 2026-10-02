@@ -7,6 +7,8 @@ Esta SPEC faz três coisas: as marcações do evento passam a ser **afirmativas*
 dizem "quando é a próxima reunião" ou "em que data cabe uma classe" passam a usar **uma regra só**,
 em `packages/shared`. De quebra, todo texto que o usuário lê troca **"aula" por "classe"**.
 
+O modelo aprovado está em `modelo/` (`.dc.html`; o calendário do Adm, o formulário do evento nos tipos Evento, Acampamento, Férias e Reunião extra, as fichas de férias e de reunião extra, e o início do conselheiro). **Ele é o alvo:** se esta SPEC e o modelo divergirem, vale o modelo. Do modelo copia-se estrutura, ordem e texto, **nunca CSS**: as classes saem dos tokens e dos componentes de `ui/`. As datas do modelo são de 2024/25 só para o exemplo fechar.
+
 ## O que muda para quem usa
 
 - **Adm, formulário do evento:** dois tipos novos. Os tipos de sempre têm as caixas no positivo —
