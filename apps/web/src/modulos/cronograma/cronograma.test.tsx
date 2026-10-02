@@ -60,22 +60,22 @@ describe('cronograma em leitura', () => {
       ),
     )
     abrir()
-    await screen.findByRole('article', { name: 'Aula de 2030-09-01' })
-    const dada = aulaDe('Aula de 2030-09-01')
+    await screen.findByRole('article', { name: 'Classe de 2030-09-01' })
+    const dada = aulaDe('Classe de 2030-09-01')
     expect(dada.getByText('Dada')).toBeInTheDocument()
     expect(dada.getByRole('link', { name: 'Ver registro' })).toHaveAttribute('href', `/aulas/${registro}/editar`)
-    expect(aulaDe('Aula de 2030-09-08').getByText('Conflito')).toBeInTheDocument()
-    const semRegistro = aulaDe('Aula de 2030-09-10')
+    expect(aulaDe('Classe de 2030-09-08').getByText('Conflito')).toBeInTheDocument()
+    const semRegistro = aulaDe('Classe de 2030-09-10')
     expect(semRegistro.getByText('Sem registro')).toBeInTheDocument()
     expect(semRegistro.getByRole('link', { name: 'Registrar' })).toHaveAttribute('href', `/aulas/nova?classe=${CLASSE_AMIGO.id}&data=2030-09-10`)
-    const hoje = aulaDe('Aula de 2030-09-15')
+    const hoje = aulaDe('Classe de 2030-09-15')
     expect(hoje.getByText('Hoje')).toBeInTheDocument()
     expect(hoje.getByRole('link', { name: 'Registrar' })).toHaveAttribute('href', `/aulas/nova?classe=${CLASSE_AMIGO.id}&data=2030-09-15`)
-    const planejada = aulaDe('Aula de 2030-09-22')
+    const planejada = aulaDe('Classe de 2030-09-22')
     expect(planejada.getByText('Planejada')).toBeInTheDocument()
     expect(planejada.queryByRole('link')).not.toBeInTheDocument()
-    const extra = aulaDe('Aula de 2030-09-25')
-    expect(extra.getByText('Aula extra')).toBeInTheDocument()
+    const extra = aulaDe('Classe de 2030-09-25')
+    expect(extra.getByText('Fora do cronograma')).toBeInTheDocument()
     expect(extra.getByRole('link', { name: 'Ver registro' })).toHaveAttribute('href', `/aulas/${uuid(702)}/editar`)
   })
 
@@ -95,7 +95,7 @@ describe('cronograma em leitura', () => {
       ),
     )
     abrir()
-    const aula = await screen.findByRole('article', { name: 'Aula de 2030-09-20' })
+    const aula = await screen.findByRole('article', { name: 'Classe de 2030-09-20' })
     expect(within(aula).getByText('Nós básicos', { exact: false })).toBeInTheDocument()
     expect(within(aula).getByText('AC 3')).toBeInTheDocument()
     expect(within(aula).getAllByText('CAMPO')).toHaveLength(1)
@@ -106,7 +106,7 @@ describe('cronograma em leitura', () => {
     const pedidas: string[] = []
     servidor.use(handlerCronograma(criarCronograma(), (id) => pedidas.push(id)))
     abrir()
-    await screen.findByRole('article', { name: 'Aula de 2030-09-20' })
+    await screen.findByRole('article', { name: 'Classe de 2030-09-20' })
     await userEvent.click(screen.getByRole('button', { name: 'Companheiro' }))
     await vi.waitFor(() => expect(pedidas).toContain(CLASSE_COMPANHEIRO.id))
     expect(screen.getByRole('button', { name: 'Companheiro' })).toHaveAttribute('aria-pressed', 'true')
@@ -116,7 +116,7 @@ describe('cronograma em leitura', () => {
     const pedidas: string[] = []
     servidor.use(handlerCronograma(criarCronograma(), (id) => pedidas.push(id)))
     abrir('/cronograma')
-    await screen.findByRole('article', { name: 'Aula de 2030-09-20' })
+    await screen.findByRole('article', { name: 'Classe de 2030-09-20' })
     expect(pedidas).toEqual([CLASSE_AMIGO.id])
   })
 
@@ -129,7 +129,7 @@ describe('cronograma em leitura', () => {
   it('não oferece "Montar cronograma" a quem não pode', async () => {
     servidor.use(handlerCronograma())
     abrir()
-    await screen.findByRole('article', { name: 'Aula de 2030-09-20' })
+    await screen.findByRole('article', { name: 'Classe de 2030-09-20' })
     expect(screen.queryByRole('link', { name: 'Montar cronograma' })).not.toBeInTheDocument()
   })
 
@@ -195,15 +195,15 @@ describe('cronograma em leitura', () => {
     servidor.use(handlerErroCronograma(500, { codigo: 'ERRO_INTERNO', mensagem: 'x' }))
     abrir()
     expect(await screen.findByText('Disponível quando houver internet')).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Registrar aula de hoje' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Registrar classe de hoje' })).not.toBeInTheDocument()
   })
 
-  it('sem conexão, com pacote: mantém a mensagem e oferece "Registrar aula de hoje" da classe escolhida', async () => {
+  it('sem conexão, com pacote: mantém a mensagem e oferece "Registrar classe de hoje" da classe escolhida', async () => {
     offline.modo = 'SEM_CONEXAO'
     guardarPacote()
     servidor.use(handlerErroCronograma(500, { codigo: 'ERRO_INTERNO', mensagem: 'x' }))
     abrir()
     expect(await screen.findByText('Disponível quando houver internet')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Registrar aula de hoje' })).toHaveAttribute('href', `/aulas/nova?classe=${CLASSE_AMIGO.id}`)
+    expect(screen.getByRole('link', { name: 'Registrar classe de hoje' })).toHaveAttribute('href', `/aulas/nova?classe=${CLASSE_AMIGO.id}`)
   })
 })

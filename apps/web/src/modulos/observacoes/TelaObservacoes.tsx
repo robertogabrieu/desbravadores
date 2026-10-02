@@ -26,7 +26,7 @@ const MENSAGEM_PADRAO = 'Não foi possível concluir agora. Tente de novo.'
 const mensagemDe = (erro: Error | null): string => (erro instanceof ErroDaApi ? erro.erro.mensagem : MENSAGEM_PADRAO)
 
 const ABAS = [
-  { id: 'AULA', rotulo: 'Por aula' },
+  { id: 'AULA', rotulo: 'Por dia de classe' },
   { id: 'DBV', rotulo: 'Por DBV' },
 ]
 
@@ -35,7 +35,7 @@ function CartaoObservacao({ observacao, aoApagar }: { observacao: Observacao; ao
   const [editando, definirEditando] = useState(false)
   const [titulo, definirTitulo] = useState(observacao.titulo ?? '')
   const [texto, definirTexto] = useState(observacao.texto)
-  const etiqueta = observacao.alvo === 'AULA' && observacao.aula ? `Aula · ${diaEMesCurto(observacao.aula.data)}` : (observacao.dbv?.nome ?? '')
+  const etiqueta = observacao.alvo === 'AULA' && observacao.aula ? `Classe · ${diaEMesCurto(observacao.aula.data)}` : (observacao.dbv?.nome ?? '')
 
   const salvar = (evento: FormEvent) => {
     evento.preventDefault()
@@ -96,7 +96,7 @@ function FormularioNovaObservacao({ classeId }: { classeId: string }) {
   const salvar = (evento: FormEvent) => {
     evento.preventDefault()
     if (texto.trim() === '') return definirErro('Escreva a observação.')
-    if (alvo === 'AULA' && aulaId === '') return definirErro('Escolha a aula.')
+    if (alvo === 'AULA' && aulaId === '') return definirErro('Escolha o dia de classe.')
     if (alvo === 'DBV' && dbvId === '') return definirErro('Escolha o desbravador.')
     definirErro(undefined)
     criar.mutate(
@@ -123,17 +123,17 @@ function FormularioNovaObservacao({ classeId }: { classeId: string }) {
         {(['AULA', 'DBV'] as const).map((opcao) => (
           <label key={opcao} className="flex min-h-[var(--touch-min)] items-center gap-2 text-base font-semibold text-texto">
             <input type="radio" name="alvo" checked={alvo === opcao} onChange={() => definirAlvo(opcao)} className="size-5" />
-            {opcao === 'AULA' ? 'Sobre uma aula' : 'Sobre um DBV'}
+            {opcao === 'AULA' ? 'Sobre um dia de classe' : 'Sobre um DBV'}
           </label>
         ))}
       </div>
       {alvo === 'AULA' ? (
         aulas.isPending ? (
-          <p className="text-sm text-texto-2">Carregando aulas…</p>
+          <p className="text-sm text-texto-2">Carregando classes…</p>
         ) : aulasRegistradas.length === 0 ? (
-          <p className="text-sm text-texto-2">Nenhuma aula registrada ainda: registre a aula para escrever sobre ela.</p>
+          <p className="text-sm text-texto-2">Nenhuma classe registrada ainda: registre a classe para escrever sobre ela.</p>
         ) : (
-          <Selecao rotulo="Aula" value={aulaId} onChange={(e) => definirAulaEscolhida(e.target.value)}>
+          <Selecao rotulo="Dia de classe" value={aulaId} onChange={(e) => definirAulaEscolhida(e.target.value)}>
             {aulasRegistradas.map((aula) => (
               <option key={aula.id} value={aula.id}>{aula.data === hoje ? `${diaEMesCurto(aula.data)} (hoje)` : diaEMesCurto(aula.data)}</option>
             ))}

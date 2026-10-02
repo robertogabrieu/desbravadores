@@ -290,7 +290,7 @@ describe('PUT /api/sync/aulas/:uuid', () => {
     expect(saida.requisitosSemEfeito).toHaveLength(2)
     expect((await c.concluidosAtivos(c.ana.id)).map((r) => r.requisitoId)).toEqual([c.r3])
     // o cronograma nunca foi publicado: a aula planejada e do vivo e sai do registro
-    expect(saida.avisos).toEqual(['Esta aula foi registrada fora do cronograma publicado.'])
+    expect(saida.avisos).toEqual(['Esta classe foi registrada fora do cronograma publicado.'])
     expect((await prismaDeTeste().registroAula.findUniqueOrThrow({ where: { id: uuid } })).aulaPlanejadaId).toBeNull()
   })
 

@@ -14,7 +14,7 @@ import { exigirClasseNoEscopo, intervaloDoAnoClube, resumosDeRequisitos } from '
 type Resumo = z.infer<typeof AulaResumo>
 type Detalhe = z.infer<typeof AulaDetalhe>
 
-const NAO_ENCONTRADA = 'Aula não encontrada.'
+const NAO_ENCONTRADA = 'Registro de classe não encontrado.'
 
 @Injectable()
 export class AulasService {

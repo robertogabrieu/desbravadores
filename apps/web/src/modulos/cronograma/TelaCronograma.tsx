@@ -27,7 +27,7 @@ const ROTULO_DA_SITUACAO: Record<Situacao, string> = {
   PLANEJADA: 'Planejada',
   NAO_REGISTRADA: 'Sem registro',
   CONFLITO: 'Conflito',
-  EXTRA: 'Aula extra',
+  EXTRA: 'Fora do cronograma',
 }
 
 const ESTILO_DA_ETIQUETA: Record<Situacao, string> = {
@@ -77,7 +77,7 @@ function CartaoDaAula({ aula, classeId }: { aula: AulaDoCronograma; classeId: st
         <span aria-hidden className="my-1 w-0.5 grow bg-borda" />
       </div>
       <article
-        aria-label={`Aula de ${aula.data}`}
+        aria-label={`Classe de ${aula.data}`}
         className={cn(
           'mb-3 flex grow flex-col gap-2 rounded-cartao border-2 bg-superficie p-3',
           aula.situacao === 'CONFLITO' ? 'border-perigo' : aula.situacao === 'HOJE' ? 'border-marca' : 'border-superficie',
@@ -88,7 +88,7 @@ function CartaoDaAula({ aula, classeId }: { aula: AulaDoCronograma; classeId: st
           <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-extrabold', ESTILO_DA_ETIQUETA[situacao])}>{ROTULO_DA_SITUACAO[situacao]}</span>
           {detalhe && <span className="text-xs text-texto-2">{detalhe}</span>}
         </div>
-        <span className="text-base font-bold text-texto">{aula.titulo ?? 'Aula sem título'}</span>
+        <span className="text-base font-bold text-texto">{aula.titulo ?? 'Classe sem título'}</span>
         {aula.requisitos.length > 0 && (
           <ul className="flex flex-col gap-1 pl-4 text-sm text-texto-2">
             {aula.requisitos.map((requisito) => (
@@ -139,7 +139,7 @@ function LinhaDoTempo({ dados, classeId }: { dados: Cronograma; classeId: string
     return (
       <div className="flex flex-col items-center gap-3">
         <EstadoVazio
-          titulo={dados.status === null ? 'O cronograma ainda não foi publicado.' : 'Nenhuma aula neste cronograma.'}
+          titulo={dados.status === null ? 'O cronograma ainda não foi publicado.' : 'Nenhuma classe neste cronograma.'}
         />
         {!dados.podeMontar && dados.status === null && <PedirParaMontar classeId={classeId} />}
       </div>

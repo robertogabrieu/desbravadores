@@ -38,7 +38,7 @@ interface Contexto {
 
 const TEMPO_DA_TRANSACAO_MS = 20_000
 const CODIGOS_DE_CORRIDA = ['P2002', 'P2034']
-const AVISO_FORA_DO_PUBLICADO = 'Esta aula foi registrada fora do cronograma publicado.'
+const AVISO_FORA_DO_PUBLICADO = 'Esta classe foi registrada fora do cronograma publicado.'
 
 function ehCorrida(erro: unknown): boolean {
   return erro instanceof Prisma.PrismaClientKnownRequestError && CODIGOS_DE_CORRIDA.includes(erro.code)
@@ -175,23 +175,23 @@ export class AulasEnvioService {
     if (concorrenteDoUuid) return { registro: this.conferirDoUuid(concorrenteDoUuid, envio), criada: false }
     const concorrenteDaData = await tx.registroAula.findFirst({ where: daData })
     if (concorrenteDaData) return { registro: concorrenteDaData, criada: false }
-    throw regra('Esta aula não pôde ser registrada: o identificador já pertence a outro registro.')
+    throw regra('Esta classe não pôde ser registrada: o identificador já pertence a outro registro.')
   }
 
   private conferirDoUuid(registro: RegistroAula, envio: Envio): RegistroAula {
-    if (registro.classeId !== envio.classeId) throw new ErroApp('NAO_ENCONTRADO', 'Aula não encontrada.')
-    if (paraDataCivil(registro.data) !== envio.data) throw regra('A data de uma aula registrada não muda.')
+    if (registro.classeId !== envio.classeId) throw new ErroApp('NAO_ENCONTRADO', 'Registro de classe não encontrado.')
+    if (paraDataCivil(registro.data) !== envio.data) throw regra('A data de uma classe registrada não muda.')
     return registro
   }
 
   /** Criacao: envio de ate 7 dias atras e data entre hoje-30 e hoje, contados em `feito`. */
   private exigirCriacaoValida(envio: Envio, feito: Date, agora: Date, fuso: string): void {
     if (feito.getTime() < agora.getTime() - DIAS_DE_ENVIO_TARDIO * MS_POR_DIA) {
-      throw regra('Esta aula foi registrada há mais de 7 dias e não pode mais ser enviada.')
+      throw regra('Esta classe foi registrada há mais de 7 dias e não pode mais ser enviada.')
     }
     const atraso = diasEntre(envio.data, hojeNoFuso(fuso, feito))
     if (atraso < 0 || atraso > DIAS_DE_CORRECAO) {
-      throw regra('A data da aula deve estar entre hoje e os últimos 30 dias.')
+      throw regra('A data da classe deve estar entre hoje e os últimos 30 dias.')
     }
   }
 
@@ -200,7 +200,7 @@ export class AulasEnvioService {
     if (sessao.papel === 'ADM') return
     const tardio = feito.getTime() < agora.getTime() - DIAS_DE_ENVIO_TARDIO * MS_POR_DIA
     if (tardio || !dentroDoPrazoDeCorrecao(paraDataCivil(registro.data), feito, fuso)) {
-      throw regra('Esta aula já não pode ser alterada.')
+      throw regra('Esta classe já não pode ser alterada.')
     }
   }
 
@@ -399,7 +399,7 @@ export class AulasEnvioService {
       clubeId: sessao.clubeId,
       autorId: sessao.usuarioId,
       tipo: 'AULA_REGISTRADA',
-      descricao: `${usuario.nome} registrou a aula de ${nomeDaClasse}`,
+      descricao: `${usuario.nome} registrou a classe de ${nomeDaClasse}`,
       link: null,
     })
   }

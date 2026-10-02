@@ -42,7 +42,7 @@ describe('Observações', () => {
     expect(await screen.findByText('Turma animada com o jogo.')).toBeInTheDocument()
     expect(screen.getByText('Visível só para instrutores e Adm')).toBeInTheDocument()
     expect(screen.getByText(/Priscila/)).toBeInTheDocument()
-    expect(screen.getByText('Aula · 27/09')).toBeInTheDocument()
+    expect(screen.getByText('Classe · 27/09')).toBeInTheDocument()
     expect(screen.queryByText('Precisa de reforço.')).not.toBeInTheDocument()
   })
 
@@ -68,7 +68,7 @@ describe('Observações', () => {
     const usuario = userEvent.setup()
     abrir()
     await screen.findByText('Nenhuma observação ainda.')
-    await waitFor(() => expect(screen.getByLabelText('Aula')).toHaveValue(AULA_DE_HOJE.id))
+    await waitFor(() => expect(screen.getByLabelText('Dia de classe')).toHaveValue(AULA_DE_HOJE.id))
     await usuario.type(screen.getByLabelText('Título (opcional)'), 'Bom encontro')
     await usuario.type(screen.getByLabelText('Nova observação'), 'Retomar o 7º mandamento.')
     await usuario.click(screen.getByRole('button', { name: 'Salvar observação' }))
