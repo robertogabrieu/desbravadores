@@ -122,58 +122,108 @@ describe('lista de usuários', () => {
   })
 })
 
-describe('novo usuário', () => {
-  it('salva usuário e vínculos de uma vez, mandando só as permissões que diferem do padrão', async () => {
+describe('novo usuário: convidar numa tela só', () => {
+  const abrirNovo = () => abrir(TRES, [], '/adm/usuarios/novo')
+
+  it('dados em cima; a pergunta do papel passa de "a pessoa" para o primeiro nome; três cartões, nenhum marcado nem "já tem"', async () => {
+    abrirNovo()
+    expect(await screen.findByLabelText('Nome')).toBeInTheDocument()
+    expect(screen.getByLabelText('E-mail')).toBeInTheDocument()
+    expect(screen.getByLabelText('Gênero')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Que papel a pessoa vai ter?' })).toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText('Nome'), 'Rui Novo')
+    expect(screen.getByRole('heading', { level: 2, name: 'Que papel Rui vai ter?' })).toBeInTheDocument()
+    const cartoes = screen.getAllByRole('radio')
+    expect(cartoes).toHaveLength(3)
+    cartoes.forEach((cartao) => {
+      expect(cartao).not.toBeChecked()
+      expect(cartao).toBeEnabled()
+    })
+    expect(screen.queryByText('já tem')).not.toBeInTheDocument()
+    expect(screen.getByText('Começa com as permissões do papel. Outros papéis e ajustes, depois, na ficha.')).toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Escolha das unidades' })).not.toBeInTheDocument()
+  })
+
+  it('Conselheiro mostra as unidades; Instrutor limpa o escopo e mostra as classes; Adm esconde o bloco', async () => {
+    abrirNovo()
+    await userEvent.click(await screen.findByRole('radio', { name: /Conselheiro/ }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Águias' }))
+    expect(screen.getByRole('button', { name: 'Águias' })).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(screen.getByRole('radio', { name: /Instrutor/ }))
+    expect(await screen.findByRole('group', { name: 'Escolha das classes' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Águias' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Amigo' })).toHaveAttribute('aria-pressed', 'false')
+    await userEvent.click(screen.getByRole('radio', { name: /Conselheiro/ }))
+    expect(await screen.findByRole('button', { name: 'Águias' })).toHaveAttribute('aria-pressed', 'false')
+    await userEvent.click(screen.getByRole('radio', { name: /Adm/ }))
+    expect(screen.queryByRole('group', { name: /Escolha das/ })).not.toBeInTheDocument()
+  })
+
+  it('recusas: sem nome ou e-mail, sem papel e sem escopo não gravam', async () => {
     const corpos: unknown[] = []
-    abrir(TRES, [], '/adm/usuarios/novo')
-    const novo = criarUsuario({ id: uuid(730), nome: 'Novo' })
+    abrirNovo()
+    servidor.use(handlerCriarUsuario(criarUsuario({ id: uuid(730) }), corpos))
+    await userEvent.click(await screen.findByRole('button', { name: 'Salvar' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Preencha o nome e o e-mail.')
+    await userEvent.type(screen.getByLabelText('Nome'), 'Rui Novo')
+    await userEvent.type(screen.getByLabelText('E-mail'), 'rui@clube.test')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Escolha um papel.')
+    await userEvent.click(screen.getByRole('radio', { name: /Conselheiro/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    const mensagem = await screen.findByRole('alert')
+    expect(mensagem).toHaveTextContent('Escolha pelo menos uma unidade.')
+    const grupo = screen.getByRole('group', { name: 'Escolha das unidades' })
+    expect(grupo).toHaveFocus()
+    expect(grupo).toHaveAttribute('aria-describedby', mensagem.id)
+    expect(corpos).toEqual([])
+  })
+
+  it('Salvar manda um vínculo só, sem ajustes, e vai à ficha do criado com replace', async () => {
+    const corpos: unknown[] = []
+    const { roteador } = abrirNovo()
+    const novo = criarUsuario({ id: uuid(730), nome: 'Rui Novo' })
     servidor.use(handlerCriarUsuario(novo, corpos), handlerUsuario(caixa(novo)))
-    await screen.findByLabelText('Nome')
-    await userEvent.type(screen.getByLabelText('Nome'), 'Novo Líder')
-    await userEvent.type(screen.getByLabelText('E-mail'), 'novo@clube.test')
-    await userEvent.selectOptions(screen.getByLabelText('Gênero'), 'F')
-
-    const primeiro = screen.getByRole('group', { name: 'Vínculo 1' })
-    await userEvent.selectOptions(within(primeiro).getByLabelText('Papel'), 'CONSELHEIRO')
-    await userEvent.click(await within(primeiro).findByRole('checkbox', { name: 'Águias' }))
-    await userEvent.click(within(primeiro).getByRole('checkbox', { name: 'Editar dados dos desbravadores' }))
-
-    await userEvent.click(screen.getByRole('button', { name: '+ Acrescentar papel' }))
-    const segundo = screen.getByRole('group', { name: 'Vínculo 2' })
-    await userEvent.selectOptions(within(segundo).getByLabelText('Papel'), 'INSTRUTOR')
-    await userEvent.click(await within(segundo).findByRole('checkbox', { name: 'Amigo' }))
-
+    await userEvent.type(await screen.findByLabelText('Nome'), 'Rui Novo')
+    await userEvent.type(screen.getByLabelText('E-mail'), 'rui@clube.test')
+    await userEvent.selectOptions(screen.getByLabelText('Gênero'), 'M')
+    await userEvent.click(screen.getByRole('radio', { name: /Instrutor/ }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Amigo' }))
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(corpos).toHaveLength(1))
     expect(corpos[0]).toEqual({
-      nome: 'Novo Líder',
-      email: 'novo@clube.test',
-      genero: 'F',
-      vinculos: [
-        { papel: 'CONSELHEIRO', unidadeIds: [AGUIAS.id], classeIds: [], ajustes: [{ permissao: 'dbv.editar', concedida: true }] },
-        { papel: 'INSTRUTOR', unidadeIds: [], classeIds: [AMIGO.id], ajustes: [] },
-      ],
+      nome: 'Rui Novo',
+      email: 'rui@clube.test',
+      genero: 'M',
+      vinculos: [{ papel: 'INSTRUTOR', unidadeIds: [], classeIds: [AMIGO.id], ajustes: [] }],
     })
-    await screen.findByRole('heading', { level: 1, name: 'Novo' })
+    await screen.findByRole('heading', { level: 1, name: 'Rui Novo' })
+    expect(roteador.state.historyAction).toBe('REPLACE')
+    expect(roteador.state.location.pathname).toBe(`/adm/usuarios/${uuid(730)}`)
   })
 
-  it('cada papel mostra só as permissões que se aplicam a ele, e Adm nenhuma', async () => {
-    abrir(TRES, [], '/adm/usuarios/novo')
-    const bloco = within(await screen.findByRole('group', { name: 'Vínculo 1' }))
-    const papel = bloco.getByLabelText('Papel')
+  it('Adm grava sem escopo', async () => {
+    const corpos: unknown[] = []
+    abrirNovo()
+    const novo = criarUsuario({ id: uuid(730), nome: 'Rui Novo' })
+    servidor.use(handlerCriarUsuario(novo, corpos), handlerUsuario(caixa(novo)))
+    await userEvent.type(await screen.findByLabelText('Nome'), 'Rui Novo')
+    await userEvent.type(screen.getByLabelText('E-mail'), 'rui@clube.test')
+    await userEvent.click(screen.getByRole('radio', { name: /Adm/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    await waitFor(() => expect(corpos).toHaveLength(1))
+    expect(corpos[0]).toMatchObject({ vinculos: [{ papel: 'ADM', unidadeIds: [], classeIds: [], ajustes: [] }] })
+  })
 
-    await userEvent.selectOptions(papel, 'CONSELHEIRO')
-    expect(await bloco.findByRole('checkbox', { name: 'Editar dados dos desbravadores' })).toBeInTheDocument()
-    expect(bloco.getByRole('checkbox', { name: 'Ver desbravadores' })).toBeChecked()
-    expect(bloco.getByRole('checkbox', { name: 'Editar dados dos desbravadores' })).not.toBeChecked()
-    expect(bloco.queryByRole('checkbox', { name: 'Montar cronograma da classe' })).not.toBeInTheDocument()
-
-    await userEvent.selectOptions(papel, 'INSTRUTOR')
-    expect(await bloco.findByRole('checkbox', { name: 'Montar cronograma da classe' })).toBeInTheDocument()
-    expect(bloco.queryByRole('checkbox', { name: 'Editar dados dos desbravadores' })).not.toBeInTheDocument()
-
-    await userEvent.selectOptions(papel, 'ADM')
-    expect(bloco.queryByRole('checkbox')).not.toBeInTheDocument()
+  it('409 da API: a mensagem aparece na tela, sem sair', async () => {
+    const { roteador } = abrirNovo()
+    servidor.use(http.post('/api/usuarios', () => HttpResponse.json({ codigo: 'CONFLITO', mensagem: 'Esta pessoa já tem este papel no clube.' }, { status: 409 })))
+    await userEvent.type(await screen.findByLabelText('Nome'), 'Rui Novo')
+    await userEvent.type(screen.getByLabelText('E-mail'), 'rui@clube.test')
+    await userEvent.click(screen.getByRole('radio', { name: /Adm/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Esta pessoa já tem este papel no clube.')
+    expect(roteador.state.location.pathname).toBe('/adm/usuarios/novo')
   })
 })
 
@@ -182,67 +232,6 @@ describe('lista → telas dedicadas', () => {
     const { roteador } = abrir()
     await userEvent.click(await screen.findByRole('link', { name: 'Convidar usuário' }))
     expect(roteador.state.location.pathname).toBe('/adm/usuarios/novo')
-  })
-})
-
-describe('edição de usuário existente', () => {
-  it('trava e-mail, e nome e gênero quando não está convidado; sem botões de salvar parcial', async () => {
-    abrir(TRES, [], `/adm/usuarios/${thiago.id}/editar`)
-    expect(await screen.findByLabelText('E-mail')).toBeDisabled()
-    expect(screen.getByLabelText('Nome')).toBeDisabled()
-    expect(screen.getByLabelText('Gênero')).toBeDisabled()
-    expect(screen.queryByRole('button', { name: 'Salvar dados' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Salvar vínculo' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Salvar alterações' })).toBeInTheDocument()
-  })
-
-  it('convidado edita nome e gênero com o Salvar único', async () => {
-    const corposEdicao: unknown[] = []
-    abrir(TRES, [], `/adm/usuarios/${priscila.id}/editar`)
-    servidor.use(handlerEditarUsuario(priscila, corposEdicao))
-    expect(await screen.findByLabelText('E-mail')).toBeDisabled()
-    const nome = screen.getByLabelText('Nome')
-    await userEvent.clear(nome)
-    await userEvent.type(nome, 'Priscila A. Lima')
-    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
-    await waitFor(() => expect(corposEdicao).toEqual([{ nome: 'Priscila A. Lima', genero: 'F' }]))
-  })
-
-  it('o Salvar único grava o vínculo alterado pelo PUT, com as permissões marcadas', async () => {
-    const corpos: unknown[] = []
-    abrir(TRES, [], `/adm/usuarios/${thiago.id}/editar`)
-    servidor.use(handlerEditarVinculo(thiago, corpos))
-    const bloco = within(await screen.findByRole('group', { name: 'Vínculo 1' }))
-    expect(await bloco.findByRole('checkbox', { name: 'Águias' })).toBeChecked()
-    expect(bloco.getByRole('checkbox', { name: 'Leões' })).not.toBeChecked()
-    expect(bloco.getByRole('checkbox', { name: 'Editar dados dos desbravadores' })).toBeChecked()
-    expect(bloco.getByLabelText('Papel')).toBeDisabled()
-    await userEvent.click(bloco.getByRole('checkbox', { name: 'Leões' }))
-    await userEvent.click(bloco.getByRole('checkbox', { name: 'Editar dados dos desbravadores' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
-    await waitFor(() => expect(corpos).toHaveLength(1))
-    expect(corpos[0]).toEqual({ unidadeIds: [AGUIAS.id, LEOES.id], ajustes: [] })
-  })
-
-  it('acrescenta um papel com POST do vínculo novo', async () => {
-    const corpos: unknown[] = []
-    abrir(TRES, [], `/adm/usuarios/${thiago.id}/editar`)
-    servidor.use(handlerNovoVinculo(thiago, corpos))
-    await userEvent.click(await screen.findByRole('button', { name: '+ Acrescentar papel' }))
-    const bloco = within(screen.getByRole('group', { name: 'Vínculo 2' }))
-    await userEvent.selectOptions(bloco.getByLabelText('Papel'), 'INSTRUTOR')
-    await userEvent.click(await bloco.findByRole('checkbox', { name: 'Companheiro' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
-    await waitFor(() => expect(corpos).toEqual([{ papel: 'INSTRUTOR', unidadeIds: [], classeIds: [COMPANHEIRO.id], ajustes: [] }]))
-  })
-
-  it('mostra no bloco o erro de permissão inválida', async () => {
-    abrir(TRES, [], `/adm/usuarios/${thiago.id}/editar`)
-    servidor.use(handlerRegra422('put', '/api/vinculos/:id', 'AJUSTE_INVALIDO'))
-    const bloco = within(await screen.findByRole('group', { name: 'Vínculo 1' }))
-    await userEvent.click(await bloco.findByRole('checkbox', { name: 'Editar dados dos desbravadores' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
-    expect(await bloco.findByRole('alert')).toHaveTextContent('Alguma permissão não vale para este papel.')
   })
 })
 

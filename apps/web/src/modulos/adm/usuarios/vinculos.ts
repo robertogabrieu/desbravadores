@@ -14,13 +14,6 @@ export interface RascunhoVinculo {
 
 export const rascunhoVazio = (papel: Papel = 'CONSELHEIRO'): RascunhoVinculo => ({ papel, unidadeIds: [], classeIds: [], ajustes: {} })
 
-export const rascunhoDoVinculo = (vinculo: VinculoUsuario): RascunhoVinculo => ({
-  papel: vinculo.papel,
-  unidadeIds: vinculo.unidades.map((u) => u.id),
-  classeIds: vinculo.classes.map((c) => c.id),
-  ajustes: Object.fromEntries(vinculo.ajustes.map((a) => [a.permissao, a.concedida])),
-})
-
 /** Chaves do catálogo que existem para o papel (Adm não tem caixas). */
 export const permissoesDoPapel = (catalogo: CatalogoPermissao[], papel: Papel): CatalogoPermissao[] =>
   papel === 'ADM' ? [] : catalogo.filter((p) => p.padrao[papel] !== undefined)
@@ -65,14 +58,6 @@ export const corpoDaEdicao = (rascunho: RascunhoVinculo): EdicaoVinculo => ({
   ...(rascunho.papel === 'INSTRUTOR' && { classeIds: rascunho.classeIds }),
   ajustes: ajustesDoRascunho(rascunho),
 })
-
-/** Rótulos do catálogo das permissões que o vínculo tem ligadas, já com os ajustes aplicados. */
-export function oQuePodeFazer(vinculo: VinculoUsuario, catalogo: CatalogoPermissao[]): string[] {
-  const rascunho = rascunhoDoVinculo(vinculo)
-  return permissoesDoPapel(catalogo, vinculo.papel)
-    .filter((permissao) => permissaoLigada(permissao, rascunho))
-    .map((permissao) => permissao.rotulo)
-}
 
 /** "Unidade Águias" | "Classes Amigo e Companheiro" | "Todo o clube" */
 export function escopoDoPapel(vinculo: VinculoUsuario): string {

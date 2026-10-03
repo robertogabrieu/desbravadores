@@ -307,65 +307,58 @@ describe('ficha do usuário', () => {
     expect(screen.getByRole('button', { name: 'Tentar de novo' })).toBeInTheDocument()
   })
 
-  it('Editar → um Salvar grava os dados e o vínculo alterado e volta à ficha atualizada', async () => {
+  it('Editar de convidado: só Nome e Gênero; "Salvar alterações" faz o PATCH e volta à ficha com replace', async () => {
     const usuario = carla({ situacao: 'CONVIDADO', ultimoAcessoEm: null })
-    const corposDados: unknown[] = []
-    const corposVinculo: unknown[] = []
-    const comNome = { ...usuario.atual, nome: 'Carla M. Souza' }
-    servidor.use(
-      handlerEditarUsuario(comNome, corposDados),
-      handlerEditarVinculo({ ...comNome, vinculos: [criarVinculoUsuario('CONSELHEIRO', 1, { ajustes: [{ permissao: 'dbv.editar', concedida: true }] })] }, corposVinculo),
-    )
+    const corpos: unknown[] = []
+    servidor.use(handlerEditarUsuario({ ...usuario.atual, nome: 'Carla M. Souza' }, corpos))
     const { roteador } = abrir(`/adm/usuarios/${uuid(710)}/editar`, usuario)
     const nome = await screen.findByLabelText('Nome')
+    expect(screen.getByLabelText('Gênero')).toBeEnabled()
+    expect(screen.queryByLabelText('E-mail')).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: /Vínculo/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '+ Acrescentar papel' })).not.toBeInTheDocument()
     await userEvent.clear(nome)
     await userEvent.type(nome, 'Carla M. Souza')
-    await userEvent.click(within(screen.getByRole('group', { name: 'Vínculo 1' })).getByLabelText('Editar dados dos desbravadores'))
-    usuario.atual = comNome
+    usuario.atual = { ...usuario.atual, nome: 'Carla M. Souza' }
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() => expect(roteador.state.location.pathname).toBe(`/adm/usuarios/${uuid(710)}`))
-    expect(corposDados).toEqual([{ nome: 'Carla M. Souza', genero: 'F' }])
-    expect(corposVinculo).toHaveLength(1)
+    expect(corpos).toEqual([{ nome: 'Carla M. Souza', genero: 'F' }])
     expect(roteador.state.historyAction).toBe('REPLACE')
   })
 
-  it('fora de convidado, nome e gênero ficam travados e e-mail é só leitura; sem alteração nada é gravado', async () => {
+  it('Editar de convidado sem alteração: nada é gravado e volta à ficha', async () => {
+    const usuario = carla({ situacao: 'CONVIDADO', ultimoAcessoEm: null })
     const corpos: unknown[] = []
-    servidor.use(handlerEditarUsuario(carla().atual, corpos), handlerEditarVinculo(carla().atual, corpos))
-    const { roteador } = abrir(`/adm/usuarios/${uuid(710)}/editar`)
-    expect(await screen.findByLabelText('Nome')).toBeDisabled()
-    expect(screen.getByLabelText('Gênero')).toBeDisabled()
-    expect(screen.getByLabelText('E-mail')).toBeDisabled()
-    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    servidor.use(handlerEditarUsuario(usuario.atual, corpos))
+    const { roteador } = abrir(`/adm/usuarios/${uuid(710)}/editar`, usuario)
+    await userEvent.click(await screen.findByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() => expect(roteador.state.location.pathname).toBe(`/adm/usuarios/${uuid(710)}`))
     expect(corpos).toEqual([])
   })
 
-  it('Cancelar volta à ficha sem perguntar', async () => {
+  it('/editar de quem não é convidado redireciona para a ficha, com replace e o estado de volta', async () => {
     const { roteador } = abrir(`/adm/usuarios/${uuid(710)}/editar`)
-    await userEvent.click(await screen.findByRole('link', { name: 'Cancelar' }))
+    await screen.findByRole('heading', { level: 1, name: 'Carla Mendes' })
     expect(roteador.state.location.pathname).toBe(`/adm/usuarios/${uuid(710)}`)
+    expect(roteador.state.historyAction).toBe('REPLACE')
+    expect(roteador.state.location.state).toEqual({ voltarPara: '/adm/usuarios', voltarRotulo: 'Usuários' })
   })
 
-  it('vínculo novo recusado: fica na tela com o erro no bloco; Salvar de novo tenta só ele', async () => {
-    const usuario = carla()
-    const novos: unknown[] = []
-    let recusar = true
-    servidor.use(
-      http.post('/api/usuarios/:id/vinculos', async ({ request }) => {
-        novos.push(await request.json())
-        if (recusar) return HttpResponse.json({ codigo: 'REGRA', mensagem: 'Escolha ao menos uma classe.' }, { status: 422 })
-        return HttpResponse.json({ ...usuario.atual, vinculos: [...usuario.atual.vinculos, criarVinculoUsuario('INSTRUTOR', 2)] }, { status: 201 })
-      }),
-    )
-    abrir(`/adm/usuarios/${uuid(710)}/editar?acrescentar=1`, usuario)
-    const bloco = within(await screen.findByRole('group', { name: 'Vínculo 2' }))
-    await userEvent.selectOptions(bloco.getByLabelText('Papel'), 'INSTRUTOR')
+  it('recusa da API (outro clube): a mensagem aparece no formulário, sem sair', async () => {
+    const usuario = carla({ situacao: 'CONVIDADO', ultimoAcessoEm: null })
+    servidor.use(handlerRegra422('patch', '/api/usuarios/:id', 'REGRA', 'Esta pessoa tem papel em outro clube.'))
+    const { roteador } = abrir(`/adm/usuarios/${uuid(710)}/editar`, usuario)
+    const nome = await screen.findByLabelText('Nome')
+    await userEvent.type(nome, ' Jr')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
-    expect(await bloco.findByText('Escolha ao menos uma classe.')).toBeInTheDocument()
-    recusar = false
-    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
-    await waitFor(() => expect(novos).toHaveLength(2))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Esta pessoa tem papel em outro clube.')
+    expect(roteador.state.location.pathname).toBe(`/adm/usuarios/${uuid(710)}/editar`)
+  })
+
+  it('Cancelar volta à ficha sem perguntar', async () => {
+    const { roteador } = abrir(`/adm/usuarios/${uuid(710)}/editar`, carla({ situacao: 'CONVIDADO', ultimoAcessoEm: null }))
+    await userEvent.click(await screen.findByRole('link', { name: 'Cancelar' }))
+    expect(roteador.state.location.pathname).toBe(`/adm/usuarios/${uuid(710)}`)
   })
 
   it('Novo → Salvar leva à ficha do convidado', async () => {
@@ -374,7 +367,8 @@ describe('ficha do usuário', () => {
     const { roteador } = abrir('/adm/usuarios/novo', carla(), criado)
     await userEvent.type(await screen.findByLabelText('Nome'), 'Rui Novo')
     await userEvent.type(screen.getByLabelText('E-mail'), 'rui@clube.test')
-    await userEvent.click(await screen.findByLabelText('Águias'))
+    await userEvent.click(await screen.findByRole('radio', { name: /Conselheiro/ }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Águias' }))
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(roteador.state.location.pathname).toBe(`/adm/usuarios/${uuid(720)}`))
   })
@@ -386,7 +380,8 @@ describe('ficha do usuário', () => {
     servidor.use(http.get(`/api/usuarios/${uuid(720)}`, () => delay('infinite')))
     await userEvent.type(await screen.findByLabelText('Nome'), 'Rui Novo')
     await userEvent.type(screen.getByLabelText('E-mail'), 'rui@clube.test')
-    await userEvent.click(await screen.findByLabelText('Águias'))
+    await userEvent.click(await screen.findByRole('radio', { name: /Conselheiro/ }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Águias' }))
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(roteador.state.location.pathname).toBe(`/adm/usuarios/${uuid(720)}`))
     expect(clienteConsultas.getQueryData(chavesUsuarios.um(uuid(720)))).toBeUndefined()
