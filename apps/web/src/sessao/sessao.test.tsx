@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { useConexao } from '../offline'
+import { banco } from '../offline/banco'
 import { tempos } from '../offline/tempos'
 import { servidor } from '../testes/servidor'
 import { requisitarSemResposta } from '../api/cliente'
@@ -202,13 +203,16 @@ describe('sem papel em clube nenhum', () => {
     return { saidas, perdeu: () => (semPapel = true) }
   }
 
-  it('o próximo toque recusado encerra a sessão e leva ao login com o aviso', async () => {
+  it('o próximo toque recusado encerra a sessão e leva ao login com o aviso, já sem a identidade guardada', async () => {
     const { saidas, perdeu } = abrirComPapel()
     const { roteador } = renderizarRotas(rotasSemPapel, '/tocar')
     const botao = await screen.findByRole('button', { name: 'tocar' })
+    await waitFor(async () => expect(await banco.sessoes.count()).toBe(1))
     perdeu()
     await userEvent.click(botao)
     await screen.findByText('tela de login')
+    // Limpa antes de chegar ao login: fechar o app agora não deixa o aparelho reabrir com o papel removido.
+    expect(await banco.sessoes.count()).toBe(0)
     expect(roteador.state.location.state).toEqual({ aviso: SEM_ACESSO })
     await waitFor(() => expect(saidas).toEqual(['logout']))
   })
