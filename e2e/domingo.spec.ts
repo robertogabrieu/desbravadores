@@ -60,8 +60,8 @@ test('domingo: a chamada feita sem rede chega sozinha, entra no histórico e no 
   await page.getByRole('link', { name: 'Convidar usuário' }).click()
   await page.getByLabel('Nome', { exact: true }).fill('Carla Conselheira')
   await page.getByLabel('E-mail').fill(conselheiroEmail)
-  await page.getByLabel('Papel').selectOption({ label: 'Conselheiro' })
-  await page.getByLabel(unidade).check()
+  await page.getByRole('radio', { name: /Conselheiro/ }).check()
+  await page.getByRole('button', { name: unidade, exact: true }).click()
   await page.getByRole('button', { name: 'Salvar', exact: true }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Carla Conselheira' })).toBeVisible()
 

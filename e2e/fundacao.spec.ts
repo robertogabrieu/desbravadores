@@ -43,8 +43,8 @@ async function convidarConselheiro(page: Page, nome: string, email: string, unid
   await page.getByRole('link', { name: 'Convidar usuário' }).click()
   await page.getByLabel('Nome', { exact: true }).fill(nome)
   await page.getByLabel('E-mail').fill(email)
-  await page.getByLabel('Papel').selectOption({ label: 'Conselheiro' })
-  await page.getByLabel(unidade).check()
+  await page.getByRole('radio', { name: /Conselheiro/ }).check()
+  await page.getByRole('button', { name: unidade, exact: true }).click()
   await page.getByRole('button', { name: 'Salvar', exact: true }).click()
   await expect(page.getByRole('heading', { level: 1, name: nome })).toBeVisible()
 }
