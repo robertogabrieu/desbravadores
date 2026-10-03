@@ -25,8 +25,9 @@ export function EscolherPapel() {
   const irParaOLogin = async (): Promise<void> => {
     try {
       await sair()
-    } catch {
-      // Sem resposta do logout a sessão deste aparelho já foi descartada; o login segue com o aviso.
+    } catch (erro) {
+      // Logout recusado ou limpeza local falhou: a sessão deste aparelho já foi descartada, o login segue com o aviso.
+      console.error('Falha ao sair sem acesso', erro)
     } finally {
       void navegar('/login', { replace: true, state: { aviso: SEM_ACESSO } })
     }

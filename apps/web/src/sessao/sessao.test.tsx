@@ -4,6 +4,7 @@ import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { useConexao } from '../offline'
 import { banco } from '../offline/banco'
+import { criarPacote } from '../testes/handlers/offline'
 import { tempos } from '../offline/tempos'
 import { servidor } from '../testes/servidor'
 import { requisitarSemResposta } from '../api/cliente'
@@ -209,6 +210,7 @@ describe('sem papel em clube nenhum', () => {
     const botao = await screen.findByRole('button', { name: 'tocar' })
     await waitFor(async () => expect(await banco.sessoes.count()).toBe(1))
     await banco.rascunhos.put({ usuarioId: uuid(500), chave: 'chamada', valor: 1, atualizadoEm: Date.now() })
+    await banco.pacotes.put({ usuarioId: uuid(500), vinculoId: uuid(1), pacote: criarPacote(), baixadoEm: Date.now() })
     perdeu()
     await userEvent.click(botao)
     await screen.findByText('tela de login')
@@ -216,6 +218,8 @@ describe('sem papel em clube nenhum', () => {
     expect(await banco.sessoes.count()).toBe(0)
     // O que a pessoa preencheu fica: se o papel voltar, o trabalho não se perdeu.
     expect(await banco.rascunhos.count()).toBe(1)
+    // Os dados do clube (pacote) saem: sem o papel, não ficam no aparelho.
+    expect(await banco.pacotes.count()).toBe(0)
     expect(roteador.state.location.state).toEqual({ aviso: SEM_ACESSO })
     await waitFor(() => expect(saidas).toEqual(['logout']))
   })

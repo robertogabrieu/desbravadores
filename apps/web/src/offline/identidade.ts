@@ -13,12 +13,6 @@ export async function tocarContato(usuarioId: string, agora = Date.now()): Promi
   await banco.sessoes.update(usuarioId, { ultimoContatoEm: agora })
 }
 
-/** Tira do aparelho só a identidade guardada: sem ela, o app não reabre sem internet como esse usuário.
- *  Pacote, rascunhos e fila ficam (a pessoa pode voltar a ter o papel). */
-export async function apagarIdentidade(usuarioId: string): Promise<void> {
-  await banco.sessoes.delete(usuarioId)
-}
-
 /** Identidade do último usuário que falou com a API, ou nula se não há uma íntegra guardada. */
 export async function lerUltimaIdentidade(): Promise<RegistroSessao | null> {
   const todas = await banco.sessoes.toArray()
