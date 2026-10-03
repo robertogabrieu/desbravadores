@@ -13,8 +13,13 @@ export function useDepoisDePerderOPapelDaSessao(): () => Promise<void> {
   const { relerSessao } = useSessao()
   const navegar = useNavigate()
   return async () => {
-    const eu = await relerSessao()
-    if (eu.vinculos.length > 0) void navegar('/papel', { replace: true })
+    try {
+      const eu = await relerSessao()
+      if (eu.vinculos.length > 0) void navegar('/papel', { replace: true })
+    } catch {
+      // O papel já saiu; sem reler a sessão, a escolha de papel é o caminho que o próximo pedido tomaria.
+      void navegar('/papel', { replace: true })
+    }
   }
 }
 

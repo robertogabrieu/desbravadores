@@ -53,6 +53,8 @@ interface Ouvintes {
   aoSessaoPerdida?: () => void
   /** 403 VINCULO_INATIVO numa requisição comum: a sessão precisa ser relida. */
   aoVinculoInativo?: () => void
+  /** Refresh recusado com 403 VINCULO_INATIVO: a pessoa não tem papel ativo em clube nenhum. */
+  aoSemAcesso?: () => void
   /** Uma requisição não chegou à API (status 0): a conexão caiu. */
   aoFalhaDeRede?: () => void
   /** A API respondeu 2xx: houve contato real (atualiza o `ultimoContatoEm`). */
@@ -145,7 +147,9 @@ async function chamarRefresh(): Promise<Sessao> {
   const resposta = await enviar(ROTA_DE_REFRESH, { metodo: 'POST' })
   if (!resposta.ok) {
     const erro = await lerErro(resposta)
-    tratarVinculoInativo(erro, false)
+    // Sem vínculo escolhido, o refresh só recusa por VINCULO_INATIVO quem não tem papel ativo em clube
+    // nenhum: não há papel a escolher, então não vai a /papel — a sessão sai e leva o aviso ao login.
+    if (erro.status === 403 && erro.erro.codigo === 'VINCULO_INATIVO') ouvintes.aoSemAcesso?.()
     throw erro
   }
   const lida = SessaoSaida.safeParse(await resposta.json().catch(() => undefined))

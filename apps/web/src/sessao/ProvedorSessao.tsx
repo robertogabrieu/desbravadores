@@ -58,6 +58,7 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
   const clienteConsultas = useQueryClient()
   const [estado, definirEstado] = useState<EstadoSessao>({ situacao: 'carregando', eu: null })
   const [avisoDeSaida, definirAvisoDeSaida] = useState<string | null>(null)
+  const saindoSemAcesso = useRef(false)
   const { modo } = useConexao()
   // Ignora respostas de uma leitura antiga quando outra mais nova já começou (StrictMode, sair no meio).
   const geracao = useRef(0)
@@ -68,29 +69,25 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
   const usuarioId = estado.eu?.usuario.id
   const vinculoId = estado.eu?.vinculoAtivo?.id
 
-  /** Sem papel ativo em clube nenhum (removido ou desativado, aqui ou em outro aparelho): a sessão termina na
-   *  hora — a sincronização para antes de mandar mais um pedido recusado — e a guarda leva ao login com o
-   *  aviso. Logout e limpeza do aparelho seguem depois, sem segurar a tela; a identidade guardada sai também,
-   *  para o aparelho não reabrir sem internet com o papel que já não existe. */
+  /** Sem papel ativo em clube nenhum (removido ou desativado, aqui ou em outro aparelho): a sessão termina —
+   *  a sincronização para antes de mandar mais um pedido recusado, a identidade guardada sai (o aparelho não
+   *  reabre sem internet com o papel que já não existe) e a guarda leva ao login com o aviso. Várias recusas
+   *  seguidas saem uma vez só; o logout vai depois, sem segurar a tela (é rota pública, dispensa o token). */
   const sairSemAcesso = useCallback(
-    (usuarioId: string) => {
+    async (usuarioId: string | null) => {
+      if (saindoSemAcesso.current) return
+      saindoSemAcesso.current = true
       geracao.current += 1
       void pararMotor()
       estadoOffline.trocaParaVinculo = null
+      if (usuarioId) await limparDadosDoUsuario(usuarioId, { manterFila: true }).catch((erro: unknown) => console.error('Falha ao limpar o aparelho', erro))
+      definirTokenAcesso(null)
+      clienteConsultas.clear()
       definirConexao('ONLINE')
       definirExpirada(false)
       definirAvisoDeSaida(SEM_ACESSO)
       definirEstado(ESTADO_ANONIMO)
-      void Promise.allSettled([
-        requisitarSemResposta('/api/auth/logout', { metodo: 'POST' }),
-        limparDadosDoUsuario(usuarioId, { manterFila: true }),
-      ]).then((resultados) => {
-        for (const resultado of resultados) {
-          if (resultado.status === 'rejected') console.error('Falha ao encerrar a sessão sem acesso', resultado.reason)
-        }
-        definirTokenAcesso(null)
-        clienteConsultas.clear()
-      })
+      void requisitarSemResposta('/api/auth/logout', { metodo: 'POST' }).catch((erro: unknown) => console.error('Falha no logout sem acesso', erro))
     },
     [clienteConsultas],
   )
@@ -98,9 +95,10 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
   /** Guarda a identidade e baixa o pacote: na abertura só se venceu (15 min), ao voltar a conexão sempre. */
   const aplicarEuOnline = useCallback((eu: Eu, aoVoltarConexao = false) => {
     if (eu.vinculos.length === 0) {
-      sairSemAcesso(eu.usuario.id)
+      void sairSemAcesso(eu.usuario.id)
       return
     }
+    saindoSemAcesso.current = false
     definirAvisoDeSaida(null)
     definirConexao('ONLINE')
     definirExpirada(false)
@@ -175,6 +173,11 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
       // Refresh recusado durante o uso: a pessoa segue na tela (pode salvar); ir ao login é escolha dela.
       aoSessaoPerdida: () => definirExpirada(true),
       aoVinculoInativo: () => void lerEu().catch(descartarSessao),
+      // Na abertura quem trata é abrirSessao (que também limpa a identidade guardada); aqui é durante o uso.
+      aoSemAcesso: () => {
+        const atual = estadoAtual.current
+        if (atual.situacao === 'autenticada') void sairSemAcesso(atual.eu.usuario.id)
+      },
       aoFalhaDeRede: () => {
         if (estadoAtual.current.situacao === 'autenticada') definirConexao('SEM_CONEXAO')
       },
@@ -186,7 +189,7 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
       },
     })
     void abrirSessao(true)
-  }, [abrirSessao, descartarSessao, lerEu])
+  }, [abrirSessao, descartarSessao, lerEu, sairSemAcesso])
 
   useEffect(() => {
     if (usuarioId && vinculoId) iniciarMotor({ usuarioId, vinculoId, queryClient: clienteConsultas })
@@ -236,7 +239,9 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
           const vinculo = resultado.eu.vinculoAtivo
           if (vinculo) iniciarMotor({ usuarioId: resultado.eu.usuario.id, vinculoId: vinculo.id, queryClient: clienteConsultas })
         } else if (resultado.tipo === 'recusa') {
-          definirExpirada(true)
+          const usuario = estadoAtual.current.eu?.usuario.id ?? null
+          if (resultado.semAcesso) void sairSemAcesso(usuario)
+          else definirExpirada(true)
         }
       } catch (erro) {
         console.error('Falha inesperada ao renovar a sessão', erro)
@@ -253,7 +258,7 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
       window.removeEventListener('online', aoVoltarInternet)
       clearInterval(intervalo)
     }
-  }, [modo, aplicarEuOnline, clienteConsultas])
+  }, [modo, aplicarEuOnline, clienteConsultas, sairSemAcesso])
 
   // O navegador avisar que caiu já vale como sem conexão; quem confirma a volta é a API (efeito acima).
   useEffect(() => {
@@ -309,6 +314,7 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
         try {
           if (dono) await limparDadosDoUsuario(dono, { manterFila: true })
         } finally {
+          definirAvisoDeSaida(null)
           descartarSessao()
         }
       }

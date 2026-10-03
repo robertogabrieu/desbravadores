@@ -45,7 +45,7 @@ Convenções: listas paginadas com `?pagina=&porPagina=`; datas em `YYYY-MM-DD`;
 
 | Método e rota | O que faz | Permissão |
 |---|---|---|
-| `GET /usuarios?papel=&busca=&pagina=` | Lista do clube, 25 por página, em ordem de nome, com situação no clube, papéis e `ultimoAcessoEm`, mais a contagem por papel | `usuario.gerenciar` |
+| `GET /usuarios?papel=&busca=&pagina=&porPagina=` | Lista do clube em ordem de nome, paginada (`porPagina` padrão 25, máximo 100), com situação no clube, papéis e `ultimoAcessoEm`, mais a contagem por papel | `usuario.gerenciar` |
 | `GET /usuarios/{id}` | Um usuário, com todos os vínculos do clube (inclusive inativos) e `ultimoAcessoEm` | `usuario.gerenciar` |
 | `POST /usuarios` | Convida: nome, e-mail, gênero e ao menos um vínculo; manda o convite. E-mail que já existe só ganha os vínculos (a resposta ecoa o que foi enviado) | `usuario.gerenciar` |
 | `PATCH /usuarios/{id}` | Nome e gênero, só de quem ainda é convidado e não tem vínculo em outro clube (senão 422 `REGRA`); e-mail nunca | `usuario.gerenciar` |
