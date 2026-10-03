@@ -5,11 +5,12 @@ import { describe, expect, it } from 'vitest'
 import { useConexao } from '../offline'
 import { tempos } from '../offline/tempos'
 import { servidor } from '../testes/servidor'
-import { criarVinculo, handlerSemSessao, handlersSessao } from '../testes/handlers/sessao'
+import { requisitarSemResposta } from '../api/cliente'
+import { criarEu, criarVinculo, handlerSemSessao, handlersSessao } from '../testes/handlers/sessao'
 import { renderizarRotas } from '../testes/renderizar'
 import { GuardaRota } from './GuardaRota'
 import { RedirecionamentoRaiz } from './RedirecionamentoRaiz'
-import { useSessao } from './useSessao'
+import { SEM_ACESSO, useSessao } from './useSessao'
 import type { RouteObject } from 'react-router-dom'
 
 function Botao() {
@@ -150,5 +151,68 @@ describe('guarda de rota', () => {
       window.dispatchEvent(new Event('offline'))
     })
     expect(await screen.findByText('modo SEM_CONEXAO')).toBeInTheDocument()
+  })
+})
+
+describe('sem papel em clube nenhum', () => {
+  /** Faz um pedido qualquer da tela; a API recusa porque o papel em uso foi removido. */
+  function Tocar() {
+    return <button onClick={() => void requisitarSemResposta('/api/algo', { metodo: 'POST' }).catch(() => undefined)}>tocar</button>
+  }
+
+  function Reler() {
+    const { relerSessao } = useSessao()
+    return <button onClick={() => void relerSessao()}>reler</button>
+  }
+
+  const rotasSemPapel: RouteObject[] = [
+    ...rotas,
+    { element: <GuardaRota />, children: [{ path: '/tocar', element: <Tocar /> }, { path: '/reler', element: <Reler /> }] },
+  ]
+
+  /** Sessão de conselheiro que, a partir de `perdeu()`, já não tem papel nenhum: /api/eu sem vínculos. */
+  function abrirComPapel() {
+    const saidas: string[] = []
+    let semPapel = false
+    servidor.use(
+      http.get('/api/eu', () => HttpResponse.json(semPapel ? criarEu([], null) : criarEu([criarVinculo('CONSELHEIRO')]))),
+      http.post('/api/algo', () => HttpResponse.json({ codigo: 'VINCULO_INATIVO', mensagem: 'Papel inativo.' }, { status: 403 })),
+      http.post('/api/auth/logout', () => {
+        saidas.push('logout')
+        return new HttpResponse(null, { status: 204 })
+      }),
+      ...handlersSessao([criarVinculo('CONSELHEIRO')]),
+    )
+    return { saidas, perdeu: () => (semPapel = true) }
+  }
+
+  it('o próximo toque recusado encerra a sessão e leva ao login com o aviso', async () => {
+    const { saidas, perdeu } = abrirComPapel()
+    const { roteador } = renderizarRotas(rotasSemPapel, '/tocar')
+    const botao = await screen.findByRole('button', { name: 'tocar' })
+    perdeu()
+    await userEvent.click(botao)
+    await screen.findByText('tela de login')
+    expect(roteador.state.location.state).toEqual({ aviso: SEM_ACESSO })
+    await waitFor(() => expect(saidas).toEqual(['logout']))
+  })
+
+  it('reler a sessão sem papel nenhum faz o mesmo', async () => {
+    const { saidas, perdeu } = abrirComPapel()
+    const { roteador } = renderizarRotas(rotasSemPapel, '/reler')
+    const botao = await screen.findByRole('button', { name: 'reler' })
+    perdeu()
+    await userEvent.click(botao)
+    await screen.findByText('tela de login')
+    expect(roteador.state.location.state).toEqual({ aviso: SEM_ACESSO })
+    await waitFor(() => expect(saidas).toEqual(['logout']))
+  })
+
+  it('sair por escolha própria não leva o aviso', async () => {
+    servidor.use(...handlersSessao([criarVinculo('ADM')]))
+    const { roteador } = renderizarRotas(rotas, '/privada')
+    await userEvent.click(await screen.findByRole('button', { name: /sair/ }))
+    await screen.findByText('tela de login')
+    expect(roteador.state.location.state).toBeNull()
   })
 })

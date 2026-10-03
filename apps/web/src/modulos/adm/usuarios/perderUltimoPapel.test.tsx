@@ -33,8 +33,13 @@ describe('Adm remove o próprio último papel, com as rotas reais', () => {
     const adm = caixa(
       criarUsuario({ id: uuid(500), nome: 'Ana Adm', genero: 'F', vinculos: [criarVinculoUsuario('ADM', 1, { id: uuid(1) })] }),
     )
+    const saidas: string[] = []
     const depois = { ...adm.atual, situacao: 'INATIVO' as const, vinculos: adm.atual.vinculos.map((v) => ({ ...v, ativo: false })) }
     servidor.use(
+      http.post('/api/auth/logout', () => {
+        saidas.push('logout')
+        return new HttpResponse(null, { status: 204 })
+      }),
       ...handlersSessao([criarVinculo('ADM')]),
       handlerUsuario(adm),
       handlerListaUsuarios([adm.atual]),
@@ -53,5 +58,6 @@ describe('Adm remove o próprio último papel, com as rotas reais', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('Você não tem mais acesso a nenhum clube.')
     await waitFor(() => expect(roteador.state.location.pathname).toBe('/login'))
     expect(visitados).not.toContain('/papel')
+    await waitFor(() => expect(saidas).toEqual(['logout']))
   })
 })

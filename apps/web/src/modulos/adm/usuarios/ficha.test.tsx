@@ -21,6 +21,7 @@ import {
   handlerRegra422,
   handlerUsuario,
 } from '../../../testes/handlers/usuarios'
+import { GuardaRota } from '../../../sessao/GuardaRota'
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
 import { rotasAdmUsuarios } from './rotas'
@@ -54,7 +55,8 @@ function abrir(rota: string, usuario = carla(), ...outros: Caixa<Usuario>[]) {
     handlerCatalogoUsuarios(),
     handlerUnidades([aguias]),
   )
-  return { ...renderizarRotas([...rotasAdmUsuarios, ...rotasDeSaida], rota), usuario }
+  // A ficha atrás da guarda, como no app: é ela que leva ao login quando a sessão termina.
+  return { ...renderizarRotas([{ element: <GuardaRota />, children: rotasAdmUsuarios }, ...rotasDeSaida], rota), usuario }
 }
 
 describe('ficha do usuário', () => {

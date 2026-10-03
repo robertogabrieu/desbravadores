@@ -21,7 +21,7 @@ import { iniciarMotor, liberarTrocaDePapel, pararMotor, pausarParaTrocaDePapel }
 import { baixarPacoteAoVoltarConexao, baixarPacoteSeVelho } from '../offline/pacote'
 import { VALIDADE_DO_MODO_SEM_CONEXAO_MS, tempos } from '../offline/tempos'
 import { avisarTrocaDePapel, ouvirOutrasAbas } from './abasDaSessao'
-import { ContextoDaSessao } from './useSessao'
+import { ContextoDaSessao, SEM_ACESSO } from './useSessao'
 import type { ContextoSessao, Eu } from './useSessao'
 import type { z } from 'zod'
 
@@ -33,17 +33,19 @@ const ESTADO_ANONIMO: EstadoSessao = { situacao: 'anonima', eu: null }
 const ESTADO_SEM_CONEXAO: EstadoSessao = { situacao: 'sem-conexao', eu: null }
 const INTERVALO_DO_CONTATO_MS = 60_000
 
-type ResultadoDaTentativa = { tipo: 'ok'; eu: Eu } | { tipo: 'sem-rede' } | { tipo: 'recusa' }
+type ResultadoDaTentativa = { tipo: 'ok'; eu: Eu } | { tipo: 'sem-rede' } | { tipo: 'recusa'; semAcesso: boolean }
 
-/** Refresh + /api/eu, classificados pela regra E4: rede e servidor abrem sem conexão, recusa vai ao login. */
+/** Refresh + /api/eu, classificados pela regra E4: rede e servidor abrem sem conexão, recusa vai ao login.
+ *  Refresh recusado por VINCULO_INATIVO é quem não tem papel ativo em clube nenhum (`SessaoSaida`). */
 async function tentarAbrir(): Promise<ResultadoDaTentativa> {
   try {
     await renovarSessao()
     const eu = await requisitar('/api/eu', EuSaida)
     return { tipo: 'ok', eu }
   } catch (erro) {
-    if (erro instanceof ErroDaApi) return erro.classe === 'RECUSA' ? { tipo: 'recusa' } : { tipo: 'sem-rede' }
-    throw erro
+    if (!(erro instanceof ErroDaApi)) throw erro
+    if (erro.classe !== 'RECUSA') return { tipo: 'sem-rede' }
+    return { tipo: 'recusa', semAcesso: erro.erro.codigo === 'VINCULO_INATIVO' }
   }
 }
 
@@ -55,6 +57,7 @@ const identidadeVale = (guardada: RegistroSessao | null): guardada is RegistroSe
 export function ProvedorSessao({ children }: { children: ReactNode }) {
   const clienteConsultas = useQueryClient()
   const [estado, definirEstado] = useState<EstadoSessao>({ situacao: 'carregando', eu: null })
+  const [avisoDeSaida, definirAvisoDeSaida] = useState<string | null>(null)
   const { modo } = useConexao()
   // Ignora respostas de uma leitura antiga quando outra mais nova já começou (StrictMode, sair no meio).
   const geracao = useRef(0)
@@ -65,8 +68,40 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
   const usuarioId = estado.eu?.usuario.id
   const vinculoId = estado.eu?.vinculoAtivo?.id
 
+  /** Sem papel ativo em clube nenhum (removido ou desativado, aqui ou em outro aparelho): a sessão termina na
+   *  hora — a sincronização para antes de mandar mais um pedido recusado — e a guarda leva ao login com o
+   *  aviso. Logout e limpeza do aparelho seguem depois, sem segurar a tela; a identidade guardada sai também,
+   *  para o aparelho não reabrir sem internet com o papel que já não existe. */
+  const sairSemAcesso = useCallback(
+    (usuarioId: string) => {
+      geracao.current += 1
+      void pararMotor()
+      estadoOffline.trocaParaVinculo = null
+      definirConexao('ONLINE')
+      definirExpirada(false)
+      definirAvisoDeSaida(SEM_ACESSO)
+      definirEstado(ESTADO_ANONIMO)
+      void Promise.allSettled([
+        requisitarSemResposta('/api/auth/logout', { metodo: 'POST' }),
+        limparDadosDoUsuario(usuarioId, { manterFila: true }),
+      ]).then((resultados) => {
+        for (const resultado of resultados) {
+          if (resultado.status === 'rejected') console.error('Falha ao encerrar a sessão sem acesso', resultado.reason)
+        }
+        definirTokenAcesso(null)
+        clienteConsultas.clear()
+      })
+    },
+    [clienteConsultas],
+  )
+
   /** Guarda a identidade e baixa o pacote: na abertura só se venceu (15 min), ao voltar a conexão sempre. */
   const aplicarEuOnline = useCallback((eu: Eu, aoVoltarConexao = false) => {
+    if (eu.vinculos.length === 0) {
+      sairSemAcesso(eu.usuario.id)
+      return
+    }
+    definirAvisoDeSaida(null)
     definirConexao('ONLINE')
     definirExpirada(false)
     definirEstado({ situacao: 'autenticada', eu })
@@ -74,7 +109,7 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
     if (!eu.vinculoAtivo) return
     if (aoVoltarConexao) void baixarPacoteAoVoltarConexao(eu.usuario.id, eu.vinculoAtivo.id)
     else void baixarPacoteSeVelho(eu.usuario.id, eu.vinculoAtivo.id)
-  }, [])
+  }, [sairSemAcesso])
 
   const lerEu = useCallback(async (): Promise<Eu> => {
     const eu = await requisitar('/api/eu', EuSaida)
@@ -121,6 +156,7 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
           if (guardada) await limparDadosDoUsuario(guardada.usuarioId, { manterFila: true }).catch(() => undefined)
           if (minha !== geracao.current) return
           definirTokenAcesso(null)
+          if (resultado.semAcesso) definirAvisoDeSaida(SEM_ACESSO)
           definirEstado(ESTADO_ANONIMO)
         }
       } catch (erro) {
@@ -308,8 +344,9 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
       sairDeTodos,
       reabrir,
       relerSessao: lerEu,
+      avisoDeSaida,
     }
-  }, [estado, entrar, escolherPapel, sair, sairDeTodos, reabrir, lerEu])
+  }, [estado, avisoDeSaida, entrar, escolherPapel, sair, sairDeTodos, reabrir, lerEu])
 
   return <ContextoDaSessao.Provider value={valor}>{children}</ContextoDaSessao.Provider>
 }

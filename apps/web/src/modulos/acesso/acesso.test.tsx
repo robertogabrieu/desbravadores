@@ -6,6 +6,7 @@ import { TOKEN_VALIDO, handlerAceitarConvite, handlerConviteVencido, handlerEsqu
 import { criarEu, criarSessao, criarVinculo, handlerSemSessao } from '../../testes/handlers/sessao'
 import { renderizarRotas } from '../../testes/renderizar'
 import { servidor } from '../../testes/servidor'
+import { GuardaRota } from '../../sessao/GuardaRota'
 import { RedirecionamentoRaiz } from '../../sessao/RedirecionamentoRaiz'
 import { rotasAcessoPapel, rotasAcessoPublicas } from './rotas'
 import type { RouteObject } from 'react-router-dom'
@@ -224,21 +225,32 @@ describe('escolher papel', () => {
     expect(roteador.state.location.pathname).toBe('/papel')
   })
 
-  it('sem papel em clube nenhum: diz isso e "Ir para o login" sai e vai a /login', async () => {
+  it('abrir o app sem papel em clube nenhum (refresh recusado por papel inativo): login com o aviso', async () => {
+    servidor.use(
+      http.post('/api/auth/refresh', () => HttpResponse.json({ codigo: 'VINCULO_INATIVO', mensagem: 'Sem vínculo ativo.' }, { status: 403 })),
+    )
+    const comGuarda: RouteObject[] = [...rotasAcessoPublicas, { element: <GuardaRota semVinculo />, children: rotasAcessoPapel }]
+    const { roteador } = renderizarRotas(comGuarda, '/papel')
+    expect(await screen.findByText('Você não tem mais acesso a nenhum clube.')).toHaveAttribute('role', 'status')
+    expect(roteador.state.location.pathname).toBe('/login')
+    expect(screen.queryByText('Como você quer entrar?')).not.toBeInTheDocument()
+  })
+
+  it('sessão que perde todos os papéis durante o uso: termina e o login mostra o aviso, sem a escolha de papel', async () => {
     const saidas: string[] = []
     servidor.use(
-      http.get('/api/eu', () => HttpResponse.json(criarEu([], null))),
-      http.post('/api/auth/refresh', () => HttpResponse.json(criarSessao([], null))),
       http.post('/api/auth/logout', () => {
         saidas.push('logout')
         return new HttpResponse(null, { status: 204 })
       }),
+      http.get('/api/eu', () => HttpResponse.json(criarEu([], null))),
+      http.post('/api/auth/refresh', () => HttpResponse.json(criarSessao([criarVinculo('CONSELHEIRO')]))),
     )
-    const { roteador } = renderizarRotas(rotas, '/papel')
-    expect(await screen.findAllByText('Você não tem mais acesso a nenhum clube.')).not.toHaveLength(0)
+    const comGuarda: RouteObject[] = [...rotasAcessoPublicas, { element: <GuardaRota semVinculo />, children: rotasAcessoPapel }]
+    const { roteador } = renderizarRotas(comGuarda, '/papel')
+    expect(await screen.findByText('Você não tem mais acesso a nenhum clube.')).toHaveAttribute('role', 'status')
+    expect(roteador.state.location.pathname).toBe('/login')
     expect(screen.queryByText('Como você quer entrar?')).not.toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Ir para o login' }))
-    await waitFor(() => expect(roteador.state.location.pathname).toBe('/login'))
     await waitFor(() => expect(saidas).toEqual(['logout']))
   })
 })
