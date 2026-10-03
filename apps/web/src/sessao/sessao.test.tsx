@@ -227,6 +227,41 @@ describe('sem papel em clube nenhum', () => {
     await waitFor(() => expect(saidas).toEqual(['logout']))
   })
 
+  it('abrir o app pela tela inicial sem papel em clube nenhum: login com o aviso e logout no servidor', async () => {
+    const saidas: string[] = []
+    servidor.use(
+      http.post('/api/auth/logout', () => {
+        saidas.push('logout')
+        return new HttpResponse(null, { status: 204 })
+      }),
+      http.post('/api/auth/refresh', () => HttpResponse.json({ codigo: 'VINCULO_INATIVO', mensagem: 'Sem acesso.' }, { status: 403 })),
+    )
+    const { roteador } = renderizarRotas(rotas, '/')
+    await screen.findByText('tela de login')
+    expect(roteador.state.location.state).toEqual({ aviso: SEM_ACESSO })
+    await waitFor(() => expect(saidas).toEqual(['logout']))
+  })
+
+  it('a releitura cai no token vencido e a renovação é recusada por papel inativo: login com o aviso', async () => {
+    const { saidas, perdeu } = abrirComPapel()
+    servidor.use(
+      http.get('/api/eu', ({ request }) =>
+        request.headers.get('authorization') === 'Bearer token-de-teste' && !perdido.valor
+          ? HttpResponse.json(criarEu([criarVinculo('CONSELHEIRO')]))
+          : HttpResponse.json({ codigo: 'NAO_AUTENTICADO', mensagem: 'Token vencido.' }, { status: 401 }),
+      ),
+    )
+    const perdido = { valor: false }
+    const { roteador } = renderizarRotas(rotasSemPapel, '/tocar')
+    const botao = await screen.findByRole('button', { name: 'tocar' })
+    perdeu()
+    perdido.valor = true
+    await userEvent.click(botao)
+    await screen.findByText('tela de login')
+    expect(roteador.state.location.state).toEqual({ aviso: SEM_ACESSO })
+    await waitFor(() => expect(saidas).toEqual(['logout']))
+  })
+
   it('sem papel numa rota pública (redefinir senha): a tela fica, sem ser levada ao login', async () => {
     servidor.use(http.post('/api/auth/refresh', () => HttpResponse.json({ codigo: 'VINCULO_INATIVO', mensagem: 'Sem acesso.' }, { status: 403 })))
     const { roteador } = renderizarRotas([...rotas, { path: '/publica', element: <p>tela publica</p> }], '/publica')

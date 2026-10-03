@@ -4,6 +4,7 @@ import { Navigate } from 'react-router-dom'
 import { useSessao } from '../../sessao/useSessao'
 import { Botao } from '../../ui/Botao'
 import { EstadoVazio } from '../../ui/EstadoVazio'
+import { IrAoLogin } from '../../sessao/IrAoLogin'
 
 /** Rota /conectar: o app abriu sem internet e não há identidade guardada válida (SPEC Fase 1 §4.1). */
 export function TelaConectar() {
@@ -11,7 +12,7 @@ export function TelaConectar() {
   const [tentando, definirTentando] = useState(false)
 
   if (situacao === 'autenticada') return <Navigate to="/" replace />
-  if (situacao === 'anonima') return <Navigate to="/login" replace />
+  if (situacao === 'anonima') return <IrAoLogin />
 
   const tentarDeNovo = async () => {
     definirTentando(true)

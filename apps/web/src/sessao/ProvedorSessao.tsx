@@ -69,33 +69,40 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
   const usuarioId = estado.eu?.usuario.id
   const vinculoId = estado.eu?.vinculoAtivo?.id
 
-  /** Sem papel ativo em clube nenhum (removido ou desativado, aqui ou em outro aparelho): a sessão termina —
-   *  a sincronização para antes de mandar mais um pedido recusado, a identidade guardada sai (o aparelho não
-   *  reabre sem internet com o papel que já não existe) e a guarda leva ao login com o aviso. Várias recusas
-   *  seguidas saem uma vez só; o logout vai depois, sem segurar a tela (é rota pública, dispensa o token). */
+  const descartarSessao = useCallback(() => {
+    geracao.current += 1
+    definirTokenAcesso(null)
+    estadoOffline.trocaParaVinculo = null
+    clienteConsultas.clear()
+    definirConexao('ONLINE')
+    definirExpirada(false)
+    definirEstado(ESTADO_ANONIMO)
+  }, [clienteConsultas])
+
+  /** Sem papel ativo em clube nenhum (removido ou desativado, aqui ou em outro aparelho): a sessão termina na
+   *  hora, já com o aviso — a guarda leva ao login com ele e leituras em voo deixam de valer (geração). Depois,
+   *  sem segurar a tela: a sincronização para, a identidade guardada sai (o aparelho não reabre sem internet
+   *  com o papel que já não existe) e o logout revoga a sessão no servidor (rota pública, dispensa o token).
+   *  Várias recusas seguidas saem uma vez só. */
   const sairSemAcesso = useCallback(
-    async (usuarioId: string | null) => {
+    (usuarioId: string | null) => {
       if (saindoSemAcesso.current) return
       saindoSemAcesso.current = true
-      geracao.current += 1
-      void pararMotor()
-      estadoOffline.trocaParaVinculo = null
-      if (usuarioId) await limparDadosDoUsuario(usuarioId, { manterFila: true }).catch((erro: unknown) => console.error('Falha ao limpar o aparelho', erro))
-      definirTokenAcesso(null)
-      clienteConsultas.clear()
-      definirConexao('ONLINE')
-      definirExpirada(false)
       definirAvisoDeSaida(SEM_ACESSO)
-      definirEstado(ESTADO_ANONIMO)
+      descartarSessao()
+      void (async () => {
+        await pararMotor().catch(() => undefined)
+        if (usuarioId) await limparDadosDoUsuario(usuarioId, { manterFila: true })
+      })().catch((erro: unknown) => console.error('Falha ao limpar o aparelho sem acesso', erro))
       void requisitarSemResposta('/api/auth/logout', { metodo: 'POST' }).catch((erro: unknown) => console.error('Falha no logout sem acesso', erro))
     },
-    [clienteConsultas],
+    [descartarSessao],
   )
 
   /** Guarda a identidade e baixa o pacote: na abertura só se venceu (15 min), ao voltar a conexão sempre. */
   const aplicarEuOnline = useCallback((eu: Eu, aoVoltarConexao = false) => {
     if (eu.vinculos.length === 0) {
-      void sairSemAcesso(eu.usuario.id)
+      sairSemAcesso(eu.usuario.id)
       return
     }
     saindoSemAcesso.current = false
@@ -110,20 +117,13 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
   }, [sairSemAcesso])
 
   const lerEu = useCallback(async (): Promise<Eu> => {
+    const minha = geracao.current
     const eu = await requisitar('/api/eu', EuSaida)
-    aplicarEuOnline(eu)
+    // A sessão terminou (ou outra abriu) enquanto lia: esta resposta já não vale para o aparelho.
+    if (minha === geracao.current) aplicarEuOnline(eu)
     return eu
   }, [aplicarEuOnline])
 
-  const descartarSessao = useCallback(() => {
-    geracao.current += 1
-    definirTokenAcesso(null)
-    estadoOffline.trocaParaVinculo = null
-    clienteConsultas.clear()
-    definirConexao('ONLINE')
-    definirExpirada(false)
-    definirEstado(ESTADO_ANONIMO)
-  }, [clienteConsultas])
 
   const abrirSessao = useCallback(
     async (comNovaTentativa: boolean) => {
@@ -150,11 +150,12 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
           } else {
             definirEstado(ESTADO_SEM_CONEXAO)
           }
+        } else if (resultado.semAcesso) {
+          sairSemAcesso(guardada?.usuarioId ?? null)
         } else {
           if (guardada) await limparDadosDoUsuario(guardada.usuarioId, { manterFila: true }).catch(() => undefined)
           if (minha !== geracao.current) return
           definirTokenAcesso(null)
-          if (resultado.semAcesso) definirAvisoDeSaida(SEM_ACESSO)
           definirEstado(ESTADO_ANONIMO)
         }
       } catch (erro) {
@@ -165,7 +166,7 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
         definirEstado(ESTADO_ANONIMO)
       }
     },
-    [aplicarEuOnline],
+    [aplicarEuOnline, sairSemAcesso],
   )
 
   useEffect(() => {
@@ -176,7 +177,7 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
       // Na abertura quem trata é abrirSessao (que também limpa a identidade guardada); aqui é durante o uso.
       aoSemAcesso: () => {
         const atual = estadoAtual.current
-        if (atual.situacao === 'autenticada') void sairSemAcesso(atual.eu.usuario.id)
+        if (atual.situacao === 'autenticada') sairSemAcesso(atual.eu.usuario.id)
       },
       aoFalhaDeRede: () => {
         if (estadoAtual.current.situacao === 'autenticada') definirConexao('SEM_CONEXAO')
@@ -240,7 +241,7 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
           if (vinculo) iniciarMotor({ usuarioId: resultado.eu.usuario.id, vinculoId: vinculo.id, queryClient: clienteConsultas })
         } else if (resultado.tipo === 'recusa') {
           const usuario = estadoAtual.current.eu?.usuario.id ?? null
-          if (resultado.semAcesso) void sairSemAcesso(usuario)
+          if (resultado.semAcesso) sairSemAcesso(usuario)
           else definirExpirada(true)
         }
       } catch (erro) {
@@ -271,6 +272,7 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
 
   const entrar = useCallback(
     async (sessao: Sessao) => {
+      saindoSemAcesso.current = false
       definirTokenAcesso(sessao.accessToken)
       await lerEu()
     },
@@ -314,6 +316,8 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
         try {
           if (dono) await limparDadosDoUsuario(dono, { manterFila: true })
         } finally {
+          // Saída pedida pela pessoa: sem o aviso de uma saída sem acesso anterior.
+          saindoSemAcesso.current = false
           definirAvisoDeSaida(null)
           descartarSessao()
         }
