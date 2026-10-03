@@ -7,6 +7,9 @@ import {
   criarAcesso,
   criarClube,
   criarCronograma,
+  criarUnidade,
+  criarUsuario,
+  criarVinculo,
   prismaDeTeste,
   SENHA_DE_TESTE,
 } from './apoio/semear'
@@ -146,4 +149,37 @@ test('adm: evento em conflito avisa o instrutor, ele monta e envia, o Adm public
   expect(publicado).toMatchObject({ cronogramaId: cronograma.id, fonte: 'PUBLICADO', status: 'PUBLICADO', podeMontar: false })
   const aulaNova = publicado.aulas.find((aula) => aula.data === domingoLivre)
   expect(aulaNova?.requisitos).toEqual([expect.objectContaining({ id: livre.id })])
+})
+
+test('adm: ao remover o papel de conselheiro de quem está logado como conselheiro, a pessoa volta à escolha só com Instrutor', async ({ browser }) => {
+  const clube = await criarClube()
+  const amigo = await classeOficial('Amigo')
+  await admDefinirClasseClube({ clubeId: clube.id, classeId: amigo.id, ativa: true })
+  const unidade = await criarUnidade({ clubeId: clube.id })
+
+  const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+  const pessoa = await criarUsuario({ nome: 'Duda Dupla' })
+  await criarVinculo({ usuarioId: pessoa.id, clubeId: clube.id, papel: 'CONSELHEIRO', unidadeIds: [unidade.id] })
+  await criarVinculo({ usuarioId: pessoa.id, clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [amigo.id] })
+
+  // A pessoa entra, escolhe conselheiro e fica com esse papel em uso.
+  const paginaDaPessoa = await novaSessao(browser, pessoa.email, CELULAR)
+  await expect(paginaDaPessoa.getByRole('heading', { level: 1, name: 'Como você quer entrar?' })).toBeVisible()
+  await paginaDaPessoa.getByRole('button', { name: /Conselheiro/ }).click()
+  await expect(paginaDaPessoa).toHaveURL(/\/inicio$/)
+
+  // O Adm remove o papel de conselheiro pela ficha.
+  const paginaAdm = await novaSessao(browser, adm.usuario.email)
+  await paginaAdm.goto(`/adm/usuarios/${pessoa.id}`)
+  await expect(paginaAdm.getByRole('heading', { level: 1, name: 'Duda Dupla' })).toBeVisible()
+  await paginaAdm.getByRole('region', { name: /Conselheir/ }).getByRole('button', { name: 'Remover papel' }).click()
+  await paginaAdm.getByRole('dialog').getByRole('button', { name: 'Remover papel' }).click()
+  await expect(paginaAdm.getByRole('region', { name: /Conselheir/ })).toHaveCount(0)
+
+  // No próximo toque dentro do app o pedido é recusado e a pessoa vai à escolha de papel, que já só oferece Instrutor.
+  await paginaDaPessoa.getByRole('navigation', { name: 'Navegação principal' }).getByRole('link', { name: 'Unidade', exact: true }).click()
+  await expect(paginaDaPessoa).toHaveURL(/\/papel$/)
+  await expect(paginaDaPessoa.getByRole('heading', { level: 1, name: 'Como você quer entrar?' })).toBeVisible()
+  await expect(paginaDaPessoa.getByRole('button', { name: /Instrutor/ })).toBeVisible()
+  await expect(paginaDaPessoa.getByRole('button', { name: /Conselheiro/ })).toHaveCount(0)
 })

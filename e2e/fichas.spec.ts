@@ -1,6 +1,20 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
-import { criarClube, criarDbv, criarAcesso, criarEvento, criarMembro, criarReuniao, criarUnidade, criarUsuario, criarVinculo, SENHA_DE_TESTE } from './apoio/semear'
+import {
+  admDefinirClasseClube,
+  classeOficial,
+  criarClube,
+  criarDbv,
+  criarAcesso,
+  criarEvento,
+  criarMembro,
+  criarReuniao,
+  criarUnidade,
+  criarUsuario,
+  criarVinculo,
+  prismaDeTeste,
+  SENHA_DE_TESTE,
+} from './apoio/semear'
 
 test.use({ baseURL: process.env['E2E_WEB_URL'] })
 
@@ -247,11 +261,34 @@ test.describe('fichas e telas de edição do Adm', () => {
     const dbv = await criarDbv({ clubeId, nome: 'Gabi Medida' })
     const usuario = await criarUsuario({ nome: 'Hugo Medido', status: 'CONVIDADO' })
     await criarVinculo({ usuarioId: usuario.id, clubeId, papel: 'CONSELHEIRO', unidadeIds: [unidade.id] })
+    const amigo = await classeOficial('Amigo')
+    await admDefinirClasseClube({ clubeId, classeId: amigo.id, ativa: true })
+    // Pior caso da ficha: os três papéis, o de instrutor com dois ajustes (um ligado, um desligado).
+    const triplo = await criarUsuario({ nome: 'Ivo Triplo', status: 'CONVIDADO' })
+    await criarVinculo({ usuarioId: triplo.id, clubeId, papel: 'ADM' })
+    await criarVinculo({ usuarioId: triplo.id, clubeId, papel: 'CONSELHEIRO', unidadeIds: [unidade.id] })
+    const instrutorDoTriplo = await criarVinculo({ usuarioId: triplo.id, clubeId, papel: 'INSTRUTOR', classeIds: [amigo.id] })
+    await prismaDeTeste().permissaoAjuste.createMany({
+      data: [
+        { vinculoId: instrutorDoTriplo.id, permissao: 'observacao.ver_outros', concedida: true },
+        { vinculoId: instrutorDoTriplo.id, permissao: 'material.enviar', concedida: false },
+      ],
+    })
     const evento = await criarEvento({ clubeId, tipo: 'ACAMPAMENTO', inicio: DATA_DO_EVENTO })
     const ferias = await criarEvento({ clubeId, tipo: 'FERIAS', inicio: `${MES_DO_EVENTO}-19`, fim: FERIAS_ATE })
     const extra = await criarEvento({ clubeId, tipo: 'REUNIAO_EXTRA', inicio: `${MES_DO_EVENTO}-17` })
     const reuniao = await criarReuniao({ unidadeId: unidade.id, data: DATA_DA_REUNIAO, chamada: [{ dbvId: dbv.id }] })
 
+    const chipsDeClasse = (p: Page) => expect(p.getByRole('group', { name: 'Escolha das classes' }).getByRole('button', { name: 'Amigo', exact: true }).first()).toBeVisible()
+    const instrutorEscolhidoComChips = async (p: Page) => {
+      await p.getByRole('radio', { name: /Instrutor/ }).check()
+      await chipsDeClasse(p)
+    }
+    const ajustesAbertos = async (p: Page) => {
+      await p.getByRole('button', { name: /Ajustar o que pode fazer/ }).click()
+      await expect(p.getByRole('button', { name: /Ajustar o que pode fazer/ })).toHaveAttribute('aria-expanded', 'true')
+    }
+    const tresPapeis = (p: Page) => expect(p.getByRole('button', { name: 'Remover papel' })).toHaveCount(3)
     const salvarChamada = (p: Page) => p.getByRole('button', { name: /Salvar chamada/ })
     const membrosEReunioes = async (p: Page) => {
       await expect(p.getByRole('region', { name: 'Membros' }).getByText('Nenhum desbravador nesta unidade')).toBeVisible()
@@ -270,6 +307,11 @@ test.describe('fichas e telas de edição do Adm', () => {
       { caminho: `/adm/usuarios/${usuario.id}` },
       { caminho: `/adm/usuarios/${usuario.id}/editar` },
       { caminho: '/adm/usuarios/novo' },
+      { caminho: '/adm/usuarios/novo', carregado: instrutorEscolhidoComChips },
+      { caminho: `/adm/usuarios/${triplo.id}`, carregado: tresPapeis },
+      { caminho: `/adm/usuarios/${triplo.id}/papeis/${instrutorDoTriplo.id}`, carregado: ajustesAbertos },
+      { caminho: `/adm/usuarios/${usuario.id}/papeis/novo`, carregado: (p) => expect(p.getByRole('radio', { name: /Instrutor/ })).toBeVisible() },
+      { caminho: `/adm/usuarios/${usuario.id}/papeis/novo?papel=instrutor`, carregado: chipsDeClasse },
       { caminho: `/adm/unidades/${unidade.id}`, carregado: membrosEReunioes },
       { caminho: `/adm/unidades/${unidade.id}/editar` },
       { caminho: '/adm/unidades/nova' },
@@ -299,5 +341,30 @@ test.describe('fichas e telas de edição do Adm', () => {
       }
     }
     expect(falhas).toEqual([])
+  })
+
+  test('o diálogo de remover papel não rola de lado nem tem elemento fixo fora do fundo dele, em 390', async ({ page }) => {
+    const { clubeId } = await clubeComAdm(page)
+    const unidade = await criarUnidade({ clubeId })
+    const usuario = await criarUsuario({ nome: 'Ivo Triplo', status: 'CONVIDADO' })
+    await criarVinculo({ usuarioId: usuario.id, clubeId, papel: 'ADM' })
+    await criarVinculo({ usuarioId: usuario.id, clubeId, papel: 'CONSELHEIRO', unidadeIds: [unidade.id] })
+
+    await page.setViewportSize({ width: 390, height: 900 })
+    await page.goto(`/adm/usuarios/${usuario.id}`)
+    await expect(page.getByRole('heading', { level: 1, name: 'Ivo Triplo' })).toBeVisible()
+    await page.getByRole('button', { name: 'Remover papel' }).first().click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+
+    // O contêiner fixed inset-0 da Confirmacao (o que contém o diálogo) é o fundo; só o que vem de fora conta como barra presa.
+    const medida = await page.evaluate<Medida & { rolagemDoDialogo: number }>(`(() => {
+      const dialogo = document.querySelector('[role=dialog]')
+      return {
+        rolagemLateral: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        rolagemDoDialogo: dialogo.scrollWidth - dialogo.clientWidth,
+        presos: [...document.querySelectorAll('body *')].filter((e) => ['fixed', 'sticky'].includes(getComputedStyle(e).position) && !e.contains(dialogo)).length,
+      }
+    })()`)
+    expect(medida).toEqual({ rolagemLateral: 0, rolagemDoDialogo: 0, presos: 0 })
   })
 })

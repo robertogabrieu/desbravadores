@@ -162,11 +162,12 @@ export class UsuariosService {
 
   async desativar(sessao: SessaoLogada, id: string): Promise<Saida> {
     const { clubeId } = sessao
-    const usuario = await this.carregar(clubeId, id)
-    const ativos = usuario.vinculos.filter((v) => v.ativo)
-    await this.exigirOutroAdm(clubeId, ativos.map((v) => v.id), ativos.some((v) => v.papel === 'ADM'))
+    await this.carregar(clubeId, id)
     const hoje = await this.tipo.hoje(clubeId)
     await this.prisma.$transaction(async (tx) => {
+      await this.travarAdmsDoClube(tx, clubeId)
+      const ativos = await tx.vinculo.findMany({ where: { clubeId, usuarioId: id, ativo: true }, select: { id: true, papel: true } })
+      await this.exigirOutroAdm(tx, clubeId, ativos.map((v) => v.id), ativos.some((v) => v.papel === 'ADM'))
       await tx.vinculo.updateMany({ where: { clubeId, usuarioId: id, ativo: true }, data: { ativo: false } })
       await this.tipo.sincronizarConta(tx, clubeId, id, hoje)
     })
@@ -194,12 +195,13 @@ export class UsuariosService {
     if (entrada.ajustes) this.validarAjustes(vinculo.papel, entrada.ajustes)
     const classesDoVinculo = await this.prisma.vinculoClasse.findMany({ where: { vinculoId }, select: { classeId: true } })
     await this.validarRelacoes(clubeId, entrada.unidadeIds ?? [], entrada.classeIds ?? [], classesDoVinculo.map((c) => c.classeId))
-    if (entrada.ativo === false && vinculo.ativo) {
-      await this.exigirOutroAdm(clubeId, [vinculo.id], vinculo.papel === 'ADM')
-    }
     const hoje = await this.tipo.hoje(clubeId)
 
     await this.prisma.$transaction(async (tx) => {
+      if (entrada.ativo === false && vinculo.ativo && vinculo.papel === 'ADM') {
+        await this.travarAdmsDoClube(tx, clubeId)
+        await this.exigirOutroAdm(tx, clubeId, [vinculo.id], true)
+      }
       if (entrada.ativo !== undefined) await tx.vinculo.update({ where: { id: vinculo.id, clubeId }, data: { ativo: entrada.ativo } })
       await this.substituirRelacoes(tx, clubeId, vinculo.id, entrada)
       await this.tipo.sincronizarConta(tx, clubeId, vinculo.usuarioId, hoje)
@@ -277,9 +279,14 @@ export class UsuariosService {
     if (repetido) throw new ErroApp('CONFLITO', 'Este usuário já tem esse papel no clube.')
   }
 
-  private async exigirOutroAdm(clubeId: string, idsSaindo: string[], saiUmAdm: boolean): Promise<void> {
+  /** Serializa quem tira Adm do clube: quem chega depois conta os Adm já sem o do primeiro. */
+  private async travarAdmsDoClube(tx: Cliente, clubeId: string): Promise<void> {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`adm-do-clube:${clubeId}`}, 0))`
+  }
+
+  private async exigirOutroAdm(tx: Cliente, clubeId: string, idsSaindo: string[], saiUmAdm: boolean): Promise<void> {
     if (!saiUmAdm) return
-    const restantes = await this.prisma.vinculo.count({
+    const restantes = await tx.vinculo.count({
       where: { clubeId, papel: 'ADM', ativo: true, id: { notIn: idsSaindo } },
     })
     if (restantes === 0) throw new ErroApp('ULTIMO_ADM', 'O clube precisa de pelo menos um administrador ativo.')

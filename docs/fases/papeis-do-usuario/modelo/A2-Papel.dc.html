@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Acrescentar papel, passo 1</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;font-family:'Figtree',system-ui,sans-serif;color:#1B221F}
+a{color:#1F4D3A}a:hover{color:#163828}
+.t{font-family:'Bricolage Grotesque',system-ui,sans-serif}
+.rot{font-size:13px;font-weight:600;color:#5B645F}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 20px;border-radius:12px;font-size:16px;font-weight:600;text-decoration:none;border:0;font-family:inherit;cursor:pointer;box-sizing:border-box}
+.pri{background:#1F4D3A;color:#fff}
+.sec{background:#fff;color:#1B221F;border:1px solid #D9D3C5}
+.txt{background:transparent;color:#1F4D3A;padding:0 12px}
+.lbl{font-size:14px;font-weight:700;color:#1B221F}
+.ajuda{font-size:13px;color:#5B645F}
+.opc{display:flex;gap:14px;align-items:flex-start;border:1px solid #D9D3C5;border-radius:16px;background:#fff;padding:18px 16px;cursor:pointer}
+.opc.on{border:2px solid #1F4D3A;padding:17px 15px}
+.opc.off{background:#EFEBE1;cursor:not-allowed}
+.opc input{width:22px;height:22px;margin:2px 0 0;accent-color:#1F4D3A;flex-shrink:0}
+.ico{width:44px;height:44px;border-radius:12px;background:#E3EDE7;color:#1F4D3A;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tg{display:inline-flex;align-items:center;border-radius:999px;padding:2px 10px;font-size:13px;font-weight:700}
+.tg.pd{background:#fff;color:#4A524E;border:1px solid #D9D3C5}
+</style>
+</helmet>
+<div style="width:390px;min-height:1100px;display:flex;flex-direction:column;background:#F4F1EA"><header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 16px;background:#1F4D3A;color:#fff"><span class="t" style="font-size:17px;font-weight:700">App do Desbravador</span><button class="btn txt" style="color:#fff;padding:0 12px">Rosa <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></header><main style="flex-grow:1;padding:16px;display:flex;flex-direction:column;gap:16px"><a href="A1-Ficha.dc.html" style="display:inline-flex;align-items:center;gap:4px;font-weight:600;text-decoration:none;min-height:44px;align-self:flex-start"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg> Carla Mendes</a><div style="display:flex;flex-direction:column;gap:4px"><span class="rot">Acrescentar papel · passo 1 de 2</span><h1 class="t" style="margin:0;font-size:26px;font-weight:800">Que papel Carla vai ter?</h1></div>
+<form style="display:flex;flex-direction:column;gap:16px"><fieldset style="border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:12px"><legend class="lbl" style="padding:0;margin-bottom:12px">Escolha um papel</legend>
+<label class="opc"><input type="radio" name="papel"><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6Z"/></svg></span><span style="display:flex;flex-direction:column;gap:4px"><span class="t" style="font-size:19px;font-weight:700">Adm</span><span style="font-size:15px;color:#4A524E">Cuida do clube inteiro: usuários, unidades, classes, calendário e ranking.</span></span></label>
+<label class="opc off"><input type="radio" name="papel" disabled aria-describedby="ja-cons"><span class="ico" style="background:#fff;color:#4A524E"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22V4"/><path d="M4 4h12l-2 4 2 4H4"/></svg></span><span style="display:flex;flex-direction:column;gap:4px"><span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="t" style="font-size:19px;font-weight:700;color:#4A524E">Conselheiro</span><span id="ja-cons" class="tg pd">já tem</span></span><span style="font-size:15px;color:#4A524E">Acompanha uma ou mais unidades: reuniões, chamada e fotos.</span></span></label>
+<label class="opc on"><input type="radio" name="papel" checked><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg></span><span style="display:flex;flex-direction:column;gap:4px"><span class="t" style="font-size:19px;font-weight:700">Instrutor</span><span style="font-size:15px;color:#4A524E">Dá uma ou mais classes: registra a classe, marca requisitos e envia materiais.</span></span></label>
+</fieldset>
+<div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid #D9D3C5;padding-top:20px"><a class="btn pri" href="A3-Classes.dc.html" style="width:100%">Continuar</a><a class="btn sec" href="A1-Ficha.dc.html" style="width:100%">Cancelar</a></div></form></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1100}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

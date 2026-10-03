@@ -3,7 +3,9 @@ import type { Papel } from '@desbravadores/shared'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { QueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
+import { useSessao } from '../sessao/useSessao'
 import { montarConsulta, requisitar, requisitarSemResposta } from './cliente'
+import { chavesDesbravadores } from './desbravadores'
 
 export type Usuario = z.infer<typeof UsuarioSaida>
 export type VinculoUsuario = Usuario['vinculos'][number]
@@ -54,8 +56,32 @@ function useEscrita<V, R>(escrever: (variaveis: V) => Promise<R>, aoGravar?: (cl
 
 const naFicha = (cliente: QueryClient, usuario: Usuario) => cliente.setQueryData(chavesUsuarios.um(usuario.id), usuario)
 
+/** Gravação que mexe em papel: refaz listas, unidades (mostram os conselheiros) e desbravadores
+ *  (o tipo da ficha ligada à conta pode mudar entre Diretoria e DBV); se é o logado, relê a sessão. */
+function useEscritaDePapel<V>(escrever: (variaveis: V) => Promise<Usuario>, gravarNaFicha = true) {
+  const cliente = useQueryClient()
+  const { eu, vinculoAtivo, relerSessao } = useSessao()
+  return useMutation({
+    mutationFn: escrever,
+    onSuccess: async (usuario) => {
+      const ehVoce = usuario.id === eu?.usuario.id
+      if (ehVoce && usuario.vinculos.some((v) => v.id === vinculoAtivo?.id && !v.ativo)) {
+        // A tela leva a /papel ou ao login; reler a ficha agora daria 403 e uma segunda navegação (cliente.ts:138-142).
+        await cliente.invalidateQueries({ queryKey: chavesUsuarios.todas, refetchType: 'none' })
+        return
+      }
+      if (gravarNaFicha) naFicha(cliente, usuario)
+      // O servidor já gravou: falha ao reler ou refazer não pode virar erro da gravação.
+      const releituras: Promise<unknown>[] = [chavesUsuarios.todas, ['unidades'], chavesDesbravadores.todos].map((queryKey) => cliente.invalidateQueries({ queryKey }))
+      if (ehVoce) releituras.push(relerSessao())
+      await Promise.allSettled(releituras)
+    },
+  })
+}
+
 /** A resposta da criação é eco para e-mail que já existia: a ficha do criado lê do servidor, não dela. */
-export const useCriarUsuario = () => useEscrita((corpo: NovoUsuario) => requisitar('/api/usuarios', UsuarioSaida, { metodo: 'POST', corpo }))
+export const useCriarUsuario = () =>
+  useEscritaDePapel((corpo: NovoUsuario) => requisitar('/api/usuarios', UsuarioSaida, { metodo: 'POST', corpo }), false)
 
 export const useEditarUsuario = () =>
   useEscrita(
@@ -64,20 +90,16 @@ export const useEditarUsuario = () =>
   )
 
 export const useDesativarUsuario = () =>
-  useEscrita((id: string) => requisitar(`/api/usuarios/${id}/desativar`, UsuarioSaida, { metodo: 'POST' }), naFicha)
+  useEscritaDePapel((id: string) => requisitar(`/api/usuarios/${id}/desativar`, UsuarioSaida, { metodo: 'POST' }))
 
 export const useAcrescentarVinculo = () =>
-  useEscrita(
-    ({ usuarioId, corpo }: { usuarioId: string; corpo: NovoVinculo }) =>
-      requisitar(`/api/usuarios/${usuarioId}/vinculos`, UsuarioSaida, { metodo: 'POST', corpo }),
-    naFicha,
+  useEscritaDePapel(({ usuarioId, corpo }: { usuarioId: string; corpo: NovoVinculo }) =>
+    requisitar(`/api/usuarios/${usuarioId}/vinculos`, UsuarioSaida, { metodo: 'POST', corpo }),
   )
 
 export const useEditarVinculo = () =>
-  useEscrita(
-    ({ vinculoId, corpo }: { vinculoId: string; corpo: EdicaoVinculo }) =>
-      requisitar(`/api/vinculos/${vinculoId}`, UsuarioSaida, { metodo: 'PUT', corpo }),
-    naFicha,
+  useEscritaDePapel(({ vinculoId, corpo }: { vinculoId: string; corpo: EdicaoVinculo }) =>
+    requisitar(`/api/vinculos/${vinculoId}`, UsuarioSaida, { metodo: 'PUT', corpo }),
   )
 
 export const useReenviarConvite = () =>

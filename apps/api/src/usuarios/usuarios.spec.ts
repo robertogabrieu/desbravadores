@@ -5,6 +5,7 @@ import type { z } from 'zod'
 import { criarAppDeTeste, emailFalso } from '../../test/app'
 import {
   classeOficial,
+  type Acesso,
   criarAcesso,
   criarClube,
   criarUnidade,
@@ -15,7 +16,9 @@ import {
   SENHA_DE_TESTE,
 } from '../../test/fabricas'
 import { testarIsolamento } from '../../test/isolamento'
-import { clienteHttp, corpo, criarClasseDoClube } from '../../test/p6'
+import { ajustarPermissao, clienteHttp, corpo, criarClasseDoClube } from '../../test/p6'
+import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
+import { UsuariosService } from './usuarios.service'
 
 type Usuario = z.infer<typeof UsuarioSaida>
 type Lista = z.infer<typeof UsuarioLista>
@@ -317,9 +320,76 @@ describe('usuarios e vinculos', () => {
       const r = await api.post(`/api/usuarios/${adm.usuario.id}/desativar`, adm.autorizacao).expect(422)
       expect(r.body).toMatchObject({ codigo: 'ULTIMO_ADM' })
     })
+
+    describe('dois Adm tirando um ao outro ao mesmo tempo', () => {
+      // Pelo serviço, não pelo HTTP: pela rota, quem chega depois pode cair na guarda de sessão (403) e o
+      // teste dependeria da ordem de chegada. Aqui as duas contagens correm antes de qualquer gravação.
+      const sessaoDe = (clubeId: string, a: Acesso): SessaoLogada => ({ usuarioId: a.usuario.id, vinculoId: a.vinculo.id, clubeId, papel: 'ADM' })
+
+      async function conferirUmSoPassou(clubeId: string, resultados: PromiseSettledResult<unknown>[]): Promise<void> {
+        expect(resultados.filter((r) => r.status === 'fulfilled')).toHaveLength(1)
+        const recusa = resultados.find((r) => r.status === 'rejected')
+        expect(recusa?.status === 'rejected' && recusa.reason).toMatchObject({ codigo: 'ULTIMO_ADM' })
+        expect(await prismaDeTeste().vinculo.count({ where: { clubeId, papel: 'ADM', ativo: true } })).toBe(1)
+      }
+
+      it('PUT ativo=false: um passa, o outro 422 ULTIMO_ADM, e o clube fica com um Adm', async () => {
+        const servico = app.get(UsuariosService)
+        const clube = await criarClube()
+        const a = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+        const b = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+        const resultados = await Promise.allSettled([
+          servico.editarVinculo(sessaoDe(clube.id, a), b.vinculo.id, { ativo: false }),
+          servico.editarVinculo(sessaoDe(clube.id, b), a.vinculo.id, { ativo: false }),
+        ])
+        await conferirUmSoPassou(clube.id, resultados)
+      })
+
+      it('desativar: A desativa B e B desativa A; um passa, o outro 422 ULTIMO_ADM', async () => {
+        const servico = app.get(UsuariosService)
+        const clube = await criarClube()
+        const a = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+        const b = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+        const resultados = await Promise.allSettled([
+          servico.desativar(sessaoDe(clube.id, a), b.usuario.id),
+          servico.desativar(sessaoDe(clube.id, b), a.usuario.id),
+        ])
+        await conferirUmSoPassou(clube.id, resultados)
+      })
+    })
+
+    it('remover Adm com outro Adm ativo passa; remover papel que não é Adm não esbarra na trava', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const outroAdm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const instrutor = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR' })
+      await api.put(`/api/vinculos/${outroAdm.vinculo.id}`, adm.autorizacao, { ativo: false }).expect(200)
+      await api.put(`/api/vinculos/${instrutor.vinculo.id}`, adm.autorizacao, { ativo: false }).expect(200)
+      await api.post(`/api/usuarios/${instrutor.usuario.id}/desativar`, adm.autorizacao).expect(200)
+    })
   })
 
   describe('POST /usuarios/:id/vinculos e PUT /vinculos/:id', () => {
+    it('papel removido volta pelo acrescentar: mesmo registro, escopo do pedido e sem os ajustes antigos', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const alvo = await criarUsuario()
+      const amigo = await classeOficial('Amigo')
+      const guia = await classeOficial('Guia')
+      const antigo = await criarVinculo({ usuarioId: alvo.id, clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [amigo.id] })
+      await ajustarPermissao(antigo.id, 'observacao.ver_outros', true)
+      await api.put(`/api/vinculos/${antigo.id}`, adm.autorizacao, { ativo: false }).expect(200)
+
+      const saida = corpo<Usuario>(
+        await api
+          .post(`/api/usuarios/${alvo.id}/vinculos`, adm.autorizacao, { papel: 'INSTRUTOR', classeIds: [guia.id], ajustes: [] })
+          .expect(201),
+      )
+      const instrutor = saida.vinculos.find((v) => v.papel === 'INSTRUTOR')
+      expect(instrutor).toMatchObject({ id: antigo.id, ativo: true, ajustes: [] })
+      expect(instrutor?.classes.map((c) => c.id)).toEqual([guia.id])
+    })
+
     it('acrescenta vinculo; mesmo papel ativo → 409; ajuste invalido → 422; unidade de outro clube → 404', async () => {
       const clube = await criarClube()
       const outro = await criarClube()

@@ -1,8 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { LoginEntrada, NOME_SISTEMA } from '@desbravadores/shared'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import type { z } from 'zod'
 import { useLogin } from '../../api/auth'
 import { useSessao } from '../../sessao/useSessao'
@@ -11,11 +11,20 @@ import { Campo } from '../../ui/Campo'
 import { MENSAGEM_LOGIN_RECUSADO } from './mensagens'
 import { TelaAcesso } from './TelaAcesso'
 
+/** O aviso que quem mandou para o login deixou no estado da navegação. */
+const avisoDoEstado = (estado: unknown): string | undefined =>
+  typeof estado === 'object' && estado !== null && 'aviso' in estado && typeof estado.aviso === 'string' ? estado.aviso : undefined
+
 type CamposLogin = z.input<typeof LoginEntrada>
 
 export function Login() {
   const { entrar } = useSessao()
   const navegar = useNavigate()
+  const local = useLocation()
+  const avisoDoHistorico = avisoDoEstado(local.state)
+  const [aviso, definirAviso] = useState(avisoDoHistorico)
+  // Um aviso que chega com a tela já aberta entra na mesma renderização, sem esperar o efeito.
+  if (avisoDoHistorico !== undefined && avisoDoHistorico !== aviso) definirAviso(avisoDoHistorico)
   const login = useLogin()
   const [recusado, definirRecusado] = useState(false)
   const {
@@ -23,6 +32,12 @@ export function Login() {
     handleSubmit,
     formState: { errors },
   } = useForm<CamposLogin, unknown, z.output<typeof LoginEntrada>>({ resolver: zodResolver(LoginEntrada) })
+
+  // Lido uma vez: o aviso fica no estado local e sai do histórico, para não voltar no F5 nem no Voltar.
+  useEffect(() => {
+    if (avisoDoHistorico === undefined) return
+    void navegar({ pathname: local.pathname, search: local.search }, { replace: true })
+  }, [avisoDoHistorico, local.pathname, local.search, navegar])
 
   const enviar = handleSubmit(async (entrada) => {
     definirRecusado(false)
@@ -38,6 +53,11 @@ export function Login() {
 
   return (
     <TelaAcesso titulo={NOME_SISTEMA} subtitulo="Secretaria de unidade, classes e ranking em um só lugar.">
+      {aviso && (
+        <p role="status" className="text-base font-medium text-texto-2">
+          {aviso}
+        </p>
+      )}
       <form onSubmit={(evento) => void enviar(evento)} noValidate className="flex flex-col gap-4">
         <Campo rotulo="E-mail" type="email" autoComplete="username" erro={errors.email?.message} {...register('email')} />
         <Campo rotulo="Senha" type="password" autoComplete="current-password" erro={errors.senha?.message} {...register('senha')} />

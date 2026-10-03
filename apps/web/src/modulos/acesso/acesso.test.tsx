@@ -223,4 +223,51 @@ describe('escolher papel', () => {
     expect(await screen.findByText('Não foi possível trocar de papel. Tente de novo.')).toBeInTheDocument()
     expect(roteador.state.location.pathname).toBe('/papel')
   })
+
+  it('sem papel em clube nenhum: diz isso e "Ir para o login" sai e vai a /login', async () => {
+    const saidas: string[] = []
+    servidor.use(
+      http.get('/api/eu', () => HttpResponse.json(criarEu([], null))),
+      http.post('/api/auth/refresh', () => HttpResponse.json(criarSessao([], null))),
+      http.post('/api/auth/logout', () => {
+        saidas.push('logout')
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const { roteador } = renderizarRotas(rotas, '/papel')
+    expect(await screen.findAllByText('Você não tem mais acesso a nenhum clube.')).not.toHaveLength(0)
+    expect(screen.queryByText('Como você quer entrar?')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Ir para o login' }))
+    await waitFor(() => expect(roteador.state.location.pathname).toBe('/login'))
+    await waitFor(() => expect(saidas).toEqual(['logout']))
+  })
+})
+
+describe('login com aviso no estado', () => {
+  it('mostra o aviso como status acima do formulário', async () => {
+    servidor.use(handlerSemSessao())
+    const { roteador } = renderizarRotas(rotas, '/login')
+    await screen.findByLabelText('E-mail')
+    await roteador.navigate('/login', { replace: true, state: { aviso: 'Você não tem mais acesso a nenhum clube.' } })
+    const aviso = await screen.findByRole('status')
+    expect(aviso).toHaveTextContent('Você não tem mais acesso a nenhum clube.')
+    expect(aviso.compareDocumentPosition(screen.getByLabelText('E-mail')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('o aviso aparece uma vez: o estado do histórico fica sem ele', async () => {
+    servidor.use(handlerSemSessao())
+    const { roteador } = renderizarRotas(rotas, '/login')
+    await screen.findByLabelText('E-mail')
+    await roteador.navigate('/login', { replace: true, state: { aviso: 'Você não tem mais acesso a nenhum clube.' } })
+    expect(await screen.findByRole('status')).toHaveTextContent('Você não tem mais acesso a nenhum clube.')
+    await waitFor(() => expect(roteador.state.location.state ?? {}).not.toHaveProperty('aviso'))
+    expect(screen.getByRole('status')).toHaveTextContent('Você não tem mais acesso a nenhum clube.')
+  })
+
+  it('sem aviso no estado não mostra status', async () => {
+    servidor.use(handlerSemSessao())
+    renderizarRotas(rotas, '/login')
+    await screen.findByLabelText('E-mail')
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
 })

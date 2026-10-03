@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import { Abas } from './Abas'
 import { AreaTexto } from './AreaTexto'
@@ -9,6 +10,8 @@ import { BarraProgresso } from './BarraProgresso'
 import { Chip } from './Chip'
 import { Confirmacao } from './Confirmacao'
 import { Esqueleto } from './Esqueleto'
+import { Interruptor } from './Interruptor'
+import { RodapeDoFormulario } from './RodapeDoFormulario'
 import { Selo } from './Selo'
 
 describe('Abas', () => {
@@ -116,6 +119,103 @@ describe('Chip', () => {
   it('alvo de toque de 44 px', () => {
     render(<Chip selecionado={false} aoAlternar={() => undefined}>Presente</Chip>)
     expect(screen.getByRole('button', { name: 'Presente' })).toHaveClass('min-h-[var(--touch-min)]')
+  })
+
+  it('contorno de controle (3:1), nunca a borda clara, nas duas variantes', () => {
+    render(
+      <>
+        <Chip selecionado={false} aoAlternar={() => undefined}>Suave</Chip>
+        <Chip variante="cheia" selecionado={false} aoAlternar={() => undefined}>Cheia</Chip>
+      </>,
+    )
+    for (const nome of ['Suave', 'Cheia']) {
+      const chip = screen.getByRole('button', { name: nome })
+      expect(chip).toHaveClass('border-borda-controle')
+      expect(chip).not.toHaveClass('border-borda')
+      expect(chip).toHaveClass('min-h-[var(--touch-min)]')
+    }
+  })
+
+  it('cheia: selecionada é preenchida com a marca e um ✓ decorativo à esquerda', () => {
+    const { rerender } = render(<Chip variante="cheia" selecionado={false} aoAlternar={() => undefined}>Águias</Chip>)
+    const chip = () => screen.getByRole('button', { name: 'Águias' })
+    expect(chip()).toHaveAttribute('aria-pressed', 'false')
+    expect(chip()).not.toHaveClass('bg-marca')
+    expect(chip().querySelector('svg')).toBeNull()
+
+    rerender(<Chip variante="cheia" selecionado aoAlternar={() => undefined}>Águias</Chip>)
+    expect(chip()).toHaveAttribute('aria-pressed', 'true')
+    expect(chip()).toHaveClass('bg-marca', 'text-sobre-marca')
+    const icone = chip().firstElementChild
+    expect(icone?.tagName.toLowerCase()).toBe('svg')
+    expect(icone).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('suave: selecionada continua suave', () => {
+    render(<Chip selecionado aoAlternar={() => undefined}>Presente</Chip>)
+    const chip = screen.getByRole('button', { name: 'Presente' })
+    expect(chip).toHaveClass('bg-marca-suave')
+    expect(chip).not.toHaveClass('bg-marca')
+    expect(chip.querySelector('svg')).toBeNull()
+  })
+})
+
+describe('Interruptor', () => {
+  function Montar({ ligado, aoAlternar }: { ligado: boolean; aoAlternar: (ligado: boolean) => void }) {
+    return (
+      <>
+        <span id="rotulo">Ver desbravadores</span>
+        <span id="estado">padrão</span>
+        <Interruptor ligado={ligado} aoAlternar={aoAlternar} idRotulo="rotulo" idDescricao="estado" />
+      </>
+    )
+  }
+
+  it('é um switch nomeado pelo rótulo, descrito pela etiqueta, com alvo de 44 px', () => {
+    render(<Montar ligado={false} aoAlternar={() => undefined} />)
+    const chave = screen.getByRole('switch', { name: 'Ver desbravadores' })
+    expect(chave).toHaveAttribute('aria-checked', 'false')
+    expect(chave).toHaveAccessibleDescription('padrão')
+    expect(chave).toHaveClass('h-[var(--touch-min)]')
+  })
+
+  it('clique e Espaço pedem o valor contrário; aria-checked acompanha', async () => {
+    const aoAlternar = vi.fn()
+    const { rerender } = render(<Montar ligado={false} aoAlternar={aoAlternar} />)
+    await userEvent.click(screen.getByRole('switch'))
+    expect(aoAlternar).toHaveBeenLastCalledWith(true)
+
+    rerender(<Montar ligado aoAlternar={aoAlternar} />)
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true')
+    screen.getByRole('switch').focus()
+    await userEvent.keyboard(' ')
+    expect(aoAlternar).toHaveBeenLastCalledWith(false)
+  })
+})
+
+describe('RodapeDoFormulario', () => {
+  it('rotuloCancelar troca o texto do link; Salvar vem antes no DOM', () => {
+    render(
+      <MemoryRouter>
+        <form>
+          <RodapeDoFormulario cancelar={{ para: '/volta' }} rotuloCancelar="Voltar" salvando={false} />
+        </form>
+      </MemoryRouter>,
+    )
+    const voltar = screen.getByRole('link', { name: 'Voltar' })
+    expect(voltar).toHaveAttribute('href', '/volta')
+    expect(screen.queryByRole('link', { name: 'Cancelar' })).toBeNull()
+    const salvar = screen.getByRole('button', { name: 'Salvar' })
+    expect(salvar.compareDocumentPosition(voltar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('sem rotuloCancelar, continua "Cancelar"', () => {
+    render(
+      <MemoryRouter>
+        <RodapeDoFormulario cancelar={{ para: '/volta' }} salvando={false} />
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole('link', { name: 'Cancelar' })).toBeInTheDocument()
   })
 })
 

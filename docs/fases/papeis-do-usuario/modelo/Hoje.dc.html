@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Editar usuário hoje</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;font-family:'Figtree',system-ui,sans-serif;color:#1B221F}
+a{color:#1F4D3A}a:hover{color:#163828}
+.t{font-family:'Bricolage Grotesque',system-ui,sans-serif}
+.card{background:#fff;border:1px solid #D9D3C5;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.h2{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:18px;font-weight:700;margin:0}
+.rot{font-size:13px;font-weight:600;color:#5B645F}
+.val{font-size:16px;color:#1B221F}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 20px;border-radius:12px;font-size:16px;font-weight:600;text-decoration:none;border:0;font-family:inherit;cursor:pointer;box-sizing:border-box}
+.pri{background:#1F4D3A;color:#fff}
+.sec{background:#fff;color:#1B221F;border:1px solid #D9D3C5}
+.txt{background:transparent;color:#1F4D3A;padding:0 12px}
+.lbl{font-size:14px;font-weight:700;color:#1B221F}
+.in{min-height:44px;border:1px solid #D9D3C5;border-radius:9px;background:#fff;padding:0 14px;font-size:16px;font-family:inherit;color:#1B221F;box-sizing:border-box;width:100%}
+.ajuda{font-size:13px;color:#5B645F}
+.cx{display:flex;align-items:center;gap:10px;min-height:44px;font-size:16px}
+.cx input{width:20px;height:20px;margin:0;accent-color:#1F4D3A}
+.nav{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:12px;color:#CFE0D6;font-weight:600;font-size:16px}
+.nav.on{background:#163828;color:#fff}
+</style>
+</helmet>
+<div style="width:1280px;min-height:2420px;display:flex;background:#F4F1EA"><aside style="width:248px;flex-shrink:0;background:#1F4D3A;color:#fff;display:flex;flex-direction:column;gap:4px;padding:20px 8px"><div class="t" style="font-size:18px;font-weight:700;padding:0 12px 16px">App do Desbravador</div><nav aria-label="Menu do Adm" style="display:flex;flex-direction:column;gap:4px"><span class="nav">Visão geral</span><span class="nav">Desbravadores</span><span class="nav on">Usuários</span><span class="nav">Unidades</span><span class="nav">Classes e especialidades</span><span class="nav">Calendário do clube</span><span class="nav">Cronogramas</span><span class="nav">Configurações do clube</span><span class="nav">Ranking</span></nav></aside><div style="flex-grow:1;display:flex;flex-direction:column;min-width:0"><header style="display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:8px 32px;background:#fff;border-bottom:1px solid #D9D3C5"><button class="btn txt" aria-label="Notificações" style="color:#1B221F"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg></button><button class="btn txt" style="color:#1B221F;padding:0 12px">Rosa Almeida <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></header><main style="padding:32px 48px;display:flex;flex-direction:column;gap:16px;max-width:768px;box-sizing:border-box;width:100%">
+<div style="display:flex;flex-direction:column;gap:8px"><a href="#" style="display:inline-flex;align-items:center;gap:4px;font-weight:600;text-decoration:none;min-height:44px;align-self:flex-start"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg> Carla Mendes</a><div style="display:flex;flex-direction:column;gap:4px"><span class="rot">Usuário · Ativo</span><h1 class="t" style="margin:0;font-size:30px;font-weight:800">Editar usuário</h1></div></div>
+<form style="display:flex;flex-direction:column;gap:16px">
+<label style="display:flex;flex-direction:column;gap:6px"><span class="lbl">Nome</span><input class="in" type="text" value="Carla Mendes" disabled style="background:#F4F1EA"><span class="ajuda">Só quem ainda não aceitou o convite tem nome e gênero alterados pelo Adm.</span></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span class="lbl">E-mail</span><input class="in" type="text" value="carla.mendes@exemplo.org" disabled style="background:#F4F1EA"></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span class="lbl">Gênero</span><select class="in" disabled style="background:#F4F1EA"><option>Feminino</option></select></label>
+<div class="card" style="gap:8px"><label style="display:flex;flex-direction:column;gap:6px"><span class="lbl">Papel</span><select class="in"><option>Conselheiro</option></select></label>
+<span class="lbl" style="margin-top:8px">Unidades</span><label class="cx"><input type="checkbox" checked> Águias</label>
+<span class="lbl" style="margin-top:8px">O que pode fazer</span>
+<div style="display:flex;flex-direction:column"><label class="cx"><input type="checkbox" checked> Ver desbravadores</label><label class="cx"><input type="checkbox" checked> Ver contato do responsável</label><label class="cx"><input type="checkbox" checked> Editar dados dos DBVs da unidade</label><label class="cx"><input type="checkbox" checked> Registrar reuniões</label><label class="cx"><input type="checkbox" checked> Ver histórico de reuniões</label><label class="cx"><input type="checkbox" checked> Enviar fotos na galeria</label><label class="cx"><input type="checkbox" checked> Ver a galeria</label><label class="cx"><input type="checkbox"> Ver relatórios da unidade</label></div></div>
+<div class="card" style="gap:8px"><label style="display:flex;flex-direction:column;gap:6px"><span class="lbl">Papel</span><select class="in"><option>Instrutor</option></select></label>
+<span class="lbl" style="margin-top:8px">Classes</span>
+<div style="display:flex;flex-direction:column"><label class="cx"><input type="checkbox" checked> Amigo</label><label class="cx"><input type="checkbox"> Amigo da Natureza</label><label class="cx"><input type="checkbox" checked> Companheiro</label><label class="cx"><input type="checkbox"> Companheiro de Excursionismo</label><label class="cx"><input type="checkbox"> Pesquisador</label><label class="cx"><input type="checkbox"> Pesquisador de Campo e Bosque</label><label class="cx"><input type="checkbox"> Pioneiro</label><label class="cx"><input type="checkbox"> Pioneiro de Novas Fronteiras</label><label class="cx"><input type="checkbox"> Excursionista</label><label class="cx"><input type="checkbox"> Excursionista na Mata</label><label class="cx"><input type="checkbox"> Guia</label><label class="cx"><input type="checkbox"> Guia de Exploração</label><label class="cx"><input type="checkbox"> Agrupadas (Amigo a Guia)</label><label class="cx"><input type="checkbox"> Agrupadas — avançada</label></div>
+<span class="lbl" style="margin-top:8px">O que pode fazer</span>
+<div style="display:flex;flex-direction:column"><label class="cx"><input type="checkbox" checked> Ver desbravadores</label><label class="cx"><input type="checkbox" checked> Registrar classes</label><label class="cx"><input type="checkbox" checked> Marcar requisitos e especialidades</label><label class="cx"><input type="checkbox" checked> Enviar materiais de apoio</label><label class="cx"><input type="checkbox" checked> Ver relatórios da classe</label><label class="cx"><input type="checkbox"> Ver observações de outros instrutores</label></div></div>
+<button class="btn txt" type="button" style="align-self:flex-start">+ Acrescentar papel</button>
+<div style="display:flex;justify-content:flex-end;gap:12px;border-top:1px solid #D9D3C5;padding-top:20px"><button class="btn txt" type="button" style="color:#1B221F">Cancelar</button><button class="btn pri" type="button">Salvar alterações</button></div>
+</form></main></div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":2420}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -98,7 +98,6 @@ const CONTORNO_CLARO_PENDENTE: Record<string, number> = {
   'modulos/reunioes/detalhe/DetalheReuniao.tsx': 1,
   'modulos/reunioes/detalhe/PartesDaReuniao.tsx': 1,
   'modulos/reunioes/chamada/FormularioChamada.tsx': 2,
-  'ui/Chip.tsx': 1,
 }
 
 function ehContornoClaro(linha: string): boolean {

@@ -76,9 +76,10 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
     else void baixarPacoteSeVelho(eu.usuario.id, eu.vinculoAtivo.id)
   }, [])
 
-  const lerEu = useCallback(async () => {
+  const lerEu = useCallback(async (): Promise<Eu> => {
     const eu = await requisitar('/api/eu', EuSaida)
     aplicarEuOnline(eu)
+    return eu
   }, [aplicarEuOnline])
 
   const descartarSessao = useCallback(() => {
@@ -306,8 +307,9 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
       sair,
       sairDeTodos,
       reabrir,
+      relerSessao: lerEu,
     }
-  }, [estado, entrar, escolherPapel, sair, sairDeTodos, reabrir])
+  }, [estado, entrar, escolherPapel, sair, sairDeTodos, reabrir, lerEu])
 
   return <ContextoDaSessao.Provider value={valor}>{children}</ContextoDaSessao.Provider>
 }
