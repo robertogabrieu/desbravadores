@@ -45,13 +45,15 @@ Convenções: listas paginadas com `?pagina=&porPagina=`; datas em `YYYY-MM-DD`;
 
 | Método e rota | O que faz | Permissão |
 |---|---|---|
-| `GET /usuarios?papel=` | Lista com papéis, vínculos, status e `ultimoAcessoEm` | `usuario.gerenciar` |
+| `GET /usuarios?papel=&busca=&pagina=` | Lista do clube, 25 por página, em ordem de nome, com situação no clube, papéis e `ultimoAcessoEm`, mais a contagem por papel | `usuario.gerenciar` |
 | `GET /usuarios/{id}` | Um usuário, com todos os vínculos do clube (inclusive inativos) e `ultimoAcessoEm` | `usuario.gerenciar` |
-| `POST /usuarios` | Cria e envia convite (nome, e-mail, vínculos) | `usuario.gerenciar` |
-| `PATCH /usuarios/{id}` | Nome, status (inativar) | `usuario.gerenciar` |
-| `POST /usuarios/{id}/convite` | Reenvia convite | `usuario.gerenciar` |
-| `PUT /vinculos/{id}` | Papel, unidades/classes, ajustes de permissão | `usuario.gerenciar` |
-| `GET /permissoes/catalogo` | Catálogo e padrão por papel (monta as caixas da tela) | `usuario.gerenciar` |
+| `POST /usuarios` | Convida: nome, e-mail, gênero e ao menos um vínculo; manda o convite. E-mail que já existe só ganha os vínculos (a resposta ecoa o que foi enviado) | `usuario.gerenciar` |
+| `PATCH /usuarios/{id}` | Nome e gênero, só de quem ainda é convidado e não tem vínculo em outro clube (senão 422 `REGRA`); e-mail nunca | `usuario.gerenciar` |
+| `POST /usuarios/{id}/vinculos` | Acrescenta um papel com unidades ou classes e ajustes; papel já ativo → 409 `CONFLITO`; papel removido volta no mesmo vínculo, com o escopo e os ajustes do pedido | `usuario.gerenciar` |
+| `POST /usuarios/{id}/desativar` | Desativa todos os vínculos da pessoa neste clube; o último Adm ativo não sai (422 `ULTIMO_ADM`) | `usuario.gerenciar` |
+| `POST /usuarios/{id}/convite` | Reenvia o convite | `usuario.gerenciar` |
+| `PUT /vinculos/{id}` | Unidades ou classes, ajustes de permissão e `ativo` de um vínculo — o papel não muda. `ativo: false` remove o papel (nada se apaga); o último Adm ativo não sai (422 `ULTIMO_ADM`) | `usuario.gerenciar` |
+| `GET /permissoes/catalogo` | Catálogo e padrão por papel (monta os interruptores de "Ajustar o que pode fazer") | `usuario.gerenciar` |
 
 ## Unidades
 
