@@ -1,5 +1,5 @@
 import { useId, useRef, useState } from 'react'
-import type { FormEvent } from 'react'
+import type { FormEvent, MutableRefObject } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useCatalogoPermissoes } from '../../../api/leitura'
 import type { CatalogoPermissao } from '../../../api/leitura'
@@ -20,26 +20,33 @@ type VinculoComEscopo = VinculoUsuario & { papel: 'CONSELHEIRO' | 'INSTRUTOR' }
 
 const PAPEL_REMOVIDO = 'Este papel foi removido por outra pessoa.'
 
-export const AlterarPapel = () => <ComUsuario aoCarregar={(usuario) => <ComVinculo usuario={usuario} />} />
+export function AlterarPapel() {
+  // Gravando, a resposta já traz o papel removido: a tela não troca por "não encontramos" antes de navegar.
+  const gravando = useRef(false)
+  return <ComUsuario aoCarregar={(usuario) => <ComVinculo usuario={usuario} gravando={gravando} />} />
+}
 
 /** Só papel ativo, com escopo (não Adm) e da própria pessoa tem Alterar. */
-function ComVinculo({ usuario }: { usuario: Usuario }) {
+function ComVinculo({ usuario, gravando }: { usuario: Usuario; gravando: MutableRefObject<boolean> }) {
   const { vinculoId = '' } = useParams()
-  const vinculo = usuario.vinculos.find((v): v is VinculoComEscopo => v.id === vinculoId && v.ativo && v.papel !== 'ADM')
+  const ultimo = useRef<VinculoComEscopo | undefined>(undefined)
+  const achado = usuario.vinculos.find((v): v is VinculoComEscopo => v.id === vinculoId && v.ativo && v.papel !== 'ADM')
+  if (achado) ultimo.current = achado
+  const vinculo = achado ?? (gravando.current ? ultimo.current : undefined)
   if (vinculo === undefined) {
     return <EstadoNaoEncontrado registro="este papel" lista={{ para: `/adm/usuarios/${usuario.id}`, rotulo: 'Voltar para a ficha' }} />
   }
-  return <ComCatalogo usuario={usuario} vinculo={vinculo} />
+  return <ComCatalogo usuario={usuario} vinculo={vinculo} gravando={gravando} />
 }
 
 /** A tela só aparece com o catálogo e a lista de unidades ou classes lidos. */
-function ComCatalogo({ usuario, vinculo }: { usuario: Usuario; vinculo: VinculoComEscopo }) {
+function ComCatalogo({ usuario, vinculo, gravando }: { usuario: Usuario; vinculo: VinculoComEscopo; gravando: MutableRefObject<boolean> }) {
   const catalogo = useCatalogoPermissoes()
   const opcoes = useOpcoesDoEscopo(vinculo.papel, { unidades: vinculo.unidades, classes: vinculo.classes })
   if (catalogo.isError) return <ErroDeCarga erro={catalogo.error} aoTentarDeNovo={() => void catalogo.refetch()} />
   if (opcoes.estado === 'erro') return <ErroDeCarga erro={opcoes.erro instanceof Error ? opcoes.erro : null} aoTentarDeNovo={opcoes.refazer} />
   if (!catalogo.data || opcoes.estado === 'carregando') return <Carregando rotulo="Carregando o papel" />
-  return <FormularioDeAlteracao usuario={usuario} vinculo={vinculo} catalogo={catalogo.data} grupos={opcoes.grupos} />
+  return <FormularioDeAlteracao usuario={usuario} vinculo={vinculo} catalogo={catalogo.data} grupos={opcoes.grupos} gravando={gravando} />
 }
 
 interface PropriedadesDoFormulario {
@@ -47,9 +54,10 @@ interface PropriedadesDoFormulario {
   vinculo: VinculoComEscopo
   catalogo: CatalogoPermissao[]
   grupos: ReturnType<typeof useOpcoesDoEscopo>['grupos']
+  gravando: MutableRefObject<boolean>
 }
 
-function FormularioDeAlteracao({ usuario, vinculo, catalogo, grupos }: PropriedadesDoFormulario) {
+function FormularioDeAlteracao({ usuario, vinculo, catalogo, grupos, gravando }: PropriedadesDoFormulario) {
   const navegar = useNavigate()
   const editar = useEditarVinculo()
   const voltarDaFicha = useVoltar({ para: '/adm/usuarios', rotulo: 'Usuários' })
@@ -73,11 +81,13 @@ function FormularioDeAlteracao({ usuario, vinculo, catalogo, grupos }: Proprieda
     }
     setErro(undefined)
     if (mesmoRascunho(rascunho, inicial)) return void navegar(aFicha, { replace: true, state: estadoDaFicha })
+    gravando.current = true
     try {
       const gravado = await editar.mutateAsync({ vinculoId: vinculo.id, corpo: corpoDaEdicao(rascunho) })
       const removido = gravado.vinculos.some((v) => v.id === vinculo.id && !v.ativo)
       void navegar(aFicha, { replace: true, state: removido ? { ...estadoDaFicha, avisos: [PAPEL_REMOVIDO] } : estadoDaFicha })
     } catch (falha) {
+      gravando.current = false
       setErro(mensagemDeErro(falha))
     }
   }

@@ -254,6 +254,16 @@ describe('login com aviso no estado', () => {
     expect(aviso.compareDocumentPosition(screen.getByLabelText('E-mail')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
+  it('o aviso aparece uma vez: o estado do histórico fica sem ele', async () => {
+    servidor.use(handlerSemSessao())
+    const { roteador } = renderizarRotas(rotas, '/login')
+    await screen.findByLabelText('E-mail')
+    await roteador.navigate('/login', { replace: true, state: { aviso: 'Você não tem mais acesso a nenhum clube.' } })
+    expect(await screen.findByRole('status')).toHaveTextContent('Você não tem mais acesso a nenhum clube.')
+    await waitFor(() => expect(roteador.state.location.state ?? {}).not.toHaveProperty('aviso'))
+    expect(screen.getByRole('status')).toHaveTextContent('Você não tem mais acesso a nenhum clube.')
+  })
+
   it('sem aviso no estado não mostra status', async () => {
     servidor.use(handlerSemSessao())
     renderizarRotas(rotas, '/login')

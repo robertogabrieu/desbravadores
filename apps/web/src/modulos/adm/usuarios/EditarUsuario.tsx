@@ -96,7 +96,7 @@ export function NovoUsuario() {
         </div>
         <h2 className="font-titulo text-lg font-bold text-texto">{`Que papel ${quem} vai ter?`}</h2>
         <EscolhaDoPapel escolhido={papel} aoEscolher={escolherPapel} />
-        {papel !== null && papel !== 'ADM' && <EscopoDoConvite papel={papel} escolhidos={escolhidos} aoMudar={setEscolhidos} grupo={grupo} idErro={erro ? idErro : undefined} />}
+        {papel !== null && papel !== 'ADM' && <EscopoDoConvite key={papel} papel={papel} escolhidos={escolhidos} aoMudar={setEscolhidos} grupo={grupo} idErro={erro ? idErro : undefined} />}
         <p className="text-sm text-texto-2">Começa com as permissões do papel. Outros papéis e ajustes, depois, na ficha.</p>
         {erro && (
           <p id={idErro} role="alert" className="text-sm font-medium text-perigo">

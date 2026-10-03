@@ -159,6 +159,16 @@ describe('novo usuário: convidar numa tela só', () => {
     expect(screen.queryByRole('group', { name: /Escolha das/ })).not.toBeInTheDocument()
   })
 
+  it('trocar o papel limpa a busca e o escopo do outro', async () => {
+    abrirNovo()
+    await userEvent.click(await screen.findByRole('radio', { name: /Conselheiro/ }))
+    await userEvent.type(await screen.findByLabelText('Buscar unidade'), 'zzz')
+    expect(screen.getByText('Nenhuma unidade com esse nome')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('radio', { name: /Instrutor/ }))
+    expect(await screen.findByLabelText('Buscar classe')).toHaveValue('')
+    expect(screen.getByRole('button', { name: 'Amigo' })).toBeInTheDocument()
+  })
+
   it('recusas: sem nome ou e-mail, sem papel e sem escopo não gravam', async () => {
     const corpos: unknown[] = []
     abrirNovo()

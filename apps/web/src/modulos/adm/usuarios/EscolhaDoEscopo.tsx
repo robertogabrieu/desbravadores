@@ -1,5 +1,6 @@
 import { Check, Search } from 'lucide-react'
 import { forwardRef, useState } from 'react'
+import type { KeyboardEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Campo } from '../../../ui/Campo'
 import { Chip } from '../../../ui/Chip'
@@ -21,6 +22,11 @@ const TEXTOS = {
   CONSELHEIRO: { grupo: 'Escolha das unidades', busca: 'Buscar unidade', placeholder: 'Nome da unidade', semBusca: 'Nenhuma unidade com esse nome', semOpcao: 'Nenhuma unidade ativa no clube', link: '/adm/unidades', rotuloLink: 'Ir para Unidades' },
   INSTRUTOR: { grupo: 'Escolha das classes', busca: 'Buscar classe', placeholder: 'Nome da classe', semBusca: 'Nenhuma classe com esse nome', semOpcao: 'Nenhuma classe ativa', link: '/adm/classes', rotuloLink: 'Ir para Classes e especialidades' },
 } as const
+
+/** Enter na busca só filtra: dentro do formulário da página ele gravaria no meio da escolha. */
+const naoEnviarComEnter = (evento: KeyboardEvent<HTMLInputElement>) => {
+  if (evento.key === 'Enter') evento.preventDefault()
+}
 
 const contagem = (n: number): string => (n === 0 ? 'Nenhuma escolhida' : `${n} ${n === 1 ? 'escolhida' : 'escolhidas'}`)
 
@@ -48,7 +54,7 @@ export const EscolhaDoEscopo = forwardRef<HTMLDivElement, Propriedades>(function
     <div ref={ref} role="group" aria-label={textos.grupo} tabIndex={-1} aria-describedby={idErro} className="flex flex-col gap-5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-marca">
       <div className="relative">
         <Search aria-hidden className="pointer-events-none absolute bottom-3 left-3 size-5 text-texto-2" />
-        <Campo type="search" rotulo={textos.busca} placeholder={textos.placeholder} value={busca} onChange={(e) => setBusca(e.target.value)} className="pl-10" />
+        <Campo type="search" rotulo={textos.busca} placeholder={textos.placeholder} value={busca} onChange={(e) => setBusca(e.target.value)} onKeyDown={naoEnviarComEnter} className="pl-10" />
       </div>
       <p aria-live="polite" className="flex items-center gap-1.5 text-base font-bold text-marca">
         <Check aria-hidden className="size-5" />

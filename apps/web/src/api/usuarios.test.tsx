@@ -67,6 +67,15 @@ describe('gravação de papel', () => {
     await waitFor(() => expect(leiturasDoEu.total).toBe(2))
   })
 
+  it('de quem está logado: falha ao reler a sessão depois de gravar não vira erro da gravação', async () => {
+    const resposta = criarUsuario({ id: EU_ID, vinculos: [criarVinculoUsuario('ADM', 1, { id: VINCULO_DA_SESSAO }), criarVinculoUsuario('INSTRUTOR', 2, { ativo: false })] })
+    abrir(resposta, uuid(602))
+    const botao = await screen.findByRole('button', { name: 'Gravar' })
+    servidor.use(http.get('/api/eu', () => new HttpResponse(null, { status: 500 })))
+    await userEvent.click(botao)
+    expect(await screen.findByText('Gravou')).toBeInTheDocument()
+  })
+
   it('tirando o papel da sessão de quem está logado: não relê a sessão nem a ficha (a tela decide)', async () => {
     const resposta = criarUsuario({ id: EU_ID, vinculos: [criarVinculoUsuario('ADM', 1, { id: VINCULO_DA_SESSAO, ativo: false })] })
     const { leiturasDoEu, invalidar, clienteConsultas } = abrir(resposta, VINCULO_DA_SESSAO)

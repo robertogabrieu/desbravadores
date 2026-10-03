@@ -71,10 +71,10 @@ function useEscritaDePapel<V>(escrever: (variaveis: V) => Promise<Usuario>, grav
         return
       }
       if (gravarNaFicha) naFicha(cliente, usuario)
-      if (ehVoce) await relerSessao()
-      await Promise.all(
-        [chavesUsuarios.todas, ['unidades'], chavesDesbravadores.todos].map((queryKey) => cliente.invalidateQueries({ queryKey })),
-      )
+      // O servidor já gravou: falha ao reler ou refazer não pode virar erro da gravação.
+      const releituras: Promise<unknown>[] = [chavesUsuarios.todas, ['unidades'], chavesDesbravadores.todos].map((queryKey) => cliente.invalidateQueries({ queryKey }))
+      if (ehVoce) releituras.push(relerSessao())
+      await Promise.allSettled(releituras)
     },
   })
 }

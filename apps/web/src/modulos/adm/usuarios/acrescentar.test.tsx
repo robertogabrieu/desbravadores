@@ -172,6 +172,15 @@ describe('Acrescentar papel · passo 2', () => {
     expect(roteador.state.historyAction).toBe('REPLACE')
   })
 
+  it('Enter na busca não envia o formulário', async () => {
+    const corpos: unknown[] = []
+    const { roteador } = abrir(DE_INSTRUTOR, carla('CONSELHEIRO'), corpos)
+    await userEvent.click(await screen.findByRole('button', { name: 'Amigo' }))
+    await userEvent.type(screen.getByLabelText('Buscar classe'), 'guia{Enter}')
+    expect(corpos).toEqual([])
+    expect(`${roteador.state.location.pathname}${roteador.state.location.search}`).toBe(DE_INSTRUTOR)
+  })
+
   it('conselheiro: unidades, na pergunta e no corpo', async () => {
     const corpos: unknown[] = []
     abrir(`${PASSO_1}?papel=conselheiro`, carla('INSTRUTOR'), corpos)

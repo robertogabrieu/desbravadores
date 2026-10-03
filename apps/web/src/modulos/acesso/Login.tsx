@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { LoginEntrada, NOME_SISTEMA } from '@desbravadores/shared'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import type { z } from 'zod'
@@ -20,7 +20,9 @@ type CamposLogin = z.input<typeof LoginEntrada>
 export function Login() {
   const { entrar } = useSessao()
   const navegar = useNavigate()
-  const aviso = avisoDoEstado(useLocation().state)
+  const local = useLocation()
+  const avisoDoHistorico = avisoDoEstado(local.state)
+  const [aviso, definirAviso] = useState<string>()
   const login = useLogin()
   const [recusado, definirRecusado] = useState(false)
   const {
@@ -28,6 +30,13 @@ export function Login() {
     handleSubmit,
     formState: { errors },
   } = useForm<CamposLogin, unknown, z.output<typeof LoginEntrada>>({ resolver: zodResolver(LoginEntrada) })
+
+  // Lido uma vez: o aviso fica no estado local e sai do histórico, para não voltar no F5 nem no Voltar.
+  useEffect(() => {
+    if (avisoDoHistorico === undefined) return
+    definirAviso(avisoDoHistorico)
+    void navegar({ pathname: local.pathname, search: local.search }, { replace: true })
+  }, [avisoDoHistorico, local.pathname, local.search, navegar])
 
   const enviar = handleSubmit(async (entrada) => {
     definirRecusado(false)

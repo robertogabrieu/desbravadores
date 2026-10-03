@@ -214,6 +214,24 @@ describe('Alterar papel · tela', () => {
     expect(await screen.findByText('Este papel foi removido por outra pessoa.')).toBeInTheDocument()
   })
 
+  it('papel removido por outra pessoa: "Não encontramos este papel" nunca aparece no caminho para a ficha', async () => {
+    const usuario = carla()
+    const removido = { ...usuario.atual, vinculos: [vinculoConselheira({ ativo: false })] }
+    const { roteador } = abrir(ALTERAR, usuario, handlerEditarVinculo(removido))
+    await userEvent.click(await screen.findByRole('button', { name: 'Falcões' }))
+    servidor.use(handlerUsuario(caixa(removido)))
+    let apareceu = false
+    const observador = new MutationObserver(() => {
+      if (document.body.textContent.includes('Não encontramos este papel')) apareceu = true
+    })
+    observador.observe(document.body, { childList: true, subtree: true, characterData: true })
+    await salvar()
+    await waitFor(() => expect(roteador.state.location.pathname).toBe(FICHA))
+    expect(await screen.findByText('Este papel foi removido por outra pessoa.')).toBeInTheDocument()
+    observador.disconnect()
+    expect(apareceu).toBe(false)
+  })
+
   it('erro ao gravar (AJUSTE_INVALIDO): mensagem na tela, sem sair', async () => {
     const { roteador } = abrir(ALTERAR, carla(), handlerRegra422('put', '/api/vinculos/:id', 'AJUSTE_INVALIDO'))
     await abrirAjustes()
