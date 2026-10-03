@@ -33,3 +33,18 @@ export const limparDadosDoUsuario: LimparDadosDoUsuario = async (usuarioId) => {
     limpezaDeDados.epoca += 1
   }
 }
+
+/** Quem perdeu o acesso durante o uso: saem a identidade (o app não reabre sem internet como ele) e os dados
+ *  do clube (pacote); download em andamento não regrava (época). Ficam os rascunhos e a fila — o que a própria
+ *  pessoa preencheu —, porque o papel pode voltar. */
+export async function limparAoPerderOAcesso(usuarioId: string): Promise<void> {
+  limpezaDeDados.epoca += 1
+  try {
+    await banco.transaction('rw', banco.sessoes, banco.pacotes, async () => {
+      await banco.sessoes.delete(usuarioId)
+      await banco.pacotes.where('[usuarioId+vinculoId]').between([usuarioId, ''], [usuarioId, '\uffff']).delete()
+    })
+  } finally {
+    limpezaDeDados.epoca += 1
+  }
+}

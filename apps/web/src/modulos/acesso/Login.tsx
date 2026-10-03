@@ -18,7 +18,7 @@ const avisoDoEstado = (estado: unknown): string | undefined =>
 type CamposLogin = z.input<typeof LoginEntrada>
 
 export function Login() {
-  const { entrar } = useSessao()
+  const { entrar, dispensarAvisoDeSaida } = useSessao()
   const navegar = useNavigate()
   const local = useLocation()
   const avisoDoHistorico = avisoDoEstado(local.state)
@@ -33,11 +33,13 @@ export function Login() {
     formState: { errors },
   } = useForm<CamposLogin, unknown, z.output<typeof LoginEntrada>>({ resolver: zodResolver(LoginEntrada) })
 
-  // Lido uma vez: o aviso fica no estado local e sai do histórico, para não voltar no F5 nem no Voltar.
+  // Lido uma vez: o aviso fica no estado local e sai do histórico e da sessão, para não voltar no F5, no
+  // Voltar nem para a próxima pessoa que cair no login neste aparelho.
   useEffect(() => {
     if (avisoDoHistorico === undefined) return
+    dispensarAvisoDeSaida()
     void navegar({ pathname: local.pathname, search: local.search }, { replace: true })
-  }, [avisoDoHistorico, local.pathname, local.search, navegar])
+  }, [avisoDoHistorico, local.pathname, local.search, navegar, dispensarAvisoDeSaida])
 
   const enviar = handleSubmit(async (entrada) => {
     definirRecusado(false)

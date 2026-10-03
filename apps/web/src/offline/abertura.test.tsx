@@ -14,7 +14,7 @@ import {
 } from '../testes/handlers/offline'
 import { renderizarRotas } from '../testes/renderizar'
 import { GuardaRota } from '../sessao/GuardaRota'
-import { useSessao } from '../sessao/useSessao'
+import { SEM_ACESSO, useSessao } from '../sessao/useSessao'
 import { requisitar } from '../api/cliente'
 import { z } from 'zod'
 import { banco } from './banco'
@@ -158,14 +158,31 @@ describe('abertura sem internet', () => {
     expect(await banco.fila.count()).toBe(1)
   })
 
-  it('403 VINCULO_INATIVO no refresh apaga o guardado e leva a /papel', async () => {
+  it('403 VINCULO_INATIVO no refresh (sem papel em clube nenhum) apaga o guardado e leva ao login com o aviso', async () => {
     await guardarIdentidade(Date.now())
     servidor.use(handlerRefreshRecusado(403, 'VINCULO_INATIVO'))
 
     const { roteador } = renderizarRotas(rotas, '/privada')
 
     await waitFor(async () => expect(await banco.pacotes.count()).toBe(0))
-    expect(roteador.state.location.pathname).toBe('/papel')
+    await screen.findByText('tela de login')
+    expect(roteador.state.location.state).toEqual({ aviso: SEM_ACESSO })
+  })
+
+  it('aberto sem internet e, ao voltar, sem papel em clube nenhum: sai com o aviso e apaga a identidade guardada', async () => {
+    await guardarIdentidade(Date.now())
+    servidor.use(handlerRefreshSemRede())
+    const { roteador } = renderizarRotas(rotas, '/privada')
+    await screen.findByText('modo:SEM_CONEXAO')
+
+    servidor.use(handlerRefreshRecusado(403, 'VINCULO_INATIVO'))
+    act(() => {
+      window.dispatchEvent(new Event('online'))
+    })
+
+    await screen.findByText('tela de login')
+    expect(roteador.state.location.state).toEqual({ aviso: SEM_ACESSO })
+    await waitFor(async () => expect(await banco.sessoes.count()).toBe(0))
   })
 
   it('a rede volta: o evento online renova a sessão e o app vira online sem recarregar', async () => {

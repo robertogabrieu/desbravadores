@@ -1,30 +1,25 @@
-import { EuSaida } from '@desbravadores/shared'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { requisitar } from '../../../api/cliente'
 import { useEditarVinculo } from '../../../api/usuarios'
 import type { Usuario, VinculoUsuario } from '../../../api/usuarios'
 import { useSessao } from '../../../sessao/useSessao'
 import { Confirmacao } from '../../../ui/Confirmacao'
-import { SEM_ACESSO } from '../../acesso/EscolherPapel'
 import { textosDaRemocao } from './remover'
 import { mensagemDeErro } from './vinculos'
 
-/** Depois de perder o papel em uso: a ficha não abre mais. Com papel em algum clube, escolha; sem, login. */
+/** Depois de perder o papel em uso: a ficha não abre mais. Com papel em algum clube, vai à escolha; sem
+ *  papel nenhum, a própria sessão termina ao reler e a guarda leva ao login com o aviso (ProvedorSessao). */
 export function useDepoisDePerderOPapelDaSessao(): () => Promise<void> {
-  const { relerSessao, sair } = useSessao()
+  const { relerSessao } = useSessao()
   const navegar = useNavigate()
   return async () => {
-    // Lê sem aplicar à sessão: aplicada sem vínculo, a guarda de rota levaria a /papel e, ao sair, de volta
-    // a /login sem o aviso. Com a sessão intacta, o aviso vai ao /login (pública) e só então ela termina.
-    const eu = await requisitar('/api/eu', EuSaida)
-    if (eu.vinculos.length > 0) {
-      await relerSessao()
+    try {
+      const eu = await relerSessao()
+      if (eu.vinculos.length > 0) void navegar('/papel', { replace: true })
+    } catch {
+      // O papel já saiu; sem reler a sessão, a escolha de papel é o caminho que o próximo pedido tomaria.
       void navegar('/papel', { replace: true })
-      return
     }
-    void navegar('/login', { replace: true, state: { aviso: SEM_ACESSO } })
-    await sair()
   }
 }
 
