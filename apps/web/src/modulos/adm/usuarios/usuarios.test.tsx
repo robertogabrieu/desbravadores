@@ -12,10 +12,7 @@ import {
   handlerCatalogoUsuarios,
   handlerCriarUsuario,
   handlerDesativarUsuario,
-  handlerEditarUsuario,
-  handlerEditarVinculo,
   handlerListaUsuarios,
-  handlerNovoVinculo,
   handlerRegra422,
   handlerUsuario,
 } from '../../../testes/handlers/usuarios'

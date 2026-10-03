@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { HttpResponse, delay, http } from 'msw'
 import { chavesUsuarios } from '../../../api/usuarios'
-import type { Usuario, VinculoUsuario } from '../../../api/usuarios'
+import type { Usuario } from '../../../api/usuarios'
 import { caixa } from '../../../testes/handlers/caixa'
 import type { Caixa } from '../../../testes/handlers/caixa'
 import { criarUnidade, handlerUnidades } from '../../../testes/handlers/leitura'
@@ -224,11 +224,11 @@ describe('ficha do usuário', () => {
       const corpos: unknown[] = []
       const usuario = duasFuncoes()
       abrir(`/adm/usuarios/${uuid(710)}`, usuario)
-      servidor.use(handlerEditarVinculo({ ...usuario.atual, vinculos: [usuario.atual.vinculos[0] as VinculoUsuario, { ...(usuario.atual.vinculos[1] as VinculoUsuario), ativo: false }] }, corpos))
+      servidor.use(handlerEditarVinculo({ ...usuario.atual, vinculos: [usuario.atual.vinculos[0], { ...usuario.atual.vinculos[1], ativo: false }] }, corpos))
       await userEvent.click(within(await screen.findByRole('region', { name: 'Conselheira' })).getByRole('button', { name: 'Remover papel' }))
       const janela = within(screen.getByRole('dialog', { name: 'Remover o papel de Conselheira de Carla?' }))
       expect(janela.getByText('Ela segue como Adm.')).toBeInTheDocument()
-      usuario.atual = { ...usuario.atual, vinculos: [usuario.atual.vinculos[0] as VinculoUsuario] }
+      usuario.atual = { ...usuario.atual, vinculos: [usuario.atual.vinculos[0]] }
       await userEvent.click(janela.getByRole('button', { name: 'Remover papel' }))
       await waitFor(() => expect(corpos).toEqual([{ ativo: false }]))
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
@@ -249,7 +249,7 @@ describe('ficha do usuário', () => {
     it('último papel: a ficha passa a "Nenhum papel neste clube" e "Usuário · Inativo"', async () => {
       const usuario = carla()
       abrir(`/adm/usuarios/${uuid(710)}`, usuario)
-      const depois = { ...usuario.atual, situacao: 'INATIVO' as const, vinculos: [{ ...(usuario.atual.vinculos[0] as VinculoUsuario), ativo: false }] }
+      const depois = { ...usuario.atual, situacao: 'INATIVO' as const, vinculos: [{ ...(usuario.atual.vinculos[0]), ativo: false }] }
       servidor.use(handlerEditarVinculo(depois))
       await userEvent.click(within(await screen.findByRole('region', { name: 'Conselheira' })).getByRole('button', { name: 'Remover papel' }))
       usuario.atual = depois
@@ -260,7 +260,7 @@ describe('ficha do usuário', () => {
 
     it('o próprio papel da sessão, com outro papel: relê /api/eu e vai a /papel', async () => {
       const eu = carla({ id: uuid(500), vinculos: [criarVinculoUsuario('ADM', 1, { id: uuid(1) }), criarVinculoUsuario('CONSELHEIRO', 2)] })
-      const depois = { ...eu.atual, vinculos: [{ ...(eu.atual.vinculos[0] as VinculoUsuario), ativo: false }, eu.atual.vinculos[1] as VinculoUsuario] }
+      const depois = { ...eu.atual, vinculos: [{ ...(eu.atual.vinculos[0]), ativo: false }, eu.atual.vinculos[1]] }
       const { roteador } = abrir(`/adm/usuarios/${uuid(500)}`, eu)
       servidor.use(handlerEditarVinculo(depois))
       await userEvent.click(within(await screen.findByRole('region', { name: 'Adm' })).getByRole('button', { name: 'Remover papel' }))

@@ -59,7 +59,7 @@ type Voltar = { para: string; rotulo: string; estado: object }
 
 function PassoDoPapel({ usuario, estadoDaFicha, gravando, voltar, jaTem }: PropriedadesDoPasso & { voltar: Voltar; jaTem: Papel[] }) {
   const navegar = useNavigate()
-  const estadoDoPasso = useLocation().state
+  const estadoDoPasso: unknown = useLocation().state
   const acrescentar = useAcrescentarVinculo()
   const [escolhido, setEscolhido] = useState<Papel | null>(() => {
     const doEstado = papelDoEstado(estadoDoPasso)

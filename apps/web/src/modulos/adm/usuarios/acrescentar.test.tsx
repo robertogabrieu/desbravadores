@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { HttpResponse, delay, http } from 'msw'
 import type { HttpHandler } from 'msw'
-import type { Usuario } from '../../../api/usuarios'
 import { caixa } from '../../../testes/handlers/caixa'
 import { criarClasse, criarUnidade, handlerClasses, handlerUnidades } from '../../../testes/handlers/leitura'
 import { handlersSessao, uuid } from '../../../testes/handlers/sessao'
@@ -78,7 +77,7 @@ describe('Acrescentar papel · passo 1', () => {
 
   it('papel removido (inativo) não conta como "já tem"', async () => {
     const usuario = carla('CONSELHEIRO')
-    usuario.atual.vinculos[0] = { ...usuario.atual.vinculos[0]!, ativo: false }
+    usuario.atual.vinculos[0] = { ...usuario.atual.vinculos[0], ativo: false }
     abrir(PASSO_1, usuario)
     expect(await screen.findByRole('radio', { name: /Conselheiro/ })).toBeEnabled()
   })
