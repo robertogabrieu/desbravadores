@@ -273,11 +273,14 @@ Como instrutor, quero marcar quem foi e quem cumpriu cada requisito para acompan
   corresponde à classe.
 
 ### A2 · Usuários e permissões — `Adm-Usuarios.dc.html` · Fases 0 e 3
-- Abas com contagem real; "Novo usuário" envia convite.
-- Painel com **um bloco por papel** (a pessoa pode ter vários): vínculo (unidades ou classes,
-  múltipla escolha) e as caixas de permissão do papel, com os padrões do catálogo.
+- Abas com contagem real; "Novo usuário" envia convite com **um papel** (outros se acrescentam depois, na ficha).
+- Ficha com **um cartão por papel** (a pessoa pode ter vários): Alterar (vínculo — unidades ou
+  classes, múltipla escolha — e as caixas de permissão do papel, com os padrões do catálogo) e
+  Remover papel, com confirmação. "Acrescentar papel" em dois passos: papel, depois escopo e ajustes.
+- Editar usuário mexe só em nome e gênero, e só de quem ainda está convidado.
+- O clube nunca fica sem Adm ativo: a checagem vale também para duas remoções simultâneas.
 - A permissão "Montar cronograma" **não** aparece aqui (fica na classe, A5).
-- Reenviar convite, inativar usuário.
+- Reenviar convite; Desativar usuário no rodapé da ficha.
 
 ### A3 · Unidades — `Adm-Unidades.dc.html` · Fases 0 e 3
 - Criar, editar (nome, tipo, grito de guerra), desativar unidade.
