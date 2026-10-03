@@ -249,7 +249,7 @@ describe('ficha do usuário', () => {
     it('último papel: a ficha passa a "Nenhum papel neste clube" e "Usuário · Inativo"', async () => {
       const usuario = carla()
       abrir(`/adm/usuarios/${uuid(710)}`, usuario)
-      const depois = { ...usuario.atual, situacao: 'INATIVO' as const, vinculos: [{ ...(usuario.atual.vinculos[0]), ativo: false }] }
+      const depois = { ...usuario.atual, situacao: 'INATIVO' as const, vinculos: [{ ...usuario.atual.vinculos[0], ativo: false }] }
       servidor.use(handlerEditarVinculo(depois))
       await userEvent.click(within(await screen.findByRole('region', { name: 'Conselheira' })).getByRole('button', { name: 'Remover papel' }))
       usuario.atual = depois

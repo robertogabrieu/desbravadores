@@ -177,7 +177,7 @@ test('adm: ao remover o papel de conselheiro de quem está logado como conselhei
   await expect(paginaAdm.getByRole('region', { name: /Conselheir/ })).toHaveCount(0)
 
   // No próximo toque dentro do app o pedido é recusado e a pessoa vai à escolha de papel, que já só oferece Instrutor.
-  await paginaDaPessoa.getByRole('link', { name: 'Unidade', exact: true }).click()
+  await paginaDaPessoa.getByRole('navigation', { name: 'Navegação principal' }).getByRole('link', { name: 'Unidade', exact: true }).click()
   await expect(paginaDaPessoa).toHaveURL(/\/papel$/)
   await expect(paginaDaPessoa.getByRole('heading', { level: 1, name: 'Como você quer entrar?' })).toBeVisible()
   await expect(paginaDaPessoa.getByRole('button', { name: /Instrutor/ })).toBeVisible()

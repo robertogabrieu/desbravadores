@@ -30,7 +30,8 @@ export function AlterarPapel() {
 function ComVinculo({ usuario, gravando }: { usuario: Usuario; gravando: RefObject<VinculoComEscopo | undefined> }) {
   const { vinculoId = '' } = useParams()
   const achado = usuario.vinculos.find((v): v is VinculoComEscopo => v.id === vinculoId && v.ativo && v.papel !== 'ADM')
-  const vinculo = achado ?? gravando.current
+  // Enquanto grava, o papel some da resposta (removido por outra pessoa): segura a tela até a navegação, só para o mesmo papel.
+  const vinculo = achado ?? (gravando.current?.id === vinculoId ? gravando.current : undefined)
   if (vinculo === undefined) {
     return <EstadoNaoEncontrado registro="este papel" lista={{ para: `/adm/usuarios/${usuario.id}`, rotulo: 'Voltar para a ficha' }} />
   }
