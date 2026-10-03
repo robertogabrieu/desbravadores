@@ -30,6 +30,8 @@ export interface ContextoSessao {
   relerSessao: () => Promise<Eu>
   /** Por que a sessão terminou sem a pessoa pedir (hoje, só SEM_ACESSO); a guarda leva ao login com ele. */
   avisoDeSaida: string | null
+  /** O login já mostrou o aviso: esquece, para não aparecer a quem cair no login depois (aparelho do clube). */
+  dispensarAvisoDeSaida: () => void
 }
 
 export const ContextoDaSessao = createContext<ContextoSessao | null>(null)

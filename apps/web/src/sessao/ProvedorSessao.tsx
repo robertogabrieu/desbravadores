@@ -14,7 +14,7 @@ import type { Sessao } from '../api/cliente'
 import { limparDadosDoUsuario, useConexao } from '../offline'
 import { definirConexao, definirExpirada } from '../offline/conexao'
 import { estadoOffline } from '../offline/estado'
-import { gravarIdentidade, lerUltimaIdentidade, tocarContato } from '../offline/identidade'
+import { apagarIdentidade, gravarIdentidade, lerUltimaIdentidade, tocarContato } from '../offline/identidade'
 import type { RegistroSessao } from '../offline/banco'
 import { limparFilaDeAbertura } from '../offline/limpeza'
 import { iniciarMotor, liberarTrocaDePapel, pararMotor, pausarParaTrocaDePapel } from '../offline/motor'
@@ -82,10 +82,10 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
 
   /** Sem papel ativo em clube nenhum (removido ou desativado, aqui ou em outro aparelho): a sincronização
    *  para, o aviso fica gravado e a identidade guardada sai do aparelho ANTES de a sessão terminar — fechar o
-   *  app no login já não deixa o aparelho reabrir sem internet com o papel removido, e não sobra limpeza
-   *  atrasada para apagar a identidade de quem entrar de novo. A limpeza é local e não espera a fila (que ela
-   *  mantém). Depois a guarda leva ao login com o aviso, e o logout revoga a sessão no servidor (rota pública,
-   *  dispensa o token). Várias recusas da mesma sessão saem uma vez só: a saída anota a geração da sessão. */
+   *  app no login já não deixa o aparelho reabrir sem internet com o papel removido. Só a identidade: o que a
+   *  pessoa preencheu (rascunhos, fila) fica, porque o papel pode voltar. Depois a guarda leva ao login com o
+   *  aviso, e o logout revoga a sessão no servidor (rota pública, dispensa o token). Várias recusas da mesma
+   *  sessão saem uma vez só: a saída anota a geração da sessão. */
   const sairSemAcesso = useCallback(
     async (usuarioId: string | null) => {
       if (geracaoDaSaida.current === geracao.current) return
@@ -94,7 +94,7 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
       geracaoDaSaida.current = geracao.current
       void pararMotor().catch(() => undefined)
       definirAvisoDeSaida(SEM_ACESSO)
-      if (usuarioId) await limparDadosDoUsuario(usuarioId, { manterFila: true }).catch((erro: unknown) => console.error('Falha ao limpar o aparelho sem acesso', erro))
+      if (usuarioId) await apagarIdentidade(usuarioId).catch((erro: unknown) => console.error('Falha ao apagar a identidade sem acesso', erro))
       descartarSessao()
       geracaoDaSaida.current = geracao.current
       void requisitarSemResposta('/api/auth/logout', { metodo: 'POST' }).catch((erro: unknown) => console.error('Falha no logout sem acesso', erro))
@@ -152,7 +152,10 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
             definirEstado(ESTADO_SEM_CONEXAO)
           }
         } else if (resultado.semAcesso) {
-          await sairSemAcesso(guardada?.usuarioId ?? null)
+          // Na abertura, como em qualquer recusa: o aparelho sai limpo do que era desse usuário.
+          if (guardada) await limparDadosDoUsuario(guardada.usuarioId, { manterFila: true }).catch(() => undefined)
+          if (minha !== geracao.current) return
+          await sairSemAcesso(null)
         } else {
           if (guardada) await limparDadosDoUsuario(guardada.usuarioId, { manterFila: true }).catch(() => undefined)
           if (minha !== geracao.current) return
@@ -339,6 +342,8 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
 
   const reabrir = useCallback(() => abrirSessao(false), [abrirSessao])
 
+  const dispensarAvisoDeSaida = useCallback(() => definirAvisoDeSaida(null), [])
+
   const valor = useMemo<ContextoSessao>(() => {
     const eu = estado.eu
     const permissoes = new Set(eu?.permissoes ?? [])
@@ -356,8 +361,9 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
       reabrir,
       relerSessao: lerEu,
       avisoDeSaida,
+      dispensarAvisoDeSaida,
     }
-  }, [estado, avisoDeSaida, entrar, escolherPapel, sair, sairDeTodos, reabrir, lerEu])
+  }, [estado, avisoDeSaida, dispensarAvisoDeSaida, entrar, escolherPapel, sair, sairDeTodos, reabrir, lerEu])
 
   return <ContextoDaSessao.Provider value={valor}>{children}</ContextoDaSessao.Provider>
 }

@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
@@ -234,6 +234,25 @@ describe('escolher papel', () => {
     expect(await screen.findByText('Você não tem mais acesso a nenhum clube.')).toHaveAttribute('role', 'status')
     expect(roteador.state.location.pathname).toBe('/login')
     expect(screen.queryByText('Como você quer entrar?')).not.toBeInTheDocument()
+  })
+
+  it('o aviso aparece uma vez: depois, quem cai no login por outra rota não o vê', async () => {
+    servidor.use(
+      http.post('/api/auth/refresh', () => HttpResponse.json({ codigo: 'VINCULO_INATIVO', mensagem: 'Sem vínculo ativo.' }, { status: 403 })),
+    )
+    const comGuarda: RouteObject[] = [
+      ...rotasAcessoPublicas,
+      { element: <GuardaRota semVinculo />, children: rotasAcessoPapel },
+      { element: <GuardaRota />, children: [{ path: '/privada', element: <p>privada</p> }] },
+    ]
+    const { roteador } = renderizarRotas(comGuarda, '/papel')
+    expect(await screen.findByText('Você não tem mais acesso a nenhum clube.')).toBeInTheDocument()
+    await act(async () => {
+      await roteador.navigate('/privada')
+    })
+    await waitFor(() => expect(roteador.state.location.pathname).toBe('/login'))
+    expect(await screen.findByRole('button', { name: /Entrar/ })).toBeInTheDocument()
+    expect(screen.queryByText('Você não tem mais acesso a nenhum clube.')).not.toBeInTheDocument()
   })
 
   it('sessão que perde todos os papéis durante o uso: termina e o login mostra o aviso, sem a escolha de papel', async () => {

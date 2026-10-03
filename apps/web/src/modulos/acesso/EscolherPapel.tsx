@@ -23,8 +23,13 @@ export function EscolherPapel() {
 
   // Só com uma identidade sem papéis guardada no aparelho (aberta sem internet); online, a sessão já sai sozinha.
   const irParaOLogin = async (): Promise<void> => {
-    await sair()
-    void navegar('/login', { replace: true, state: { aviso: SEM_ACESSO } })
+    try {
+      await sair()
+    } catch {
+      // Sem resposta do logout a sessão deste aparelho já foi descartada; o login segue com o aviso.
+    } finally {
+      void navegar('/login', { replace: true, state: { aviso: SEM_ACESSO } })
+    }
   }
 
   if (vinculos.length === 0) {

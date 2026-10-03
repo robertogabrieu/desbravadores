@@ -7,7 +7,7 @@ import { banco } from '../offline/banco'
 import { tempos } from '../offline/tempos'
 import { servidor } from '../testes/servidor'
 import { requisitarSemResposta } from '../api/cliente'
-import { criarEu, criarSessao, criarVinculo, handlerSemSessao, handlersSessao } from '../testes/handlers/sessao'
+import { criarEu, criarSessao, criarVinculo, handlerSemSessao, handlersSessao, uuid } from '../testes/handlers/sessao'
 import { renderizarRotas } from '../testes/renderizar'
 import { GuardaRota } from './GuardaRota'
 import { RedirecionamentoRaiz } from './RedirecionamentoRaiz'
@@ -208,11 +208,14 @@ describe('sem papel em clube nenhum', () => {
     const { roteador } = renderizarRotas(rotasSemPapel, '/tocar')
     const botao = await screen.findByRole('button', { name: 'tocar' })
     await waitFor(async () => expect(await banco.sessoes.count()).toBe(1))
+    await banco.rascunhos.put({ usuarioId: uuid(500), chave: 'chamada', valor: 1, atualizadoEm: Date.now() })
     perdeu()
     await userEvent.click(botao)
     await screen.findByText('tela de login')
     // Limpa antes de chegar ao login: fechar o app agora não deixa o aparelho reabrir com o papel removido.
     expect(await banco.sessoes.count()).toBe(0)
+    // O que a pessoa preencheu fica: se o papel voltar, o trabalho não se perdeu.
+    expect(await banco.rascunhos.count()).toBe(1)
     expect(roteador.state.location.state).toEqual({ aviso: SEM_ACESSO })
     await waitFor(() => expect(saidas).toEqual(['logout']))
   })
