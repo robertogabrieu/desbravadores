@@ -177,6 +177,8 @@ describe('Acrescentar papel · passo 2', () => {
     const { roteador } = abrir(DE_INSTRUTOR, carla('CONSELHEIRO'), corpos)
     await userEvent.click(await screen.findByRole('button', { name: 'Amigo' }))
     await userEvent.type(screen.getByLabelText('Buscar classe'), 'guia{Enter}')
+    // Um envio indevido só chega ao servidor de mentira depois de um ciclo.
+    await new Promise((resolver) => setTimeout(resolver, 50))
     expect(corpos).toEqual([])
     expect(`${roteador.state.location.pathname}${roteador.state.location.search}`).toBe(DE_INSTRUTOR)
   })

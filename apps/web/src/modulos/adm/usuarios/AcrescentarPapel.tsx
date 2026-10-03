@@ -1,6 +1,6 @@
 import type { Papel } from '@desbravadores/shared'
 import { useId, useRef, useState } from 'react'
-import type { FormEvent, MutableRefObject } from 'react'
+import type { FormEvent, RefObject } from 'react'
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAcrescentarVinculo } from '../../../api/usuarios'
 import type { NovoVinculo, Usuario } from '../../../api/usuarios'
@@ -32,7 +32,7 @@ interface PropriedadesDoPasso {
   /** O que a ficha leva para devolver a lista de onde veio; viaja em todos os links e no navegar final. */
   estadoDaFicha: { voltarPara: string; voltarRotulo: string }
   /** Ligado enquanto grava: a ficha já mostra o papel novo e a tela não deve mandar a pessoa de volta ao passo 1. */
-  gravando: MutableRefObject<boolean>
+  gravando: RefObject<boolean>
 }
 
 export const AcrescentarPapel = () => <ComUsuario aoCarregar={(usuario) => <PaginaDeAcrescentar usuario={usuario} />} />

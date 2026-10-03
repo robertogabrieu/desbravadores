@@ -1,5 +1,5 @@
 import { useId, useRef, useState } from 'react'
-import type { FormEvent, MutableRefObject } from 'react'
+import type { FormEvent, RefObject } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useCatalogoPermissoes } from '../../../api/leitura'
 import type { CatalogoPermissao } from '../../../api/leitura'
@@ -21,18 +21,16 @@ type VinculoComEscopo = VinculoUsuario & { papel: 'CONSELHEIRO' | 'INSTRUTOR' }
 const PAPEL_REMOVIDO = 'Este papel foi removido por outra pessoa.'
 
 export function AlterarPapel() {
-  // Gravando, a resposta já traz o papel removido: a tela não troca por "não encontramos" antes de navegar.
-  const gravando = useRef(false)
+  // O papel que está sendo gravado: a resposta já o traz removido, e a tela não troca por "não encontramos" antes de navegar.
+  const gravando = useRef<VinculoComEscopo | undefined>(undefined)
   return <ComUsuario aoCarregar={(usuario) => <ComVinculo usuario={usuario} gravando={gravando} />} />
 }
 
 /** Só papel ativo, com escopo (não Adm) e da própria pessoa tem Alterar. */
-function ComVinculo({ usuario, gravando }: { usuario: Usuario; gravando: MutableRefObject<boolean> }) {
+function ComVinculo({ usuario, gravando }: { usuario: Usuario; gravando: RefObject<VinculoComEscopo | undefined> }) {
   const { vinculoId = '' } = useParams()
-  const ultimo = useRef<VinculoComEscopo | undefined>(undefined)
   const achado = usuario.vinculos.find((v): v is VinculoComEscopo => v.id === vinculoId && v.ativo && v.papel !== 'ADM')
-  if (achado) ultimo.current = achado
-  const vinculo = achado ?? (gravando.current ? ultimo.current : undefined)
+  const vinculo = achado ?? gravando.current
   if (vinculo === undefined) {
     return <EstadoNaoEncontrado registro="este papel" lista={{ para: `/adm/usuarios/${usuario.id}`, rotulo: 'Voltar para a ficha' }} />
   }
@@ -40,7 +38,7 @@ function ComVinculo({ usuario, gravando }: { usuario: Usuario; gravando: Mutable
 }
 
 /** A tela só aparece com o catálogo e a lista de unidades ou classes lidos. */
-function ComCatalogo({ usuario, vinculo, gravando }: { usuario: Usuario; vinculo: VinculoComEscopo; gravando: MutableRefObject<boolean> }) {
+function ComCatalogo({ usuario, vinculo, gravando }: { usuario: Usuario; vinculo: VinculoComEscopo; gravando: RefObject<VinculoComEscopo | undefined> }) {
   const catalogo = useCatalogoPermissoes()
   const opcoes = useOpcoesDoEscopo(vinculo.papel, { unidades: vinculo.unidades, classes: vinculo.classes })
   if (catalogo.isError) return <ErroDeCarga erro={catalogo.error} aoTentarDeNovo={() => void catalogo.refetch()} />
@@ -54,7 +52,7 @@ interface PropriedadesDoFormulario {
   vinculo: VinculoComEscopo
   catalogo: CatalogoPermissao[]
   grupos: ReturnType<typeof useOpcoesDoEscopo>['grupos']
-  gravando: MutableRefObject<boolean>
+  gravando: RefObject<VinculoComEscopo | undefined>
 }
 
 function FormularioDeAlteracao({ usuario, vinculo, catalogo, grupos, gravando }: PropriedadesDoFormulario) {
@@ -81,13 +79,13 @@ function FormularioDeAlteracao({ usuario, vinculo, catalogo, grupos, gravando }:
     }
     setErro(undefined)
     if (mesmoRascunho(rascunho, inicial)) return void navegar(aFicha, { replace: true, state: estadoDaFicha })
-    gravando.current = true
+    gravando.current = vinculo
     try {
       const gravado = await editar.mutateAsync({ vinculoId: vinculo.id, corpo: corpoDaEdicao(rascunho) })
       const removido = gravado.vinculos.some((v) => v.id === vinculo.id && !v.ativo)
       void navegar(aFicha, { replace: true, state: removido ? { ...estadoDaFicha, avisos: [PAPEL_REMOVIDO] } : estadoDaFicha })
     } catch (falha) {
-      gravando.current = false
+      gravando.current = undefined
       setErro(mensagemDeErro(falha))
     }
   }

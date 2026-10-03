@@ -22,7 +22,9 @@ export function Login() {
   const navegar = useNavigate()
   const local = useLocation()
   const avisoDoHistorico = avisoDoEstado(local.state)
-  const [aviso, definirAviso] = useState<string>()
+  const [aviso, definirAviso] = useState(avisoDoHistorico)
+  // Um aviso que chega com a tela já aberta entra na mesma renderização, sem esperar o efeito.
+  if (avisoDoHistorico !== undefined && avisoDoHistorico !== aviso) definirAviso(avisoDoHistorico)
   const login = useLogin()
   const [recusado, definirRecusado] = useState(false)
   const {
@@ -34,7 +36,6 @@ export function Login() {
   // Lido uma vez: o aviso fica no estado local e sai do histórico, para não voltar no F5 nem no Voltar.
   useEffect(() => {
     if (avisoDoHistorico === undefined) return
-    definirAviso(avisoDoHistorico)
     void navegar({ pathname: local.pathname, search: local.search }, { replace: true })
   }, [avisoDoHistorico, local.pathname, local.search, navegar])
 

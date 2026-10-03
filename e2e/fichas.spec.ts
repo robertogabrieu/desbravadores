@@ -279,11 +279,11 @@ test.describe('fichas e telas de edição do Adm', () => {
     const extra = await criarEvento({ clubeId, tipo: 'REUNIAO_EXTRA', inicio: `${MES_DO_EVENTO}-17` })
     const reuniao = await criarReuniao({ unidadeId: unidade.id, data: DATA_DA_REUNIAO, chamada: [{ dbvId: dbv.id }] })
 
+    const chipsDeClasse = (p: Page) => expect(p.getByRole('group', { name: 'Escolha das classes' }).getByRole('button', { name: 'Amigo', exact: true }).first()).toBeVisible()
     const instrutorEscolhidoComChips = async (p: Page) => {
       await p.getByRole('radio', { name: /Instrutor/ }).check()
-      await expect(p.getByRole('group', { name: 'Escolha das classes' }).getByRole('button', { name: 'Amigo', exact: true }).first()).toBeVisible()
+      await chipsDeClasse(p)
     }
-    const chipsDeClasse = (p: Page) => expect(p.getByRole('group', { name: 'Escolha das classes' }).getByRole('button', { name: 'Amigo', exact: true }).first()).toBeVisible()
     const ajustesAbertos = async (p: Page) => {
       await p.getByRole('button', { name: /Ajustar o que pode fazer/ }).click()
       await expect(p.getByRole('button', { name: /Ajustar o que pode fazer/ })).toHaveAttribute('aria-expanded', 'true')

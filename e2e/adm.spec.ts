@@ -176,8 +176,9 @@ test('adm: ao remover o papel de conselheiro de quem está logado como conselhei
   await paginaAdm.getByRole('dialog').getByRole('button', { name: 'Remover papel' }).click()
   await expect(paginaAdm.getByRole('region', { name: /Conselheir/ })).toHaveCount(0)
 
-  // No próximo toque, a pessoa perdeu o papel em uso e cai na escolha, só com Instrutor.
-  await paginaDaPessoa.reload()
+  // No próximo toque dentro do app o pedido é recusado e a pessoa vai à escolha de papel, que já só oferece Instrutor.
+  await paginaDaPessoa.getByRole('link', { name: 'Unidade', exact: true }).click()
+  await expect(paginaDaPessoa).toHaveURL(/\/papel$/)
   await expect(paginaDaPessoa.getByRole('heading', { level: 1, name: 'Como você quer entrar?' })).toBeVisible()
   await expect(paginaDaPessoa.getByRole('button', { name: /Instrutor/ })).toBeVisible()
   await expect(paginaDaPessoa.getByRole('button', { name: /Conselheiro/ })).toHaveCount(0)
