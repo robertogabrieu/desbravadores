@@ -1,5 +1,7 @@
+import { EuSaida } from '@desbravadores/shared'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { requisitar } from '../../../api/cliente'
 import { useEditarVinculo } from '../../../api/usuarios'
 import type { Usuario, VinculoUsuario } from '../../../api/usuarios'
 import { useSessao } from '../../../sessao/useSessao'
@@ -13,12 +15,14 @@ export function useDepoisDePerderOPapelDaSessao(): () => Promise<void> {
   const { relerSessao, sair } = useSessao()
   const navegar = useNavigate()
   return async () => {
-    const eu = await relerSessao()
+    // Lê sem aplicar à sessão: aplicada sem vínculo, a guarda de rota levaria a /papel e, ao sair, de volta
+    // a /login sem o aviso. Com a sessão intacta, o aviso vai ao /login (pública) e só então ela termina.
+    const eu = await requisitar('/api/eu', EuSaida)
     if (eu.vinculos.length > 0) {
+      await relerSessao()
       void navegar('/papel', { replace: true })
       return
     }
-    // O aviso vai antes do sair: /login é pública, então a navegação não é desfeita pelo fim da sessão.
     void navegar('/login', { replace: true, state: { aviso: SEM_ACESSO } })
     await sair()
   }
