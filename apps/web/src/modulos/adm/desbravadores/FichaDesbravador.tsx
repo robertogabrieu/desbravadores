@@ -1,12 +1,14 @@
 import { useId, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { hojeDoClube, useInativarDesbravador, useReativarDesbravador } from '../../../api/desbravadores'
 import type { Desbravador } from '../../../api/desbravadores'
 import { usePerfilDbv } from '../../../api/perfil'
 import type { PerfilDbv } from '../../../api/perfil'
 import { useProgressoDbv } from '../../../api/progresso'
+import { useLarguraMenorQue } from '../../../layouts/useLarguraMenorQue'
 import { useConexao } from '../../../offline'
+import { Abas } from '../../../ui/Abas'
 import { Botao, estiloDoBotao } from '../../../ui/Botao'
 import { CabecalhoDaPagina } from '../../../ui/CabecalhoDaPagina'
 import { Campo } from '../../../ui/Campo'
@@ -16,8 +18,10 @@ import { Esqueleto } from '../../../ui/Esqueleto'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/EstadosDeCarga'
 import { EstadoNaoEncontrado, ehNaoEncontrado } from '../../../ui/EstadoNaoEncontrado'
 import { FaixaAviso } from '../../../ui/FaixaAviso'
+import { LARGURA_DO_CELULAR } from '../../../ui/larguraDoCelular'
 import { ListaDePares } from '../../../ui/ListaDePares'
 import type { Par } from '../../../ui/ListaDePares'
+import { cn } from '../../../ui/cn'
 import { SecaoProgresso } from '../../perfil/SecaoProgresso'
 import { dataCivilBr } from '../formatos'
 import { useAvisosDaFicha, useVoltar } from '../navegacao'
@@ -52,31 +56,35 @@ function paresDoCadastro(dbv: Desbravador): Par[] {
   ]
 }
 
-function Numero({ valor, rotulo }: { valor: string; rotulo: string }) {
+function Numero({ valor, rotulo, compacto }: { valor: string; rotulo: string; compacto: boolean }) {
   return (
-    <Cartao className="flex flex-col gap-1">
-      <span className="font-titulo text-2xl font-extrabold text-texto">{valor}</span>
+    <Cartao className={cn('flex flex-col', compacto ? 'gap-0.5 p-3 text-center' : 'gap-1')}>
+      <span className={cn('font-titulo font-extrabold text-texto', compacto ? 'text-xl' : 'text-2xl')}>{valor}</span>
       <span className="text-sm text-texto-2">{rotulo}</span>
     </Cartao>
   )
 }
 
-function NumerosDoMes({ perfil }: { perfil: PerfilDbv }) {
+/** No celular os três números ficam lado a lado, com rótulos curtos. */
+function NumerosDoMes({ perfil, compactos }: { perfil: PerfilDbv; compactos: boolean }) {
   const progresso = useProgressoDbv(perfil.dbv.id)
   const regular = progresso.data?.matriculas.find((matricula) => matricula.classe.tipo === 'REGULAR')
   const doProgresso = !progresso.data
-    ? { valor: TRACO, rotulo: 'Progresso da classe' }
+    ? { valor: TRACO, rotulo: compactos ? 'da classe' : 'Progresso da classe' }
     : regular
-      ? { valor: `${regular.percentual}%`, rotulo: `Progresso em ${regular.classe.nome}` }
-      : { valor: TRACO, rotulo: 'Sem classe neste ano' }
+      ? { valor: `${regular.percentual}%`, rotulo: compactos ? 'da classe' : `Progresso em ${regular.classe.nome}` }
+      : { valor: TRACO, rotulo: compactos ? 'sem classe' : 'Sem classe neste ano' }
+  const foraDoRanking = compactos ? 'fora do ranking' : 'Fora do ranking do mês'
+  const doRanking = perfil.posicaoMes === null ? foraDoRanking : `${perfil.posicaoMes}º ${compactos ? 'no mês' : 'no ranking do mês'}`
   return (
-    <section aria-label="Números do mês" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <Numero valor={doProgresso.valor} rotulo={doProgresso.rotulo} />
+    <section aria-label="Números do mês" className={cn('grid gap-3', compactos ? 'grid-cols-3 gap-2' : 'grid-cols-1 sm:grid-cols-3')}>
+      <Numero valor={doProgresso.valor} rotulo={doProgresso.rotulo} compacto={compactos} />
+      <Numero valor={`${perfil.pontosMes} pts`} rotulo={doRanking} compacto={compactos} />
       <Numero
-        valor={`${perfil.pontosMes} pts`}
-        rotulo={perfil.posicaoMes === null ? 'Fora do ranking do mês' : `${perfil.posicaoMes}º no ranking do mês`}
+        valor={perfil.frequenciaMes === null ? TRACO : `${perfil.frequenciaMes}%`}
+        rotulo={compactos ? 'frequência' : 'Frequência no mês'}
+        compacto={compactos}
       />
-      <Numero valor={perfil.frequenciaMes === null ? TRACO : `${perfil.frequenciaMes}%`} rotulo="Frequência no mês" />
     </section>
   )
 }
@@ -145,13 +153,100 @@ function Rodape({ dbv, aoErro }: { dbv: Desbravador; aoErro: (mensagem: string |
   )
 }
 
+function CartaoCadastro({ dbv, children }: { dbv: Desbravador; children?: ReactNode }) {
+  const idCadastro = useId()
+  return (
+    <section aria-labelledby={idCadastro}>
+      <Cartao className="flex flex-col gap-4">
+        <h2 id={idCadastro} className="font-titulo text-lg font-bold text-texto">
+          Cadastro
+        </h2>
+        <ListaDePares colunas={3} pares={paresDoCadastro(dbv)} />
+        <AcessoAoApp dbvId={dbv.id} nome={dbv.nome} sexo={dbv.sexo} podeConvidar={dbv.ativo} />
+        {children}
+      </Cartao>
+    </section>
+  )
+}
+
+function CartaoResponsavel({ dbv, contato }: { dbv: Desbravador; contato: NonNullable<Desbravador['contato']> }) {
+  return (
+    <BlocoComTitulo titulo="Responsável">
+      <ListaDePares
+        pares={[
+          { rotulo: 'Nome', valor: contato.responsavelNome ?? TRACO },
+          { rotulo: 'Telefone', valor: contato.responsavelTelefone ?? TRACO },
+          { rotulo: 'E-mail', valor: contato.responsavelEmail ?? TRACO },
+          { rotulo: 'Uso de imagem', valor: usoDeImagem(dbv) },
+        ]}
+      />
+    </BlocoComTitulo>
+  )
+}
+
+function ErroDaAcao({ mensagem }: { mensagem: string | null }) {
+  if (!mensagem) return null
+  return (
+    <p role="alert" className="text-sm font-medium text-perigo">
+      {mensagem}
+    </p>
+  )
+}
+
+type Parte = 'progresso' | 'cadastro' | 'responsavel'
+
+const NOME_DA_PARTE: Record<Parte, string> = { progresso: 'Progresso', cadastro: 'Cadastro', responsavel: 'Responsável' }
+
+/**
+ * Parte da ficha aberta no celular, guardada em `?parte=` para o voltar do aparelho trocar de parte.
+ * Sem parte válida no endereço, abre Progresso para o DBV ativo e Cadastro para os demais (como os números do mês).
+ */
+function useParteDaFicha(dbv: Desbravador): { partes: Parte[]; ativa: Parte; mudar: (parte: string) => void } {
+  const [parametros] = useSearchParams()
+  const local = useLocation()
+  const navegar = useNavigate()
+  const partes: Parte[] = dbv.contato === undefined ? ['progresso', 'cadastro'] : ['progresso', 'cadastro', 'responsavel']
+  const pedida = partes.find((parte) => parte === parametros.get('parte'))
+  const ativa = pedida ?? (dbv.tipo === 'DBV' && dbv.ativo ? 'progresso' : 'cadastro')
+  // O estado do histórico leva o destino do Voltar (filtros da lista): trocar de parte não pode perdê-lo.
+  const estadoDoHistorico: unknown = local.state
+  const mudar = (parte: string) => void navegar({ search: `?parte=${parte}` }, { state: estadoDoHistorico })
+  return { partes, ativa, mudar }
+}
+
+function PartesNoCelular({ dbv, rodape }: { dbv: Desbravador; rodape: ReactNode }) {
+  const { partes, ativa, mudar } = useParteDaFicha(dbv)
+  return (
+    <>
+      <Abas rotulo="Partes da ficha" abas={partes.map((parte) => ({ id: parte, rotulo: NOME_DA_PARTE[parte] }))} ativa={ativa} aoMudar={mudar} />
+      <div role="tabpanel" aria-labelledby={`aba-${ativa}`} className="flex flex-col gap-5">
+        {ativa === 'progresso' && <SecaoProgresso dbvId={dbv.id} compacta />}
+        {ativa === 'cadastro' && <CartaoCadastro dbv={dbv}>{rodape}</CartaoCadastro>}
+        {ativa === 'responsavel' && dbv.contato !== undefined && <CartaoResponsavel dbv={dbv} contato={dbv.contato} />}
+      </div>
+    </>
+  )
+}
+
 function Conteudo({ perfil }: { perfil: PerfilDbv }) {
   const { dbv } = perfil
-  const idCadastro = useId()
   const voltar = useVoltar({ para: LISTA, rotulo: 'Desbravadores' })
   const { avisos, dispensar } = useAvisosDaFicha()
   const [erroDaAcao, setErroDaAcao] = useState<string | null>(null)
+  const celular = useLarguraMenorQue(LARGURA_DO_CELULAR)
   const contato = dbv.contato
+
+  const editar = (
+    <Link to={`${LISTA}/${dbv.id}/editar`} state={{ voltarPara: voltar.para, voltarRotulo: voltar.rotulo }} className={cn(estiloDoBotao(), celular && 'ml-auto')}>
+      Editar
+    </Link>
+  )
+  const rodape = (
+    <>
+      <ErroDaAcao mensagem={erroDaAcao} />
+      <Rodape dbv={dbv} aoErro={setErroDaAcao} />
+    </>
+  )
 
   return (
     <div className="flex flex-col gap-5">
@@ -163,13 +258,10 @@ function Conteudo({ perfil }: { perfil: PerfilDbv }) {
           <>
             {dbv.tipo === 'DBV' ? `${dbv.idade} anos · ${dbv.unidade?.nome ?? 'Sem unidade'}` : `${dbv.idade} anos`}
             {dbv.classeAtual && <ChipClasse classe={dbv.classeAtual} />}
+            {celular && editar}
           </>
         }
-        acoes={
-          <Link to={`${LISTA}/${dbv.id}/editar`} state={{ voltarPara: voltar.para, voltarRotulo: voltar.rotulo }} className={estiloDoBotao()}>
-            Editar
-          </Link>
-        }
+        acoes={celular ? undefined : editar}
       />
 
       {avisos.length > 0 && (
@@ -183,38 +275,20 @@ function Conteudo({ perfil }: { perfil: PerfilDbv }) {
         </div>
       )}
 
-      <section aria-labelledby={idCadastro}>
-        <Cartao className="flex flex-col gap-4">
-          <h2 id={idCadastro} className="font-titulo text-lg font-bold text-texto">
-            Cadastro
-          </h2>
-          <ListaDePares colunas={3} pares={paresDoCadastro(dbv)} />
-          <AcessoAoApp dbvId={dbv.id} nome={dbv.nome} sexo={dbv.sexo} podeConvidar={dbv.ativo} />
-        </Cartao>
-      </section>
-
-      {dbv.tipo === 'DBV' && dbv.ativo && <NumerosDoMes perfil={perfil} />}
-      <SecaoProgresso dbvId={dbv.id} />
-
-      {contato !== undefined && (
-        <BlocoComTitulo titulo="Responsável">
-          <ListaDePares
-            pares={[
-              { rotulo: 'Nome', valor: contato.responsavelNome ?? TRACO },
-              { rotulo: 'Telefone', valor: contato.responsavelTelefone ?? TRACO },
-              { rotulo: 'E-mail', valor: contato.responsavelEmail ?? TRACO },
-              { rotulo: 'Uso de imagem', valor: usoDeImagem(dbv) },
-            ]}
-          />
-        </BlocoComTitulo>
+      {celular ? (
+        <>
+          {dbv.tipo === 'DBV' && dbv.ativo && <NumerosDoMes perfil={perfil} compactos />}
+          <PartesNoCelular dbv={dbv} rodape={rodape} />
+        </>
+      ) : (
+        <>
+          <CartaoCadastro dbv={dbv} />
+          {dbv.tipo === 'DBV' && dbv.ativo && <NumerosDoMes perfil={perfil} compactos={false} />}
+          <SecaoProgresso dbvId={dbv.id} />
+          {contato !== undefined && <CartaoResponsavel dbv={dbv} contato={contato} />}
+          {rodape}
+        </>
       )}
-
-      {erroDaAcao && (
-        <p role="alert" className="text-sm font-medium text-perigo">
-          {erroDaAcao}
-        </p>
-      )}
-      <Rodape dbv={dbv} aoErro={setErroDaAcao} />
     </div>
   )
 }
