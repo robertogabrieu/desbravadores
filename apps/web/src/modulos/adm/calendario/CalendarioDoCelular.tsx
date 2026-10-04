@@ -46,15 +46,22 @@ function marcasDoDia(doDia: EventoCalendario[], ehReuniao: boolean): Marca[] {
   return marcas
 }
 
-/** O dia do endereço, se for deste mês; senão hoje, se for deste mês; senão o primeiro dia com evento; senão o dia 1. */
-export function diaEscolhidoDoMes(valor: string, ano: number, mes: number, hoje: string, eventos: EventoCalendario[]): string {
+/** O dia do endereço, se for deste mês; senão hoje, se for deste mês; senão o primeiro dia com evento ou reunião regular; senão o dia 1. */
+export function diaEscolhidoDoMes(
+  valor: string,
+  ano: number,
+  mes: number,
+  hoje: string,
+  eventos: EventoCalendario[],
+  diasDeReuniao: ReadonlySet<string>,
+): string {
   const ultimo = ultimoDiaDoMes(ano, mes)
   const doMes = (data: string): boolean =>
     /^\d{4}-\d{2}-\d{2}$/.test(data) && data.startsWith(`${chaveDoMes(ano, mes)}-`) && Number(data.slice(8, 10)) >= 1 && Number(data.slice(8, 10)) <= ultimo
   if (doMes(valor)) return valor
   if (doMes(hoje)) return hoje
   const datas = Array.from({ length: ultimo }, (_, i) => chaveDoDia(ano, mes, i + 1))
-  return datas.find((data) => eventosDoDia(eventos, data).length > 0) ?? chaveDoDia(ano, mes, 1)
+  return datas.find((data) => diasDeReuniao.has(data) || eventosDoDia(eventos, data).length > 0) ?? chaveDoDia(ano, mes, 1)
 }
 
 interface PropriedadesDaGrade {

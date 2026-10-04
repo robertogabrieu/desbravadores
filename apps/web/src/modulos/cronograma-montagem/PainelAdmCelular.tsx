@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { Classe } from '../../api/leitura'
 import type { CronogramaDaMontagem, DataDaMontagem, Montagem, RequisitoDaMontagem } from '../../api/montagem'
@@ -14,7 +14,7 @@ import { FolhaEmQualData } from './FolhaEmQualData'
 import { FormularioAula } from './FormularioAula'
 import type { AulaEmEdicao } from './FormularioAula'
 import { SeloDoCronograma } from './SeloDoCronograma'
-import { chaveDoMes, diaMes, mesPorExtenso } from './datas'
+import { aceitaRequisitoNovo, chaveDoMes, diaComDadosSomeAoTirar, diaMes, mesPorExtenso } from './datas'
 import { useAcoesDeMontagem } from './useAcoesDeMontagem'
 
 interface Propriedades {
@@ -34,6 +34,8 @@ interface Colocacao {
   data: string
   /** Data que o requisito tinha antes; `null` quando estava sem data. */
   anterior: string | null
+  /** Falso quando voltar atrás seria recusado ou recriaria o dia sem horário, local e título. */
+  podeDesfazer: boolean
 }
 
 const QUEM_MONTA = { ADM: 'Adm', INSTRUTOR: 'Instrutores da classe' } as const
@@ -63,6 +65,14 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
   const [desfeito, setDesfeito] = useState<string | null>(null)
   const [aulaEmEdicao, setAulaEmEdicao] = useState<AulaEmEdicao | null>(null)
   const [confirmandoPublicacao, setConfirmandoPublicacao] = useState(false)
+  const [publicando, setPublicando] = useState(false)
+  const confirmacao = useRef<HTMLParagraphElement>(null)
+  const idDoPainel = useId()
+
+  // Colocar fecha a folha e tira o requisito da lista: o foco vai para a confirmação, não para o começo da página.
+  useEffect(() => {
+    if (colocacao) confirmacao.current?.focus()
+  }, [colocacao])
 
   const requisitoPorId = new Map(montagem.requisitos.map((requisito) => [requisito.id, requisito]))
   const folhaPara = (folhaParaId && requisitoPorId.get(folhaParaId)) || null
@@ -78,12 +88,24 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
     setFolhaParaId(requisito.id)
   }
 
+  /** Sem data antes, desfazer é tirar; com data, ela precisa aceitar o requisito de volta e não ter sido apagada com dados próprios. */
+  function desfazerSeguro(anterior: string | null): boolean {
+    if (anterior === null) return true
+    const dado = montagem.datas.find((item) => item.data === anterior)
+    return dado !== undefined && aceitaRequisitoNovo(montagem, dado) && !diaComDadosSomeAoTirar(montagem, dado)
+  }
+
   async function colocarPelaFolha(data: string) {
     if (!folhaPara) return
     const anterior = folhaPara.data
+    const podeDesfazer = desfazerSeguro(anterior)
     if (!(await acoes.colocar(folhaPara.id, data))) return
     setFolhaParaId(null)
-    setColocacao({ requisitoId: folhaPara.id, codigo: folhaPara.codigo, data, anterior })
+    setColocacao({ requisitoId: folhaPara.id, codigo: folhaPara.codigo, data, anterior, podeDesfazer })
+  }
+
+  function novoDiaDeClasse() {
+    setAulaEmEdicao({ data: null, aulaId: null, dados: { horario: null, local: null, titulo: null } })
   }
 
   async function desfazer() {
@@ -105,14 +127,24 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
   }
 
   async function publicar() {
-    if (await acoes.publicar()) setConfirmandoPublicacao(false)
+    setPublicando(true)
+    const publicou = await acoes.publicar()
+    setPublicando(false)
+    if (publicou) setConfirmandoPublicacao(false)
   }
 
   async function salvarAula(aula: AulaEmEdicao, data: string): Promise<boolean> {
     return aula.aulaId ? acoes.editarAula(aula.aulaId, aula.dados) : acoes.criarAula(data, aula.dados)
   }
 
-  const faixaDeErro = acoes.erro && <FaixaDeMontagem erro={acoes.erro} aoAtualizar={() => { acoes.limparErro(); aoAtualizar() }} />
+  function atualizarDepoisDoErro() {
+    acoes.limparErro()
+    // O Desfazer pendente foi pensado sobre os dados de antes: depois de atualizar ele já não vale.
+    setColocacao(null)
+    aoAtualizar()
+  }
+
+  const faixaDeErro = acoes.erro && <FaixaDeMontagem erro={acoes.erro} aoAtualizar={atualizarDepoisDoErro} />
 
   function listaDeRequisitos(requisitos: RequisitoDaMontagem[]) {
     if (requisitos.length === 0) {
@@ -151,11 +183,7 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
     return (
       <div className="flex flex-col gap-4">
         {montagem.datasLivres && (
-          <Botao
-            variante="secundario"
-            className="self-start"
-            onClick={() => setAulaEmEdicao({ data: null, aulaId: null, dados: { horario: null, local: null, titulo: null } })}
-          >
+          <Botao variante="secundario" className="self-start" onClick={novoDiaDeClasse}>
             + Novo dia de classe
           </Botao>
         )}
@@ -234,12 +262,14 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
 
       {colocacao && (
         <div className="flex items-center gap-3 rounded-cartao border border-divisor bg-superficie px-4 py-2">
-          <p role="status" className="flex-1 text-base font-semibold text-marca">
+          <p ref={confirmacao} role="status" tabIndex={-1} className="flex-1 text-base font-semibold text-marca focus-visible:outline-2 focus-visible:outline-marca">
             {colocacao.codigo} ficou em {diaMes(colocacao.data)}
           </p>
-          <Botao variante="texto" disabled={acoes.ocupada} onClick={() => void desfazer()}>
-            Desfazer
-          </Botao>
+          {colocacao.podeDesfazer && (
+            <Botao variante="texto" disabled={acoes.ocupada} onClick={() => void desfazer()}>
+              Desfazer
+            </Botao>
+          )}
         </div>
       )}
       {desfeito && (
@@ -270,6 +300,7 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
         rotulo="Ver requisitos"
         ativa={vista}
         aoMudar={(id) => setVista(id === 'com-data' || id === 'por-data' ? id : 'sem-data')}
+        idDoPainel={idDoPainel}
         abas={[
           { id: 'sem-data', rotulo: `Sem data · ${semData.length}` },
           { id: 'com-data', rotulo: `Com data · ${comData.length}` },
@@ -277,9 +308,11 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
         ]}
       />
 
-      {vista === 'sem-data' && listaDeRequisitos(semData)}
-      {vista === 'com-data' && listaDeRequisitos(comData)}
-      {vista === 'por-data' && porData()}
+      <div id={idDoPainel} role="tabpanel" aria-labelledby={`aba-${vista}`}>
+        {vista === 'sem-data' && listaDeRequisitos(semData)}
+        {vista === 'com-data' && listaDeRequisitos(comData)}
+        {vista === 'por-data' && porData()}
+      </div>
 
       <div role="region" aria-label="Publicação" className="sticky bottom-0 z-10 flex items-center gap-3 border-t border-divisor bg-superficie py-3">
         {publicado ? (
@@ -291,8 +324,8 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
           <>
             <p className="flex flex-1 flex-col text-sm text-texto-2">{resumoDoRodape()}</p>
             <Botao
-              variante={semData.length > 0 ? 'secundario' : 'primario'}
-              carregando={acoes.ocupada}
+              variante={semData.length === 0 && conflitos === 0 ? 'primario' : 'secundario'}
+              carregando={publicando}
               onClick={() => setConfirmandoPublicacao(true)}
             >
               Publicar…
@@ -309,6 +342,10 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
           desabilitado={acoes.ocupada}
           aviso={faixaDeErro}
           aoEscolher={(data) => void colocarPelaFolha(data)}
+          aoNovoDia={() => {
+            setFolhaParaId(null)
+            novoDiaDeClasse()
+          }}
           aoFechar={() => setFolhaParaId(null)}
         />
       )}

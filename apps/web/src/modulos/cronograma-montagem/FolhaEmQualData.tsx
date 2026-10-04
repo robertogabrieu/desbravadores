@@ -1,10 +1,23 @@
 import { useId, useState } from 'react'
 import type { ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import type { DataDaMontagem, RequisitoDaMontagem } from '../../api/montagem'
+import { Botao, estiloDoBotao } from '../../ui/Botao'
 import { CaixaMarcacao } from '../../ui/CaixaMarcacao'
+import { EstadoVazio } from '../../ui/EstadoVazio'
 import { FolhaLateral } from '../../ui/FolhaLateral'
 import { Selo } from '../../ui/Selo'
-import { aceitaRequisitoNovo, chaveDoMes, dataBloqueada, diaDaSemanaEData, diaMes, mesAbreviado, mesPorExtenso, textoDaData } from './datas'
+import {
+  aceitaRequisitoNovo,
+  chaveDoMes,
+  dataBloqueada,
+  diaComDadosSomeAoTirar,
+  diaDaSemanaEData,
+  diaMes,
+  mesAbreviado,
+  mesPorExtenso,
+  textoDaData,
+} from './datas'
 
 interface Propriedades {
   requisito: RequisitoDaMontagem
@@ -14,7 +27,30 @@ interface Propriedades {
   /** Faixa de erro da gravação, mostrada dentro da folha para não ficar escondida atrás dela. */
   aviso?: ReactNode
   aoEscolher: (data: string) => void
+  /** Agrupadas sem nenhum dia de classe: abre a folha do dia novo. */
+  aoNovoDia: () => void
   aoFechar: () => void
+}
+
+/** Sem nenhuma data para escolher: nas agrupadas falta criar o dia; nas individuais as datas vêm do calendário. */
+function SemDatas({ datasLivres, aoNovoDia }: { datasLivres: boolean; aoNovoDia: () => void }) {
+  return datasLivres ? (
+    <EstadoVazio
+      titulo="Ainda não há dias de classe."
+      descricao="Crie um dia de classe para poder colocar requisitos nele."
+      acao={<Botao onClick={aoNovoDia}>Novo dia de classe</Botao>}
+    />
+  ) : (
+    <EstadoVazio
+      titulo="Nenhuma data de classe neste período."
+      descricao="As datas vêm do calendário do clube."
+      acao={
+        <Link to="/adm/calendario" className={estiloDoBotao({ variante: 'secundario' })}>
+          Abrir o calendário
+        </Link>
+      }
+    />
+  )
 }
 
 const NAO_DA = 'Não dá para colocar aqui.'
@@ -67,12 +103,15 @@ function agruparPorMes(datas: DataAvaliada[]): Mes[] {
 }
 
 /** Celular: o Adm tocou num requisito e escolhe aqui a data, sem rolar até a lista de datas. */
-export function FolhaEmQualData({ requisito, datas, datasLivres, desabilitado, aviso, aoEscolher, aoFechar }: Propriedades) {
+export function FolhaEmQualData({ requisito, datas, datasLivres, desabilitado, aviso, aoEscolher, aoNovoDia, aoFechar }: Propriedades) {
   const [esconderRecusadas, setEsconderRecusadas] = useState(true)
   const prefixo = useId()
   const avaliadas = datas.map((dado) => ({ dado, recusa: recusa(requisito, dado, datasLivres) }))
   const meses = agruparPorMes(avaliadas)
   const proxima = avaliadas.find((avaliada) => avaliada.recusa === null && avaliada.dado.requisitoIds.length === 0)?.dado.data
+  const nenhumaAceita = esconderRecusadas && avaliadas.length > 0 && avaliadas.every((avaliada) => avaliada.recusa !== null)
+  const diaDeOrigem = datas.find((dado) => dado.data === requisito.data)
+  const diaQueSome = diaDeOrigem && diaComDadosSomeAoTirar({ datasLivres }, diaDeOrigem) ? diaDeOrigem : undefined
   const idDoMes = (chave: string) => `${prefixo}-mes-${chave}`
 
   function irParaOMes(chave: string) {
@@ -92,6 +131,10 @@ export function FolhaEmQualData({ requisito, datas, datasLivres, desabilitado, a
 
         {aviso}
 
+        {diaQueSome && <p className="text-base font-semibold text-texto">O dia de classe de {diaMes(diaQueSome.data)} fica vazio e será removido.</p>}
+
+        {datas.length === 0 && <SemDatas datasLivres={datasLivres} aoNovoDia={aoNovoDia} />}
+
         {meses.length > 1 && (
           <nav aria-label="Ir para o mês" className="flex flex-wrap gap-2">
             {meses.map(({ chave }) => (
@@ -107,11 +150,15 @@ export function FolhaEmQualData({ requisito, datas, datasLivres, desabilitado, a
           </nav>
         )}
 
-        <CaixaMarcacao
-          rotulo="Esconder datas que não aceitam"
-          checked={esconderRecusadas}
-          onChange={(evento) => setEsconderRecusadas(evento.target.checked)}
-        />
+        {datas.length > 0 && (
+          <CaixaMarcacao
+            rotulo="Esconder datas que não aceitam"
+            checked={esconderRecusadas}
+            onChange={(evento) => setEsconderRecusadas(evento.target.checked)}
+          />
+        )}
+
+        {nenhumaAceita && <p className="text-base font-semibold text-texto">Nenhuma data aceita este requisito agora.</p>}
 
         {meses.map(({ chave, datas: datasDoMes }) => {
           const visiveis = esconderRecusadas ? datasDoMes.filter((avaliada) => avaliada.recusa === null) : datasDoMes

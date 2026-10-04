@@ -9,7 +9,7 @@ export function nomePublico(nome: string): string {
   return `${primeiro} ${ultimo.charAt(0).toUpperCase()}.`
 }
 
-const SUFIXOS = new Set(['filho', 'filha', 'júnior', 'junior', 'jr.', 'neto', 'neta', 'sobrinho', 'sobrinha', 'segundo', 'terceiro'])
+const SUFIXOS = new Set(['filho', 'filha', 'júnior', 'junior', 'jr.', 'jr', 'neto', 'neta', 'sobrinho', 'sobrinha', 'segundo', 'terceiro'])
 
 /** Primeiro nome e último sobrenome, sem partículas; um sufixo de família (Filho, Júnior…) vem junto do sobrenome. */
 export function primeiroEUltimoNome(nome: string): string {

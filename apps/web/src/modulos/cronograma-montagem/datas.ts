@@ -70,3 +70,7 @@ export const detalheDaAula = (d: DataDaMontagem): string => [d.horario, d.local,
 /** Colocar requisito novo na data: fora bloqueio e aula dada; nas individuais, também fora data em conflito (a API responde 422). */
 export const aceitaRequisitoNovo = (montagem: { datasLivres: boolean }, dado: DataDaMontagem): boolean =>
   !dataBloqueada(dado) && !dado.aulaDada && (montagem.datasLivres || !dado.conflito)
+
+/** Nas individuais, tirar o único requisito apaga o dia de classe: pesa quando o dia tem horário, local ou título próprios, que se perdem. */
+export const diaComDadosSomeAoTirar = (montagem: { datasLivres: boolean }, dado: DataDaMontagem): boolean =>
+  !montagem.datasLivres && dado.requisitoIds.length === 1 && detalheDaAula(dado) !== ''

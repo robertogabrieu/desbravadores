@@ -38,7 +38,7 @@ export function AdmCalendario() {
   const diasDeReuniao = new Set(calendario.data?.diasDeReuniao ?? [])
   const eventosDesteMes = eventosDoMes(eventos, ano, mes)
   const horaDaReuniao = configuracao.data?.horaReuniao
-  const diaEscolhido = diaEscolhidoDoMes(ler('dia'), ano, mes, hoje, eventosDesteMes)
+  const diaEscolhido = diaEscolhidoDoMes(ler('dia'), ano, mes, hoje, eventosDesteMes, diasDeReuniao)
 
   /** Trocar de mês esquece o dia escolhido: o novo mês abre no dia padrão dele. */
   const irParaMes = (novoAno: number, novoMes: number) => mudar({ mes: chaveDoMes(novoAno, novoMes), dia: '' })

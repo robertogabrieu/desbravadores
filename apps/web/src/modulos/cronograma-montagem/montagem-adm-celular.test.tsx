@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { HttpResponse, http } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Montagem, RequisitoDaMontagem } from '../../api/montagem'
 import type { ModoConexao } from '../../offline'
@@ -14,6 +15,7 @@ import {
   criarMontagem,
   criarMontagemDeExemplo,
   handlersMontagem,
+  situacaoDoDia,
 } from '../../testes/handlers/montagem'
 import { criarVinculo, handlersSessao, uuid } from '../../testes/handlers/sessao'
 import { simularLargura } from '../../testes/midia'
@@ -57,6 +59,13 @@ function comRequisitoNaData(requisito: RequisitoDaMontagem, data: string): Monta
     requisitos: montagem.requisitos.map((item) => (item.id === requisito.id ? { ...item, data, aulaId: uuid(2999) } : item)),
   }
 }
+
+/** A montagem de exemplo com o dia 04/10 sem horário e sem local: tirar o único requisito não perde nada. */
+function semDetalheEm0410(montagem: Montagem): Montagem {
+  return { ...montagem, datas: montagem.datas.map((dado) => (dado.data === '2026-10-04' ? { ...dado, horario: null, local: null } : dado)) }
+}
+
+const AVISO_DIA_REMOVIDO = 'O dia de classe de 04/10 fica vazio e será removido.'
 
 const folha = () => screen.getByRole('dialog', { name: 'Em qual data?' })
 const botaoDaData = (diaEMes: string) => within(folha()).getByRole('button', { name: new RegExp(diaEMes) })
@@ -125,6 +134,39 @@ describe('A7 celular · folha "Em qual data?"', () => {
   })
 })
 
+describe('A7 celular · folha sem data para escolher', () => {
+  it('agrupada sem dia de classe: diz o que fazer e "Novo dia de classe" abre a folha do dia novo', async () => {
+    const { usuario } = await abrirNoCelular(criarMontagem({ datasLivres: true, requisitos: [REQ_LIVRE], datas: [] }))
+    await usuario.click(requisitoNaLista(REQ_LIVRE))
+    expect(within(folha()).getByText('Ainda não há dias de classe.')).toBeInTheDocument()
+    expect(within(folha()).getByText('Crie um dia de classe para poder colocar requisitos nele.')).toBeInTheDocument()
+    expect(within(folha()).queryByRole('checkbox')).not.toBeInTheDocument()
+    await usuario.click(within(folha()).getByRole('button', { name: 'Novo dia de classe' }))
+    expect(screen.getByRole('dialog', { name: 'Novo dia de classe' })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Em qual data?' })).not.toBeInTheDocument()
+  })
+
+  it('individual sem datas no período: explica de onde vêm as datas e leva ao calendário', async () => {
+    const { usuario } = await abrirNoCelular(criarMontagem({ requisitos: [REQ_LIVRE], datas: [] }))
+    await usuario.click(requisitoNaLista(REQ_LIVRE))
+    expect(within(folha()).getByText('Nenhuma data de classe neste período.')).toBeInTheDocument()
+    expect(within(folha()).getByText('As datas vêm do calendário do clube.')).toBeInTheDocument()
+    expect(within(folha()).getByRole('link', { name: /calendário/i })).toHaveAttribute('href', '/adm/calendario')
+    expect(within(folha()).queryByRole('checkbox')).not.toBeInTheDocument()
+  })
+
+  it('todas as datas escondidas: diz que nenhuma aceita e a caixa continua para mostrar as recusadas', async () => {
+    const feriado = criarDataMontagem('2026-10-11', { situacao: situacaoDoDia('2026-10-11', [{ nome: 'Feriado prolongado', tipo: 'SEM_REUNIAO' }]) })
+    const { usuario } = await abrirNoCelular(criarMontagem({ requisitos: [REQ_LIVRE], datas: [feriado] }))
+    await usuario.click(requisitoNaLista(REQ_LIVRE))
+    expect(within(folha()).getByText('Nenhuma data aceita este requisito agora.')).toBeInTheDocument()
+    expect(folha()).toHaveTextContent('11/10 não aceita: sem classe (Feriado prolongado).')
+    await usuario.click(within(folha()).getByRole('checkbox', { name: 'Esconder datas que não aceitam' }))
+    expect(botaoDaData('11/10')).toBeDisabled()
+    expect(within(folha()).queryByText('Nenhuma data aceita este requisito agora.')).not.toBeInTheDocument()
+  })
+})
+
 describe('A7 celular · depois de colocar', () => {
   it('confirma, oferece o próximo sem data e "Escolher data do X" abre a folha para ele', async () => {
     const { registro, usuario } = await abrirNoCelular()
@@ -132,6 +174,7 @@ describe('A7 celular · depois de colocar', () => {
     await usuario.click(requisitoNaLista(REQ_LIVRE))
     await usuario.click(botaoDaData('18/10'))
     expect(await screen.findByText(`${REQ_LIVRE.codigo} ficou em 18/10`)).toHaveAttribute('role', 'status')
+    expect(screen.getByText(`${REQ_LIVRE.codigo} ficou em 18/10`)).toHaveFocus()
     const proximo = screen.getByRole('region', { name: 'Próximo sem data' })
     expect(proximo).toHaveTextContent(REQ_CAMPO.texto)
     await usuario.click(within(proximo).getByRole('button', { name: `Escolher data do ${REQ_CAMPO.codigo}` }))
@@ -159,6 +202,18 @@ describe('A7 celular · depois de colocar', () => {
     await waitFor(() => expect(registro.leituras).toBe(2))
   })
 
+  it('409 no Desfazer e "Atualizar": o Desfazer pendente some', async () => {
+    const { registro, usuario } = await abrirNoCelular()
+    registro.responder(comRequisitoNaData(REQ_LIVRE, '2026-10-18'))
+    await usuario.click(requisitoNaLista(REQ_LIVRE))
+    await usuario.click(botaoDaData('18/10'))
+    registro.falharProxima(409, { codigo: 'CONFLITO', mensagem: 'Outra pessoa acabou de mudar esta data. Atualize a tela.' })
+    await usuario.click(await screen.findByRole('button', { name: 'Desfazer' }))
+    await usuario.click(await screen.findByRole('button', { name: 'Atualizar' }))
+    expect(screen.queryByRole('button', { name: 'Desfazer' })).not.toBeInTheDocument()
+    expect(screen.queryByText(`${REQ_LIVRE.codigo} ficou em 18/10`)).not.toBeInTheDocument()
+  })
+
   it('Desfazer de quem não tinha data tira o requisito da data', async () => {
     const { registro, usuario } = await abrirNoCelular()
     registro.responder(comRequisitoNaData(REQ_LIVRE, '2026-10-18'))
@@ -171,10 +226,11 @@ describe('A7 celular · depois de colocar', () => {
   })
 
   it('Desfazer de quem já tinha data devolve o requisito para a data anterior', async () => {
-    const { registro, usuario } = await abrirNoCelular()
+    const { registro, usuario } = await abrirNoCelular(semDetalheEm0410(criarMontagemDeExemplo()))
     registro.responder(comRequisitoNaData(REQ_COLOCADO, '2026-10-18'))
     await usuario.click(screen.getByRole('tab', { name: 'Com data · 3' }))
     await usuario.click(requisitoNaLista(REQ_COLOCADO))
+    expect(folha()).not.toHaveTextContent(AVISO_DIA_REMOVIDO)
     await usuario.click(botaoDaData('18/10'))
     await usuario.click(await screen.findByRole('button', { name: 'Desfazer' }))
     await waitFor(() => expect(registro.chamadas).toHaveLength(2))
@@ -184,6 +240,49 @@ describe('A7 celular · depois de colocar', () => {
       corpo: { data: '2026-10-04' },
     })
     expect(await screen.findByText(`${REQ_COLOCADO.codigo} voltou para 04/10`)).toBeInTheDocument()
+  })
+})
+
+describe('A7 celular · quando o Desfazer não é seguro', () => {
+  it('a data anterior não aceita mais o requisito (conflito): confirma sem Desfazer', async () => {
+    const { registro, usuario } = await abrirNoCelular()
+    registro.responder(comRequisitoNaData(REQ_EM_CONFLITO, '2026-10-18'))
+    await usuario.click(screen.getByRole('tab', { name: 'Com data · 3' }))
+    await usuario.click(requisitoNaLista(REQ_EM_CONFLITO))
+    await usuario.click(botaoDaData('18/10'))
+    expect(await screen.findByText(`${REQ_EM_CONFLITO.codigo} ficou em 18/10`)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Desfazer' })).not.toBeInTheDocument()
+  })
+
+  it('único requisito de um dia com horário e local próprios: a folha avisa que o dia some e a confirmação vem sem Desfazer', async () => {
+    const { registro, usuario } = await abrirNoCelular()
+    registro.responder(comRequisitoNaData(REQ_COLOCADO, '2026-10-18'))
+    await usuario.click(screen.getByRole('tab', { name: 'Com data · 3' }))
+    await usuario.click(requisitoNaLista(REQ_COLOCADO))
+    expect(within(folha()).getByText(AVISO_DIA_REMOVIDO)).toBeInTheDocument()
+    await usuario.click(botaoDaData('18/10'))
+    expect(await screen.findByText(`${REQ_COLOCADO.codigo} ficou em 18/10`)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Desfazer' })).not.toBeInTheDocument()
+  })
+
+  it('nas agrupadas o dia de classe fica, então a folha não avisa', async () => {
+    const { usuario } = await abrirNoCelular(criarMontagemDeExemplo({ datasLivres: true }))
+    await usuario.click(screen.getByRole('tab', { name: 'Com data · 3' }))
+    await usuario.click(requisitoNaLista(REQ_COLOCADO))
+    expect(folha()).not.toHaveTextContent(AVISO_DIA_REMOVIDO)
+  })
+})
+
+describe('A7 celular · abas', () => {
+  it('cada aba controla o painel que mostra a lista dela', async () => {
+    const { usuario } = await abrirNoCelular()
+    const semData = screen.getByRole('tab', { name: 'Sem data · 2' })
+    const painel = screen.getByRole('tabpanel', { name: 'Sem data · 2' })
+    expect(semData).toHaveAttribute('aria-controls', painel.id)
+    expect(within(painel).getByRole('button', { name: new RegExp(REQ_LIVRE.texto) })).toBeInTheDocument()
+    await usuario.click(screen.getByRole('tab', { name: 'Por data' }))
+    expect(screen.getByRole('tab', { name: 'Por data' })).toHaveAttribute('aria-controls', painel.id)
+    expect(screen.getByRole('tabpanel', { name: 'Por data' }).id).toBe(painel.id)
   })
 })
 
@@ -261,6 +360,36 @@ describe('A7 celular · publicar no rodapé', () => {
   it('com data em conflito, o resumo diz quantas', async () => {
     await abrirNoCelular()
     expect(rodape()).toHaveTextContent('1 data com conflito')
+  })
+
+  it('sem requisito sem data mas com data em conflito: o botão continua secundário', async () => {
+    const datas = criarMontagemDeExemplo().datas.filter((dado) => dado.data === '2026-10-04' || dado.data === '2026-10-25')
+    await abrirNoCelular(criarMontagem({ requisitos: [REQ_COLOCADO, REQ_EM_CONFLITO], datas }))
+    expect(rodape()).toHaveTextContent('1 data com conflito')
+    expect(within(rodape()).getByRole('button', { name: 'Publicar…' }).className).not.toContain('bg-marca')
+  })
+
+  it('enquanto um requisito é colocado, "Publicar…" não fica carregando', async () => {
+    let liberar = () => {}
+    const pendente = new Promise<void>((resolver) => {
+      liberar = resolver
+    })
+    const montagem = criarMontagemDeExemplo()
+    const { usuario } = await abrirNoCelular(montagem)
+    servidor.use(
+      http.put('/api/cronogramas/:id/requisitos/:rid', async () => {
+        await pendente
+        return HttpResponse.json(montagem)
+      }),
+    )
+    await usuario.click(requisitoNaLista(REQ_LIVRE))
+    await usuario.click(botaoDaData('18/10'))
+    await waitFor(() => expect(botaoDaData('04/10')).toBeDisabled())
+    const publicacao = screen.getByRole('region', { name: 'Publicação', hidden: true })
+    const publicar = within(publicacao).getByRole('button', { name: 'Publicar…', hidden: true })
+    expect(publicar).not.toBeDisabled()
+    expect(publicar.querySelector('svg')).toBeNull()
+    liberar()
   })
 
   it('todos com data: botão primário', async () => {

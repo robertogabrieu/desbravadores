@@ -212,6 +212,38 @@ describe('ficha do desbravador no celular', () => {
     expect(await screen.findByRole('region', { name: 'Cadastro' })).toBeInTheDocument()
   })
 
+  it('as setas do teclado trocam de parte sem empilhar o histórico; o toque empilha', async () => {
+    const { roteador } = abrirNoCelular()
+    await userEvent.click(await screen.findByRole('tab', { name: 'Cadastro' }))
+    expect(roteador.state.historyAction).toBe('PUSH')
+    await userEvent.keyboard('{ArrowRight}')
+    expect(roteador.state.location.search).toBe('?parte=responsavel')
+    expect(roteador.state.historyAction).toBe('REPLACE')
+    expect(screen.getByRole('tab', { name: 'Responsável' })).toHaveFocus()
+    await userEvent.keyboard('{ArrowLeft}')
+    expect(roteador.state.location.search).toBe('?parte=cadastro')
+    await roteador.navigate(-1)
+    expect(roteador.state.location.search).toBe('')
+  })
+
+  it('Editar → Salvar volta na parte que estava aberta', async () => {
+    const dbv = novaAna()
+    const editada = { ...dbv.atual, nome: 'Ana Beatriz Lima' }
+    servidor.use(handlerEditarDesbravador(editada, [], () => { dbv.atual = editada }))
+    const { roteador } = abrirNoCelular(`${FICHA}?parte=cadastro`, dbv)
+    await userEvent.click(await screen.findByRole('link', { name: 'Editar' }))
+    expect(roteador.state.location.pathname).toBe(`${FICHA}/editar`)
+    expect(screen.getByRole('link', { name: 'Cancelar' })).toHaveAttribute('href', `${FICHA}?parte=cadastro`)
+    const nome = await screen.findByLabelText('Nome completo')
+    await userEvent.clear(nome)
+    await userEvent.type(nome, 'Ana Beatriz Lima')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    expect(await screen.findByRole('heading', { level: 1, name: 'Ana Beatriz Lima' })).toBeInTheDocument()
+    expect(roteador.state.location.pathname).toBe(FICHA)
+    expect(roteador.state.location.search).toBe('?parte=cadastro')
+    expect(screen.getByRole('region', { name: 'Cadastro' })).toBeInTheDocument()
+  })
+
   it('trocar de parte mantém o Voltar para a lista com os filtros de origem', async () => {
     abrir('/adm/desbravadores?busca=Ana&situacao=todos')
     await userEvent.click(await screen.findByRole('link', { name: 'Ana Beatriz Souza' }))

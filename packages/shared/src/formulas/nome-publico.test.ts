@@ -28,6 +28,7 @@ describe('primeiroEUltimoNome', () => {
     expect(primeiroEUltimoNome('Maria Clara Souza Filha')).toBe('Maria Souza Filha')
     expect(primeiroEUltimoNome('Carlos Eduardo Lima Junior')).toBe('Carlos Lima Junior')
     expect(primeiroEUltimoNome('Carlos Eduardo Lima Jr.')).toBe('Carlos Lima Jr.')
+    expect(primeiroEUltimoNome('Carlos Eduardo Lima Jr')).toBe('Carlos Lima Jr')
     expect(primeiroEUltimoNome('José Antônio Prado Neto')).toBe('José Prado Neto')
     expect(primeiroEUltimoNome('Ana Paula Prado Neta')).toBe('Ana Prado Neta')
     expect(primeiroEUltimoNome('Rui Carlos Mota Sobrinho')).toBe('Rui Mota Sobrinho')

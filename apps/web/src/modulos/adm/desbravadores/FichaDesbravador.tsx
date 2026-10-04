@@ -201,7 +201,7 @@ const NOME_DA_PARTE: Record<Parte, string> = { progresso: 'Progresso', cadastro:
  * Parte da ficha aberta no celular, guardada em `?parte=` para o voltar do aparelho trocar de parte.
  * Sem parte válida no endereço, abre Progresso para o DBV ativo e Cadastro para os demais (como os números do mês).
  */
-function useParteDaFicha(dbv: Desbravador): { partes: Parte[]; ativa: Parte; mudar: (parte: string) => void } {
+function useParteDaFicha(dbv: Desbravador): { partes: Parte[]; ativa: Parte; mudar: (parte: string, origem: 'toque' | 'teclado') => void } {
   const [parametros] = useSearchParams()
   const local = useLocation()
   const navegar = useNavigate()
@@ -210,7 +210,9 @@ function useParteDaFicha(dbv: Desbravador): { partes: Parte[]; ativa: Parte; mud
   const ativa = pedida ?? (dbv.tipo === 'DBV' && dbv.ativo ? 'progresso' : 'cadastro')
   // O estado do histórico leva o destino do Voltar (filtros da lista): trocar de parte não pode perdê-lo.
   const estadoDoHistorico: unknown = local.state
-  const mudar = (parte: string) => void navegar({ search: `?parte=${parte}` }, { state: estadoDoHistorico })
+  // Pelas setas a pessoa passa por várias partes até achar a que quer: só o toque deixa entrada no histórico.
+  const mudar = (parte: string, origem: 'toque' | 'teclado') =>
+    void navegar({ search: `?parte=${parte}` }, { state: estadoDoHistorico, replace: origem === 'teclado' })
   return { partes, ativa, mudar }
 }
 
@@ -234,10 +236,14 @@ function Conteudo({ perfil }: { perfil: PerfilDbv }) {
   const { avisos, dispensar } = useAvisosDaFicha()
   const [erroDaAcao, setErroDaAcao] = useState<string | null>(null)
   const celular = useLarguraMenorQue(LARGURA_DO_CELULAR)
+  const [parametros] = useSearchParams()
   const contato = dbv.contato
+  // A parte aberta vai junto para a edição, que a devolve ao voltar para a ficha.
+  const parte = parametros.get('parte')
+  const consultaDaParte = parte ? `?parte=${encodeURIComponent(parte)}` : ''
 
   const editar = (
-    <Link to={`${LISTA}/${dbv.id}/editar`} state={{ voltarPara: voltar.para, voltarRotulo: voltar.rotulo }} className={cn(estiloDoBotao(), celular && 'ml-auto')}>
+    <Link to={`${LISTA}/${dbv.id}/editar${consultaDaParte}`} state={{ voltarPara: voltar.para, voltarRotulo: voltar.rotulo }} className={cn(estiloDoBotao(), celular && 'ml-auto')}>
       Editar
     </Link>
   )

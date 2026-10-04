@@ -58,6 +58,15 @@ describe('calendário · no celular', () => {
     expect(await screen.findByRole('region', { name: 'Sábado, 14 de novembro' })).toBeInTheDocument()
   })
 
+  it('mês só com reuniões regulares abre na primeira reunião, não no dia 1', async () => {
+    servidor.use(
+      handlerConfiguracao(criarConfiguracao({ diaReuniao: 0, horaReuniao: '15:00' })),
+      handlerCalendario({ eventos: [], diasDeReuniao: ['2026-12-06', '2026-12-13'] }),
+    )
+    renderizarRotas(rotasAdmCalendario, '/adm/calendario?mes=2026-12')
+    expect(await screen.findByRole('region', { name: 'Domingo, 6 de dezembro' })).toBeInTheDocument()
+  })
+
   it('?dia= no endereço abre aquele dia', async () => {
     abrirEm('/adm/calendario?mes=2026-10&dia=2026-10-16')
     const painel = within(await screen.findByRole('region', { name: 'Sexta-feira, 16 de outubro' }))

@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ModoConexao } from '../../../offline'
+import { consultaConfiguracaoClube } from '../../../api/clube'
 import { criarConfiguracao, handlerConfiguracao, handlerErroConfiguracao } from '../../../testes/handlers/clube'
 import { criarRefClasse, criarVisaoGeral, handlerErroVisaoGeral, handlerVisaoGeral } from '../../../testes/handlers/visao-geral'
 import { uuid } from '../../../testes/handlers/sessao'
@@ -246,10 +247,16 @@ describe('celular · o que precisa de atenção vem primeiro', () => {
 
   it('sem unidade abaixo do limite nem cronograma aguardando, a seção não aparece', async () => {
     simularLargura(390)
-    servidor.use(handlerVisaoGeral(criarVisaoGeral({ ...comAlerta, cronogramasEnviados: [] })), handlerConfiguracao(criarConfiguracao({ limiarFrequenciaAlerta: 60 })))
-    abrir()
+    const acimaDoLimite = { id: uuid(13), nome: 'Lobos', conselheiros: [], totalDbvs: 6, frequenciaMes: 61 }
+    servidor.use(
+      handlerVisaoGeral(criarVisaoGeral({ ...comAlerta, unidadesResumo: [...comAlerta.unidadesResumo, acimaDoLimite], cronogramasEnviados: [] })),
+      handlerConfiguracao(criarConfiguracao({ limiarFrequenciaAlerta: 60 })),
+    )
+    const { clienteConsultas } = abrir()
     await screen.findByRole('region', { name: 'Números do clube' })
-    await screen.findByRole('link', { name: /^Tigres/ })
+    await waitFor(() => expect(clienteConsultas.getQueryCache().find({ queryKey: consultaConfiguracaoClube.queryKey })?.state.status).toBe('success'))
+    const lobos = await screen.findByRole('link', { name: /^Lobos/ })
+    expect(lobos.querySelector('[data-abaixo-do-limiar]')).toHaveAttribute('data-abaixo-do-limiar', 'false')
     expect(screen.queryByRole('region', { name: /Precisa de atenção/ })).not.toBeInTheDocument()
   })
 
