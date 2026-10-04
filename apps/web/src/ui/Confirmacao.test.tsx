@@ -60,4 +60,44 @@ describe('Confirmacao', () => {
     await usuario.click(screen.getByRole('button', { name: 'Abrir confirmação' }))
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
+
+  it('o botão de saída diz "Cancelar" quando a tela não escolhe outro texto', () => {
+    render(
+      <Confirmacao aberta titulo="Apagar?" rotuloConfirmar="Apagar" aoConfirmar={() => undefined} aoCancelar={() => undefined}>
+        Some para todos.
+      </Confirmacao>,
+    )
+    expect(screen.getByRole('button', { name: 'Cancelar' })).toBeInTheDocument()
+  })
+
+  it('o botão de saída usa o texto que a tela passar, e ele cancela', async () => {
+    const usuario = userEvent.setup()
+    let cancelou = 0
+    render(
+      <Confirmacao
+        aberta
+        titulo="Publicar?"
+        rotuloConfirmar="Publicar cronograma"
+        rotuloCancelar="Continuar montando"
+        aoConfirmar={() => undefined}
+        aoCancelar={() => {
+          cancelou += 1
+        }}
+      >
+        Os instrutores recebem um aviso.
+      </Confirmacao>,
+    )
+    expect(screen.queryByRole('button', { name: 'Cancelar' })).not.toBeInTheDocument()
+    await usuario.click(screen.getByRole('button', { name: 'Continuar montando' }))
+    expect(cancelou).toBe(1)
+  })
+
+  it('ocupada: o botão de confirmar fica desabilitado enquanto a ação corre', () => {
+    render(
+      <Confirmacao aberta ocupada titulo="Publicar?" rotuloConfirmar="Publicar cronograma" aoConfirmar={() => undefined} aoCancelar={() => undefined}>
+        Os instrutores recebem um aviso.
+      </Confirmacao>,
+    )
+    expect(screen.getByRole('button', { name: 'Publicar cronograma' })).toBeDisabled()
+  })
 })
