@@ -367,6 +367,16 @@ describe('A1 · editar a classe do ano', () => {
     await esperarFicha()
   })
 
+  it('desbravador sem classe salvo com "Pela idade": a edição não pede matrícula, quem matricula é a API', async () => {
+    let matricula: unknown
+    servidor.use(handlerConfiguracao(configuracao), handlerEditarDesbravador(bruno), handlerMatricular((id, corpo) => (matricula = { id, ...corpo })))
+    await abrirEdicao(bruno)
+    expect(screen.getByLabelText('Classe do ano')).toHaveValue('')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await esperarFicha()
+    expect(matricula).toBeUndefined()
+  })
+
   it('Diretoria sem classe: na edição a opção vazia continua "Sem classe", sem a ajuda da idade', async () => {
     const diretora = criarDesbravador({ id: uuid(303), nome: 'Clara Dias', tipo: 'DIRETORIA', idade: 16, unidade: null, motivosDiretoria: ['IDADE'] })
     servidor.use(handlerEditarDesbravador(diretora))

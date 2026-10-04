@@ -1,8 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { anoClube as anoDoClube } from '@desbravadores/shared'
 import { PrismaService } from '../comum/prisma/prisma.service'
-import { paraDataCivil } from './apoio'
-import { DesbravadoresService, semClasseNoAno, travarMatriculasDoDesbravador } from './desbravadores.service'
+import { DesbravadoresService, semClasseNoAno } from './desbravadores.service'
 import { ServicoEscopo } from './escopo.service'
 
 /** Preenche a classe da idade de quem está sem classe regular no ano do clube; nunca troca uma existente. */
@@ -35,19 +34,8 @@ export class ServicoClassePelaIdade {
     return matriculados
   }
 
-  /**
-   * Sob a trava do desbravador, reconfere que ele segue sem classe no ano (o Adm pode ter matriculado depois da
-   * leitura) e o matricula na classe da idade. Devolve se matriculou.
-   */
+  /** Reconfere sob a trava (o Adm pode ter matriculado depois da leitura) e matricula. Devolve se matriculou. */
   async aplicar(clubeId: string, dbvId: string, anoClube: number): Promise<boolean> {
-    return this.prisma.$transaction(async (tx) => {
-      await travarMatriculasDoDesbravador(tx, dbvId)
-      const dbv = await tx.desbravador.findFirst({
-        where: { ...semClasseNoAno(clubeId, anoClube), id: dbvId },
-        select: { nascimento: true },
-      })
-      if (!dbv) return false
-      return this.desbravadores.matricularPelaIdade(tx, { clubeId, dbvId, nascimento: paraDataCivil(dbv.nascimento), anoClube })
-    })
+    return this.prisma.$transaction((tx) => this.desbravadores.preencherClassePelaIdade(tx, clubeId, dbvId, anoClube))
   }
 }

@@ -349,6 +349,7 @@ export class DesbravadoresService {
     if (entrada.usuarioId) await this.exigirUsuarioDoClube(clubeId, entrada.usuarioId)
 
     await this.prisma.$transaction(async (tx) => {
+      await travarMatriculasDoDesbravador(tx, id)
       await tx.desbravador.update({
         where: { id, clubeId },
         data: {
@@ -367,6 +368,7 @@ export class DesbravadoresService {
       const ficha = await this.tipo.lerFicha(tx, clubeId, id)
       if (tipoEscolhido) await this.tipo.escolhaDoAdm(tx, clubeId, ficha, tipoEscolhido, relogio.hoje)
       else await this.tipo.aplicar(tx, clubeId, ficha, relogio.hoje)
+      await this.preencherClassePelaIdade(tx, clubeId, id, relogio.anoClube)
     }).catch(recusarContaJaLigada)
     return this.saidaComAvisos(sessao, id, relogio)
   }
@@ -406,13 +408,7 @@ export class DesbravadoresService {
     await this.prisma.$transaction(async (tx) => {
       await travarMatriculasDoDesbravador(tx, id)
       await tx.desbravador.update({ where: { id, clubeId }, data: { ativo: true, saidaEm: null } })
-      const semClasse = await tx.desbravador.findFirst({
-        where: { ...semClasseNoAno(clubeId, relogio.anoClube), id },
-        select: { nascimento: true },
-      })
-      if (semClasse) {
-        await this.matricularPelaIdade(tx, { clubeId, dbvId: id, nascimento: paraDataCivil(semClasse.nascimento), anoClube: relogio.anoClube })
-      }
+      await this.preencherClassePelaIdade(tx, clubeId, id, relogio.anoClube)
     })
     return this.obter(sessao, id)
   }
@@ -447,15 +443,19 @@ export class DesbravadoresService {
     const dbv = await this.carregarNoEscopo(sessao, id, relogio)
     if (!dbv.ativo) throw new ErroApp('REGRA', 'Reative o desbravador antes de matricular.')
     const classe = await this.exigirClasse(clubeId, entrada.classeId)
-    return this.prisma.$transaction((tx) =>
-      this.matricular(tx, {
+    return this.prisma.$transaction(async (tx) => {
+      // A inativação pode ter terminado entre a leitura acima e a trava; sob a trava, ela já gravou.
+      await travarMatriculasDoDesbravador(tx, id)
+      const segueAtivo = await tx.desbravador.findFirst({ where: { id, clubeId, ativo: true }, select: { id: true } })
+      if (!segueAtivo) throw new ErroApp('REGRA', 'Reative o desbravador antes de matricular.')
+      return this.matricular(tx, {
         clubeId,
         dbvId: id,
         classe,
         anoClube: entrada.anoClube,
         incluirAvancada: entrada.incluirAvancada,
-      }),
-    )
+      })
+    })
   }
 
   /** Classe regular individual da idade completada até 30/06 do ano do clube; empate, a de menor ordem. */
@@ -484,6 +484,20 @@ export class DesbravadoresService {
     })
     await this.matricular(tx, { clubeId, dbvId, classe, anoClube, incluirAvancada: !avancadaConcluida })
     return true
+  }
+
+  /**
+   * Sob a trava do desbravador, confere que ele está sem classe regular no ano (DBV ativo) e o matricula na
+   * classe da idade. Quem já tem classe, mesmo fora da idade, não é tocado. Devolve se matriculou.
+   */
+  async preencherClassePelaIdade(tx: Cliente, clubeId: string, dbvId: string, anoClube: number): Promise<boolean> {
+    await travarMatriculasDoDesbravador(tx, dbvId)
+    const semClasse = await tx.desbravador.findFirst({
+      where: { ...semClasseNoAno(clubeId, anoClube), id: dbvId },
+      select: { nascimento: true },
+    })
+    if (!semClasse) return false
+    return this.matricularPelaIdade(tx, { clubeId, dbvId, nascimento: paraDataCivil(semClasse.nascimento), anoClube })
   }
 
   private async carregarNoEscopo(sessao: SessaoLogada, id: string, relogio: RelogioDoClube): Promise<DesbravadorCompleto> {
@@ -572,7 +586,7 @@ export class DesbravadoresService {
     const classeIds = [classe.id]
     if (classe.tipo === 'REGULAR' && dados.incluirAvancada) {
       const avancada = await tx.classe.findFirst({
-        where: { classeBaseId: classe.id, tipo: 'AVANCADA', OR: [{ clubeId: null }, { clubeId }] },
+        where: { classeBaseId: classe.id, tipo: 'AVANCADA', OR: [{ clubeId: null }, { clubeId }], ativa: true, ...ativaNoClube(clubeId) },
         orderBy: { ordem: 'asc' },
         select: { id: true },
       })
