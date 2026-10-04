@@ -40,3 +40,14 @@ export const TEXTO_DO_TIPO: Partial<Record<TipoDeEvento, (diaReuniao: number | u
   FERIAS: (diaReuniao) => `Férias: sem reunião e sem classe ${dosDiasDeReuniao(diaReuniao).nos} do período; acampamentos continuam valendo.`,
   REUNIAO_EXTRA: (diaReuniao) => `Reunião extra: uma data fora ${dosDiasDeReuniao(diaReuniao).do}, com chamada da unidade, classe ou as duas.`,
 }
+
+/** Ponto do dia na grade do celular, na cor forte do tipo; a reunião extra é um anel, para não se confundir com a regular. */
+export const PONTO_DA_REUNIAO = 'bg-[var(--cal-reuniao-fg)]'
+export const PONTO_DO_TIPO: Record<TipoDeEvento, string> = {
+  REUNIAO_EXTRA: 'border-2 border-[var(--cal-reuniao-fg)] bg-superficie',
+  FERIAS: 'bg-[var(--cal-ferias-fg)]',
+  SEM_REUNIAO: 'bg-[var(--cal-sem-fg)]',
+  ACAMPAMENTO: 'bg-[var(--cal-acamp-fg)]',
+  EVENTO: 'bg-[var(--cal-evento-fg)]',
+  FERIADO: 'bg-[var(--cal-feriado-fg)]',
+}
