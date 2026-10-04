@@ -25,6 +25,7 @@ import { criarConfiguracao, handlerConfiguracao } from '../../../testes/handlers
 import { uuid } from '../../../testes/handlers/sessao'
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
+import { simularLargura } from '../../../testes/midia'
 import { rotasAdmDesbravadores } from './rotas'
 
 const aguias = criarUnidade({ id: uuid(201), nome: 'Águias' })
@@ -200,6 +201,78 @@ describe('A1 · lista', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }))
     expect(await screen.findByRole('link', { name: 'Ana Clara Souza' })).toBeInTheDocument()
   })
+})
+
+describe('lista no celular', () => {
+  const diretora = criarDesbravador({ id: uuid(306), nome: 'Davi Rocha', tipo: 'DIRETORIA', idade: 16, classeAtual: refAmigo })
+
+  it('cada pessoa é um cartão que leva à ficha: nome, "N anos · Unidade", chip da classe e selo do tipo fora de Desbravador', async () => {
+    simularLargura(390)
+    const { roteador } = abrir([ana, bruno, diretora])
+    const cartaoAna = await screen.findByRole('link', { name: /Ana Clara Souza/ })
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    expect(cartaoAna).toHaveTextContent('11 anos · Águias')
+    expect(within(cartaoAna).getByText('Amigo')).toHaveStyle({ backgroundColor: 'var(--classe-amigo)' })
+    expect(within(cartaoAna).queryByText('Desbravador')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Bruno Lima/ })).toHaveTextContent('12 anos · Sem unidade')
+    const cartaoDavi = screen.getByRole('link', { name: /Davi Rocha/ })
+    expect(within(cartaoDavi).getByText('Diretoria')).toBeInTheDocument()
+    expect(cartaoDavi).toHaveTextContent('16 anos')
+    expect(cartaoDavi).not.toHaveTextContent('·')
+
+    await userEvent.click(cartaoAna)
+    expect(roteador.state.location.pathname).toBe(`/adm/desbravadores/${ana.id}`)
+  })
+
+  it('topo no celular: "Novo desbravador" e "Importar" lado a lado', async () => {
+    simularLargura(390)
+    abrir([ana])
+    await screen.findByRole('link', { name: /Ana Clara Souza/ })
+    expect(screen.getByRole('link', { name: 'Novo desbravador' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Importar' })).toBeInTheDocument()
+  })
+
+  it('só a busca fica à vista; "Filtros" abre a folha, aplica na URL, conta os filtros ligados e "Mostrar N" fecha', async () => {
+    simularLargura(390)
+    const consultas: URL[] = []
+    const { roteador } = abrir([ana, bruno, diretora], (url) => consultas.push(url))
+    await screen.findByRole('link', { name: /Ana Clara Souza/ })
+    expect(screen.getByLabelText('Buscar por nome')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Unidade')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Filtros' })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Filtros' }))
+    const folha = within(screen.getByRole('dialog', { name: 'Filtrar desbravadores' }))
+    expect(folha.getByLabelText('Classe')).toBeInTheDocument()
+    expect(folha.getByLabelText('Situação')).toBeInTheDocument()
+    await userEvent.selectOptions(folha.getByLabelText('Tipo'), 'Diretoria')
+    await waitFor(() => expect(consultas.at(-1)?.searchParams.get('tipo')).toBe('DIRETORIA'))
+    expect(roteador.state.location.search).toContain('tipo=DIRETORIA')
+    await userEvent.selectOptions(folha.getByLabelText('Unidade'), 'Águias')
+    await waitFor(() => expect(consultas.at(-1)?.searchParams.get('unidadeId')).toBe(aguias.id))
+
+    await userEvent.click(await folha.findByRole('button', { name: 'Mostrar 0 desbravadores' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Filtros, 2 ligados' })).toHaveTextContent('2')
+  })
+
+  it('a folha mostra a contagem do resultado e "Limpar filtros" desliga os quatro filtros', async () => {
+    simularLargura(390)
+    const { roteador } = renderizarComFiltro('/adm/desbravadores?tipo=DIRETORIA&situacao=todos')
+    await screen.findByRole('link', { name: /Davi Rocha/ })
+    await userEvent.click(screen.getByRole('button', { name: 'Filtros, 2 ligados' }))
+    const folha = within(screen.getByRole('dialog'))
+    expect(folha.getByRole('button', { name: 'Mostrar 1 desbravador' })).toBeInTheDocument()
+    await userEvent.click(folha.getByRole('button', { name: 'Limpar filtros' }))
+    await waitFor(() => expect(roteador.state.location.search).toBe(''))
+    expect(await folha.findByRole('button', { name: 'Mostrar 3 desbravadores' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Filtros' })).toBeInTheDocument()
+  })
+
+  function renderizarComFiltro(endereco: string) {
+    servidor.use(handlerDesbravadores([ana, bruno, diretora]), handlerUnidades([aguias]), handlerClasses([amigo]), ...handlersConviteAcesso())
+    return renderizarRotas(rotasAdmDesbravadores, endereco)
+  }
 })
 
 describe('A1 · novo desbravador', () => {
