@@ -268,6 +268,72 @@ describe('LayoutAdm', () => {
     expect(await screen.findByText('O painel do Adm é melhor no computador')).toBeInTheDocument()
     expect(screen.getByText('lista')).toBeInTheDocument()
   })
+
+  it('abaixo de 900 px a faixa fecha pelo botão e não volta depois de recarregar', async () => {
+    localStorage.clear()
+    simularLargura(390)
+    servidor.use(...handlersSessao([criarVinculo('ADM')]))
+    const { unmount } = renderizarRotas(rotasAdm, '/adm/desbravadores')
+    await userEvent.click(await screen.findByRole('button', { name: 'Fechar aviso' }))
+    expect(screen.queryByText('O painel do Adm é melhor no computador')).not.toBeInTheDocument()
+
+    unmount()
+    renderizarRotas(rotasAdm, '/adm/desbravadores')
+    await screen.findByText('lista')
+    expect(screen.queryByText('O painel do Adm é melhor no computador')).not.toBeInTheDocument()
+    localStorage.clear()
+  })
+
+  it('sem armazenamento no aparelho a faixa aparece e fecha só nesta visita', async () => {
+    const ler = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('armazenamento bloqueado')
+    })
+    const gravar = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('armazenamento bloqueado')
+    })
+    try {
+      simularLargura(390)
+      servidor.use(...handlersSessao([criarVinculo('ADM')]))
+      const { unmount } = renderizarRotas(rotasAdm, '/adm/desbravadores')
+      await userEvent.click(await screen.findByRole('button', { name: 'Fechar aviso' }))
+      expect(screen.queryByText('O painel do Adm é melhor no computador')).not.toBeInTheDocument()
+
+      unmount()
+      renderizarRotas(rotasAdm, '/adm/desbravadores')
+      expect(await screen.findByText('O painel do Adm é melhor no computador')).toBeInTheDocument()
+    } finally {
+      ler.mockRestore()
+      gravar.mockRestore()
+    }
+  })
+
+  it('abaixo de 900 px o cabeçalho mostra só o primeiro nome; o nome inteiro fica dentro do menu', async () => {
+    simularLargura(390)
+    servidor.use(...handlersSessao([criarVinculo('ADM')]))
+    renderizarRotas(rotasAdm, '/adm/desbravadores')
+    const botao = await screen.findByRole('button', { name: 'Ana Souza' })
+    expect(botao).toHaveTextContent(/^Ana$/)
+
+    await userEvent.click(botao)
+    expect(within(screen.getByRole('menu')).getByText('Ana Souza')).toBeInTheDocument()
+    // O nome inteiro dá nome ao menu: leitor de tela que pula o que não é item ainda o lê ao abrir.
+    expect(screen.getByRole('menu', { name: 'Ana Souza' })).toBeInTheDocument()
+  })
+
+  it('largura de 1280 px: o cabeçalho mostra o nome inteiro', async () => {
+    servidor.use(...handlersSessao([criarVinculo('ADM')]))
+    renderizarRotas(rotasAdm, '/adm/desbravadores')
+    expect(await screen.findByRole('button', { name: 'Ana Souza' })).toHaveTextContent(/^Ana Souza$/)
+  })
+
+  it('a margem lateral do conteúdo é definida uma vez, no layout', async () => {
+    simularLargura(390)
+    servidor.use(...handlersSessao([criarVinculo('ADM')]))
+    renderizarRotas(rotasAdm, '/adm/desbravadores')
+    const conteudo = (await screen.findByText('lista')).closest('main')
+    expect(conteudo).toHaveAttribute('data-layout', 'adm')
+    expect(conteudo).toHaveClass('px-4', 'min-[900px]:px-12')
+  })
 })
 
 describe('Faixa "Sem conexão"', () => {

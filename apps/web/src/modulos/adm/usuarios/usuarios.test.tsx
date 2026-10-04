@@ -17,6 +17,7 @@ import {
   handlerUsuario,
 } from '../../../testes/handlers/usuarios'
 import { renderizarRotas } from '../../../testes/renderizar'
+import { simularLargura } from '../../../testes/midia'
 import { servidor } from '../../../testes/servidor'
 import { rotasAdmUsuarios } from './rotas'
 
@@ -65,6 +66,35 @@ describe('lista de usuários', () => {
     expect(within(linha).getByText('Instrutor')).toBeInTheDocument()
     expect(within(linha).getByText('Convite enviado')).toBeInTheDocument()
     expect(within(screen.getByRole('row', { name: /Thiago Mendes/ })).getByText('Ativo')).toBeInTheDocument()
+  })
+
+  it('a tela não abre outro conteúdo principal: ela já mora no do layout do Adm', async () => {
+    abrir()
+    await screen.findByRole('tab', { name: 'Todos · 3' })
+    expect(screen.queryByRole('main')).not.toBeInTheDocument()
+  })
+
+  it('no celular cada usuário vira um cartão que leva à ficha, com e-mail, papéis e situação', async () => {
+    simularLargura(390)
+    const { roteador } = abrir()
+    const cartao = await screen.findByRole('link', { name: /Priscila Andrade/ })
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    expect(within(cartao).getByText('priscila@clube.test')).toHaveClass('break-all')
+    expect(within(cartao).getByText('Instrutor')).toHaveClass('text-sm')
+    expect(within(cartao).getByText('Convite enviado')).toBeInTheDocument()
+    expect(within(screen.getByRole('link', { name: /Thiago Mendes/ })).getByText('Ativo')).toBeInTheDocument()
+    expect(within(screen.getByRole('link', { name: /Diretoria/ })).getByText('Adm')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Convidar usuário' })).toHaveClass('w-full', 'whitespace-nowrap')
+    await userEvent.click(cartao)
+    expect(roteador.state.location.pathname).toBe(`/adm/usuarios/${priscila.id}`)
+  })
+
+  it('a situação vem com ícone além do texto e os selos de papel têm 14px na tabela', async () => {
+    abrir()
+    const linha = await screen.findByRole('row', { name: /Priscila Andrade/ })
+    expect(within(linha).getByText('Instrutor')).toHaveClass('text-sm')
+    expect(within(linha).getByText('Convite enviado').querySelector('svg')).not.toBeNull()
+    expect(screen.getByRole('link', { name: 'Convidar usuário' })).not.toHaveClass('w-full')
   })
 
   it('a aba filtra por papel', async () => {

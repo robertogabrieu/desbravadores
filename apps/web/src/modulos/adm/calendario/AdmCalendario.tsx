@@ -1,114 +1,121 @@
 import { CalendarPlus, ChevronLeft, ChevronRight, Plus, Users } from 'lucide-react'
-import { Fragment } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { hojeDoClube } from '../../../api/desbravadores'
 import { useCalendario } from '../../../api/calendario'
 import type { EventoCalendario } from '../../../api/calendario'
 import { useConfiguracaoClube } from '../../../api/clube'
+import { useLarguraMenorQue } from '../../../layouts/useLarguraMenorQue'
 import { useConexao } from '../../../offline'
 import { Abas } from '../../../ui/Abas'
 import { Botao, estiloDoBotao } from '../../../ui/Botao'
 import { Cartao } from '../../../ui/Cartao'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { Esqueleto } from '../../../ui/Esqueleto'
-import { LinhaQueNavega } from '../../../ui/LinhaQueNavega'
 import { cn } from '../../../ui/cn'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/EstadosDeCarga'
+import { LARGURA_DO_CELULAR } from '../../../ui/larguraDoCelular'
 import { horaCurta } from '../formatos'
 import { useEstadoDeVolta, useFiltrosNaUrl } from '../navegacao'
-import {
-  DIAS_DA_SEMANA,
-  MESES,
-  MESES_CURTOS,
-  chaveDoDia,
-  chaveDoMes,
-  diasDaGrade,
-  eventosDoDia,
-  eventosDoMes,
-  mesDoEndereco,
-  periodoCurto,
-} from './datas'
+import { CartaoDoEvento, GradeDoCelular, LegendaRecolhida, PainelDoDia, diaEscolhidoDoMes, fichaDoEvento } from './CalendarioDoCelular'
+import { DIAS_DA_SEMANA, MESES, MESES_CURTOS, chaveDoDia, chaveDoMes, diasDaGrade, eventosDoDia, eventosDoMes, mesDoEndereco } from './datas'
 import { COR_DA_REUNIAO, CORES_DO_TIPO, ICONE_DO_TIPO, ROTULOS_DO_TIPO } from './tipos'
 
 const ABAS_DE_MES = MESES_CURTOS.map((rotulo, indice) => ({ id: String(indice), rotulo }))
 const MAXIMO_POR_DIA = 2
 
-const fichaDoEvento = (evento: EventoCalendario): string => `/adm/calendario/eventos/${evento.id}`
-
 export function AdmCalendario() {
   const { ler, mudar } = useFiltrosNaUrl()
-  const { ano, mes } = mesDoEndereco(ler('mes'), hojeDoClube())
+  const hoje = hojeDoClube()
+  const { ano, mes } = mesDoEndereco(ler('mes'), hoje)
   const estadoDeVolta = useEstadoDeVolta()
   const calendario = useCalendario(ano)
   const configuracao = useConfiguracaoClube()
   const { modo } = useConexao()
+  const celular = useLarguraMenorQue(LARGURA_DO_CELULAR)
 
   const eventos = calendario.data?.eventos ?? []
   const diasDeReuniao = new Set(calendario.data?.diasDeReuniao ?? [])
   const eventosDesteMes = eventosDoMes(eventos, ano, mes)
   const horaDaReuniao = configuracao.data?.horaReuniao
+  const diaEscolhido = diaEscolhidoDoMes(ler('dia'), ano, mes, hoje, eventosDesteMes, diasDeReuniao)
+
+  /** Trocar de mês esquece o dia escolhido: o novo mês abre no dia padrão dele. */
+  const irParaMes = (novoAno: number, novoMes: number) => mudar({ mes: chaveDoMes(novoAno, novoMes), dia: '' })
 
   /** Anda de mês em mês; passar de dezembro ou de janeiro vira o ano. */
   function andarMeses(passo: number) {
     const total = ano * 12 + mes + passo
-    mudar({ mes: chaveDoMes(Math.floor(total / 12), ((total % 12) + 12) % 12) })
+    irParaMes(Math.floor(total / 12), ((total % 12) + 12) % 12)
   }
 
   let corpo: ReactNode
   if (calendario.data) {
+    const legenda = (
+      <ul aria-label="Legenda" className="flex flex-wrap gap-3 text-sm font-semibold text-texto-3">
+        <li className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5', COR_DA_REUNIAO)}>
+          <MarcaDeReuniao />
+          {horaDaReuniao ? `Reunião regular · ${horaCurta(horaDaReuniao)}` : 'Reunião regular'}
+        </li>
+        {Object.entries(ROTULOS_DO_TIPO).map(([tipo, rotulo]) => {
+          const tipoDoEvento = tipo as keyof typeof CORES_DO_TIPO
+          const Icone = ICONE_DO_TIPO[tipoDoEvento]
+          return (
+            <li key={tipo} className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5', CORES_DO_TIPO[tipoDoEvento])}>
+              {Icone && <Icone aria-hidden className="size-3.5" />}
+              {rotulo}
+            </li>
+          )
+        })}
+      </ul>
+    )
     corpo = (
       <>
-        <Cartao className="flex flex-col gap-3">
-          <ul
-            aria-label="Legenda"
-            className="flex flex-wrap gap-3 text-sm font-semibold text-texto-3"
-          >
-            <li className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5', COR_DA_REUNIAO)}>
-              <MarcaDeReuniao />
-              {horaDaReuniao ? `Reunião regular · ${horaCurta(horaDaReuniao)}` : 'Reunião regular'}
-            </li>
-            {Object.entries(ROTULOS_DO_TIPO).map(([tipo, rotulo]) => {
-              const tipoDoEvento = tipo as keyof typeof CORES_DO_TIPO
-              const Icone = ICONE_DO_TIPO[tipoDoEvento]
-              return (
-                <li
-                  key={tipo}
-                  className={cn(
-                    'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5',
-                    CORES_DO_TIPO[tipoDoEvento],
-                  )}
-                >
-                  {Icone && <Icone aria-hidden className="size-3.5" />}
-                  {rotulo}
-                </li>
-              )
-            })}
-          </ul>
-          <div className="grid grid-cols-7 gap-1 text-center text-sm font-extrabold text-texto-2">
-            {DIAS_DA_SEMANA.map((dia) => (
-              <span key={dia}>{dia}</span>
-            ))}
-          </div>
-          <div
-            role="group"
-            aria-label={`${MESES[mes]} de ${ano}`}
-            className="grid grid-cols-7 gap-1"
-          >
-            {diasDaGrade(ano, mes).map((dia, posicao) => (
-              <CelulaDoDia
-                key={posicao}
-                dia={dia}
-                data={dia === null ? null : chaveDoDia(ano, mes, dia)}
-                eventos={eventos}
-                ehReuniao={dia !== null && diasDeReuniao.has(chaveDoDia(ano, mes, dia))}
-                horaDaReuniao={horaDaReuniao}
-                estadoDeVolta={estadoDeVolta}
+        {celular ? (
+          <>
+            <Cartao className="flex flex-col gap-3">
+              <GradeDoCelular
+                ano={ano}
+                mes={mes}
+                eventos={eventosDesteMes}
+                diasDeReuniao={diasDeReuniao}
+                hoje={hoje}
+                escolhido={diaEscolhido}
+                aoEscolher={(data) => mudar({ dia: data })}
               />
-            ))}
-          </div>
-          <p className="text-sm text-texto-2 sm:hidden">Para abrir um evento, toque nele na lista abaixo.</p>
-        </Cartao>
+              <LegendaRecolhida>{legenda}</LegendaRecolhida>
+            </Cartao>
+            <PainelDoDia
+              data={diaEscolhido}
+              eventos={eventosDesteMes}
+              ehReuniao={diasDeReuniao.has(diaEscolhido)}
+              horaDaReuniao={horaDaReuniao}
+              estadoDeVolta={estadoDeVolta}
+            />
+          </>
+        ) : (
+          <Cartao className="flex flex-col gap-3">
+            {legenda}
+            <div className="grid grid-cols-7 gap-1 text-center text-sm font-extrabold text-texto-2">
+              {DIAS_DA_SEMANA.map((dia) => (
+                <span key={dia}>{dia}</span>
+              ))}
+            </div>
+            <div role="group" aria-label={`${MESES[mes]} de ${ano}`} className="grid grid-cols-7 gap-1">
+              {diasDaGrade(ano, mes).map((dia, posicao) => (
+                <CelulaDoDia
+                  key={posicao}
+                  dia={dia}
+                  data={dia === null ? null : chaveDoDia(ano, mes, dia)}
+                  eventos={eventos}
+                  ehReuniao={dia !== null && diasDeReuniao.has(chaveDoDia(ano, mes, dia))}
+                  horaDaReuniao={horaDaReuniao}
+                  estadoDeVolta={estadoDeVolta}
+                />
+              ))}
+            </div>
+          </Cartao>
+        )}
         {eventosDesteMes.length === 0 ? (
           <EstadoVazio
             titulo={`Nenhum evento em ${MESES[mes]}`}
@@ -118,16 +125,7 @@ export function AdmCalendario() {
           <ul aria-label={`Eventos de ${MESES[mes]}`} className="flex flex-col gap-2">
             {eventosDesteMes.map((evento) => (
               <li key={evento.id}>
-                <LinhaQueNavega to={fichaDoEvento(evento)} state={estadoDeVolta} forma="cartao">
-                  <span className="flex flex-col gap-0.5">
-                    <span className="text-base font-bold text-texto">{evento.nome}</span>
-                    <span className="text-sm text-texto-2">
-                      {ROTULOS_DO_TIPO[evento.tipo]} · {periodoCurto(evento.inicio, evento.fim)}
-                      {evento.horario && ` · ${horaCurta(evento.horario)}`}
-                      {evento.local && ` · ${evento.local}`}
-                    </span>
-                  </span>
-                </LinhaQueNavega>
+                <CartaoDoEvento evento={evento} estadoDeVolta={estadoDeVolta} />
               </li>
             ))}
           </ul>
@@ -145,7 +143,7 @@ export function AdmCalendario() {
     )
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-4 py-4">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-texto-2">
@@ -164,14 +162,14 @@ export function AdmCalendario() {
       </header>
 
       {/* A faixa é atalho para saltar meses no computador; no celular, as setas bastam e a faixa não cabe. */}
-      <div className="hidden sm:block">
+      {!celular && (
         <Abas
           rotulo="Mês"
           abas={ABAS_DE_MES}
           ativa={String(mes)}
-          aoMudar={(id) => mudar({ mes: chaveDoMes(ano, Number(id)) })}
+          aoMudar={(id) => irParaMes(ano, Number(id))}
         />
-      </div>
+      )}
       <div className="flex items-center gap-2">
         <Botao variante="secundario" aria-label="Mês anterior" onClick={() => andarMeses(-1)}>
           <ChevronLeft aria-hidden className="size-5" />
@@ -198,6 +196,7 @@ interface PropriedadesDaCelula {
   estadoDeVolta: { voltarPara?: string }
 }
 
+/** Célula do computador: reunião e eventos em texto, cada evento um link para a ficha. */
 function CelulaDoDia({
   dia,
   data,
@@ -211,23 +210,13 @@ function CelulaDoDia({
   const doDia = eventosDoDia(eventos, data)
   const extra = doDia.find((evento) => evento.tipo === 'REUNIAO_EXTRA')
   const horaDaExtra = extra?.horario ?? horaDaReuniao
-  // No celular a célula tem ~45 px e a grade é só para ver: a reunião pinta o número do dia e ganha o
-  // ícone da legenda, e cada evento vira uma faixa da cor do tipo, sem toque. Abrir é pela lista abaixo.
   return (
-    <div className="flex min-h-16 flex-col gap-1 rounded-controle border border-divisor p-1 sm:min-h-24 sm:p-1.5">
-      <span
-        className={cn(
-          'flex w-fit items-center gap-0.5 rounded-controle text-sm font-bold text-texto max-sm:px-1',
-          ehReuniao && 'max-sm:bg-[var(--cal-reuniao-bg)] max-sm:text-[var(--cal-reuniao-fg)]',
-        )}
-      >
-        {dia}
-        {ehReuniao && <MarcaDeReuniao className="sm:hidden" />}
-      </span>
+    <div className="flex min-h-24 flex-col gap-1 rounded-controle border border-divisor p-1.5">
+      <span className="w-fit text-sm font-bold text-texto">{dia}</span>
       {extra && (
         <span
           className={cn(
-            'flex items-center gap-1 truncate rounded-controle px-1.5 py-0.5 text-sm font-semibold max-sm:sr-only',
+            'flex items-center gap-1 truncate rounded-controle px-1.5 py-0.5 text-sm font-semibold',
             CORES_DO_TIPO['REUNIAO_EXTRA'],
           )}
         >
@@ -241,32 +230,25 @@ function CelulaDoDia({
         </span>
       )}
       {ehReuniao && !extra?.temReuniao && (
-        <span
-          className={cn(
-            'truncate rounded-controle px-1.5 py-0.5 text-sm font-semibold max-sm:sr-only',
-            COR_DA_REUNIAO,
-          )}
-        >
+        <span className={cn('truncate rounded-controle px-1.5 py-0.5 text-sm font-semibold', COR_DA_REUNIAO)}>
           {horaDaReuniao ? `Reunião ${horaDaReuniao}` : 'Reunião'}
         </span>
       )}
       {doDia.slice(0, MAXIMO_POR_DIA).map((evento) => {
         const Icone = ICONE_DO_TIPO[evento.tipo]
         return (
-          <Fragment key={evento.id}>
-            <Link
-              to={fichaDoEvento(evento)}
-              state={estadoDeVolta}
-              className={cn(
-                'truncate rounded-controle px-1.5 py-0.5 text-left text-sm font-semibold focus-visible:outline-2 focus-visible:outline-marca max-sm:hidden',
-                CORES_DO_TIPO[evento.tipo],
-              )}
-            >
-              {Icone && <Icone aria-hidden className="mr-1 inline size-3.5" />}
-              {evento.nome}
-            </Link>
-            <span aria-hidden data-faixa-do-evento className={cn('h-2 rounded-controle sm:hidden', CORES_DO_TIPO[evento.tipo])} />
-          </Fragment>
+          <Link
+            key={evento.id}
+            to={fichaDoEvento(evento)}
+            state={estadoDeVolta}
+            className={cn(
+              'truncate rounded-controle px-1.5 py-0.5 text-left text-sm font-semibold focus-visible:outline-2 focus-visible:outline-marca',
+              CORES_DO_TIPO[evento.tipo],
+            )}
+          >
+            {Icone && <Icone aria-hidden className="mr-1 inline size-3.5" />}
+            {evento.nome}
+          </Link>
         )
       })}
       {doDia.length > MAXIMO_POR_DIA && (

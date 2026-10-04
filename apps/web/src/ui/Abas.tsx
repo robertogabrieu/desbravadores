@@ -11,16 +11,19 @@ interface Propriedades {
   rotulo: string
   abas: AbaDefinida[]
   ativa: string
-  aoMudar: (id: string) => void
+  /** `teclado` quando a troca veio das setas: quem grava a aba no endereço pode substituir em vez de empilhar. */
+  aoMudar: (id: string, origem: 'toque' | 'teclado') => void
+  /** Id do `tabpanel` que as abas controlam (aria-controls). */
+  idDoPainel?: string
 }
 
-export function Abas({ rotulo, abas, ativa, aoMudar }: Propriedades) {
+export function Abas({ rotulo, abas, ativa, aoMudar, idDoPainel }: Propriedades) {
   const aoTeclar = (evento: KeyboardEvent<HTMLButtonElement>, indice: number) => {
     const passo = evento.key === 'ArrowRight' ? 1 : evento.key === 'ArrowLeft' ? -1 : 0
     if (passo === 0) return
     evento.preventDefault()
     const proxima = abas[(indice + passo + abas.length) % abas.length]
-    aoMudar(proxima.id)
+    aoMudar(proxima.id, 'teclado')
     document.getElementById(`aba-${proxima.id}`)?.focus()
   }
 
@@ -28,7 +31,7 @@ export function Abas({ rotulo, abas, ativa, aoMudar }: Propriedades) {
     <div
       role="tablist"
       aria-label={rotulo}
-      className="flex max-w-full gap-1 overflow-x-auto rounded-botao bg-trilho p-1"
+      className="flex max-w-full flex-wrap gap-1 rounded-botao bg-trilho p-1"
     >
       {abas.map((aba, indice) => {
         const selecionada = aba.id === ativa
@@ -39,11 +42,12 @@ export function Abas({ rotulo, abas, ativa, aoMudar }: Propriedades) {
             type="button"
             role="tab"
             aria-selected={selecionada}
+            aria-controls={idDoPainel}
             tabIndex={selecionada ? 0 : -1}
-            onClick={() => aoMudar(aba.id)}
+            onClick={() => aoMudar(aba.id, 'toque')}
             onKeyDown={(evento) => aoTeclar(evento, indice)}
             className={cn(
-              'min-h-[var(--touch-min)] flex-1 rounded-controle px-3 text-base font-semibold focus-visible:outline-2 focus-visible:outline-marca',
+              'min-h-[var(--touch-min)] flex-1 whitespace-nowrap rounded-controle px-3 text-base font-semibold focus-visible:outline-2 focus-visible:outline-marca',
               selecionada
                 ? 'bg-superficie text-marca shadow-[var(--shadow-segment)]'
                 : 'text-texto-2',

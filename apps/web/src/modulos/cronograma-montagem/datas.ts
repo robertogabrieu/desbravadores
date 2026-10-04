@@ -6,6 +6,28 @@ const MESES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'O
 /** "2026-10-04" → "04/10". */
 export const diaMes = (data: string): string => `${data.slice(8, 10)}/${data.slice(5, 7)}`
 
+const MESES_POR_EXTENSO = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+] as const
+
+/** "2026-10-04" → "2026-10": a chave do mês. */
+export const chaveDoMes = (data: string): string => data.slice(0, 7)
+
+/** "2026-10-04" → "Outubro de 2026". */
+export const mesPorExtenso = (data: string): string => `${MESES_POR_EXTENSO[Number(data.slice(5, 7)) - 1] ?? ''} de ${data.slice(0, 4)}`
+
+/** "2026-10-04" → "Out". */
+export function mesAbreviado(data: string): string {
+  const mes = MESES[Number(data.slice(5, 7)) - 1] ?? ''
+  return `${mes.charAt(0)}${mes.slice(1).toLowerCase()}`
+}
+
+/** "2026-10-04" → "Dom, 04/10". */
+export function diaDaSemanaEData(data: string): string {
+  const { semana } = partesDaData(data)
+  return `${semana.charAt(0)}${semana.slice(1).toLowerCase()}, ${diaMes(data)}`
+}
+
 /** "2026-10-04" → { semana: 'DOM', dia: '04', mes: 'OUT' }. */
 export function partesDaData(data: string): { semana: string; dia: string; mes: string } {
   const semana = DIAS[new Date(`${data}T00:00:00Z`).getUTCDay()] ?? ''
@@ -48,3 +70,7 @@ export const detalheDaAula = (d: DataDaMontagem): string => [d.horario, d.local,
 /** Colocar requisito novo na data: fora bloqueio e aula dada; nas individuais, também fora data em conflito (a API responde 422). */
 export const aceitaRequisitoNovo = (montagem: { datasLivres: boolean }, dado: DataDaMontagem): boolean =>
   !dataBloqueada(dado) && !dado.aulaDada && (montagem.datasLivres || !dado.conflito)
+
+/** Nas individuais, tirar o único requisito apaga o dia de classe: pesa quando o dia tem horário, local ou título próprios, que se perdem. */
+export const diaComDadosSomeAoTirar = (montagem: { datasLivres: boolean }, dado: DataDaMontagem): boolean =>
+  !montagem.datasLivres && dado.requisitoIds.length === 1 && detalheDaAula(dado) !== ''

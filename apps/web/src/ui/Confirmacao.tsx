@@ -7,8 +7,12 @@ interface Propriedades {
   titulo: string
   /** Texto do botão que confirma (o verbo da ação: "Sair", "Descartar"). */
   rotuloConfirmar: string
+  /** Texto do botão que sai sem fazer nada; o padrão é "Cancelar". */
+  rotuloCancelar?: string
   aoConfirmar: () => void
   aoCancelar: () => void
+  /** A ação está correndo: o botão de confirmar gira e não aceita um segundo clique. */
+  ocupada?: boolean
   /** Botão de confirmação em vermelho, para ação que apaga. */
   perigo?: boolean
   /** Mensagem de falha da ação; o diálogo continua aberto para tentar de novo ou cancelar. */
@@ -36,7 +40,18 @@ function prenderTab(evento: KeyboardEvent, painel: HTMLElement) {
 }
 
 /** Painel de confirmação centrado; Esc e o fundo cancelam, o Tab fica preso nele e o foco volta a quem o abriu. */
-export function Confirmacao({ aberta, titulo, rotuloConfirmar, aoConfirmar, aoCancelar, perigo = false, erro, children }: Propriedades) {
+export function Confirmacao({
+  aberta,
+  titulo,
+  rotuloConfirmar,
+  rotuloCancelar = 'Cancelar',
+  aoConfirmar,
+  aoCancelar,
+  ocupada = false,
+  perigo = false,
+  erro,
+  children,
+}: Propriedades) {
   const idTitulo = useId()
   const painel = useRef<HTMLDivElement>(null)
   const cancelar = useRef(aoCancelar)
@@ -84,9 +99,9 @@ export function Confirmacao({ aberta, titulo, rotuloConfirmar, aoConfirmar, aoCa
         )}
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Botao variante="secundario" onClick={aoCancelar}>
-            Cancelar
+            {rotuloCancelar}
           </Botao>
-          <Botao variante={perigo ? 'perigo' : 'primario'} onClick={aoConfirmar}>
+          <Botao variante={perigo ? 'perigo' : 'primario'} carregando={ocupada} onClick={aoConfirmar}>
             {rotuloConfirmar}
           </Botao>
         </div>

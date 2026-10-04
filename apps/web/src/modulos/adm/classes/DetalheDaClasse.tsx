@@ -220,7 +220,19 @@ function Corpo({ detalhe }: { detalhe: ClasseDetalhe }) {
               {tipo}
               {idade}
             </p>
-            <h2 className="font-titulo text-2xl font-bold text-texto">{detalhe.nome}</h2>
+            <div className="flex items-center gap-2.5">
+              <span
+                aria-hidden
+                className="size-3.5 shrink-0 rounded-full"
+                style={{ backgroundColor: `var(${detalhe.corToken})` }}
+              />
+              <h2
+                className="font-titulo text-2xl font-bold"
+                style={{ color: `var(${detalhe.corToken})` }}
+              >
+                {detalhe.nome}
+              </h2>
+            </div>
             <p className="text-base text-texto-2">
               {plural(ativos, 'requisito ativo', 'requisitos ativos')}
               {ajustados > 0 && ` · ${plural(ajustados, 'ajustado', 'ajustados')} pelo clube`}

@@ -74,7 +74,7 @@ export function EditarEvento() {
     )
   }
 
-  return <div className="flex flex-col gap-5 p-4">{corpo}</div>
+  return <div className="flex flex-col gap-5 py-4">{corpo}</div>
 }
 
 interface PropriedadesDaEdicao {

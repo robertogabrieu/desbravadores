@@ -5,6 +5,7 @@ import { useCriarUnidade, useEditarUnidade } from '../../../api/unidades'
 import type { Unidade } from '../../../api/leitura'
 import { CaixaMarcacao } from '../../../ui/CaixaMarcacao'
 import { Campo } from '../../../ui/Campo'
+import { ResumoDosErros, useErrosAVista } from '../../../ui/ErrosDoFormulario'
 import { RodapeDoFormulario } from '../../../ui/RodapeDoFormulario'
 import { Selecao } from '../../../ui/Selecao'
 import { lerErroDaApi } from '../desbravadores/erros'
@@ -25,6 +26,7 @@ export function FormularioUnidade({ unidade, cancelar, aoConcluir }: Propriedade
   const [ativa, setAtiva] = useState(unidade?.ativa ?? true)
   const [erros, setErros] = useState<Record<string, string>>({})
   const [erroGeral, setErroGeral] = useState<string | null>(null)
+  const { formulario, pendencias } = useErrosAVista(erros)
   const criar = useCriarUnidade()
   const editar = useEditarUnidade()
 
@@ -49,7 +51,8 @@ export function FormularioUnidade({ unidade, cancelar, aoConcluir }: Propriedade
   }
 
   return (
-    <form noValidate onSubmit={(evento) => void enviar(evento)} className="flex flex-col gap-4">
+    <form ref={formulario} noValidate onSubmit={(evento) => void enviar(evento)} className="flex flex-col gap-4">
+      <ResumoDosErros pendencias={pendencias} />
       <Campo rotulo="Nome" value={nome} erro={erros['nome']} onChange={(e) => setNome(e.target.value)} />
       <Selecao rotulo="Tipo" value={tipo} onChange={(e) => setTipo(TIPOS_DE_UNIDADE.find((t) => t === e.target.value) ?? 'MISTA')}>
         {TIPOS_DE_UNIDADE.map((t) => (

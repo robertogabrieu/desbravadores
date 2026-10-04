@@ -93,6 +93,15 @@ describe('A3 · nova e editar (telas dedicadas)', () => {
     expect(enviou).toBe(false)
   })
 
+  it('salvar sem nome foca o campo e resume o que falta, com link para ele', async () => {
+    servidor.use(handlerCriarUnidade(criarUnidade()))
+    abrir('/adm/unidades/nova')
+    await userEvent.click(await screen.findByRole('button', { name: 'Salvar' }))
+    await waitFor(() => expect(screen.getByLabelText('Nome')).toHaveFocus())
+    const resumo = screen.getByRole('region', { name: 'Revise 1 campo para salvar' })
+    expect(within(resumo).getAllByRole('link').map((link) => link.textContent)).toEqual(['Nome'])
+  })
+
   it('Cancelar volta à lista (nova) sem perguntar nada', async () => {
     const { roteador } = abrir('/adm/unidades/nova')
     await userEvent.click(await screen.findByRole('link', { name: 'Cancelar' }))

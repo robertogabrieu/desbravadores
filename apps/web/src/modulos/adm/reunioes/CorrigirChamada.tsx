@@ -138,7 +138,7 @@ export function CorrigirChamada() {
   else corpo = <EstadoVazio titulo="A configuração do clube ainda não chegou" descricao="Aguarde um instante e abra de novo." />
 
   return (
-    <div className="flex flex-col gap-5 p-4">
+    <div className="flex flex-col gap-5 py-4">
       <CabecalhoDaPagina
         voltar={{ para: ficha, rotulo: 'Reunião' }}
         sobretitulo={dados ? `Unidade ${dados.unidade.nome} · ${dataPorExtenso(dados.data)}` : undefined}

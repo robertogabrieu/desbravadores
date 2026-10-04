@@ -52,7 +52,41 @@ function Anel({ percentual, rotulo, tamanho, className }: { percentual: number; 
   )
 }
 
-function LinhaDoRequisito({ requisito, dbvId, minimo }: { requisito: Requisito; dbvId: string; minimo: string }) {
+interface DaLinha {
+  requisito: Requisito
+  dbvId: string
+  minimo: string
+  compacta: boolean
+}
+
+/** Círculo de 44px no início da linha da versão compacta: botão quando pode marcar, só ícone quando não pode. */
+function CirculoDoRequisito({ concluido, codigo, podeMarcar, aoTocar }: { concluido: boolean; codigo: string; podeMarcar: boolean; aoTocar: () => void }) {
+  const icone = concluido ? (
+    <span className="flex size-7 items-center justify-center rounded-full bg-sucesso text-white">
+      <Check aria-hidden className="size-4" strokeWidth={3} />
+    </span>
+  ) : (
+    <span className="size-7 rounded-full border-2 border-texto-3" />
+  )
+  if (!podeMarcar)
+    return (
+      <span aria-hidden className="flex size-[var(--touch-min)] shrink-0 items-center justify-center">
+        {icone}
+      </span>
+    )
+  return (
+    <button
+      type="button"
+      onClick={aoTocar}
+      aria-label={concluido ? `Desmarcar ${codigo}` : `Marcar ${codigo} como feito`}
+      className="flex size-[var(--touch-min)] shrink-0 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-marca"
+    >
+      {icone}
+    </button>
+  )
+}
+
+function LinhaDoRequisito({ requisito, dbvId, minimo, compacta }: DaLinha) {
   const marcar = useMarcarRequisito()
   const desmarcar = useDesmarcarRequisito()
   const [marcando, setMarcando] = useState(false)
@@ -77,8 +111,19 @@ function LinhaDoRequisito({ requisito, dbvId, minimo }: { requisito: Requisito; 
 
   return (
     <li className="flex flex-col gap-2 border-t border-borda py-3 first:border-t-0">
-      <div className="flex items-start gap-3">
-        {concluido ? <Check aria-hidden className="mt-0.5 size-5 shrink-0 text-sucesso" /> : <Circle aria-hidden className="mt-0.5 size-5 shrink-0 text-texto-3" />}
+      <div className={cn('flex gap-3', compacta ? 'items-center' : 'items-start')}>
+        {compacta ? (
+          <CirculoDoRequisito
+            concluido={concluido}
+            codigo={requisito.codigo}
+            podeMarcar={requisito.podeMarcar}
+            aoTocar={() => (concluido ? setConfirmando(true) : setMarcando(true))}
+          />
+        ) : concluido ? (
+          <Check aria-hidden className="mt-0.5 size-5 shrink-0 text-sucesso" />
+        ) : (
+          <Circle aria-hidden className="mt-0.5 size-5 shrink-0 text-texto-3" />
+        )}
         <div className="flex flex-1 flex-col gap-0.5">
           <span className="text-base text-texto">
             <span className="font-semibold">{requisito.codigo}</span> {requisito.texto}
@@ -87,7 +132,7 @@ function LinhaDoRequisito({ requisito, dbvId, minimo }: { requisito: Requisito; 
         </div>
       </div>
 
-      {requisito.podeMarcar && !marcando && (
+      {requisito.podeMarcar && !compacta && !marcando && (
         <div className="pl-8">
           {concluido ? (
             <Botao variante="secundario" onClick={() => setConfirmando(true)} aria-label={`Desmarcar ${requisito.codigo}`}>
@@ -102,7 +147,7 @@ function LinhaDoRequisito({ requisito, dbvId, minimo }: { requisito: Requisito; 
       )}
 
       {marcando && (
-        <div className="flex flex-col gap-2 pl-8">
+        <div className={cn('flex flex-col gap-2', compacta ? 'pl-14' : 'pl-8')}>
           <CampoData rotulo="Data de conclusão" value={data} min={minimo} max={hojeLocal()} onChange={(e) => setData(e.target.value)} />
           <div className="flex gap-2">
             <Botao onClick={confirmarMarcacao} carregando={marcar.isPending} disabled={data === ''}>
@@ -116,7 +161,7 @@ function LinhaDoRequisito({ requisito, dbvId, minimo }: { requisito: Requisito; 
       )}
 
       {erro && (
-        <p role="alert" className="pl-8 text-sm font-medium text-perigo">
+        <p role="alert" className={cn('text-sm font-medium text-perigo', compacta ? 'pl-14' : 'pl-8')}>
           {erro}
         </p>
       )}
@@ -135,7 +180,7 @@ function LinhaDoRequisito({ requisito, dbvId, minimo }: { requisito: Requisito; 
   )
 }
 
-function SecaoDoCaderno({ secao, dbvId, minimo, abertaDeInicio }: { secao: Secao; dbvId: string; minimo: string; abertaDeInicio: boolean }) {
+function SecaoDoCaderno({ secao, dbvId, minimo, abertaDeInicio, compacta }: { secao: Secao; dbvId: string; minimo: string; abertaDeInicio: boolean; compacta: boolean }) {
   const [aberta, setAberta] = useState(abertaDeInicio)
   const completa = secao.total > 0 && secao.concluidos >= secao.total
   const percentual = secao.total === 0 ? 0 : Math.round((secao.concluidos / secao.total) * 100)
@@ -150,8 +195,8 @@ function SecaoDoCaderno({ secao, dbvId, minimo, abertaDeInicio }: { secao: Secao
         <span className="flex w-full items-center justify-between gap-2 text-sm">
           <span className="font-semibold text-texto">{secao.nome}</span>
           <span className="flex items-center gap-2 text-texto-2">
-            {secao.concluidos}/{secao.total}
-            <span className="font-semibold text-marca">{aberta ? 'Esconder requisitos' : 'Ver requisitos'}</span>
+            {compacta ? `${secao.concluidos} de ${secao.total}` : `${secao.concluidos}/${secao.total}`}
+            {!compacta && <span className="font-semibold text-marca">{aberta ? 'Esconder requisitos' : 'Ver requisitos'}</span>}
             <ChevronDown aria-hidden className={cn('size-4 transition-transform', aberta && 'rotate-180')} />
           </span>
         </span>
@@ -162,7 +207,7 @@ function SecaoDoCaderno({ secao, dbvId, minimo, abertaDeInicio }: { secao: Secao
       {aberta && (
         <ul aria-label={`Requisitos de ${secao.nome}`} className="flex flex-col">
           {secao.requisitos.map((requisito) => (
-            <LinhaDoRequisito key={requisito.id} requisito={requisito} dbvId={dbvId} minimo={minimo} />
+            <LinhaDoRequisito key={requisito.id} requisito={requisito} dbvId={dbvId} minimo={minimo} compacta={compacta} />
           ))}
         </ul>
       )}
@@ -170,7 +215,7 @@ function SecaoDoCaderno({ secao, dbvId, minimo, abertaDeInicio }: { secao: Secao
   )
 }
 
-function Conteudo({ progresso, dbvId }: { progresso: ProgressoDbv; dbvId: string }) {
+function Conteudo({ progresso, dbvId, compacta }: { progresso: ProgressoDbv; dbvId: string; compacta: boolean }) {
   const regular = progresso.matriculas.find((m) => m.classe.tipo === 'REGULAR')
   const avancada = progresso.matriculas.find((m) => m.classe.tipo === 'AVANCADA')
   const principal = regular ?? avancada
@@ -209,6 +254,7 @@ function Conteudo({ progresso, dbvId }: { progresso: ProgressoDbv; dbvId: string
             dbvId={dbvId}
             minimo={`${principal.anoClube}-01-01`}
             abertaDeInicio={secao.codigo === primeiraIncompleta?.codigo}
+            compacta={compacta}
           />
         ))}
       </div>
@@ -216,13 +262,16 @@ function Conteudo({ progresso, dbvId }: { progresso: ProgressoDbv; dbvId: string
   )
 }
 
-/** Progresso do DBV no perfil (F7/F8/F12): não é offline — sem conexão, só esta seção pede internet. */
-export function SecaoProgresso({ dbvId }: { dbvId: string }) {
+/**
+ * Progresso do DBV no perfil (F7/F8/F12): não é offline — sem conexão, só esta seção pede internet.
+ * `compacta` é a versão da ficha do Adm no celular: marca e desmarca pelo círculo de 44px no início da linha e conta as seções como "c de t".
+ */
+export function SecaoProgresso({ dbvId, compacta = false }: { dbvId: string; compacta?: boolean }) {
   const consulta = useProgressoDbv(dbvId)
   const { modo } = useConexao()
 
   let corpo
-  if (consulta.data) corpo = <Conteudo progresso={consulta.data} dbvId={dbvId} />
+  if (consulta.data) corpo = <Conteudo progresso={consulta.data} dbvId={dbvId} compacta={compacta} />
   else if (modo === 'SEM_CONEXAO') corpo = <DisponivelComInternet />
   else if (consulta.isError) corpo = <ErroDeCarga erro={consulta.error} aoTentarDeNovo={() => void consulta.refetch()} />
   else

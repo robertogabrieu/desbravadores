@@ -28,7 +28,7 @@ describe('Abas', () => {
     expect(screen.getByRole('tab', { name: 'Classe' })).toHaveAttribute('aria-selected', 'false')
 
     await userEvent.click(screen.getByRole('tab', { name: 'Classe' }))
-    expect(aoMudar).toHaveBeenCalledWith('b')
+    expect(aoMudar).toHaveBeenCalledExactlyOnceWith('b', 'toque')
   })
 
   it('setas movem entre abas', async () => {
@@ -38,7 +38,19 @@ describe('Abas', () => {
     screen.getByRole('tab', { name: 'Unidade' }).focus()
     await userEvent.keyboard('{ArrowRight}')
 
-    expect(aoMudar).toHaveBeenCalledWith('b')
+    expect(aoMudar).toHaveBeenCalledExactlyOnceWith('b', 'teclado')
+  })
+
+  it('quebram linha em vez de rolar de lado, e cada aba fica inteira numa linha só', () => {
+    render(<Abas rotulo="Seções" abas={[...abas, { id: 'c', rotulo: 'Instrutores · 1' }]} ativa="c" aoMudar={vi.fn()} />)
+
+    const faixa = screen.getByRole('tablist', { name: 'Seções' })
+    expect(faixa).toHaveClass('flex-wrap')
+    expect(faixa.className).not.toMatch(/overflow-x/)
+    for (const aba of screen.getAllByRole('tab')) {
+      expect(aba).toHaveClass('whitespace-nowrap', 'min-h-[var(--touch-min)]')
+    }
+    expect(screen.getByRole('tab', { name: 'Instrutores · 1' })).toHaveAttribute('aria-selected', 'true')
   })
 })
 

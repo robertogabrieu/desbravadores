@@ -2,15 +2,19 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { Classe } from '../../api/leitura'
 import type { CronogramaDaMontagem, Montagem } from '../../api/montagem'
+import { useLarguraMenorQue } from '../../layouts/useLarguraMenorQue'
 import { Botao } from '../../ui/Botao'
 import { BarraProgresso } from '../../ui/BarraProgresso'
 import { EstadoVazio } from '../../ui/EstadoVazio'
 import { cn } from '../../ui/cn'
+import { LARGURA_DO_CELULAR } from '../../ui/larguraDoCelular'
 import { EtiquetaCampo } from './EtiquetaCampo'
 import { FaixaDeMontagem } from './FaixaDeMontagem'
+import { ConfirmarPublicacao } from './ConfirmarPublicacao'
 import { FormularioAula } from './FormularioAula'
 import type { AulaEmEdicao } from './FormularioAula'
 import { LinhaData } from './LinhaData'
+import { PainelAdmCelular } from './PainelAdmCelular'
 import { SeloDoCronograma } from './SeloDoCronograma'
 import { aceitaRequisitoNovo, diaMes } from './datas'
 import { useAcoesDeMontagem } from './useAcoesDeMontagem'
@@ -25,11 +29,18 @@ interface Propriedades {
 
 const QUEM_MONTA = { ADM: 'Adm', INSTRUTOR: 'Instrutores da classe' } as const
 
-/** A7 com cronograma: requisitos à esquerda, datas à direita; escolhe um requisito e "Colocar aqui" numa data. */
-export function PainelAdm({ montagem, cronograma, classe, ano, aoAtualizar }: Propriedades) {
+/** A7 com cronograma; no celular a montagem é outra tela, guiada pelos requisitos sem data. */
+export function PainelAdm(propriedades: Propriedades) {
+  const celular = useLarguraMenorQue(LARGURA_DO_CELULAR)
+  return celular ? <PainelAdmCelular {...propriedades} /> : <PainelAdmComputador {...propriedades} />
+}
+
+/** Computador: requisitos à esquerda, datas à direita; escolhe um requisito e "Colocar aqui" numa data. */
+function PainelAdmComputador({ montagem, cronograma, classe, ano, aoAtualizar }: Propriedades) {
   const acoes = useAcoesDeMontagem(montagem.classe.id, ano, cronograma.id, montagem)
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null)
   const [aulaEmEdicao, setAulaEmEdicao] = useState<AulaEmEdicao | null>(null)
+  const [confirmandoPublicacao, setConfirmandoPublicacao] = useState(false)
 
   const selecionado = montagem.requisitos.find((requisito) => requisito.id === selecionadoId) ?? null
   const agendados = montagem.requisitos.filter((requisito) => requisito.data !== null).length
@@ -40,6 +51,16 @@ export function PainelAdm({ montagem, cronograma, classe, ano, aoAtualizar }: Pr
     if (!selecionado) return
     if (await acoes.colocar(selecionado.id, data)) setSelecionadoId(null)
   }
+
+  function escolherRequisito(id: string) {
+    setSelecionadoId(id === selecionadoId ? null : id)
+  }
+
+  async function publicar() {
+    if (await acoes.publicar()) setConfirmandoPublicacao(false)
+  }
+
+  const faixaDeErro = acoes.erro && <FaixaDeMontagem erro={acoes.erro} aoAtualizar={() => { acoes.limparErro(); aoAtualizar() }} />
 
   async function salvarAula(aula: AulaEmEdicao, data: string): Promise<boolean> {
     return aula.aulaId ? acoes.editarAula(aula.aulaId, aula.dados) : acoes.criarAula(data, aula.dados)
@@ -52,7 +73,7 @@ export function PainelAdm({ montagem, cronograma, classe, ano, aoAtualizar }: Pr
         <span className="text-sm text-texto-2">
           Quem monta: <strong className="text-texto">{classe ? QUEM_MONTA[classe.quemMontaCronograma] : '—'}</strong>
           {' · '}
-          <Link className="font-semibold text-marca underline" to={`/adm/classes?classe=${montagem.classe.id}`}>
+          <Link className="inline-flex min-h-[var(--touch-min)] items-center font-semibold text-marca underline" to={`/adm/classes?classe=${montagem.classe.id}`}>
             Alterar em Classes
           </Link>
         </span>
@@ -60,13 +81,13 @@ export function PainelAdm({ montagem, cronograma, classe, ano, aoAtualizar }: Pr
           className="ml-auto"
           carregando={acoes.ocupada}
           disabled={cronograma.status === 'PUBLICADO'}
-          onClick={() => void acoes.publicar()}
+          onClick={() => setConfirmandoPublicacao(true)}
         >
           Publicar
         </Botao>
       </div>
 
-      {acoes.erro && <FaixaDeMontagem erro={acoes.erro} aoAtualizar={() => { acoes.limparErro(); aoAtualizar() }} />}
+      {faixaDeErro}
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 min-[900px]:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <section aria-label="Requisitos" className="flex flex-col gap-3 rounded-cartao border border-borda-controle bg-superficie p-4">
@@ -84,7 +105,7 @@ export function PainelAdm({ montagem, cronograma, classe, ano, aoAtualizar }: Pr
                 key={requisito.id}
                 type="button"
                 aria-pressed={requisito.id === selecionadoId}
-                onClick={() => setSelecionadoId(requisito.id === selecionadoId ? null : requisito.id)}
+                onClick={() => escolherRequisito(requisito.id)}
                 className={cn(
                   'flex min-h-[var(--touch-min)] items-start gap-3 rounded-controle border p-3 text-left focus-visible:outline-2 focus-visible:outline-marca',
                   requisito.id === selecionadoId ? 'border-2 border-marca bg-marca-tinta' : 'border-divisor bg-superficie',
@@ -149,6 +170,17 @@ export function PainelAdm({ montagem, cronograma, classe, ano, aoAtualizar }: Pr
           )}
         </section>
       </div>
+
+      {confirmandoPublicacao && (
+        <ConfirmarPublicacao
+          nomeDaClasse={montagem.classe.nome}
+          semData={total - agendados}
+          ocupada={acoes.ocupada}
+          aviso={faixaDeErro}
+          aoPublicar={() => void publicar()}
+          aoContinuar={() => setConfirmandoPublicacao(false)}
+        />
+      )}
 
       {aulaEmEdicao && (
         <FormularioAula aula={aulaEmEdicao} desabilitado={acoes.ocupada} aoSalvar={salvarAula} aoFechar={() => setAulaEmEdicao(null)} />

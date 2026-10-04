@@ -95,22 +95,10 @@ describe('A6 · grade', () => {
     expect(grade.getByText('+1')).toBeInTheDocument()
   })
 
-  it('no celular a grade só informa: o evento vira faixa sem toque e a reunião ganha o ícone da legenda', async () => {
+  it('a reunião regular da legenda leva o ícone, para não depender só da cor', async () => {
     abrir(handlerCalendario({ eventos: [carnaval], diasDeReuniao: ['2026-10-03'] }))
-    const grupo = await screen.findByRole('group', { name: 'Outubro de 2026' })
-    const links = within(grupo).getAllByRole('link', { name: 'Acampamento do clube' })
-    for (const link of links) expect(link).toHaveClass('max-sm:hidden')
-    const faixas = grupo.querySelectorAll('[data-faixa-do-evento]')
-    expect(faixas).toHaveLength(links.length)
-    for (const faixa of faixas) {
-      expect(faixa.tagName).toBe('SPAN')
-      expect(faixa).toHaveAttribute('aria-hidden', 'true')
-      expect(faixa).toHaveClass('sm:hidden')
-    }
-    expect(grupo.querySelectorAll('[data-marca="reuniao"]')).toHaveLength(1)
-    const legenda = screen.getByRole('list', { name: 'Legenda' })
+    const legenda = await screen.findByRole('list', { name: 'Legenda' })
     expect(within(legenda).getByText(/^Reunião regular/).querySelector('[data-marca="reuniao"]')).not.toBeNull()
-    expect(screen.getByText('Para abrir um evento, toque nele na lista abaixo.')).toBeInTheDocument()
   })
 
   it('o cartão do evento na lista mostra a seta de que abre', async () => {
@@ -347,9 +335,9 @@ describe('P3 · formulário', () => {
     await userEvent.click(screen.getByLabelText('Terá reunião'))
     await userEvent.click(screen.getByLabelText('Terá classe'))
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
-    const alerta = await screen.findByRole('alert')
-    expect(alerta).toHaveTextContent('Marque Terá reunião, Terá classe ou as duas.')
     const grupo = screen.getByRole('group', { name: 'Para a reunião e as classes' })
+    const alerta = await within(grupo).findByRole('alert')
+    expect(alerta).toHaveTextContent('Marque Terá reunião, Terá classe ou as duas.')
     expect(grupo).toContainElement(alerta)
     expect(grupo).toHaveAttribute('aria-describedby', alerta.id)
     expect(chamadas).toBe(0)

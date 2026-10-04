@@ -27,7 +27,7 @@ export function FichaReuniao() {
   else if (consulta.isError) corpo = <ErroDeCarga erro={consulta.error} aoTentarDeNovo={() => void consulta.refetch()} />
   else corpo = <Carregando rotulo="Carregando a reunião" />
 
-  return <div className="flex flex-col gap-5 p-4">{corpo}</div>
+  return <div className="flex flex-col gap-5 py-4">{corpo}</div>
 }
 
 function FichaCarregada({ dados }: { dados: Detalhe }) {

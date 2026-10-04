@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import type { BoundFunctions, queries } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
@@ -9,7 +9,8 @@ import { handlersConviteAcesso } from '../../../testes/handlers/convite-acesso'
 import { criarDesbravador, handlerCriarDesbravador, handlerDesbravador, handlerDesbravadores, handlerEditarDesbravador, handlerInativarDesbravador } from '../../../testes/handlers/desbravadores'
 import { criarClasse, criarUnidade, handlerClasses, handlerUnidades } from '../../../testes/handlers/leitura'
 import { handlerPerfilDe } from '../../../testes/handlers/perfil'
-import { handlerProgressoDbv } from '../../../testes/handlers/progresso'
+import { criarProgressoDbv, handlerDesmarcarRequisito, handlerMarcarRequisito, handlerProgressoDbv } from '../../../testes/handlers/progresso'
+import { simularLargura } from '../../../testes/midia'
 import { uuid } from '../../../testes/handlers/sessao'
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
@@ -163,5 +164,156 @@ describe('ficha do desbravador', () => {
     abrir(rota)
     expect(await screen.findByRole('heading', { name: 'Não encontramos este desbravador' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Ver a lista de desbravadores' })).toHaveAttribute('href', '/adm/desbravadores')
+  })
+})
+
+describe('ficha do desbravador no celular', () => {
+  const FICHA = `/adm/desbravadores/${uuid(310)}`
+
+  function abrirNoCelular(rota = FICHA, dbv = novaAna()) {
+    simularLargura(390)
+    return abrir(rota, dbv)
+  }
+
+  it('cabeçalho, números compactos e o seletor começa em Progresso', async () => {
+    abrirNoCelular()
+    expect(await screen.findByText('Desbravador · Ativo')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Editar' })).toBeInTheDocument()
+    const numeros = within(screen.getByRole('region', { name: 'Números do mês' }))
+    expect(await numeros.findByText('67%')).toBeInTheDocument()
+    expect(numeros.getByText('da classe')).toBeInTheDocument()
+    expect(numeros.getByText('3º no mês')).toBeInTheDocument()
+    expect(numeros.getByText('frequência')).toBeInTheDocument()
+    const partes = within(screen.getByRole('tablist', { name: 'Partes da ficha' }))
+    expect(partes.getAllByRole('tab').map((aba) => aba.textContent)).toEqual(['Progresso', 'Cadastro', 'Responsável'])
+    expect(partes.getByRole('tab', { name: 'Progresso' })).toHaveAttribute('aria-selected', 'true')
+    expect(await screen.findByRole('img', { name: '67% da classe Amigo concluída' })).toBeInTheDocument()
+    expect(screen.getByText('1 de 2')).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Cadastro' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Inativar desbravador' })).not.toBeInTheDocument()
+  })
+
+  it('trocar de parte troca o conteúdo, grava ?parte= e o voltar do aparelho devolve a parte anterior', async () => {
+    const { roteador } = abrirNoCelular()
+    await userEvent.click(await screen.findByRole('tab', { name: 'Cadastro' }))
+    expect(roteador.state.location.search).toBe('?parte=cadastro')
+    const cadastro = within(screen.getByRole('region', { name: 'Cadastro' }))
+    expect(valorDe(cadastro, 'Nome público')).toHaveTextContent('Ana B.')
+    expect(cadastro.getByRole('region', { name: 'Acesso ao app' })).toBeInTheDocument()
+    expect(cadastro.getByRole('button', { name: 'Inativar desbravador' })).toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: /da classe Amigo concluída/ })).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Responsável' }))
+    expect(roteador.state.location.search).toBe('?parte=responsavel')
+    expect(valorDe(within(screen.getByRole('region', { name: 'Responsável' })), 'Nome')).toHaveTextContent('Márcia Souza')
+    expect(screen.queryByRole('region', { name: 'Cadastro' })).not.toBeInTheDocument()
+
+    await roteador.navigate(-1)
+    expect(await screen.findByRole('region', { name: 'Cadastro' })).toBeInTheDocument()
+  })
+
+  it('as setas do teclado trocam de parte sem empilhar o histórico; o toque empilha', async () => {
+    const { roteador } = abrirNoCelular()
+    await userEvent.click(await screen.findByRole('tab', { name: 'Cadastro' }))
+    expect(roteador.state.historyAction).toBe('PUSH')
+    await userEvent.keyboard('{ArrowRight}')
+    expect(roteador.state.location.search).toBe('?parte=responsavel')
+    expect(roteador.state.historyAction).toBe('REPLACE')
+    expect(screen.getByRole('tab', { name: 'Responsável' })).toHaveFocus()
+    await userEvent.keyboard('{ArrowLeft}')
+    expect(roteador.state.location.search).toBe('?parte=cadastro')
+    await roteador.navigate(-1)
+    expect(roteador.state.location.search).toBe('')
+  })
+
+  it('Editar → Salvar volta na parte que estava aberta', async () => {
+    const dbv = novaAna()
+    const editada = { ...dbv.atual, nome: 'Ana Beatriz Lima' }
+    servidor.use(handlerEditarDesbravador(editada, [], () => { dbv.atual = editada }))
+    const { roteador } = abrirNoCelular(`${FICHA}?parte=cadastro`, dbv)
+    await userEvent.click(await screen.findByRole('link', { name: 'Editar' }))
+    expect(roteador.state.location.pathname).toBe(`${FICHA}/editar`)
+    expect(screen.getByRole('link', { name: 'Cancelar' })).toHaveAttribute('href', `${FICHA}?parte=cadastro`)
+    const nome = await screen.findByLabelText('Nome completo')
+    await userEvent.clear(nome)
+    await userEvent.type(nome, 'Ana Beatriz Lima')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    expect(await screen.findByRole('heading', { level: 1, name: 'Ana Beatriz Lima' })).toBeInTheDocument()
+    expect(roteador.state.location.pathname).toBe(FICHA)
+    expect(roteador.state.location.search).toBe('?parte=cadastro')
+    expect(screen.getByRole('region', { name: 'Cadastro' })).toBeInTheDocument()
+  })
+
+  it('trocar de parte mantém o Voltar para a lista com os filtros de origem', async () => {
+    abrir('/adm/desbravadores?busca=Ana&situacao=todos')
+    await userEvent.click(await screen.findByRole('link', { name: 'Ana Beatriz Souza' }))
+    act(() => simularLargura(390))
+    await userEvent.click(await screen.findByRole('tab', { name: 'Cadastro' }))
+    expect(screen.getByRole('link', { name: 'Voltar para Desbravadores' })).toHaveAttribute('href', '/adm/desbravadores?busca=Ana&situacao=todos')
+  })
+
+  it('o endereço com ?parte= abre direto naquela parte', async () => {
+    abrirNoCelular(`${FICHA}?parte=responsavel`)
+    expect(await screen.findByRole('region', { name: 'Responsável' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Responsável' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('sem contato não há a parte Responsável, nem pelo endereço', async () => {
+    abrirNoCelular(`${FICHA}?parte=responsavel`, novaAna({ contato: undefined }))
+    await screen.findByRole('tablist', { name: 'Partes da ficha' })
+    expect(screen.queryByRole('tab', { name: 'Responsável' })).not.toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Progresso' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it.each([
+    ['Diretoria', { tipo: 'DIRETORIA' as const, unidade: null }],
+    ['inativo', { ativo: false, saidaEm: '2026-08-01' }],
+  ])('%s: começa em Cadastro e o Reativar/Inativar fica lá', async (_caso, parcial) => {
+    abrirNoCelular(FICHA, novaAna(parcial))
+    expect(await screen.findByRole('tab', { name: 'Cadastro' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('region', { name: 'Cadastro' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /(Inativar|Reativar) desbravador/ })).toBeInTheDocument()
+  })
+
+  it('o círculo pendente abre a data de conclusão e marca pelo mesmo caminho', async () => {
+    const corpos: unknown[] = []
+    servidor.use(handlerMarcarRequisito((corpo) => corpos.push(corpo)))
+    abrirNoCelular()
+    expect(await screen.findByText('Ainda não concluído')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Marcar como feito' })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Marcar DE.2 como feito' }))
+    const campo = screen.getByLabelText('Data de conclusão')
+    expect(campo).toHaveAttribute('min', '2020-01-01')
+    fireEvent.change(campo, { target: { value: '2020-05-05' } })
+    await userEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+    await waitFor(() => expect(corpos).toEqual([{ concluidoEm: '2020-05-05' }]))
+  })
+
+  it('o círculo feito abre "Desmarcar requisito?" e só desmarca ao confirmar', async () => {
+    const chamadas: number[] = []
+    servidor.use(handlerDesmarcarRequisito(() => chamadas.push(1)))
+    abrirNoCelular()
+    expect(await screen.findByText('Concluído em 02/04/2020')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Desmarcar DE.1' }))
+    const janela = within(screen.getByRole('dialog', { name: 'Desmarcar requisito?' }))
+    expect(chamadas).toHaveLength(0)
+    await userEvent.click(janela.getByRole('button', { name: 'Desmarcar' }))
+    await waitFor(() => expect(chamadas).toHaveLength(1))
+  })
+
+  it('sem permissão de marcar, o círculo é só ícone, sem botão', async () => {
+    abrirNoCelular()
+    servidor.use(handlerProgressoDbv(criarProgressoDbv(false)))
+    expect(await screen.findByText(/Requisito DE\.2/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Marcar/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Desmarcar/ })).not.toBeInTheDocument()
+  })
+
+  it('no computador continua tudo empilhado, sem seletor de partes', async () => {
+    abrir(FICHA)
+    await screen.findByRole('region', { name: 'Cadastro' })
+    expect(screen.queryByRole('tablist', { name: 'Partes da ficha' })).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Responsável' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Marcar DE.2' })).toHaveTextContent('Marcar como feito')
   })
 })

@@ -10,7 +10,7 @@ const LISTA = '/adm/unidades'
 export function NovaUnidade() {
   const navegar = useNavigate()
   return (
-    <div className="flex flex-col gap-5 p-4">
+    <div className="flex flex-col gap-5 py-4">
       <CabecalhoDaPagina voltar={{ para: LISTA, rotulo: 'Unidades' }} titulo="Nova unidade" />
       <FormularioUnidade cancelar={{ para: LISTA }} aoConcluir={(criada) => void navegar(`${LISTA}/${criada.id}`, { replace: true, state: { voltarPara: LISTA } })} />
     </div>

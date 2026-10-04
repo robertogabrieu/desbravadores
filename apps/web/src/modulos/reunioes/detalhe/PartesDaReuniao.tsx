@@ -32,7 +32,7 @@ export function diaDaSemana(data: string): string {
 
 function Marca({ ligada, children }: { ligada: boolean; children: string }) {
   return (
-    <span className={cn('rounded-md px-2 py-0.5 text-xs font-bold', ligada ? 'bg-marca-suave text-marca' : 'bg-superficie-suave text-texto-2 line-through')}>{children}</span>
+    <span className={cn('rounded-md px-2 py-0.5 text-sm font-bold', ligada ? 'bg-marca-suave text-marca' : 'bg-superficie-suave text-texto-2 line-through')}>{children}</span>
   )
 }
 
@@ -52,7 +52,7 @@ function LinhaDbv({ linha, mostrarLicao }: { linha: Linha; mostrarLicao: boolean
               {mostrarLicao && <Marca ligada={linha.licao}>Lição</Marca>}
             </>
           ) : (
-            <span className="rounded-md bg-perigo/10 px-2 py-0.5 text-xs font-bold text-perigo">
+            <span className="rounded-md bg-perigo/10 px-2 py-0.5 text-sm font-bold text-perigo">
               {linha.situacao === 'FALTA_JUSTIFICADA' ? 'Falta justificada' : 'Falta sem justificativa'}
             </span>
           )}
@@ -67,7 +67,7 @@ function Indicador({ valor, rotulo }: { valor: string; rotulo: string }) {
   return (
     <div className="flex flex-col items-center">
       <span className="font-titulo text-xl font-extrabold">{valor}</span>
-      <span className="text-xs font-semibold text-texto-2">{rotulo}</span>
+      <span className="text-sm font-semibold text-texto-2">{rotulo}</span>
     </div>
   )
 }

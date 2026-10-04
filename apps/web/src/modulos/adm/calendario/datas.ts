@@ -92,3 +92,16 @@ export function textoDosDias(datas: string[]): string {
   if (datas.length > MAXIMO_DE_DIAS_NA_LISTA) return `${datas.length} ${plural}, de ${diaEMesSemZero(primeira)} a ${diaEMesSemZero(ultima)}`
   return `${plural} ${juntarNomes(datas.map((data) => String(numeroDoDia(data))))}`
 }
+
+/** Último dia do mês (`mes` de 0 a 11). */
+export const ultimoDiaDoMes = (ano: number, mes: number): number => new Date(Date.UTC(ano, mes + 1, 0)).getUTCDate()
+
+/** "11 de outubro". */
+export const diaDoMesPorExtenso = (data: string): string =>
+  `${numeroDoDia(data)} de ${(MESES[Number(data.slice(5, 7)) - 1] ?? '').toLowerCase()}`
+
+/** "Domingo, 11 de outubro". */
+export function diaDaSemanaEDoMes(data: string): string {
+  const nome = NOMES_DO_DIA[diaDaSemana(data)] ?? ''
+  return `${nome.charAt(0).toUpperCase()}${nome.slice(1)}, ${diaDoMesPorExtenso(data)}`
+}

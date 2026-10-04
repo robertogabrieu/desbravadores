@@ -1,3 +1,4 @@
+import { primeiroEUltimoNome } from '@desbravadores/shared'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
@@ -6,11 +7,11 @@ import { useRanking, useRankingUnidades } from '../../api/ranking'
 import { useConexao } from '../../offline'
 import { Abas } from '../../ui/Abas'
 import { Avatar } from '../../ui/Avatar'
-import { Chip } from '../../ui/Chip'
 import { EstadoVazio } from '../../ui/EstadoVazio'
 import { Esqueleto } from '../../ui/Esqueleto'
 import { LinhaQueNavega } from '../../ui/LinhaQueNavega'
 import { NomeDaFicha } from '../../ui/LinkDeFicha'
+import { Selecao } from '../../ui/Selecao'
 import { cn } from '../../ui/cn'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../ui/EstadosDeCarga'
 import { nomeDoMes } from '../reunioes/historico/datas'
@@ -25,6 +26,13 @@ function deslocarMes(mes: string, passo: number): string {
   return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}`
 }
 
+/**
+ * Nome comprido quebra em até 2 linhas em vez de virar reticências. O nome com ícone de ficha vira
+ * texto corrido para a quebra contar as linhas dele, e o ícone segue a última palavra.
+ */
+const QUEBRA_EM_DUAS_LINHAS = 'line-clamp-2 break-words'
+const NOME_EM_TEXTO_CORRIDO = 'inline [&>svg]:ml-1.5 [&>svg]:inline [&>svg]:align-[-0.125em]'
+
 const descricaoDoItem = (item: ItemRanking): string =>
   [item.unidade?.nome, item.classe?.nome].filter(Boolean).join(' · ')
 
@@ -32,21 +40,33 @@ interface PropriedadesComPerfil {
   item: ItemRanking
   /** Arranjo do conteúdo dentro do cartão (pódio em coluna, classificação em linha). */
   className: string
+  /** Forma curta mostrada na tela; o nome inteiro fica para o leitor de tela. */
+  nomeVisivel?: string
   children: (nome: ReactNode) => ReactNode
 }
 
 /** Cartão do participante: abre o perfil, com o ícone de ficha ao lado do nome, só quando quem pede pode abri-lo. */
-function ComPerfil({ item, className, children }: PropriedadesComPerfil) {
+function ComPerfil({ item, className, nomeVisivel = item.nome, children }: PropriedadesComPerfil) {
+  const nomeNaTela = item.abrePerfil ? <NomeDaFicha nome={nomeVisivel} className={NOME_EM_TEXTO_CORRIDO} /> : nomeVisivel
+  const nome =
+    nomeVisivel === item.nome ? (
+      nomeNaTela
+    ) : (
+      <>
+        <span aria-hidden="true">{nomeNaTela}</span>
+        <span className="sr-only">{item.nome}</span>
+      </>
+    )
   if (!item.abrePerfil) {
     return (
       <div className="rounded-cartao border border-borda-controle bg-superficie p-3">
-        <div className={className}>{children(item.nome)}</div>
+        <div className={className}>{children(nome)}</div>
       </div>
     )
   }
   return (
     <LinhaQueNavega to={`/dbv/${item.dbvId}`} forma="cartao" sinal="ficha" className="p-3">
-      <div className={className}>{children(<NomeDaFicha nome={item.nome} />)}</div>
+      <div className={className}>{children(nome)}</div>
     </LinhaQueNavega>
   )
 }
@@ -58,11 +78,15 @@ function Podio({ itens }: { itens: ItemRanking[] }) {
     <ol aria-label="Pódio" className="grid grid-cols-3 items-end gap-2">
       {ordemVisual.map((item) => (
         <li key={item.dbvId}>
-          <ComPerfil item={item} className={cn('flex flex-col items-center gap-1 text-center', item.posicao === 1 && 'pb-3')}>
+          <ComPerfil
+            item={item}
+            nomeVisivel={primeiroEUltimoNome(item.nome)}
+            className={cn('flex flex-col items-center gap-1 text-center', item.posicao === 1 && 'pb-3')}
+          >
             {(nome) => (
               <>
                 <Avatar nome={item.nome} classe={classeDoAvatar(item.classe?.corToken)} />
-                <span className="text-sm font-semibold text-texto">{nome}</span>
+                <span className={cn('max-w-full text-sm font-semibold text-texto', QUEBRA_EM_DUAS_LINHAS)}>{nome}</span>
                 <span className="font-titulo text-lg font-extrabold text-marca">{item.posicao}º</span>
                 <span className="text-sm text-texto-2">{item.pontos} pts</span>
               </>
@@ -85,10 +109,10 @@ function Classificacao({ itens }: { itens: ItemRanking[] }) {
                 <span className="w-6 text-center font-titulo font-bold text-texto-2">{item.posicao}</span>
                 <Avatar nome={item.nome} classe={classeDoAvatar(item.classe?.corToken)} />
                 <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate font-semibold text-texto">{nome}</span>
-                  <span className="truncate text-sm text-texto-2">{descricaoDoItem(item)}</span>
+                  <span className={cn('font-semibold text-texto', QUEBRA_EM_DUAS_LINHAS)}>{nome}</span>
+                  <span className={cn('text-sm text-texto-2', QUEBRA_EM_DUAS_LINHAS)}>{descricaoDoItem(item)}</span>
                 </span>
-                <span className="font-semibold text-texto">{item.pontos} pts</span>
+                <span className="shrink-0 font-semibold text-texto">{item.pontos} pts</span>
               </>
             )}
           </ComPerfil>
@@ -138,7 +162,7 @@ export function Ranking() {
     )
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-4 p-4 in-data-[layout=adm]:px-0">
       <h1 className="font-titulo text-2xl font-extrabold text-texto">Ranking</h1>
       <div className="flex flex-col gap-2">
         <Abas rotulo="Período" abas={ABAS} ativa="mes" aoMudar={() => undefined} />
@@ -146,7 +170,7 @@ export function Ranking() {
           {['Trimestre', 'Ano'].map((periodo) => (
             <button key={periodo} type="button" disabled className="flex min-h-[var(--touch-min)] flex-1 items-center justify-center gap-2 disabled:opacity-60">
               {periodo}
-              <span className="rounded-full bg-trilho px-2 py-0.5 text-xs font-semibold text-texto-3">em breve</span>
+              <span className="rounded-full bg-trilho px-2 py-0.5 text-sm font-semibold text-texto-3">em breve</span>
             </button>
           ))}
         </div>
@@ -175,15 +199,19 @@ export function Ranking() {
       </div>
 
       {opcoesDeUnidade.length >= 2 && (
-        <div className="flex gap-2 overflow-x-auto md:flex-wrap">
-          <Chip selecionado={unidadeId === undefined} aoAlternar={() => setUnidadeId(undefined)}>
-            Todas as unidades
-          </Chip>
-          {opcoesDeUnidade.map((unidade) => (
-            <Chip key={unidade.id} selecionado={unidadeId === unidade.id} aoAlternar={() => setUnidadeId(unidade.id)}>
-              {unidade.nome}
-            </Chip>
-          ))}
+        <div className="sm:max-w-xs">
+          <Selecao
+            rotulo="Unidade"
+            value={unidadeId ?? ''}
+            onChange={(evento) => setUnidadeId(evento.target.value || undefined)}
+          >
+            <option value="">Todas as unidades</option>
+            {opcoesDeUnidade.map((unidade) => (
+              <option key={unidade.id} value={unidade.id}>
+                {unidade.nome}
+              </option>
+            ))}
+          </Selecao>
         </div>
       )}
 

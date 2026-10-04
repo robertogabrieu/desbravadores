@@ -11,6 +11,7 @@ import { useClasses, useUnidades, useUsuariosResumo } from '../../../api/leitura
 import { CaixaMarcacao } from '../../../ui/CaixaMarcacao'
 import { Campo } from '../../../ui/Campo'
 import { Cartao } from '../../../ui/Cartao'
+import { ResumoDosErros, useErrosAVista } from '../../../ui/ErrosDoFormulario'
 import { FaixaAviso } from '../../../ui/FaixaAviso'
 import { RodapeDoFormulario } from '../../../ui/RodapeDoFormulario'
 import { Selecao } from '../../../ui/Selecao'
@@ -118,6 +119,7 @@ export function FormularioDesbravador({ desbravador, cancelar, aoConcluir }: Pro
   const editando = desbravador !== undefined
   const [valores, setValores] = useState<Valores>(() => valoresIniciais(desbravador))
   const [erros, setErros] = useState<Record<string, string>>({})
+  const { formulario, pendencias } = useErrosAVista(erros)
   const [erroGeral, setErroGeral] = useState<string | null>(null)
   const [parcial, setParcial] = useState<{ mensagem: string; avisos: Aviso[] } | null>(null)
   const unidades = useUnidades()
@@ -264,7 +266,8 @@ export function FormularioDesbravador({ desbravador, cancelar, aoConcluir }: Pro
   const mostraNoClube = mostraUnidade || mostraClasse
 
   return (
-    <form noValidate onSubmit={(evento) => void enviar(evento)} className="flex flex-col gap-4">
+    <form ref={formulario} noValidate onSubmit={(evento) => void enviar(evento)} className="flex flex-col gap-4">
+      <ResumoDosErros pendencias={pendencias} />
       <Cartao className="flex flex-col gap-4">
         <h2 className="font-titulo text-lg font-bold text-texto">Quem é</h2>
         {desbravador && <LinhaConduz instrui={desbravador.instrui} aconselha={desbravador.aconselha} />}

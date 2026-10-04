@@ -36,7 +36,7 @@ export function ComUnidade({ aoCarregar }: { aoCarregar: (unidade: Unidade) => R
   else if (consulta.isError) corpo = <ErroDeCarga erro={consulta.error} aoTentarDeNovo={() => void consulta.refetch()} />
   else corpo = <Carregando rotulo="Carregando a unidade" />
 
-  return <div className="flex flex-col gap-5 p-4">{corpo}</div>
+  return <div className="flex flex-col gap-5 py-4">{corpo}</div>
 }
 
 export const FichaUnidade = () => <ComUnidade aoCarregar={(unidade) => <FichaCarregada unidade={unidade} />} />

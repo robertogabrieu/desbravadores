@@ -1,8 +1,12 @@
-import { useSearchParams } from 'react-router-dom'
+import { ChevronLeft } from 'lucide-react'
+import { useEffect, useRef } from 'react'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useClasses } from '../../../api/leitura'
 import type { Classe } from '../../../api/leitura'
+import { useLarguraMenorQue } from '../../../layouts/useLarguraMenorQue'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { cn } from '../../../ui/cn'
+import { LARGURA_DO_CELULAR } from '../../../ui/larguraDoCelular'
 import { CorpoDaConsulta } from './CorpoDaConsulta'
 import { DetalheDaClasse } from './DetalheDaClasse'
 
@@ -51,9 +55,41 @@ function ListaDeClasses({
   )
 }
 
+/** Marca a entrada de histórico aberta pela lista, para o Voltar desfazê-la em vez de empilhar outra. */
+const VEIO_DA_LISTA = { veioDaLista: true }
+
+const veioDaLista = (estado: unknown): boolean =>
+  typeof estado === 'object' && estado !== null && 'veioDaLista' in estado
+
+function BotaoVoltar({ aoVoltar }: { aoVoltar: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={aoVoltar}
+      className="-ml-1 flex min-h-[var(--touch-min)] items-center gap-1 self-start rounded-botao px-1 text-base font-semibold text-marca focus-visible:outline-2 focus-visible:outline-marca"
+    >
+      <ChevronLeft aria-hidden className="size-5" />
+      Voltar para Classes
+    </button>
+  )
+}
+
 export function PainelClasses() {
   const classes = useClasses()
   const [parametros, setParametros] = useSearchParams()
+  const celular = useLarguraMenorQue(LARGURA_DO_CELULAR)
+  const local = useLocation()
+  const navegar = useNavigate()
+
+  // No celular a lista e o detalhe ocupam a mesma página: o detalhe abre do topo e a lista volta onde estava.
+  const classeAberta = celular ? parametros.get('classe') : null
+  const posicaoDaLista = useRef(0)
+  const classeAntes = useRef(classeAberta)
+  useEffect(() => {
+    if (classeAberta === classeAntes.current) return
+    classeAntes.current = classeAberta
+    window.scrollTo({ top: classeAberta === null ? posicaoDaLista.current : 0 })
+  }, [classeAberta])
 
   return (
     <CorpoDaConsulta consulta={classes} rotuloDeCarga="Carregando as classes">
@@ -65,9 +101,31 @@ export function PainelClasses() {
               descricao="As classes oficiais entram com a carga do catálogo."
             />
           )
-        const pedida = parametros.get('classe')
-        const selecionada = lista.find((classe) => classe.id === pedida) ?? lista[0]
-        const escolher = (id: string) => setParametros({ classe: id }, { replace: true })
+        const pedida = lista.find((classe) => classe.id === parametros.get('classe'))
+        const selecionada = pedida ?? lista[0]
+        // No celular cada classe aberta é uma página do histórico, para o voltar do aparelho fechá-la.
+        const escolher = (id: string) => {
+          if (!celular) {
+            setParametros({ classe: id }, { replace: true })
+            return
+          }
+          posicaoDaLista.current = window.scrollY
+          setParametros({ classe: id }, { state: VEIO_DA_LISTA })
+        }
+        const voltar = () => {
+          if (veioDaLista(local.state)) void navegar(-1)
+          else setParametros({}, { replace: true })
+        }
+
+        // No celular a lista aparece sozinha: nenhuma classe está aberta ao lado para marcar.
+        const marcadaId = celular ? '' : selecionada.id
+        if (celular && pedida)
+          return (
+            <div className="flex flex-col gap-2">
+              <BotaoVoltar aoVoltar={voltar} />
+              <DetalheDaClasse key={pedida.id} classe={pedida} />
+            </div>
+          )
         // As agrupadas são uma turma à parte (16 anos ou mais), com regular e avançada juntas.
         const individuais = lista.filter((c) => c.trilha !== 'AGRUPADAS')
         return (
@@ -76,23 +134,23 @@ export function PainelClasses() {
               <ListaDeClasses
                 titulo="Regulares"
                 classes={individuais.filter((c) => c.tipo === 'REGULAR')}
-                selecionadaId={selecionada.id}
+                selecionadaId={marcadaId}
                 aoEscolher={escolher}
               />
               <ListaDeClasses
                 titulo="Avançadas"
                 classes={individuais.filter((c) => c.tipo !== 'REGULAR')}
-                selecionadaId={selecionada.id}
+                selecionadaId={marcadaId}
                 aoEscolher={escolher}
               />
               <ListaDeClasses
                 titulo="Agrupadas"
                 classes={lista.filter((c) => c.trilha === 'AGRUPADAS')}
-                selecionadaId={selecionada.id}
+                selecionadaId={marcadaId}
                 aoEscolher={escolher}
               />
             </nav>
-            <DetalheDaClasse key={selecionada.id} classe={selecionada} />
+            {!celular && <DetalheDaClasse key={selecionada.id} classe={selecionada} />}
           </div>
         )
       }}

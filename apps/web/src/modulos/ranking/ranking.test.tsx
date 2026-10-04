@@ -54,6 +54,10 @@ describe('ranking do mês', () => {
     expect(trimestre).toBeDisabled()
     expect(trimestre).toHaveTextContent('em breve')
     expect(screen.getByRole('button', { name: /Ano/ })).toBeDisabled()
+    for (const selo of screen.getAllByText('em breve')) {
+      expect(selo).toHaveClass('text-sm')
+      expect(selo).not.toHaveClass('text-xs')
+    }
   })
 
   it('mês com setas: anterior pede o mês de trás; seguinte fica desligada no mês corrente', async () => {
@@ -89,15 +93,21 @@ describe('ranking do mês', () => {
     expect(screen.queryByRole('link', { name: /Mateus V\./ })).not.toBeInTheDocument()
   })
 
-  it('filtro por unidade: aparece com 2 ou mais unidades e refaz a busca com a unidade escolhida', async () => {
+  it('filtro por unidade: lista de escolha "Unidade" com 2 ou mais unidades, que refaz a busca com a unidade escolhida', async () => {
     const unidades: Array<string | null> = []
     servidor.use(handlerRanking(criarRanking(), (consulta) => unidades.push(consulta.get('unidadeId'))), handlerRankingUnidades())
     abrir()
-    await userEvent.click(await screen.findByRole('button', { name: UNIDADE_LEOES.nome }))
+    const filtro = await screen.findByRole('combobox', { name: 'Unidade' })
+    expect(within(filtro).getAllByRole('option').map((opcao) => opcao.textContent)).toEqual([
+      'Todas as unidades',
+      UNIDADE_LEOES.nome,
+      UNIDADE_AGUIAS.nome,
+    ])
+    await userEvent.selectOptions(filtro, UNIDADE_LEOES.nome)
     await waitFor(() => expect(unidades).toContain(UNIDADE_LEOES.id))
-    expect(screen.getByRole('button', { name: UNIDADE_LEOES.nome })).toHaveAttribute('aria-pressed', 'true')
+    expect(filtro).toHaveValue(UNIDADE_LEOES.id)
 
-    await userEvent.click(screen.getByRole('button', { name: 'Todas as unidades' }))
+    await userEvent.selectOptions(filtro, 'Todas as unidades')
     await waitFor(() => expect(unidades.at(-1)).toBeNull())
   })
 
@@ -105,7 +115,47 @@ describe('ranking do mês', () => {
     servidor.use(handlerRanking(), handlerRankingUnidades([{ posicao: 1, unidade: UNIDADE_AGUIAS, mediaPontos: 10, totalDbvs: 2 }]))
     abrir()
     await screen.findByRole('list', { name: 'Classificação' })
-    expect(screen.queryByRole('button', { name: 'Todas as unidades' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: 'Unidade' })).not.toBeInTheDocument()
+  })
+
+  it('nome comprido: no pódio mostra primeiro e último nome em até 2 linhas, com o nome inteiro no nome acessível', async () => {
+    const nomeLongo = 'Maria Eduarda Fernandes de Oliveira Albuquerque Cavalcanti'
+    const ranking = criarRanking()
+    ranking.itens[0] = { ...ranking.itens[0], nome: nomeLongo }
+    ranking.itens[2] = { ...ranking.itens[2], nome: 'João Pedro Albuquerque Nogueira' }
+    servidor.use(handlerRanking(ranking), handlerRankingUnidades())
+    abrir()
+    const podio = await screen.findByRole('list', { name: 'Pódio' })
+    const visivel = within(podio).getByText('Maria Cavalcanti')
+    expect(visivel.closest('[aria-hidden="true"]')).not.toBeNull()
+    expect(visivel.closest('.line-clamp-2')).not.toBeNull()
+    const link = within(podio).getByRole('link', { name: (nome) => nome.includes(nomeLongo) })
+    expect(within(link).getByText(nomeLongo)).toHaveClass('sr-only')
+    const semPerfil = within(podio).getByText('João Nogueira')
+    expect(semPerfil.closest('.line-clamp-2')).not.toBeNull()
+    expect(within(podio).getByText('João Pedro Albuquerque Nogueira')).toHaveClass('sr-only')
+  })
+
+  it('nome curto no pódio aparece uma vez só, sem cópia para leitor de tela', async () => {
+    servidor.use(handlerRanking(), handlerRankingUnidades())
+    abrir()
+    const podio = await screen.findByRole('list', { name: 'Pódio' })
+    expect(within(podio).getAllByText('Mateus V.')).toHaveLength(1)
+    expect(within(podio).getByText('Pedro Lima').closest('[aria-hidden="true"]')).not.toBeNull()
+  })
+
+  it('nome e unidade compridos na lista ficam em até 2 linhas, com o nome inteiro no DOM', async () => {
+    const nomeLongo = 'Maria Eduarda Fernandes de Oliveira Albuquerque Cavalcanti Júnior'
+    const ranking = criarRanking()
+    ranking.itens[3] = { ...ranking.itens[3], nome: nomeLongo }
+    servidor.use(handlerRanking(ranking), handlerRankingUnidades())
+    abrir()
+    const lista = await screen.findByRole('list', { name: 'Classificação' })
+    const link = within(lista).getByRole('link', { name: (nome) => nome.includes(nomeLongo) })
+    for (const texto of [within(link).getByText(nomeLongo), within(link).getByText('Leões · Amigo')]) {
+      expect(texto.closest('.line-clamp-2')).not.toBeNull()
+      expect(texto.closest('li')?.querySelector('.truncate')).toBeNull()
+    }
   })
 
   it('vazio: "Ainda não há pontos neste mês."', async () => {

@@ -6,6 +6,7 @@ import { useCriarUsuario, useEditarUsuario } from '../../../api/usuarios'
 import type { Usuario } from '../../../api/usuarios'
 import { CabecalhoDaPagina } from '../../../ui/CabecalhoDaPagina'
 import { Campo } from '../../../ui/Campo'
+import { focarCampo } from '../../../ui/ErrosDoFormulario'
 import { Carregando, ErroDeCarga } from '../../../ui/EstadosDeCarga'
 import { RodapeDoFormulario } from '../../../ui/RodapeDoFormulario'
 import { Selecao } from '../../../ui/Selecao'
@@ -72,7 +73,7 @@ export function NovoUsuario() {
     if (papel === null) return setErro('Escolha um papel.')
     if (papel !== 'ADM' && escolhidos.length === 0) {
       setErro(ESCOPO_VAZIO[papel])
-      grupo.current?.focus()
+      if (grupo.current) focarCampo(grupo.current)
       return
     }
     setErro(undefined)
@@ -86,7 +87,7 @@ export function NovoUsuario() {
   }
 
   return (
-    <div className="flex flex-col gap-5 p-4">
+    <div className="flex flex-col gap-5 py-4">
       <CabecalhoDaPagina voltar={{ para: voltarPara, rotulo: 'Usuários' }} sobretitulo="Usuário" titulo="Novo usuário" />
       <form onSubmit={(evento) => void salvar(evento)} className="flex max-w-2xl flex-col gap-5">
         <div className="flex flex-col gap-4">

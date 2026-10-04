@@ -6,12 +6,15 @@ import { useNavigate } from 'react-router-dom'
 import { baixarModelo, errosDaRecusa, useConfirmarImportacao, useEnviarPlanilha } from '../../../api/importacao'
 import type { LinhaParaImportar } from '../../../api/importacao'
 import { useClasses, useUnidades } from '../../../api/leitura'
+import { useLarguraMenorQue } from '../../../layouts/useLarguraMenorQue'
 import { useConexao } from '../../../offline'
 import { Botao } from '../../../ui/Botao'
 import { Campo } from '../../../ui/Campo'
 import { Cartao } from '../../../ui/Cartao'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { Carregando, DisponivelComInternet } from '../../../ui/EstadosDeCarga'
+import { LARGURA_DO_CELULAR } from '../../../ui/larguraDoCelular'
+import { CartoesImportacao } from './CartoesImportacao'
 import { MENSAGEM_GENERICA, lerErroDaApi } from './erros'
 import { GradeImportacao } from './GradeImportacao'
 import { aplicarRecusa, contar, editarCelula, marcarLinha, paraEnvio, paraRevisao } from './revisao-importacao'
@@ -28,6 +31,16 @@ const plural = (n: number, um: string, varios: string): string => `${n} ${n === 
 
 const juntarComE = (itens: string[]): string =>
   itens.length <= 1 ? (itens[0] ?? '') : `${itens.slice(0, -1).join(', ')} e ${itens[itens.length - 1] ?? ''}`
+
+/** O que fica de fora se o Adm confirmar agora, dito logo acima do botão de importar. */
+function fraseDoQueFicaDeFora(total: number, marcadas: number): string {
+  if (marcadas === 0) return 'Marque ao menos uma linha para importar.'
+  const fora = total - marcadas
+  if (fora === 0) return 'Todas as linhas da planilha entram.'
+  return fora === 1
+    ? 'Se importar agora, 1 linha fica de fora. Dá para importá-la depois.'
+    : `Se importar agora, ${fora} linhas ficam de fora. Dá para importá-las depois.`
+}
 
 function EtapaEnviar({ aoLer }: { aoLer: (linhas: LinhaEmRevisao[]) => void }) {
   const [arquivo, setArquivo] = useState<File | null>(null)
@@ -121,6 +134,7 @@ function EtapaRevisar({ linhasIniciais, aoRecomecar }: { linhasIniciais: LinhaEm
   const classes = useClasses({ tipo: 'REGULAR' })
   const confirmar = useConfirmarImportacao()
   const navegar = useNavigate()
+  const celular = useLarguraMenorQue(LARGURA_DO_CELULAR)
 
   const listaDeUnidades = unidades.data ?? []
   const classesAtivas = (classes.data ?? []).filter((classe) => classe.ativa)
@@ -148,28 +162,57 @@ function EtapaRevisar({ linhasIniciais, aoRecomecar }: { linhasIniciais: LinhaEm
     }
   }
 
+  const resumo = (
+    <p className="text-lg font-semibold text-texto">
+      {plural(prontas, 'pronta', 'prontas')} · {comAviso} com aviso · {comErro} com erro
+    </p>
+  )
+  const botaoImportar = (
+    <Botao largura={celular ? 'total' : 'auto'} disabled={marcadas.length === 0} carregando={confirmar.isPending} onClick={() => void aoConfirmar()}>
+      Importar {plural(marcadas.length, 'desbravador', 'desbravadores')}
+    </Botao>
+  )
+  const avisoDeErro = erroGeral && (
+    <p role="alert" className="text-base font-medium text-perigo">
+      {erroGeral}
+    </p>
+  )
+
+  if (celular) {
+    return (
+      <section className="flex flex-col gap-4" aria-label="Revisar a planilha">
+        <div className="flex flex-col gap-1">
+          {resumo}
+          <p className="text-base text-texto-2">Corrija os campos marcados em cada linha. Pessoa repetida chega desmarcada: marque se quiser importar assim mesmo.</p>
+        </div>
+        <CartoesImportacao linhas={linhas} unidades={listaDeUnidades} classes={classesAtivas} aoEditar={aoEditar} aoMarcar={aoMarcar} />
+        <Botao variante="secundario" className="self-start" onClick={aoRecomecar}>
+          Enviar outra planilha
+        </Botao>
+        {/* Sticky, não fixed: no fluxo, o rodapé cresce com o erro geral sem cobrir o último cartão. */}
+        <div className="sticky bottom-0 z-30 -mx-4 flex flex-col gap-3 border-t border-borda bg-superficie p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          {avisoDeErro}
+          <p className="text-sm text-texto-2">{fraseDoQueFicaDeFora(linhas.length, marcadas.length)}</p>
+          {botaoImportar}
+        </div>
+      </section>
+    )
+  }
+
   return (
     <section className="flex flex-col gap-4" aria-label="Revisar a planilha">
       <div className="flex flex-col gap-1">
-        <p className="text-lg font-semibold text-texto">
-          {plural(prontas, 'pronta', 'prontas')} · {comAviso} com aviso · {comErro} com erro
-        </p>
+        {resumo}
         <p className="text-base text-texto-2">
           Confira e corrija nas células. Linha com erro só pode ser marcada depois de corrigida; pessoa repetida chega desmarcada.
         </p>
       </div>
       <GradeImportacao linhas={linhas} unidades={listaDeUnidades} classes={classesAtivas} aoEditar={aoEditar} aoMarcar={aoMarcar} />
       <div className="flex flex-col gap-3">
-        {erroGeral && (
-          <p role="alert" className="text-base font-medium text-perigo">
-            {erroGeral}
-          </p>
-        )}
+        {avisoDeErro}
         {marcadas.length === 0 && <p className="text-base text-texto-2">Marque ao menos uma linha para importar.</p>}
         <div className="flex flex-wrap items-center gap-3">
-          <Botao disabled={marcadas.length === 0} carregando={confirmar.isPending} onClick={() => void aoConfirmar()}>
-            Importar {plural(marcadas.length, 'desbravador', 'desbravadores')}
-          </Botao>
+          {botaoImportar}
           <Botao variante="secundario" onClick={aoRecomecar}>
             Enviar outra planilha
           </Botao>
@@ -191,7 +234,7 @@ export function ImportarDesbravadores() {
   else corpo = <EtapaEnviar aoLer={setLidas} />
 
   return (
-    <div className="flex flex-col gap-5 p-4">
+    <div className="flex flex-col gap-5 py-4">
       <header className="flex flex-col gap-1">
         <Botao variante="texto" className="self-start px-0" onClick={() => void navegar(ROTA_LISTA)}>
           <ArrowLeft aria-hidden className="size-5" />

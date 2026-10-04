@@ -48,7 +48,7 @@ export function ComUsuario({ aoCarregar }: { aoCarregar: (usuario: Usuario) => R
   else if (consulta.isError) corpo = <ErroDeCarga erro={consulta.error} aoTentarDeNovo={() => void consulta.refetch()} />
   else corpo = <Carregando rotulo="Carregando o usuário" />
 
-  return <div className="flex flex-col gap-5 p-4">{corpo}</div>
+  return <div className="flex flex-col gap-5 py-4">{corpo}</div>
 }
 
 export const FichaUsuario = () => <ComUsuario aoCarregar={(usuario) => <FichaComCatalogo usuario={usuario} />} />
