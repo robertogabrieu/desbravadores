@@ -1,17 +1,20 @@
 import { Papel as EsquemaPapel } from '@desbravadores/shared'
 import type { Papel } from '@desbravadores/shared'
-import { Plus } from 'lucide-react'
+import { Ban, Check, ChevronRight, Clock, Plus } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { POR_PAGINA_USUARIOS, useUsuarios } from '../../../api/usuarios'
 import type { Usuario } from '../../../api/usuarios'
+import { useLarguraMenorQue } from '../../../layouts/useLarguraMenorQue'
 import { Abas } from '../../../ui/Abas'
 import { estiloDoBotao } from '../../../ui/Botao'
 import { Campo } from '../../../ui/Campo'
+import { cn } from '../../../ui/cn'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { ErroDeCarga } from '../../../ui/EstadosDeCarga'
 import { LinkDeFicha } from '../../../ui/LinkDeFicha'
-import { Tabela } from '../../../ui/Tabela'
+import { LARGURA_DO_CELULAR, Tabela } from '../../../ui/Tabela'
 import type { ColunaTabela } from '../../../ui/Tabela'
 import { rotuloDoPapel } from '../../acesso/papeis'
 import { useEstadoDeVolta, useFiltrosNaUrl } from '../navegacao'
@@ -27,6 +30,35 @@ const ABAS: { id: 'todos' | Papel; rotulo: string }[] = [
 /** Papéis distintos dos vínculos ativos, na ordem em que aparecem. */
 const papeisDe = (usuario: Usuario): Papel[] => [...new Set(usuario.vinculos.filter((v) => v.ativo).map((v) => v.papel))]
 
+const ICONE_DA_SITUACAO: Record<Usuario['situacao'], { Icone: LucideIcon; cor: string }> = {
+  ATIVO: { Icone: Check, cor: 'text-sucesso' },
+  CONVIDADO: { Icone: Clock, cor: 'text-alerta' },
+  INATIVO: { Icone: Ban, cor: 'text-texto-2' },
+}
+
+function SelosDePapel({ usuario }: { usuario: Usuario }) {
+  return (
+    <div className="flex flex-wrap gap-1">
+      {papeisDe(usuario).map((p) => (
+        <span key={p} className="rounded-full bg-marca-suave px-2.5 py-0.5 text-sm font-semibold text-marca">
+          {rotuloDoPapel(p)}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+/** Situação com ícone e texto, para não depender só da cor. */
+function Situacao({ usuario }: { usuario: Usuario }) {
+  const { Icone, cor } = ICONE_DA_SITUACAO[usuario.situacao]
+  return (
+    <span className="inline-flex items-center gap-1.5 text-sm font-semibold">
+      <Icone aria-hidden className={cn('size-4 shrink-0', cor)} />
+      {SITUACAO[usuario.situacao]}
+    </span>
+  )
+}
+
 export function AdmUsuarios() {
   const filtros = useFiltrosNaUrl()
   const estadoDeVolta = useEstadoDeVolta()
@@ -37,6 +69,7 @@ export function AdmUsuarios() {
   const [busca, setBusca] = useState(buscaAplicada)
   const aplicadaPeloCampo = useRef(buscaAplicada)
   const usuarios = useUsuarios({ papel, busca: buscaAplicada.trim(), pagina })
+  const celular = useLarguraMenorQue(LARGURA_DO_CELULAR)
 
   // Busca que mudou por fora do campo (limpar pelo menu, voltar e avançar no navegador) passa para o campo.
   useEffect(() => {
@@ -68,24 +101,32 @@ export function AdmUsuarios() {
     {
       chave: 'papeis',
       titulo: 'Papéis',
-      celula: (u) => (
-        <div className="flex flex-wrap gap-1">
-          {papeisDe(u).map((p) => (
-            <span key={p} className="rounded-full bg-marca-suave px-2.5 py-0.5 text-xs font-bold text-marca">
-              {rotuloDoPapel(p)}
-            </span>
-          ))}
-        </div>
-      ),
+      celula: (u) => <SelosDePapel usuario={u} />,
     },
-    { chave: 'situacao', titulo: 'Situação', celula: (u) => SITUACAO[u.situacao] },
+    { chave: 'situacao', titulo: 'Situação', celula: (u) => <Situacao usuario={u} /> },
   ]
+
+  const cartao = (u: Usuario) => (
+    <Link
+      to={`/adm/usuarios/${u.id}`}
+      state={estadoDeVolta}
+      className="flex items-center gap-2 rounded-cartao border border-borda-controle bg-superficie py-3 pr-2 pl-4 text-texto focus-visible:outline-2 focus-visible:outline-marca"
+    >
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <span className="font-semibold">{u.nome}</span>
+        <span className="break-all text-sm text-texto-2">{u.email}</span>
+        <SelosDePapel usuario={u} />
+        <Situacao usuario={u} />
+      </div>
+      <ChevronRight aria-hidden className="size-5 shrink-0 text-texto-2" />
+    </Link>
+  )
 
   return (
     <main className="flex flex-col gap-4 p-6">
-      <header className="flex items-end justify-between gap-4">
+      <header className={cn('flex gap-4', celular ? 'flex-col' : 'items-end justify-between')}>
         <h1 className="font-titulo text-3xl font-extrabold">Usuários</h1>
-        <Link to="/adm/usuarios/novo" state={estadoDeVolta} className={estiloDoBotao()}>
+        <Link to="/adm/usuarios/novo" state={estadoDeVolta} className={cn(estiloDoBotao({ largura: celular ? 'total' : 'auto' }), 'whitespace-nowrap')}>
           <Plus aria-hidden className="size-5" />
           Convidar usuário
         </Link>
@@ -117,6 +158,7 @@ export function AdmUsuarios() {
           colunas={colunas}
           itens={usuarios.data.itens}
           chaveItem={(u) => u.id}
+          cartao={cartao}
           pagina={pagina}
           porPagina={POR_PAGINA_USUARIOS}
           total={usuarios.data.total}

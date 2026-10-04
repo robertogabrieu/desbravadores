@@ -40,6 +40,18 @@ describe('Abas', () => {
 
     expect(aoMudar).toHaveBeenCalledWith('b')
   })
+
+  it('quebram linha em vez de rolar de lado, e cada aba fica inteira numa linha só', () => {
+    render(<Abas rotulo="Seções" abas={[...abas, { id: 'c', rotulo: 'Instrutores · 1' }]} ativa="c" aoMudar={vi.fn()} />)
+
+    const faixa = screen.getByRole('tablist', { name: 'Seções' })
+    expect(faixa).toHaveClass('flex-wrap')
+    expect(faixa.className).not.toMatch(/overflow-x/)
+    for (const aba of screen.getAllByRole('tab')) {
+      expect(aba).toHaveClass('whitespace-nowrap', 'min-h-[var(--touch-min)]')
+    }
+    expect(screen.getByRole('tab', { name: 'Instrutores · 1' })).toHaveAttribute('aria-selected', 'true')
+  })
 })
 
 describe('Avatar', () => {
