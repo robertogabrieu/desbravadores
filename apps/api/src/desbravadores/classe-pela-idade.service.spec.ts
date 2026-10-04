@@ -139,6 +139,16 @@ describe('classe pela idade: a varredura preenche quem está sem classe regular 
     )
   })
 
+  it('regular DESISTIU e avançada já CONCLUIDA no ano: matricula só a regular, sem erro', async () => {
+    const { id: clubeId } = await clube()
+    const dbv = await ficha(clubeId, { nascimento: '2016-03-15' })
+    await matricula(clubeId, dbv.id, classes.companheiro, 2027, 'DESISTIU')
+    await matricula(clubeId, dbv.id, classes.companheiroAvancada, 2027, 'CONCLUIDA')
+
+    expect(await servico.aplicar(clubeId, dbv.id, 2027)).toBe(true)
+    expect(await doAno(dbv.id, 2027)).toEqual([`${classes.companheiro}:CURSANDO`, `${classes.companheiroAvancada}:CONCLUIDA`].sort())
+  })
+
   it('ignora Diretoria, Líder e inativo', async () => {
     const { id: clubeId } = await clube()
     const fichas = [

@@ -154,7 +154,7 @@ export function GradeImportacao({ linhas, unidades, classes, aoEditar, aoMarcar 
                       value={linha.classeId ?? ''}
                       onChange={(e) => aoEditar(n, 'classeId', e.target.value || null)}
                     >
-                      <option value="">Pela idade</option>
+                      <option value="">Pela idade, se houver</option>
                       {classes.map((classe) => (
                         <option key={classe.id} value={classe.id}>
                           {classe.nome}

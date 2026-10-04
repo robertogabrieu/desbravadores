@@ -1,23 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { anoClube as anoDoClube } from '@desbravadores/shared'
 import { PrismaService } from '../comum/prisma/prisma.service'
-import type { Prisma } from '../generated/prisma/client.js'
 import { paraDataCivil } from './apoio'
-import { DesbravadoresService, travarMatriculasDoDesbravador } from './desbravadores.service'
+import { DesbravadoresService, semClasseNoAno, travarMatriculasDoDesbravador } from './desbravadores.service'
 import { ServicoEscopo } from './escopo.service'
-
-/**
- * Desbravador ativo sem nenhuma matrícula regular (de qualquer trilha) no ano que não seja desistência.
- * Quem tem uma — inclusive a escolhida pelo Adm fora da idade — não é tocado.
- */
-function semClasseNoAno(clubeId: string, anoClube: number): Prisma.DesbravadorWhereInput {
-  return {
-    clubeId,
-    tipo: 'DBV',
-    ativo: true,
-    matriculas: { none: { clubeId, anoClube, status: { not: 'DESISTIU' }, classe: { tipo: 'REGULAR' } } },
-  }
-}
 
 /** Preenche a classe da idade de quem está sem classe regular no ano do clube; nunca troca uma existente. */
 @Injectable()

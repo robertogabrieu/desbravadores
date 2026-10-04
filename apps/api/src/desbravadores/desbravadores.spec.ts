@@ -3,6 +3,7 @@ import type { DesbravadorSaida, MatriculaSaida, MembroSaida } from '@desbravador
 import type { z } from 'zod'
 import { criarAppDeTeste } from '../../test/app'
 import { ServicoClassePelaIdade } from './classe-pela-idade.service'
+import { travarMatriculasDoDesbravador } from './desbravadores.service'
 import {
   classeOficial,
   criarAcesso,
@@ -512,13 +513,13 @@ describe('desbravadores: escopo, contato, cadastro, matricula', () => {
   })
 
   describe('inativar e reativar', () => {
-    it('inativar fecha a unidade aberta e desiste das matriculas CURSANDO; reativar so volta ao ativo', async () => {
+    it('inativar fecha a unidade aberta e desiste das matriculas CURSANDO; reativar sem classe para a idade fica sem classe', async () => {
       const clube = await criarClube()
       const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
       const unidade = await criarUnidade({ clubeId: clube.id })
       const amigo = await classeOficial('Amigo')
       const guia = await classeOficial('Guia')
-      const dbv = await criarDbv({ clubeId: clube.id })
+      const dbv = await criarDbv({ clubeId: clube.id, nascimento: nascidoEm(9, '03-15') })
       await prismaDeTeste().membroUnidade.create({
         data: { clubeId: clube.id, dbvId: dbv.id, unidadeId: unidade.id, inicio: new Date('2026-02-01') },
       })
@@ -543,19 +544,37 @@ describe('desbravadores: escopo, contato, cadastro, matricula', () => {
       expect(jaAtivo.body).toMatchObject({ codigo: 'REGRA' })
     })
 
-    it('reativar sem matricula no ano: a varredura da a classe da regua, nao a escolhida antes', async () => {
+    it('reativar sem matricula no ano: volta na hora com a classe da regua, nao a escolhida antes', async () => {
       const clube = await criarClube()
       const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
       const amigo = await classeOficial('Amigo')
       const dbv = await criarDbv({ clubeId: clube.id, nascimento: nascidoEm(11, '03-15') })
       await criarMatricula({ clubeId: clube.id, dbvId: dbv.id, classeId: amigo.id, anoClube: anoCorrente() })
       await api.post(`/api/desbravadores/${dbv.id}/inativar`, adm.autorizacao, { saidaEm: '2026-08-10' }).expect(200)
-      await api.post(`/api/desbravadores/${dbv.id}/reativar`, adm.autorizacao).expect(200)
 
-      expect(await app.get(ServicoClassePelaIdade).sincronizarClube(clube.id)).toBe(1)
-
-      const reativado = corpo<Dbv>(await api.get(`/api/desbravadores/${dbv.id}`, adm.autorizacao).expect(200))
+      const reativado = corpo<Dbv>(await api.post(`/api/desbravadores/${dbv.id}/reativar`, adm.autorizacao).expect(200))
       expect(reativado.classeAtual?.nome).toBe('Companheiro')
+      expect(await app.get(ServicoClassePelaIdade).sincronizarClube(clube.id)).toBe(0)
+    })
+
+    it('inativar espera a trava do desbravador: matricula criada por quem a segurava tambem vira DESISTIU', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const amigo = await classeOficial('Amigo')
+      const dbv = await criarDbv({ clubeId: clube.id, nascimento: nascidoEm(10, '03-15') })
+
+      // Faz o papel da varredura: segura a trava, deixa a inativação começar e só então grava a matrícula.
+      let inativacao: Promise<unknown> | undefined
+      await prismaDeTeste().$transaction(async (tx) => {
+        await travarMatriculasDoDesbravador(tx, dbv.id)
+        inativacao = api.post(`/api/desbravadores/${dbv.id}/inativar`, adm.autorizacao, { saidaEm: '2026-08-10' }).expect(200).then()
+        await new Promise((resolver) => setTimeout(resolver, 500))
+        await tx.matriculaClasse.create({ data: { clubeId: clube.id, dbvId: dbv.id, classeId: amigo.id, anoClube: anoCorrente() } })
+      })
+      await inativacao
+
+      const matricula = await prismaDeTeste().matriculaClasse.findFirstOrThrow({ where: { clubeId: clube.id, dbvId: dbv.id } })
+      expect(matricula.status).toBe('DESISTIU')
     })
 
     it('DBV so com matricula em AGRUPADAS: a varredura nao cria a individual', async () => {

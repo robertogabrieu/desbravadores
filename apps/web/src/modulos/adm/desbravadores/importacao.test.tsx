@@ -162,12 +162,12 @@ describe('importar planilha · revisar', () => {
     expect(screen.getByRole('button', { name: 'Importar 2 desbravadores' })).toBeEnabled()
   })
 
-  it('a classe vazia da linha é "Pela idade": a linha sem classe é matriculada pela régua ao gravar', async () => {
+  it('a classe vazia da linha é "Pela idade, se houver": a linha sem classe é matriculada pela régua ao gravar', async () => {
     simularPrevia(previaCompleta)
     abrir()
     await enviar()
     const classe = await screen.findByLabelText('Classe, linha 2')
-    expect(within(classe).getByRole('option', { name: 'Pela idade' })).toBeInTheDocument()
+    expect(within(classe).getByRole('option', { name: 'Pela idade, se houver' })).toBeInTheDocument()
     expect(within(classe).queryByRole('option', { name: 'Sem classe' })).not.toBeInTheDocument()
   })
 

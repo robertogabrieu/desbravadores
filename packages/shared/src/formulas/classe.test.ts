@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { DIA_DE_CORTE_DA_CLASSE, idadeDaClasse } from './classe'
+import { DIA_DE_CORTE_DO_ANO, idadeDaClasse } from './classe'
 
 describe('idadeDaClasse: a idade completada até 30/06 do ano do clube', () => {
   it('o corte é 30/06', () => {
-    expect(DIA_DE_CORTE_DA_CLASSE).toBe('06-30')
+    expect(DIA_DE_CORTE_DO_ANO).toBe('06-30')
   })
 
   it.each([

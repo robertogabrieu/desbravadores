@@ -148,8 +148,9 @@ export function FormularioDesbravador({ desbravador, cancelar, aoConcluir }: Pro
     : trilhaEscolhida === desbravador?.classeAtual?.trilha
       ? 'A classe atual fica registrada como desistência.'
       : 'A classe atual continua: o desbravador passa a cursar as duas.'
-  // Desbravador cadastrado sem classe é matriculado pela idade; Diretoria cursa o que o Adm escolher.
-  const classePelaIdade = !editando && valores.tipo === 'DBV'
+  // Desbravador sem classe é matriculado pela idade (no cadastro na hora; na edição, pela varredura);
+  // Diretoria cursa o que o Adm escolher.
+  const classePelaIdade = valores.tipo === 'DBV' && classeAtualId === ''
   const ajudaDaClasse = classePelaIdade && valores.classeId === '' ? AJUDA_PELA_IDADE : avisoDaTroca
 
   const definir = <K extends keyof Valores>(chave: K, valor: Valores[K]) => setValores((atual) => ({ ...atual, [chave]: valor }))
