@@ -46,6 +46,7 @@ const textoOuNulo = (texto: string): string | null => texto.trim() || null
 const AVISO_SAIDA_DA_UNIDADE = 'Sai da unidade e da chamada; continua cursando a classe.'
 const AVISO_ENTRA_SEM_UNIDADE = 'Entra na chamada quando tiver uma unidade: escolha abaixo.'
 const AVISO_CLUBE_SEM_UNIDADES = 'Entra na chamada quando tiver uma unidade. O clube ainda não tem unidades.'
+const AJUDA_PELA_IDADE = 'Fica na classe da idade que completa até 30/06, quando houver. Dá para trocar depois.'
 
 /** "Diretoria pela idade (16 anos até junho) e porque é conselheiro"; nada fora da Diretoria. */
 function textoDosMotivos(motivos: Desbravador['motivosDiretoria']): string | undefined {
@@ -147,6 +148,9 @@ export function FormularioDesbravador({ desbravador, cancelar, aoConcluir }: Pro
     : trilhaEscolhida === desbravador?.classeAtual?.trilha
       ? 'A classe atual fica registrada como desistência.'
       : 'A classe atual continua: o desbravador passa a cursar as duas.'
+  // Desbravador cadastrado sem classe é matriculado pela idade; Diretoria cursa o que o Adm escolher.
+  const classePelaIdade = !editando && valores.tipo === 'DBV'
+  const ajudaDaClasse = classePelaIdade && valores.classeId === '' ? AJUDA_PELA_IDADE : avisoDaTroca
 
   const definir = <K extends keyof Valores>(chave: K, valor: Valores[K]) => setValores((atual) => ({ ...atual, [chave]: valor }))
 
@@ -326,15 +330,15 @@ export function FormularioDesbravador({ desbravador, cancelar, aoConcluir }: Pro
             )}
             {mostraClasse && (
               <>
-                {/* Na edição, "Sem classe" só existe para quem ainda não tem: matrícula não se desfaz por aqui. */}
+                {/* Na edição, a opção vazia só existe para quem ainda não tem classe: matrícula não se desfaz por aqui. */}
                 <Selecao
                   rotulo="Classe do ano"
                   value={valores.classeId}
                   erro={erros['classeId']}
-                  ajuda={avisoDaTroca}
+                  ajuda={ajudaDaClasse}
                   onChange={(e) => definir('classeId', e.target.value)}
                 >
-                  {(!editando || !classeAtualId) && <option value="">Sem classe</option>}
+                  {(!editando || !classeAtualId) && <option value="">{classePelaIdade ? 'Pela idade' : 'Sem classe'}</option>}
                   {classes.data?.map((classe) => (
                     <option key={classe.id} value={classe.id}>
                       {classe.nome}

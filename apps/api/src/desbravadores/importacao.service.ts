@@ -9,7 +9,7 @@ import {
   mensagemRepetidaNaPlanilha,
   errosDaLinhaImportada,
   errosEmLista,
-  idade,
+  idadeDaClasse,
   tipoDaFicha,
   type CampoDaLinhaImportada,
   type ErroDeCampo,
@@ -26,7 +26,13 @@ import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import type { TipoUnidade } from '../generated/prisma/client.js'
 import { paraDataCivil } from './apoio'
-import { DesbravadoresService, ORDEM_CLASSE_DA_IDADE, ondeClasseDaIdade, type ClasseParaMatricula } from './desbravadores.service'
+import {
+  ativaNoClube,
+  DesbravadoresService,
+  ORDEM_CLASSE_DA_IDADE,
+  ondeClasseDaIdade,
+  type ClasseParaMatricula,
+} from './desbravadores.service'
 import { ServicoEscopo, type RelogioDoClube } from './escopo.service'
 import { ErroLinhasDaImportacao } from './filtro-importacao'
 import {
@@ -72,9 +78,6 @@ const MAXIMO_DA_TRANSACAO_MS = 120_000
 const MAXIMO_DE_PREVIAS_SIMULTANEAS = 2
 
 const textoOuNulo = (texto: string | null): string | null => texto?.trim() || null
-
-/** Classe desligada pelo clube (`ClasseClube.ativa = false`) não existe para a importação. */
-const ativaNoClube = (clubeId: string) => ({ clubes: { none: { clubeId, ativa: false } } })
 
 /**
  * Mensagem de cada linha repetida — no clube (inclusive inativo) ou numa linha anterior da mesma
@@ -301,23 +304,24 @@ export class ImportacaoService {
     }
   }
 
-  /** Mesma regra do aviso de idade do cadastro, entre as classes ativas: a individual primeiro. */
+  /**
+   * A classe da idade do cadastro; sem ela, a das agrupadas, que só serve à linha que vira Diretoria
+   * (16 até 30/06) e por isso não entra na matrícula automática.
+   */
   private async sugerirClasse(clubeId: string, nascimento: string, contexto: ContextoDaPrevia): Promise<ClasseDoClube | undefined> {
     const { relogio, sugestaoPorIdade } = contexto
-    const idadeNoInicio = idade(nascimento, `${relogio.anoClube}-${relogio.inicioAnoClube}`)
-    if (!sugestaoPorIdade.has(idadeNoInicio)) {
-      let sugerida: ClasseDoClube | null = null
-      for (const trilha of ['INDIVIDUAL', 'AGRUPADAS'] as const) {
-        sugerida = await this.prisma.classe.findFirst({
-          where: { ...ondeClasseDaIdade(clubeId, trilha, idadeNoInicio), ...ativaNoClube(clubeId) },
+    const idadeDeReferencia = idadeDaClasse(nascimento, relogio.anoClube)
+    if (!sugestaoPorIdade.has(idadeDeReferencia)) {
+      const sugerida =
+        (await this.desbravadores.classeDaIdade(this.prisma, clubeId, nascimento, relogio.anoClube)) ??
+        (await this.prisma.classe.findFirst({
+          where: ondeClasseDaIdade(clubeId, 'AGRUPADAS', idadeDeReferencia),
           orderBy: ORDEM_CLASSE_DA_IDADE,
           select: { id: true, nome: true, tipo: true, trilha: true },
-        })
-        if (sugerida) break
-      }
-      sugestaoPorIdade.set(idadeNoInicio, sugerida)
+        }))
+      sugestaoPorIdade.set(idadeDeReferencia, sugerida)
     }
-    return sugestaoPorIdade.get(idadeNoInicio) ?? undefined
+    return sugestaoPorIdade.get(idadeDeReferencia) ?? undefined
   }
 
   private unidadesAtivas(clubeId: string): Promise<UnidadeDoClube[]> {

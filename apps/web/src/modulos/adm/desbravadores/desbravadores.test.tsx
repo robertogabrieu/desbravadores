@@ -269,6 +269,20 @@ describe('A1 · novo desbravador', () => {
     expect(screen.getByLabelText('Conta de usuário (opcional)')).toBeInTheDocument()
   })
 
+  it('cadastro de Desbravador: a classe vazia é "Pela idade", com a ajuda; na Diretoria continua "Sem classe"', async () => {
+    await abrirNovo()
+    const classe = () => screen.getByLabelText('Classe do ano')
+    const ajuda = 'Fica na classe da idade que completa até 30/06, quando houver. Dá para trocar depois.'
+    expect(within(classe()).getByRole('option', { name: 'Pela idade' })).toBeInTheDocument()
+    expect(within(classe()).queryByRole('option', { name: 'Sem classe' })).not.toBeInTheDocument()
+    expect(classe()).toHaveAccessibleDescription(ajuda)
+
+    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'Diretoria')
+    expect(within(classe()).getByRole('option', { name: 'Sem classe' })).toBeInTheDocument()
+    expect(within(classe()).queryByRole('option', { name: 'Pela idade' })).not.toBeInTheDocument()
+    expect(screen.queryByText(ajuda)).not.toBeInTheDocument()
+  })
+
   it('mostra os avisos da API em faixa amarela sem impedir o cadastro', async () => {
     servidor.use(handlerCriarDesbravador(criarDesbravador(), [{ codigo: 'AVISO_SEXO_UNIDADE', mensagem: 'A unidade Águias é masculina.' }]))
     await abrirNovo()
@@ -342,6 +356,7 @@ describe('A1 · editar a classe do ano', () => {
     servidor.use(handlerConfiguracao(configuracao), handlerEditarDesbravador(bruno), handlerMatricular((id, corpo) => (matricula = { id, ...corpo })))
     await abrirEdicao(bruno)
     expect(screen.getByLabelText('Classe do ano')).toHaveValue('')
+    expect(within(screen.getByLabelText('Classe do ano')).getByRole('option', { name: 'Sem classe' })).toBeInTheDocument()
     await userEvent.selectOptions(screen.getByLabelText('Classe do ano'), 'Amigo')
     expect(screen.getByRole('checkbox', { name: 'Matricular também na avançada' })).toBeChecked()
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
