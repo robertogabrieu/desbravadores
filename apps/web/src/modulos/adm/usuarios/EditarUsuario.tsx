@@ -87,7 +87,7 @@ export function NovoUsuario() {
   }
 
   return (
-    <div className="flex flex-col gap-5 p-4">
+    <div className="flex flex-col gap-5 py-4">
       <CabecalhoDaPagina voltar={{ para: voltarPara, rotulo: 'Usuários' }} sobretitulo="Usuário" titulo="Novo usuário" />
       <form onSubmit={(evento) => void salvar(evento)} className="flex max-w-2xl flex-col gap-5">
         <div className="flex flex-col gap-4">

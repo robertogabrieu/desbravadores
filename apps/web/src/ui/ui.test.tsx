@@ -121,4 +121,12 @@ describe('Botao e Campo', () => {
     expect(input).toHaveAttribute('aria-invalid', 'true')
     expect(input).toHaveAccessibleDescription(/E-mail inválido/)
   })
+
+  it('erro do campo vem com ícone além da cor, sem mudar o texto lido', () => {
+    render(<Campo rotulo="E-mail" erro="E-mail inválido" />)
+    const mensagem = screen.getByRole('alert')
+    expect(mensagem).toHaveTextContent(/^E-mail inválido$/)
+    expect(mensagem.querySelector('svg[aria-hidden="true"]')).not.toBeNull()
+    expect(screen.getByLabelText('E-mail')).toHaveAccessibleDescription('E-mail inválido')
+  })
 })

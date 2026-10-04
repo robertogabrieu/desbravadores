@@ -179,5 +179,5 @@ export function FichaEvento() {
       </Carregando>
     )
 
-  return <div className="flex flex-col gap-4 p-4">{corpo}</div>
+  return <div className="flex flex-col gap-4 py-4">{corpo}</div>
 }

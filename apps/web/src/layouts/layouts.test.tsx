@@ -330,7 +330,7 @@ describe('LayoutAdm', () => {
     renderizarRotas(rotasAdm, '/adm/desbravadores')
     const conteudo = (await screen.findByText('lista')).closest('main')
     expect(conteudo).toHaveAttribute('data-layout', 'adm')
-    expect(conteudo).toHaveClass('px-4')
+    expect(conteudo).toHaveClass('px-4', 'min-[900px]:px-12')
   })
 })
 

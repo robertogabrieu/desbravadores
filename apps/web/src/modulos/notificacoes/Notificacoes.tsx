@@ -66,7 +66,7 @@ export function Notificacoes() {
   const temNaoLidas = !semConexao && (consulta.data?.naoLidas ?? 0) > 0
 
   return (
-    <section className="flex flex-col gap-4 p-4">
+    <section className="flex flex-col gap-4 p-4 in-data-[layout=adm]:px-0">
       <div className="flex items-center justify-between gap-2">
         <h1 className="font-titulo text-xl font-bold text-texto">Notificações</h1>
         {temNaoLidas && (

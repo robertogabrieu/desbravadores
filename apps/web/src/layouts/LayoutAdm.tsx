@@ -112,7 +112,7 @@ export function LayoutAdm() {
           </FaixaAviso>
         )}
         {/* A margem lateral do conteúdo mora aqui, uma vez só; `data-layout` deixa a tela compartilhada com o celular saber que não precisa da dela. */}
-        <main data-layout="adm" className="flex-1 px-4 py-4 min-[900px]:p-8">
+        <main data-layout="adm" className="flex-1 px-4 py-4 min-[900px]:px-12 min-[900px]:py-8">
           <Outlet />
         </main>
       </div>

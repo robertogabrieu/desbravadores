@@ -123,7 +123,7 @@ export function AdmUsuarios() {
   )
 
   return (
-    <main className="flex flex-col gap-4 p-6">
+    <main className="flex flex-col gap-4 py-6">
       <header className={cn('flex gap-4', celular ? 'flex-col' : 'items-end justify-between')}>
         <h1 className="font-titulo text-3xl font-extrabold">Usuários</h1>
         <Link to="/adm/usuarios/novo" state={estadoDeVolta} className={cn(estiloDoBotao({ largura: celular ? 'total' : 'auto' }), 'whitespace-nowrap')}>

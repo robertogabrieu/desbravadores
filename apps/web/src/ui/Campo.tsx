@@ -1,3 +1,4 @@
+import { CircleAlert } from 'lucide-react'
 import { useId } from 'react'
 import type { InputHTMLAttributes, ReactNode } from 'react'
 import { cn } from './cn'
@@ -27,7 +28,8 @@ export function CampoRotulado({ rotulo, ajuda, erro, idCampo, children }: Propri
         </p>
       )}
       {erro && (
-        <p id={`${idCampo}-erro`} role="alert" className="text-sm font-medium text-perigo">
+        <p id={`${idCampo}-erro`} role="alert" className="flex items-start gap-1.5 text-sm font-medium text-perigo">
+          <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
           {erro}
         </p>
       )}

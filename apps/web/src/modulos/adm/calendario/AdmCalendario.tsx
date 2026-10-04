@@ -145,7 +145,7 @@ export function AdmCalendario() {
     )
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-4 py-4">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-texto-2">

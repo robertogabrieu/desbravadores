@@ -192,7 +192,7 @@ export function VisaoGeral() {
   else corpo = <Carregando rotulo="Carregando a visão geral" />
 
   return (
-    <div className="flex flex-col gap-5 p-4">
+    <div className="flex flex-col gap-5 py-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-titulo text-2xl font-bold text-texto">Visão geral do clube</h1>
         <Link to={NOVO_DESBRAVADOR} state={estadoDeVolta} className="inline-flex min-h-[var(--touch-min)] items-center gap-2 rounded-botao bg-marca px-5 text-base font-semibold text-white hover:bg-marca-escura">

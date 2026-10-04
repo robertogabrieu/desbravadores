@@ -153,7 +153,7 @@ export function ListaDesbravadores() {
   )
 
   return (
-    <div className="flex flex-col gap-5 p-4">
+    <div className="flex flex-col gap-5 py-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-titulo text-2xl font-bold text-texto">Desbravadores</h1>

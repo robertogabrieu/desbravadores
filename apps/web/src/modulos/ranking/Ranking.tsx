@@ -145,7 +145,7 @@ export function Ranking() {
     )
 
   return (
-    <div className="flex flex-col gap-4 p-4 in-data-[layout=adm]:p-0">
+    <div className="flex flex-col gap-4 p-4 in-data-[layout=adm]:px-0">
       <h1 className="font-titulo text-2xl font-extrabold text-texto">Ranking</h1>
       <div className="flex flex-col gap-2">
         <Abas rotulo="Período" abas={ABAS} ativa="mes" aoMudar={() => undefined} />

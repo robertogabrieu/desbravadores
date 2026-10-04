@@ -151,7 +151,7 @@ function CartaoDaLinha({ linha, unidades, classes, aoEditar, aoMarcar }: Proprie
         : `Ver os ${recolhidos.length} campos`
 
   return (
-    <div role="group" aria-labelledby={idTitulo} className="flex flex-col gap-4 rounded-cartao border border-borda bg-superficie p-4">
+    <div role="group" aria-labelledby={idTitulo} className="flex flex-col gap-4 rounded-cartao border border-borda-controle bg-superficie p-4">
       <div className="flex flex-col gap-1">
         <p id={idTitulo} className="text-sm text-texto-2">
           Linha {n} da planilha

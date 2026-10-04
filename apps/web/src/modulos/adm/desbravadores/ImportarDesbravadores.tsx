@@ -233,7 +233,7 @@ export function ImportarDesbravadores() {
   else corpo = <EtapaEnviar aoLer={setLidas} />
 
   return (
-    <div className="flex flex-col gap-5 p-4">
+    <div className="flex flex-col gap-5 py-4">
       <header className="flex flex-col gap-1">
         <Botao variante="texto" className="self-start px-0" onClick={() => void navegar(ROTA_LISTA)}>
           <ArrowLeft aria-hidden className="size-5" />
