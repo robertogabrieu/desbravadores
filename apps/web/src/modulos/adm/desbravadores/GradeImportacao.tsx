@@ -21,21 +21,21 @@ interface Propriedades {
 
 const COLUNAS = ['Importar', 'Nome', 'Nascimento', 'Sexo', 'Unidade', 'Classe', 'Responsável', 'Telefone', 'E-mail', 'Entrada no clube']
 
-const textoOuNulo = (texto: string): string | null => (texto.trim() === '' ? null : texto)
+export const textoOuNulo = (texto: string): string | null => (texto.trim() === '' ? null : texto)
 
 function Celula({ children }: { children: ReactNode }) {
   return <td className="px-2 py-2 align-top">{children}</td>
 }
 
 /** Erro ou aviso mostrado abaixo da linha, com o id que o liga à célula do campo (ou à caixa, se é da linha inteira). */
-interface Mensagem {
+export interface Mensagem {
   id: string
   tipo: 'Erro' | 'Aviso'
   texto: string
   campo: CampoEditavel | null
 }
 
-function mensagensDaLinha(linha: LinhaEmRevisao): Mensagem[] {
+export function mensagensDaLinha(linha: LinhaEmRevisao): Mensagem[] {
   const n = linha.linha
   const erros = todosOsErros(linha).map(
     (erro, i): Mensagem => ({ id: `importacao-${n}-erro-${i}`, tipo: 'Erro', texto: erro.mensagem, campo: erro.campo }),
@@ -46,7 +46,7 @@ function mensagensDaLinha(linha: LinhaEmRevisao): Mensagem[] {
   return [...erros, ...avisos]
 }
 
-const idsDe = (mensagens: Mensagem[]): string | undefined => mensagens.map((mensagem) => mensagem.id).join(' ') || undefined
+export const idsDe = (mensagens: Mensagem[]): string | undefined => mensagens.map((mensagem) => mensagem.id).join(' ') || undefined
 
 /** Uma linha por pessoa; os erros e avisos dela vêm logo abaixo. A grade rola dentro de si no celular. */
 export function GradeImportacao({ linhas, unidades, classes, aoEditar, aoMarcar }: Propriedades) {

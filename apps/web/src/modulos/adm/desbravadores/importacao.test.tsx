@@ -1,5 +1,5 @@
 import { LinhaImportada } from '@desbravadores/shared'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ModoConexao } from '../../../offline'
@@ -11,6 +11,7 @@ import {
   handlerDesbravadores,
 } from '../../../testes/handlers/desbravadores'
 import { uuid } from '../../../testes/handlers/sessao'
+import { simularLargura } from '../../../testes/midia'
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
 import { rotasAdmDesbravadores } from './rotas'
@@ -232,6 +233,91 @@ describe('importar planilha · revisar', () => {
     await userEvent.selectOptions(screen.getByLabelText('Unidade, linha 2'), 'Águias')
     expect(screen.queryByText('A unidade Falcões não existe no clube')).not.toBeInTheDocument()
     expect(screen.getByText('A unidade Águias é masculina.')).toBeInTheDocument()
+  })
+})
+
+describe('importar planilha · revisar no celular', () => {
+  const cartao = (n: number) => screen.getByRole('group', { name: `Linha ${n} da planilha` })
+
+  it('um cartão por linha: o campo com erro aberto, o resto recolhido; corrigir libera a linha', async () => {
+    simularLargura(390)
+    simularPrevia(previaCompleta)
+    abrir()
+    await enviar()
+    expect(await screen.findByRole('group', { name: 'Linha 5 da planilha' })).toBeInTheDocument()
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    const linha5 = cartao(5)
+    expect(within(linha5).getByText('Falta corrigir 1 campo')).toBeInTheDocument()
+    const nome = within(linha5).getByRole('textbox', { name: 'Nome, linha 5' })
+    expect(nome).toBeInvalid()
+    expect(nome).toHaveAccessibleDescription('Erro: O nome precisa ter de 2 a 120 letras.')
+    expect(within(linha5).queryByLabelText('Nascimento, linha 5')).not.toBeInTheDocument()
+    const outros = within(linha5).getByRole('button', { name: 'Ver os outros 8 campos' })
+    expect(outros).toHaveAttribute('aria-expanded', 'false')
+    expect(within(linha5).getByRole('checkbox', { name: 'Importar linha 5' })).toBeDisabled()
+
+    await userEvent.click(outros)
+    expect(within(linha5).getByLabelText('Nascimento, linha 5')).toBeInTheDocument()
+
+    await userEvent.type(nome, 'aniel Dias')
+    expect(within(cartao(5)).queryByText('Falta corrigir 1 campo')).not.toBeInTheDocument()
+    expect(within(cartao(5)).getByRole('checkbox', { name: 'Importar linha 5' })).toBeChecked()
+    expect(screen.getByRole('button', { name: 'Importar 3 desbravadores' })).toBeEnabled()
+  })
+
+  it('filtro: abre em "Para corrigir" quando há erro; "Todas" mostra as linhas prontas recolhidas', async () => {
+    simularLargura(390)
+    simularPrevia(previaCompleta)
+    abrir()
+    await enviar()
+    const paraCorrigir = await screen.findByRole('button', { name: 'Para corrigir · 1' })
+    expect(paraCorrigir).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getAllByRole('group', { name: /da planilha$/ })).toHaveLength(1)
+    expect(screen.queryByRole('group', { name: 'Linha 2 da planilha' })).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Todas · 4' }))
+    expect(screen.getByRole('button', { name: 'Todas · 4' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getAllByRole('group', { name: /da planilha$/ })).toHaveLength(4)
+    const linha2 = cartao(2)
+    expect(within(linha2).getByText('Ana Clara Souza')).toBeInTheDocument()
+    expect(within(linha2).queryByText(/Falta corrigir/)).not.toBeInTheDocument()
+    expect(within(linha2).queryByLabelText('Nome, linha 2')).not.toBeInTheDocument()
+    await userEvent.click(within(linha2).getByRole('button', { name: 'Ver os 9 campos' }))
+    expect(within(linha2).getByLabelText('Nome, linha 2')).toHaveValue('Ana Clara Souza')
+  })
+
+  it('filtro: a linha corrigida continua à vista em "Para corrigir" até trocar de filtro', async () => {
+    simularLargura(390)
+    simularPrevia(previaCompleta)
+    abrir()
+    await enviar()
+    await userEvent.type(await screen.findByLabelText('Nome, linha 5'), 'aniel Dias')
+    expect(cartao(5)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Para corrigir · 0' })).toBeInTheDocument()
+  })
+
+  it('sem erro nenhum, abre em "Todas"', async () => {
+    simularLargura(390)
+    simularPrevia({ colunasFaltando: [], linhas: [pronta, outraPronta] })
+    abrir()
+    await enviar()
+    expect(await screen.findByRole('button', { name: 'Todas · 2' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getAllByRole('group', { name: /da planilha$/ })).toHaveLength(2)
+  })
+
+  it('rodapé: diz quantas ficam de fora e o botão conta quantas entram', async () => {
+    const recebidos: unknown[] = []
+    simularLargura(390)
+    simularPrevia(previaCompleta)
+    servidor.use(handlerConfirmarImportacao({ importados: 2 }, 201, (c) => recebidos.push(c)))
+    abrir()
+    await enviar()
+    expect(await screen.findByText('Se importar agora, 2 linhas ficam de fora. Dá para importá-las depois.')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Todas · 4' }))
+    await userEvent.click(within(cartao(4)).getByRole('checkbox', { name: 'Importar linha 4' }))
+    expect(screen.getByText('Se importar agora, 1 linha fica de fora. Dá para importá-la depois.')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Importar 3 desbravadores' }))
+    await waitFor(() => expect(recebidos).toEqual([{ linhas: [pronta, outraPronta, duplicada].map(enviada) }]))
   })
 })
 
