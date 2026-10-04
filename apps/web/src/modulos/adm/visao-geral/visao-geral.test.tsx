@@ -6,6 +6,7 @@ import { criarConfiguracao, handlerConfiguracao, handlerErroConfiguracao } from 
 import { criarRefClasse, criarVisaoGeral, handlerErroVisaoGeral, handlerVisaoGeral } from '../../../testes/handlers/visao-geral'
 import { uuid } from '../../../testes/handlers/sessao'
 import { renderizarRotas } from '../../../testes/renderizar'
+import { simularLargura } from '../../../testes/midia'
 import { servidor } from '../../../testes/servidor'
 import { rotasAdmVisaoGeral } from './rotas'
 
@@ -189,5 +190,98 @@ describe('A0 · conteúdo', () => {
     abrir()
     await screen.findByRole('group', { name: 'Desbravadores' })
     expect(screen.queryByText('Cronogramas aguardando publicação')).not.toBeInTheDocument()
+  })
+})
+
+const comAlerta = criarVisaoGeral({
+  unidadesResumo: [
+    { id: uuid(11), nome: 'Águias', conselheiros: ['Thiago'], totalDbvs: 8, frequenciaMes: 87 },
+    { id: uuid(12), nome: 'Tigres', conselheiros: [], totalDbvs: 10, frequenciaMes: 68 },
+  ],
+  cronogramasEnviados: [{ cronogramaId: uuid(21), classe: criarRefClasse(1, 'Amigo'), enviadoPor: 'Priscila', enviadoEm: '2026-09-25T13:00:00Z' }],
+  progressoClasses: [
+    { classe: criarRefClasse(1, 'Amigo'), media: 64, totalDbvs: 9, instrutores: ['Priscila'] },
+    { classe: criarRefClasse(2, 'Pioneiro'), media: null, totalDbvs: 0, instrutores: [] },
+  ],
+})
+
+describe('celular · o que precisa de atenção vem primeiro', () => {
+  it('"Precisa de atenção" aparece antes dos números, com a unidade abaixo do limite e o cronograma aguardando', async () => {
+    simularLargura(390)
+    servidor.use(handlerVisaoGeral(comAlerta), handlerConfiguracao(criarConfiguracao({ limiarFrequenciaAlerta: 75 })))
+    abrir()
+    const atencao = await screen.findByRole('region', { name: 'Precisa de atenção · 2' })
+    const numeros = screen.getByRole('region', { name: 'Números do clube' })
+    expect(atencao.compareDocumentPosition(numeros) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    const dentro = within(atencao)
+    const tigres = dentro.getByRole('link', { name: /Tigres/ })
+    expect(tigres).toHaveAttribute('href', `/adm/unidades/${uuid(12)}`)
+    expect(within(tigres).getByText('Frequência 68% · abaixo do limite de 75%')).toBeInTheDocument()
+    expect(dentro.queryByRole('link', { name: /Águias/ })).not.toBeInTheDocument()
+
+    const cronograma = dentro.getByRole('link', { name: /Cronograma de Amigo para publicar/ })
+    expect(cronograma).toHaveAttribute('href', `/adm/cronogramas?classe=${uuid(1)}`)
+    expect(within(cronograma).getByText('Enviado por Priscila em 25/09')).toBeInTheDocument()
+    expect(within(cronograma).getByText('Revisar')).toBeInTheDocument()
+  })
+
+  it('a ordem segue: números, "Novo desbravador", unidades, progresso e atividade', async () => {
+    simularLargura(390)
+    servidor.use(handlerVisaoGeral(comAlerta), handlerConfiguracao(criarConfiguracao({ limiarFrequenciaAlerta: 75 })))
+    abrir()
+    await screen.findByRole('region', { name: /Precisa de atenção/ })
+    const emOrdem = [
+      screen.getByRole('region', { name: 'Números do clube' }),
+      screen.getByRole('link', { name: 'Novo desbravador' }),
+      screen.getByRole('region', { name: 'Unidades' }),
+      screen.getByRole('heading', { name: 'Progresso por classe' }),
+      screen.getByRole('heading', { name: 'Atividade recente' }),
+    ]
+    for (let i = 1; i < emOrdem.length; i++) {
+      expect(emOrdem[i - 1].compareDocumentPosition(emOrdem[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    }
+    expect(screen.queryByText('Cronogramas aguardando publicação')).not.toBeInTheDocument()
+  })
+
+  it('sem unidade abaixo do limite nem cronograma aguardando, a seção não aparece', async () => {
+    simularLargura(390)
+    servidor.use(handlerVisaoGeral(criarVisaoGeral({ ...comAlerta, cronogramasEnviados: [] })), handlerConfiguracao(criarConfiguracao({ limiarFrequenciaAlerta: 60 })))
+    abrir()
+    await screen.findByRole('region', { name: 'Números do clube' })
+    await screen.findByRole('link', { name: /^Tigres/ })
+    expect(screen.queryByRole('region', { name: /Precisa de atenção/ })).not.toBeInTheDocument()
+  })
+
+  it('progresso por classe começa recolhido e abre no botão', async () => {
+    simularLargura(390)
+    servidor.use(handlerVisaoGeral(comAlerta), handlerConfiguracao(criarConfiguracao()))
+    abrir()
+    const botao = await screen.findByRole('button', { name: 'Ver progresso das 2 classes' })
+    expect(botao).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('progressbar', { name: 'Progresso médio de Amigo' })).not.toBeInTheDocument()
+    await userEvent.click(botao)
+    expect(botao).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('progressbar', { name: 'Progresso médio de Amigo' })).toBeInTheDocument()
+  })
+})
+
+describe('alerta de frequência em texto, não só na cor', () => {
+  it('no computador, o cartão da unidade abaixo do limite diz "abaixo de L%"', async () => {
+    servidor.use(handlerVisaoGeral(comAlerta), handlerConfiguracao(criarConfiguracao({ limiarFrequenciaAlerta: 75 })))
+    abrir()
+    const tigres = within(await screen.findByRole('link', { name: /^Tigres/ }))
+    expect(await tigres.findByText('abaixo de 75%')).toBeInTheDocument()
+    expect(within(screen.getByRole('link', { name: /^Águias/ })).queryByText(/abaixo de/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: /Precisa de atenção/ })).not.toBeInTheDocument()
+  })
+
+  it('no celular, o cartão da unidade também diz o motivo', async () => {
+    simularLargura(390)
+    servidor.use(handlerVisaoGeral(comAlerta), handlerConfiguracao(criarConfiguracao({ limiarFrequenciaAlerta: 75 })))
+    abrir()
+    const unidades = within(await screen.findByRole('region', { name: 'Unidades' }))
+    const tigres = within(unidades.getByRole('link', { name: /^Tigres/ }))
+    expect(await tigres.findByText('abaixo de 75%')).toBeInTheDocument()
   })
 })
