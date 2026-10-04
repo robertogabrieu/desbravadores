@@ -6,15 +6,18 @@ import type { z } from 'zod'
 import { useSalvarChamada } from '../../../api/reunioes'
 import type { EntradaSalvarChamada } from '../../../api/reunioes'
 import { gravarRascunho, itensDaChave, lerRascunho, useConexao, useFila } from '../../../offline'
+import { useLarguraMenorQue } from '../../../layouts/useLarguraMenorQue'
 import { useSessao } from '../../../sessao/useSessao'
+import { AreaTexto } from '../../../ui/AreaTexto'
 import { Botao } from '../../../ui/Botao'
 import { Campo } from '../../../ui/Campo'
 import { Chip } from '../../../ui/Chip'
 import { FaixaAviso } from '../../../ui/FaixaAviso'
+import { LARGURA_DO_CELULAR } from '../../../ui/Tabela'
 import { cn } from '../../../ui/cn'
 import { EsqueletoChamada } from './EstadosChamada'
 import { alternarAtraso, alternarJustificada, alternarPresenca, comporEstado, editarCabecalho, ehPresente, itensPendentes, lerRascunhoValido, montarEntrada, rascunhoDe, resumir, tocar } from './estado'
-import type { BaseReuniao, EstadoChamada, Marca } from './estado'
+import type { BaseReuniao, EstadoChamada, Marca, Resumo } from './estado'
 
 type Pacote = z.infer<typeof PacoteSaida>
 
@@ -52,6 +55,15 @@ function listaAtualizada(baixadoEm: number | null, fuso: string): string | null 
   if (baixadoEm === null) return null
   const dia = hojeNoFuso(fuso, new Date(baixadoEm)) === hojeNoFuso(fuso, new Date()) ? 'hoje' : dataCurta(hojeNoFuso(fuso, new Date(baixadoEm)))
   return `Lista atualizada ${dia} às ${horaNoFuso(baixadoEm, fuso)}`
+}
+
+const contagem = (quantidade: number, singular: string, plural: string): string => `${quantidade} ${quantidade === 1 ? singular : plural}`
+
+/** "2 presentes · 1 atraso · 1 falta", e quem ainda não foi marcado, se houver. */
+function resumoEmTexto(resumo: Resumo, faltas: number): string {
+  const partes = [contagem(resumo.presentes, 'presente', 'presentes'), contagem(resumo.atrasos, 'atraso', 'atrasos'), contagem(faltas, 'falta', 'faltas')]
+  if (resumo.semMarca > 0) partes.push(`${resumo.semMarca} sem marcação`)
+  return partes.join(' · ')
 }
 
 interface PropriedadesLinha {
@@ -163,9 +175,11 @@ function CorpoChamada({ pacote, baixadoEm, unidade, data, base, envioDireto, cha
   const { modo } = useConexao()
   const { avisos } = useFila()
   const salvar = useSalvarChamada()
+  const celular = useLarguraMenorQue(LARGURA_DO_CELULAR)
   const [estado, setEstado] = useState(inicial)
 
   const resumo = resumir(estado, pacote)
+  const faltas = Object.values(estado.marcas).filter((marca) => marca.situacao === 'FALTA' || marca.situacao === 'FALTA_JUSTIFICADA').length
   const licaoAtiva = pacote.criterios.some((criterio) => criterio.gatilho === 'LICAO' && criterio.ativo)
   const exigeTodos = base === null
   const nadaTocado = estado.tocadas.length === 0 && !estado.cabecalhoTocado
@@ -187,6 +201,11 @@ function CorpoChamada({ pacote, baixadoEm, unidade, data, base, envioDireto, cha
   }
 
   const atualizada = listaAtualizada(baixadoEm, pacote.clube.fuso)
+  const botaoSalvar = (
+    <Botao largura="total" disabled={!podeSalvar} carregando={enviando} onClick={aoSalvar}>
+      {`Salvar chamada · ${resumo.pontos} pts`}
+    </Botao>
+  )
   const cabecalho = estado.cabecalho
 
   return (
@@ -222,7 +241,7 @@ function CorpoChamada({ pacote, baixadoEm, unidade, data, base, envioDireto, cha
       <section className="flex flex-col gap-3">
         <Campo rotulo="Horário" type="time" value={cabecalho.horario} erro={horarioValido ? undefined : 'Informe o horário'} onChange={(e) => mudar(editarCabecalho(estado, { horario: e.target.value }))} />
         <Campo rotulo="Local" value={cabecalho.local} maxLength={120} onChange={(e) => mudar(editarCabecalho(estado, { local: e.target.value }))} />
-        <Campo rotulo="Observações" value={cabecalho.observacoes} maxLength={2000} onChange={(e) => mudar(editarCabecalho(estado, { observacoes: e.target.value }))} />
+        <AreaTexto rotulo="Observações" value={cabecalho.observacoes} maxLength={2000} onChange={(e) => mudar(editarCabecalho(estado, { observacoes: e.target.value }))} />
       </section>
       <div className="flex flex-col gap-2 border-t border-borda pt-4">
         {!envioDireto && modo === 'SEM_CONEXAO' && avisos.instalarNaTelaInicial && (
@@ -234,10 +253,25 @@ function CorpoChamada({ pacote, baixadoEm, unidade, data, base, envioDireto, cha
           <span className="rounded-full bg-alerta-fundo px-2 py-0.5 text-alerta">provisório</span>
         </p>
         {envioDireto?.retorno}
-        <Botao largura="total" disabled={!podeSalvar} carregando={enviando} onClick={aoSalvar}>
-          {`Salvar chamada · ${resumo.pontos} pts`}
-        </Botao>
+        {!celular && botaoSalvar}
       </div>
+      {celular && (
+        <>
+          <div aria-hidden className="h-32" />
+          {/* O Adm não tem a barra de navegação do pé; no conselheiro, o rodapé fica logo acima dela. */}
+          <div
+            role="region"
+            aria-label="Salvar a chamada"
+            className={cn(
+              'fixed inset-x-0 z-30 flex flex-col gap-2 border-t border-divisor bg-superficie px-4 pt-3',
+              envioDireto ? 'bottom-0 pb-[max(1rem,env(safe-area-inset-bottom))]' : 'bottom-[var(--bottom-nav-h)] pb-3',
+            )}
+          >
+            <p className="text-sm font-semibold">{resumoEmTexto(resumo, faltas)}</p>
+            {botaoSalvar}
+          </div>
+        </>
+      )}
     </div>
   )
 }

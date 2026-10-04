@@ -13,6 +13,7 @@ import { criarDetalheReuniao, handlerReuniao, handlerReuniaoRecusada } from '../
 import { criarResumo } from '../../../testes/handlers/reunioes'
 import { criarPacote } from '../../../testes/handlers/offline'
 import { criarEu, criarVinculo, uuid } from '../../../testes/handlers/sessao'
+import { simularLargura } from '../../../testes/midia'
 import { servidor } from '../../../testes/servidor'
 import { TelaChamada } from './TelaChamada'
 
@@ -254,6 +255,25 @@ describe('Chamada nova', () => {
     montar('/reunioes/nova')
     await screen.findByText('Ana Clara')
     expect(screen.queryByRole('combobox', { name: 'Unidade' })).not.toBeInTheDocument()
+  })
+})
+
+describe('No celular', () => {
+  it('rodapé preso com o resumo e o Salvar; o resumo muda ao marcar presença e atraso', async () => {
+    simularLargura(390)
+    montar('/reunioes/nova')
+    await screen.findByText('Ana Clara')
+    const rodape = within(screen.getByRole('region', { name: 'Salvar a chamada' }))
+    expect(rodape.getByText('0 presentes · 0 atrasos · 0 faltas · 3 sem marcação')).toBeInTheDocument()
+    expect(rodape.getByRole('button', { name: /^Salvar chamada/ })).toBeDisabled()
+    await userEvent.click(linha('Ana Clara').getByRole('button', { name: /Ana Clara/ }))
+    await userEvent.click(linha('Ana Clara').getByRole('button', { name: 'Atrasou' }))
+    expect(rodape.getByText('1 presente · 1 atraso · 0 faltas · 2 sem marcação')).toBeInTheDocument()
+  })
+
+  it('Observações é caixa de várias linhas', async () => {
+    montar('/reunioes/nova')
+    expect((await screen.findByLabelText('Observações')).tagName).toBe('TEXTAREA')
   })
 })
 

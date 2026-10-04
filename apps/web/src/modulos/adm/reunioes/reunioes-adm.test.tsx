@@ -5,6 +5,7 @@ import type { ModoConexao } from '../../../offline'
 import { caixa } from '../../../testes/handlers/caixa'
 import { criarDetalheReuniao, criarSaidaEnvio, handlerCorrigirChamada, handlerReuniaoDe } from '../../../testes/handlers/chamada'
 import { uuid } from '../../../testes/handlers/sessao'
+import { simularLargura } from '../../../testes/midia'
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
 import { chavesLeitura } from '../../../api/leitura'
@@ -80,6 +81,15 @@ describe('ficha da reunião (Adm)', () => {
     expect(screen.queryByRole('link', { name: /Ver álbum/ })).not.toBeInTheDocument()
   })
 
+  it('rótulos dos números e selos de cada pessoa saem em 14px, não em 12px', async () => {
+    abrir(`/adm/reunioes/${uuid(601)}`)
+    expect(await screen.findByText('Bíblias')).toHaveClass('text-sm')
+    expect(screen.getByText('presentes')).toHaveClass('text-sm')
+    const chamada = within(screen.getByRole('region', { name: 'Chamada' }))
+    expect(chamada.getAllByText('Uniforme')[0]).toHaveClass('text-sm')
+    expect(chamada.getAllByText('Uniforme')[0]).not.toHaveClass('text-xs')
+  })
+
   it('Voltar leva à ficha da unidade no mês da reunião', async () => {
     const { roteador } = abrir(`/adm/reunioes/${uuid(601)}`)
     await userEvent.click(await screen.findByRole('link', { name: 'Voltar para Águias' }))
@@ -94,6 +104,27 @@ describe('ficha da reunião (Adm)', () => {
 })
 
 describe('corrigir chamada (Adm)', () => {
+  it('no celular, o rodapé preso ao pé traz o resumo e o Salvar; o resumo acompanha a presença', async () => {
+    simularLargura(390)
+    abrir(`/adm/reunioes/${uuid(601)}/chamada`)
+    const rodape = within(await screen.findByRole('region', { name: 'Salvar a chamada' }))
+    expect(rodape.getByText('2 presentes · 1 atraso · 1 falta')).toBeInTheDocument()
+    expect(rodape.getByRole('button', { name: /Salvar chamada/ })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /Júlia Rocha/ }))
+    expect(rodape.getByText('3 presentes · 1 atraso · 0 faltas')).toBeInTheDocument()
+  })
+
+  it('no computador, o Salvar segue no fim da página, sem rodapé preso', async () => {
+    abrir(`/adm/reunioes/${uuid(601)}/chamada`)
+    expect(await screen.findByRole('button', { name: /Salvar chamada/ })).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Salvar a chamada' })).not.toBeInTheDocument()
+  })
+
+  it('Observações é caixa de várias linhas', async () => {
+    abrir(`/adm/reunioes/${uuid(601)}/chamada`)
+    expect((await screen.findByLabelText('Observações')).tagName).toBe('TEXTAREA')
+  })
+
   it('a lista vem das linhas da reunião; envia direto só o que mudou e volta à ficha atualizada', async () => {
     const registro = reuniao()
     const recebidos: { uuid: string; corpo: unknown }[] = []
