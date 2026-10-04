@@ -68,6 +68,12 @@ describe('lista de usuários', () => {
     expect(within(screen.getByRole('row', { name: /Thiago Mendes/ })).getByText('Ativo')).toBeInTheDocument()
   })
 
+  it('a tela não abre outro conteúdo principal: ela já mora no do layout do Adm', async () => {
+    abrir()
+    await screen.findByRole('tab', { name: 'Todos · 3' })
+    expect(screen.queryByRole('main')).not.toBeInTheDocument()
+  })
+
   it('no celular cada usuário vira um cartão que leva à ficha, com e-mail, papéis e situação', async () => {
     simularLargura(390)
     const { roteador } = abrir()

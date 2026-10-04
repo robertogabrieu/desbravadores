@@ -13,8 +13,8 @@ import { Botao } from '../../../ui/Botao'
 import { Campo } from '../../../ui/Campo'
 import { Chip } from '../../../ui/Chip'
 import { FaixaAviso } from '../../../ui/FaixaAviso'
-import { LARGURA_DO_CELULAR } from '../../../ui/Tabela'
 import { cn } from '../../../ui/cn'
+import { LARGURA_DO_CELULAR } from '../../../ui/larguraDoCelular'
 import { EsqueletoChamada } from './EstadosChamada'
 import { alternarAtraso, alternarJustificada, alternarPresenca, comporEstado, editarCabecalho, ehPresente, itensPendentes, lerRascunhoValido, montarEntrada, rascunhoDe, resumir, tocar } from './estado'
 import type { BaseReuniao, EstadoChamada, Marca, Resumo } from './estado'
@@ -59,9 +59,10 @@ function listaAtualizada(baixadoEm: number | null, fuso: string): string | null 
 
 const contagem = (quantidade: number, singular: string, plural: string): string => `${quantidade} ${quantidade === 1 ? singular : plural}`
 
-/** "2 presentes · 1 atraso · 1 falta", e quem ainda não foi marcado, se houver. */
+/** "1 pontual · 1 atraso · 1 falta", e quem ainda não foi marcado: cada membro conta numa parte só. */
 function resumoEmTexto(resumo: Resumo, faltas: number): string {
-  const partes = [contagem(resumo.presentes, 'presente', 'presentes'), contagem(resumo.atrasos, 'atraso', 'atrasos'), contagem(faltas, 'falta', 'faltas')]
+  const pontuais = resumo.presentes - resumo.atrasos
+  const partes = [contagem(pontuais, 'pontual', 'pontuais'), contagem(resumo.atrasos, 'atraso', 'atrasos'), contagem(faltas, 'falta', 'faltas')]
   if (resumo.semMarca > 0) partes.push(`${resumo.semMarca} sem marcação`)
   return partes.join(' · ')
 }

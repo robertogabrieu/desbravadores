@@ -5,9 +5,6 @@ import { Botao } from './Botao'
 import { cn } from './cn'
 import { LARGURA_DO_CELULAR } from './larguraDoCelular'
 
-/** Reexportada: as telas que já importam o limite daqui continuam funcionando. */
-export { LARGURA_DO_CELULAR }
-
 export interface ColunaTabela<T> {
   chave: string
   titulo: string
@@ -24,7 +21,7 @@ interface Propriedades<T> {
   aoMudarPagina: (pagina: number) => void
   /** Mostrado no lugar da tabela quando `itens` está vazio. */
   vazio?: ReactNode
-  /** Conteúdo do cartão de cada item no celular; sem ele, o cartão lista os pares título: valor das colunas. */
+  /** Conteúdo do cartão de cada item no celular; sem ele, o celular mostra a mesma tabela do computador. */
   cartao?: (item: T) => ReactNode
 }
 
@@ -56,31 +53,18 @@ function Paginacao({ pagina, porPagina, total, aoMudarPagina, className }: Propr
   )
 }
 
-function CartaoGenerico<T>({ colunas, item }: { colunas: ColunaTabela<T>[]; item: T }) {
-  return (
-    <dl className="flex flex-col gap-2 rounded-cartao border border-borda-controle bg-superficie p-4 text-base">
-      {colunas.map((coluna) => (
-        <div key={coluna.chave} className="flex flex-wrap gap-x-2">
-          <dt className="font-semibold text-texto-2">{coluna.titulo}:</dt>
-          <dd className="min-w-0 break-words">{coluna.celula(item)}</dd>
-        </div>
-      ))}
-    </dl>
-  )
-}
-
 export function Tabela<T>({ colunas, itens, chaveItem, pagina, porPagina, total, aoMudarPagina, vazio, cartao }: Propriedades<T>) {
   const celular = useLarguraMenorQue(LARGURA_DO_CELULAR)
   if (itens.length === 0 && vazio) return <>{vazio}</>
 
   const paginacao = { pagina, porPagina, total, aoMudarPagina }
 
-  if (celular) {
+  if (celular && cartao) {
     return (
       <div className="flex flex-col gap-3">
         <ul className="flex flex-col gap-2">
           {itens.map((item) => (
-            <li key={chaveItem(item)}>{cartao ? cartao(item) : <CartaoGenerico colunas={colunas} item={item} />}</li>
+            <li key={chaveItem(item)}>{cartao(item)}</li>
           ))}
         </ul>
         <Paginacao {...paginacao} className="rounded-cartao border border-borda-controle bg-superficie" />

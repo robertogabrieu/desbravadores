@@ -49,9 +49,12 @@ export function useErrosAVista(erros: Record<string, string>) {
 }
 
 const tituloDoResumo = (quantas: number): string =>
-  quantas === 1 ? 'Falta 1 informação para salvar' : `Faltam ${quantas} informações para salvar`
+  quantas === 1 ? 'Revise 1 campo para salvar' : `Revise ${quantas} campos para salvar`
 
-/** O topo do formulário que falhou: quantas informações faltam e um link para cada campo. */
+/**
+ * O topo do formulário que falhou: quantos campos rever e um link para cada um. Não é alerta: o foco
+ * já vai ao primeiro campo, que anuncia o próprio erro, e dois anúncios juntos se atropelam.
+ */
 export function ResumoDosErros({ pendencias }: { pendencias: Pendencia[] }) {
   const idTitulo = useId()
   if (pendencias.length === 0) return null
@@ -63,7 +66,7 @@ export function ResumoDosErros({ pendencias }: { pendencias: Pendencia[] }) {
   }
 
   return (
-    <div role="alert" aria-labelledby={idTitulo} className="flex flex-col gap-1 rounded-botao border-2 border-perigo bg-superficie px-4 py-3">
+    <section aria-labelledby={idTitulo} className="flex flex-col gap-1 rounded-botao border-2 border-perigo bg-superficie px-4 py-3">
       <p id={idTitulo} className="flex items-center gap-2 text-base font-semibold text-perigo">
         <CircleAlert aria-hidden className="size-5 shrink-0" />
         {tituloDoResumo(pendencias.length)}
@@ -77,6 +80,6 @@ export function ResumoDosErros({ pendencias }: { pendencias: Pendencia[] }) {
           </li>
         ))}
       </ul>
-    </div>
+    </section>
   )
 }

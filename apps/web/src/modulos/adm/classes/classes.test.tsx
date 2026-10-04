@@ -337,6 +337,23 @@ describe('classes · no celular', () => {
     expect(await screen.findByRole('navigation', { name: 'Classes' })).toBeInTheDocument()
   })
 
+  it('abrir uma classe mostra o detalhe do topo; voltar devolve a lista onde estava', async () => {
+    simularLargura(390)
+    const rolar = vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined)
+    abrirClasses()
+    await screen.findByRole('navigation', { name: 'Classes' })
+    Object.defineProperty(window, 'scrollY', { value: 640, configurable: true })
+    await userEvent.click(screen.getByRole('button', { name: /^Amigo10/ }))
+    await screen.findByRole('heading', { name: 'Amigo', level: 2 })
+    await waitFor(() => expect(rolar).toHaveBeenLastCalledWith({ top: 0 }))
+
+    Object.defineProperty(window, 'scrollY', { value: 0, configurable: true })
+    await userEvent.click(screen.getByRole('button', { name: 'Voltar para Classes' }))
+    await screen.findByRole('navigation', { name: 'Classes' })
+    await waitFor(() => expect(rolar).toHaveBeenLastCalledWith({ top: 640 }))
+    rolar.mockRestore()
+  })
+
   it('no computador, lista e detalhe lado a lado, sem Voltar', async () => {
     abrirClasses()
     expect(await screen.findByRole('heading', { name: 'Amigo', level: 2 })).toBeInTheDocument()

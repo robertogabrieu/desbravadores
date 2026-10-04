@@ -98,7 +98,7 @@ describe('A3 · nova e editar (telas dedicadas)', () => {
     abrir('/adm/unidades/nova')
     await userEvent.click(await screen.findByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(screen.getByLabelText('Nome')).toHaveFocus())
-    const resumo = screen.getByRole('alert', { name: 'Falta 1 informação para salvar' })
+    const resumo = screen.getByRole('region', { name: 'Revise 1 campo para salvar' })
     expect(within(resumo).getAllByRole('link').map((link) => link.textContent)).toEqual(['Nome'])
   })
 

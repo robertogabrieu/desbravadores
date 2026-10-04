@@ -1,11 +1,12 @@
 import { ChevronLeft } from 'lucide-react'
+import { useEffect, useRef } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useClasses } from '../../../api/leitura'
 import type { Classe } from '../../../api/leitura'
 import { useLarguraMenorQue } from '../../../layouts/useLarguraMenorQue'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
-import { LARGURA_DO_CELULAR } from '../../../ui/Tabela'
 import { cn } from '../../../ui/cn'
+import { LARGURA_DO_CELULAR } from '../../../ui/larguraDoCelular'
 import { CorpoDaConsulta } from './CorpoDaConsulta'
 import { DetalheDaClasse } from './DetalheDaClasse'
 
@@ -60,6 +61,11 @@ const VEIO_DA_LISTA = { veioDaLista: true }
 const veioDaLista = (estado: unknown): boolean =>
   typeof estado === 'object' && estado !== null && 'veioDaLista' in estado
 
+// Fora do navegador (nos testes) a janela pode não ter rolagem.
+function rolarAte(top: number) {
+  if (typeof window.scrollTo === 'function') window.scrollTo({ top })
+}
+
 function BotaoVoltar({ aoVoltar }: { aoVoltar: () => void }) {
   return (
     <button
@@ -80,6 +86,16 @@ export function PainelClasses() {
   const local = useLocation()
   const navegar = useNavigate()
 
+  // No celular a lista e o detalhe ocupam a mesma página: o detalhe abre do topo e a lista volta onde estava.
+  const classeAberta = celular ? parametros.get('classe') : null
+  const posicaoDaLista = useRef(0)
+  const classeAntes = useRef(classeAberta)
+  useEffect(() => {
+    if (classeAberta === classeAntes.current) return
+    classeAntes.current = classeAberta
+    rolarAte(classeAberta === null ? posicaoDaLista.current : 0)
+  }, [classeAberta])
+
   return (
     <CorpoDaConsulta consulta={classes} rotuloDeCarga="Carregando as classes">
       {(lista) => {
@@ -93,10 +109,14 @@ export function PainelClasses() {
         const pedida = lista.find((classe) => classe.id === parametros.get('classe'))
         const selecionada = pedida ?? lista[0]
         // No celular cada classe aberta é uma página do histórico, para o voltar do aparelho fechá-la.
-        const escolher = (id: string) =>
-          celular
-            ? setParametros({ classe: id }, { state: VEIO_DA_LISTA })
-            : setParametros({ classe: id }, { replace: true })
+        const escolher = (id: string) => {
+          if (!celular) {
+            setParametros({ classe: id }, { replace: true })
+            return
+          }
+          posicaoDaLista.current = window.scrollY
+          setParametros({ classe: id }, { state: VEIO_DA_LISTA })
+        }
         const voltar = () => {
           if (veioDaLista(local.state)) void navegar(-1)
           else setParametros({}, { replace: true })

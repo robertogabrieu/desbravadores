@@ -312,7 +312,11 @@ describe('importar planilha · revisar no celular', () => {
     servidor.use(handlerConfirmarImportacao({ importados: 2 }, 201, (c) => recebidos.push(c)))
     abrir()
     await enviar()
-    expect(await screen.findByText('Se importar agora, 2 linhas ficam de fora. Dá para importá-las depois.')).toBeInTheDocument()
+    const fraseDoRodape = await screen.findByText('Se importar agora, 2 linhas ficam de fora. Dá para importá-las depois.')
+    // Preso ao pé dentro do fluxo: cresce com o erro geral sem cobrir o último cartão, e não pede espaço reservado.
+    expect(fraseDoRodape.parentElement).toHaveClass('sticky', 'bottom-0')
+    expect(fraseDoRodape.parentElement).not.toHaveClass('fixed')
+    expect(screen.getByRole('region', { name: 'Revisar a planilha' })).not.toHaveClass('pb-48')
     await userEvent.click(screen.getByRole('button', { name: 'Todas · 4' }))
     await userEvent.click(within(cartao(4)).getByRole('checkbox', { name: 'Importar linha 4' }))
     expect(screen.getByText('Se importar agora, 1 linha fica de fora. Dá para importá-la depois.')).toBeInTheDocument()

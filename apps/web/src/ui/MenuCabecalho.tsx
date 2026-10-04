@@ -38,6 +38,8 @@ export function MenuCabecalho({ rotulo, itens, rotuloAcessivel, cabecalho, class
   const botao = useRef<HTMLButtonElement>(null)
   const menu = useRef<HTMLDivElement>(null)
   const idMenu = useId()
+  // O nome inteiro dá nome ao menu: há leitor de tela que pula o que não é item dentro dele.
+  const idCabecalho = useId()
   const escolhaUnica = itens.some((item) => item.marcado !== undefined)
   const [deslocamento, definirDeslocamento] = useState(0)
 
@@ -111,12 +113,13 @@ export function MenuCabecalho({ rotulo, itens, rotuloAcessivel, cabecalho, class
           ref={menu}
           id={idMenu}
           role="menu"
+          aria-labelledby={cabecalho ? idCabecalho : undefined}
           onKeyDown={andarComTeclado}
           style={deslocamento ? { transform: `translateX(${deslocamento}px)` } : undefined}
           className="absolute right-0 z-40 mt-1 w-max max-w-[calc(100vw-1rem)] min-w-56 rounded-cartao border border-borda-controle bg-superficie py-1 text-texto shadow-lg"
         >
           {cabecalho && (
-            <div role="presentation" className="border-b border-borda px-4 pt-2 pb-3 text-base font-semibold break-words">
+            <div id={idCabecalho} role="presentation" className="border-b border-borda px-4 pt-2 pb-3 text-base font-semibold break-words">
               {cabecalho}
             </div>
           )}

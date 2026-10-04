@@ -52,20 +52,15 @@ describe('Tabela', () => {
     expect(screen.getByRole('button', { name: 'Página anterior' })).toBeDisabled()
   })
 
-  it('no celular cada linha vira cartão com os pares título: valor, sem tabela que rola de lado', () => {
+  it('no celular, sem o cartão da tela, continua tabela', () => {
     simularLargura(390)
-    const colunasDuplas = [...colunas, { chave: 'idade', titulo: 'Idade', celula: () => '11' }]
     render(
-      <Tabela colunas={colunasDuplas} itens={[{ id: '1', nome: 'Ana' }, { id: '2', nome: 'Bia' }]} chaveItem={(l: Linha) => l.id}
+      <Tabela colunas={colunas} itens={[{ id: '1', nome: 'Ana' }, { id: '2', nome: 'Bia' }]} chaveItem={(l: Linha) => l.id}
         pagina={1} porPagina={25} total={2} aoMudarPagina={() => undefined} />,
     )
-    expect(screen.queryByRole('table')).not.toBeInTheDocument()
-    const cartoes = screen.getAllByRole('listitem')
-    expect(cartoes).toHaveLength(2)
-    expect(cartoes[0]).toHaveTextContent('Nome')
-    expect(cartoes[0]).toHaveTextContent('Ana')
-    expect(cartoes[0]).toHaveTextContent('Idade')
-    expect(document.querySelector('.overflow-x-auto')).toBeNull()
+    expect(screen.getByRole('table')).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Nome' })).toBeInTheDocument()
+    expect(screen.queryByRole('listitem')).not.toBeInTheDocument()
     expect(screen.getByText('1–2 de 2')).toBeInTheDocument()
   })
 

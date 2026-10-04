@@ -26,7 +26,7 @@ describe('Evento · erro à vista ao salvar', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
 
     await waitFor(() => expect(screen.getByLabelText('Nome')).toHaveFocus())
-    const resumo = screen.getByRole('alert', { name: 'Faltam 2 informações para salvar' })
+    const resumo = screen.getByRole('region', { name: 'Revise 2 campos para salvar' })
     expect(within(resumo).getAllByRole('link').map((link) => link.textContent)).toEqual(['Nome', 'Fim'])
     await userEvent.click(within(resumo).getByRole('link', { name: 'Fim' }))
     expect(screen.getByLabelText('Fim')).toHaveFocus()
@@ -40,6 +40,6 @@ describe('Evento · erro à vista ao salvar', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
 
     await waitFor(() => expect(screen.getByLabelText('Nome')).toHaveFocus())
-    expect(within(screen.getByRole('alert', { name: 'Falta 1 informação para salvar' })).getByRole('link', { name: 'Nome' })).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Revise 1 campo para salvar' })).getByRole('link', { name: 'Nome' })).toBeInTheDocument()
   })
 })

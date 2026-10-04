@@ -14,8 +14,9 @@ import { cn } from '../../../ui/cn'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { ErroDeCarga } from '../../../ui/EstadosDeCarga'
 import { LinkDeFicha } from '../../../ui/LinkDeFicha'
-import { LARGURA_DO_CELULAR, Tabela } from '../../../ui/Tabela'
+import { Tabela } from '../../../ui/Tabela'
 import type { ColunaTabela } from '../../../ui/Tabela'
+import { LARGURA_DO_CELULAR } from '../../../ui/larguraDoCelular'
 import { rotuloDoPapel } from '../../acesso/papeis'
 import { useEstadoDeVolta, useFiltrosNaUrl } from '../navegacao'
 import { SITUACAO } from './FichaUsuario'
@@ -123,7 +124,7 @@ export function AdmUsuarios() {
   )
 
   return (
-    <main className="flex flex-col gap-4 py-6">
+    <div className="flex flex-col gap-4 py-6">
       <header className={cn('flex gap-4', celular ? 'flex-col' : 'items-end justify-between')}>
         <h1 className="font-titulo text-3xl font-extrabold">Usuários</h1>
         <Link to="/adm/usuarios/novo" state={estadoDeVolta} className={cn(estiloDoBotao({ largura: celular ? 'total' : 'auto' }), 'whitespace-nowrap')}>
@@ -166,6 +167,6 @@ export function AdmUsuarios() {
           vazio={<EstadoVazio titulo="Nenhum usuário encontrado" descricao="Mude o filtro ou a busca, ou convide alguém." />}
         />
       )}
-    </main>
+    </div>
   )
 }

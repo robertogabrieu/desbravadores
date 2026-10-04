@@ -108,10 +108,10 @@ describe('corrigir chamada (Adm)', () => {
     simularLargura(390)
     abrir(`/adm/reunioes/${uuid(601)}/chamada`)
     const rodape = within(await screen.findByRole('region', { name: 'Salvar a chamada' }))
-    expect(rodape.getByText('2 presentes · 1 atraso · 1 falta')).toBeInTheDocument()
+    expect(rodape.getByText('1 pontual · 1 atraso · 1 falta')).toBeInTheDocument()
     expect(rodape.getByRole('button', { name: /Salvar chamada/ })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /Júlia Rocha/ }))
-    expect(rodape.getByText('3 presentes · 1 atraso · 0 faltas')).toBeInTheDocument()
+    expect(rodape.getByText('2 pontuais · 1 atraso · 0 faltas')).toBeInTheDocument()
   })
 
   it('no computador, o Salvar segue no fim da página, sem rodapé preso', async () => {

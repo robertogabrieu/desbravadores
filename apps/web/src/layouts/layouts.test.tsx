@@ -316,6 +316,8 @@ describe('LayoutAdm', () => {
 
     await userEvent.click(botao)
     expect(within(screen.getByRole('menu')).getByText('Ana Souza')).toBeInTheDocument()
+    // O nome inteiro dá nome ao menu: leitor de tela que pula o que não é item ainda o lê ao abrir.
+    expect(screen.getByRole('menu', { name: 'Ana Souza' })).toBeInTheDocument()
   })
 
   it('largura de 1280 px: o cabeçalho mostra o nome inteiro', async () => {

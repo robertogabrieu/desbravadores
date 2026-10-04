@@ -180,7 +180,7 @@ function EtapaRevisar({ linhasIniciais, aoRecomecar }: { linhasIniciais: LinhaEm
 
   if (celular) {
     return (
-      <section className="flex flex-col gap-4 pb-48" aria-label="Revisar a planilha">
+      <section className="flex flex-col gap-4" aria-label="Revisar a planilha">
         <div className="flex flex-col gap-1">
           {resumo}
           <p className="text-base text-texto-2">Corrija os campos marcados em cada linha. Pessoa repetida chega desmarcada: marque se quiser importar assim mesmo.</p>
@@ -189,7 +189,8 @@ function EtapaRevisar({ linhasIniciais, aoRecomecar }: { linhasIniciais: LinhaEm
         <Botao variante="secundario" className="self-start" onClick={aoRecomecar}>
           Enviar outra planilha
         </Botao>
-        <div className="fixed inset-x-0 bottom-0 z-30 flex flex-col gap-3 border-t border-borda bg-superficie p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        {/* Sticky, não fixed: no fluxo, o rodapé cresce com o erro geral sem cobrir o último cartão. */}
+        <div className="sticky bottom-0 z-30 -mx-4 flex flex-col gap-3 border-t border-borda bg-superficie p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           {avisoDeErro}
           <p className="text-sm text-texto-2">{fraseDoQueFicaDeFora(linhas.length, marcadas.length)}</p>
           {botaoImportar}

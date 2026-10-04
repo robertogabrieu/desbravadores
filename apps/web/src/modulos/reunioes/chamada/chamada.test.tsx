@@ -264,11 +264,11 @@ describe('No celular', () => {
     montar('/reunioes/nova')
     await screen.findByText('Ana Clara')
     const rodape = within(screen.getByRole('region', { name: 'Salvar a chamada' }))
-    expect(rodape.getByText('0 presentes · 0 atrasos · 0 faltas · 3 sem marcação')).toBeInTheDocument()
+    expect(rodape.getByText('0 pontuais · 0 atrasos · 0 faltas · 3 sem marcação')).toBeInTheDocument()
     expect(rodape.getByRole('button', { name: /^Salvar chamada/ })).toBeDisabled()
     await userEvent.click(linha('Ana Clara').getByRole('button', { name: /Ana Clara/ }))
     await userEvent.click(linha('Ana Clara').getByRole('button', { name: 'Atrasou' }))
-    expect(rodape.getByText('1 presente · 1 atraso · 0 faltas · 2 sem marcação')).toBeInTheDocument()
+    expect(rodape.getByText('0 pontuais · 1 atraso · 0 faltas · 2 sem marcação')).toBeInTheDocument()
   })
 
   it('Observações é caixa de várias linhas', async () => {

@@ -9,7 +9,7 @@ import { Campo } from './Campo'
 import { ResumoDosErros, useErrosAVista } from './ErrosDoFormulario'
 import { RodapeDoFormulario } from './RodapeDoFormulario'
 
-const RESUMO = /^Faltam? \d+ informaç(ão|ões) para salvar$/
+const RESUMO = /^Revise \d+ campos? para salvar$/
 
 function FormularioDeTeste({ errosAoSalvar }: { errosAoSalvar: Record<string, string> }) {
   const [erros, setErros] = useState<Record<string, string>>({})
@@ -38,7 +38,7 @@ function FormularioDeTeste({ errosAoSalvar }: { errosAoSalvar: Record<string, st
 describe('Erro à vista no formulário', () => {
   it('sem erro, não há resumo', () => {
     render(<FormularioDeTeste errosAoSalvar={{}} />)
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: RESUMO })).not.toBeInTheDocument()
   })
 
   it('ao falhar, foca o primeiro campo com erro e resume com um link por campo, na ordem da tela', async () => {
@@ -46,8 +46,21 @@ describe('Erro à vista no formulário', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
 
     expect(screen.getByLabelText('Nome')).toHaveFocus()
-    const resumo = screen.getByRole('alert', { name: /Faltam 2 informações para salvar/ })
+    const resumo = screen.getByRole('region', { name: /Revise 2 campos para salvar/ })
     expect(within(resumo).getAllByRole('link').map((link) => link.textContent)).toEqual(['Nome', 'E-mail'])
+  })
+
+  it('o resumo não é um alerta: só o erro de cada campo se anuncia, sem disputar com o foco', async () => {
+    render(<FormularioDeTeste errosAoSalvar={{ email: 'Informe o e-mail', nome: 'Informe o nome' }} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+
+    expect(screen.getAllByRole('alert').map((alerta) => alerta.textContent)).toEqual(['Informe o nome', 'Informe o e-mail'])
+  })
+
+  it('o título não fala em falta: o erro pode ser de valor, não de campo vazio', async () => {
+    render(<FormularioDeTeste errosAoSalvar={{ nome: 'O fim vem antes do início' }} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    expect(screen.getByRole('region', { name: 'Revise 1 campo para salvar' })).toBeInTheDocument()
   })
 
   it('o link leva ao campo', async () => {
@@ -62,7 +75,7 @@ describe('Erro à vista no formulário', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
 
     expect(screen.getByLabelText('Sábado')).toHaveFocus()
-    const resumo = screen.getByRole('alert', { name: /Falta 1 informação para salvar/ })
+    const resumo = screen.getByRole('region', { name: /Revise 1 campo para salvar/ })
     expect(within(resumo).getByRole('link', { name: 'Dias' })).toHaveAttribute('href', '#grupo-de-teste')
   })
 
@@ -70,12 +83,12 @@ describe('Erro à vista no formulário', () => {
     let erros: Record<string, string> = { nome: 'Informe o nome' }
     const { rerender } = render(<FormularioDeTeste errosAoSalvar={erros} />)
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
-    expect(screen.getByRole('alert', { name: RESUMO })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: RESUMO })).toBeInTheDocument()
 
     erros = {}
     rerender(<FormularioDeTeste errosAoSalvar={erros} />)
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
-    expect(screen.queryByRole('alert', { name: RESUMO })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: RESUMO })).not.toBeInTheDocument()
   })
 })
 

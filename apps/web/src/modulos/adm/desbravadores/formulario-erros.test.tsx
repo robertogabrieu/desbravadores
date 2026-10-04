@@ -28,7 +28,7 @@ describe('Desbravador · erro à vista ao salvar', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
 
     await waitFor(() => expect(screen.getByLabelText('Nome completo')).toHaveFocus())
-    const resumo = screen.getByRole('alert', { name: 'Faltam 3 informações para salvar' })
+    const resumo = screen.getByRole('region', { name: 'Revise 3 campos para salvar' })
     expect(within(resumo).getAllByRole('link').map((link) => link.textContent)).toEqual(['Nome completo', 'Nascimento', 'Sexo'])
     await userEvent.click(within(resumo).getByRole('link', { name: 'Sexo' }))
     expect(screen.getByLabelText('Sexo')).toHaveFocus()
@@ -46,7 +46,7 @@ describe('Desbravador · erro à vista ao salvar', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
 
     await waitFor(() => expect(screen.getByLabelText('Nome completo')).toHaveFocus())
-    const resumo = screen.getByRole('alert', { name: 'Falta 1 informação para salvar' })
+    const resumo = screen.getByRole('region', { name: 'Revise 1 campo para salvar' })
     expect(within(resumo).getByRole('link', { name: 'Nome completo' })).toBeInTheDocument()
   })
 })
