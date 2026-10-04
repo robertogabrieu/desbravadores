@@ -2,6 +2,8 @@ import type { INestApplication } from '@nestjs/common'
 import type { DesbravadorSaida, MatriculaSaida, MembroSaida } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { criarAppDeTeste } from '../../test/app'
+import { ServicoClassePelaIdade } from './classe-pela-idade.service'
+import { travarMatriculasDoDesbravador } from './desbravadores.service'
 import {
   classeOficial,
   criarAcesso,
@@ -27,6 +29,9 @@ import {
 type Dbv = z.infer<typeof DesbravadorSaida>
 type ComAvisos = { dados: Dbv; avisos: { codigo: string; mensagem: string }[] }
 type Pagina = { itens: Dbv[]; total: number; pagina: number; porPagina: number }
+
+/** Nascimento no ano civil que dá `idade` no ano do clube corrente, no dia e mês pedidos ("MM-DD"). */
+const nascidoEm = (idade: number, mesDia: string): string => `${anoCorrente() - idade}-${mesDia}`
 
 describe('desbravadores: escopo, contato, cadastro, matricula', () => {
   let app: INestApplication
@@ -279,6 +284,97 @@ describe('desbravadores: escopo, contato, cadastro, matricula', () => {
       expect(avisos).toHaveLength(2)
     })
 
+    it('DBV sem classe e matriculado pela regua de 30/06, com a avancada; com classe, fica a do Adm', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const amigo = await classeOficial('Amigo')
+      const pelaIdade = corpo<ComAvisos>(
+        await api.post('/api/desbravadores', adm.autorizacao, { ...base, nascimento: nascidoEm(11, '03-15') }).expect(201),
+      )
+      expect(pelaIdade.dados.classeAtual?.nome).toBe('Companheiro')
+      expect(pelaIdade.dados.avancadaAtual?.tipo).toBe('AVANCADA')
+      expect(pelaIdade.avisos).toEqual([])
+      const doSegundoSemestre = corpo<ComAvisos>(
+        await api.post('/api/desbravadores', adm.autorizacao, { ...base, nascimento: nascidoEm(11, '09-15') }).expect(201),
+      )
+      expect(doSegundoSemestre.dados.classeAtual?.nome).toBe('Amigo')
+
+      const doAdm = corpo<ComAvisos>(
+        await api
+          .post('/api/desbravadores', adm.autorizacao, { ...base, nascimento: nascidoEm(11, '03-15'), classeId: amigo.id })
+          .expect(201),
+      )
+      expect(doAdm.dados.classeAtual?.nome).toBe('Amigo')
+      const matriculas = await prismaDeTeste().matriculaClasse.findMany({ where: { clubeId: clube.id, dbvId: doAdm.dados.id } })
+      expect(matriculas).toHaveLength(2)
+    })
+
+    it('DBV sem classe com incluirAvancada=false: pela idade entra so na regular', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const { dados } = corpo<ComAvisos>(
+        await api
+          .post('/api/desbravadores', adm.autorizacao, { ...base, nascimento: nascidoEm(11, '03-15'), incluirAvancada: false })
+          .expect(201),
+      )
+      expect(dados.classeAtual?.nome).toBe('Companheiro')
+      expect(dados.avancadaAtual).toBeNull()
+      expect(await prismaDeTeste().matriculaClasse.count({ where: { clubeId: clube.id, dbvId: dados.id } })).toBe(1)
+    })
+
+    it('avancada desligada no clube: nem o cadastro pela idade nem a matricula manual a incluem', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const amigo = await classeOficial('Amigo')
+      const avancada = await prismaDeTeste().classe.findFirstOrThrow({ where: { classeBaseId: amigo.id, tipo: 'AVANCADA', clubeId: null } })
+      await prismaDeTeste().classeClube.upsert({
+        where: { clubeId_classeId: { clubeId: clube.id, classeId: avancada.id } },
+        create: { clubeId: clube.id, classeId: avancada.id, ativa: false },
+        update: { ativa: false },
+      })
+
+      const pelaIdade = corpo<ComAvisos>(
+        await api.post('/api/desbravadores', adm.autorizacao, { ...base, nascimento: nascidoEm(10, '03-15') }).expect(201),
+      )
+      expect(pelaIdade.dados.classeAtual?.nome).toBe('Amigo')
+      expect(pelaIdade.dados.avancadaAtual).toBeNull()
+
+      const manual = await criarDbv({ clubeId: clube.id, nascimento: nascidoEm(10, '03-15') })
+      const matriculas = corpo<z.infer<typeof MatriculaSaida>[]>(
+        await api
+          .post(`/api/desbravadores/${manual.id}/matriculas`, adm.autorizacao, { classeId: amigo.id, anoClube: anoCorrente(), incluirAvancada: true })
+          .expect(201),
+      )
+      expect(matriculas.map((m) => m.classe.id)).toEqual([amigo.id])
+    })
+
+    it('Diretoria sem classe, e quem vira Diretoria pela idade, fica sem matricula; menos de 10 anos tambem', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const casos: object[] = [
+        { ...base, nascimento: nascidoEm(11, '03-15'), tipo: 'DIRETORIA' },
+        { ...base, nascimento: nascidoEm(16, '03-15') },
+        { ...base, nascimento: nascidoEm(9, '03-15') },
+      ]
+      for (const pedido of casos) {
+        const { dados } = corpo<ComAvisos>(await api.post('/api/desbravadores', adm.autorizacao, pedido).expect(201))
+        expect(dados.classeAtual).toBeNull()
+      }
+      expect(await prismaDeTeste().matriculaClasse.count({ where: { clubeId: clube.id } })).toBe(0)
+    })
+
+    it('aviso de idade pela regua de 30/06: quem faz 11 no 1o semestre ja e Companheiro; no 2o, ainda Amigo', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const amigo = await classeOficial('Amigo')
+      const avisos = async (nascimento: string) =>
+        corpo<ComAvisos>(await api.post('/api/desbravadores', adm.autorizacao, { ...base, nascimento, classeId: amigo.id }).expect(201)).avisos
+      expect(await avisos(nascidoEm(11, '03-15'))).toEqual([
+        { codigo: 'AVISO_IDADE_CLASSE', mensagem: 'Pela idade, a classe esperada é Companheiro.' },
+      ])
+      expect(await avisos(nascidoEm(11, '09-15'))).toEqual([])
+    })
+
     it('classe agrupada: DBV com menos de 16 anos avisa, com 16 nao', async () => {
       const clube = await criarClube()
       const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
@@ -444,6 +540,44 @@ describe('desbravadores: escopo, contato, cadastro, matricula', () => {
       await api.patch(`/api/desbravadores/${dbv.id}`, instrutor.autorizacao, { nome: 'Xx' }).expect(403)
     })
 
+    it('DBV sem classe no ano: a edicao nao matricula; a varredura preenche depois, com a avancada', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const dbv = await criarDbv({ clubeId: clube.id, nascimento: nascidoEm(11, '03-15') })
+      const { dados } = corpo<ComAvisos>(await api.patch(`/api/desbravadores/${dbv.id}`, adm.autorizacao, { nome: 'Outro Nome' }).expect(200))
+      expect(dados.classeAtual).toBeNull()
+      expect(await prismaDeTeste().matriculaClasse.count({ where: { clubeId: clube.id, dbvId: dbv.id } })).toBe(0)
+
+      expect(await app.get(ServicoClassePelaIdade).sincronizarClube(clube.id)).toBe(1)
+      const depois = corpo<Dbv>(await api.get(`/api/desbravadores/${dbv.id}`, adm.autorizacao).expect(200))
+      expect(depois.classeAtual?.nome).toBe('Companheiro')
+      expect(depois.avancadaAtual?.tipo).toBe('AVANCADA')
+    })
+
+    it('Diretoria do Adm volta a DBV na edicao sem matricula; a varredura preenche depois', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const dbv = await criarDbv({ clubeId: clube.id, tipo: 'DIRETORIA', nascimento: nascidoEm(11, '03-15') })
+      await prismaDeTeste().desbravador.update({ where: { id: dbv.id }, data: { diretoriaPeloAdm: true } })
+      const { dados } = corpo<ComAvisos>(await api.patch(`/api/desbravadores/${dbv.id}`, adm.autorizacao, { tipo: 'DBV' }).expect(200))
+      expect(dados).toMatchObject({ tipo: 'DBV', classeAtual: null })
+
+      expect(await app.get(ServicoClassePelaIdade).aplicar(clube.id, dbv.id, anoCorrente())).toBe(true)
+      const depois = corpo<Dbv>(await api.get(`/api/desbravadores/${dbv.id}`, adm.autorizacao).expect(200))
+      expect(depois.classeAtual?.nome).toBe('Companheiro')
+    })
+
+    it('DBV com classe fora da idade: a edicao nao troca a classe', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const amigo = await classeOficial('Amigo')
+      const dbv = await criarDbv({ clubeId: clube.id, nascimento: nascidoEm(11, '03-15') })
+      await criarMatricula({ clubeId: clube.id, dbvId: dbv.id, classeId: amigo.id, anoClube: anoCorrente() })
+      const { dados } = corpo<ComAvisos>(await api.patch(`/api/desbravadores/${dbv.id}`, adm.autorizacao, { nome: 'Outro Nome' }).expect(200))
+      expect(dados.classeAtual?.nome).toBe('Amigo')
+      expect(await prismaDeTeste().matriculaClasse.count({ where: { clubeId: clube.id, dbvId: dbv.id } })).toBe(1)
+    })
+
     it('usuarioId de outro clube no LIDER → 404', async () => {
       const clube = await criarClube()
       const outro = await criarClube()
@@ -456,13 +590,13 @@ describe('desbravadores: escopo, contato, cadastro, matricula', () => {
   })
 
   describe('inativar e reativar', () => {
-    it('inativar fecha a unidade aberta e desiste das matriculas CURSANDO; reativar so volta ao ativo', async () => {
+    it('inativar fecha a unidade aberta e desiste das matriculas CURSANDO; reativar sem classe para a idade fica sem classe', async () => {
       const clube = await criarClube()
       const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
       const unidade = await criarUnidade({ clubeId: clube.id })
       const amigo = await classeOficial('Amigo')
       const guia = await classeOficial('Guia')
-      const dbv = await criarDbv({ clubeId: clube.id })
+      const dbv = await criarDbv({ clubeId: clube.id, nascimento: nascidoEm(9, '03-15') })
       await prismaDeTeste().membroUnidade.create({
         data: { clubeId: clube.id, dbvId: dbv.id, unidadeId: unidade.id, inicio: new Date('2026-02-01') },
       })
@@ -485,6 +619,73 @@ describe('desbravadores: escopo, contato, cadastro, matricula', () => {
       expect(reativado).toMatchObject({ ativo: true, saidaEm: null, unidade: null, classeAtual: null })
       const jaAtivo = await api.post(`/api/desbravadores/${dbv.id}/reativar`, adm.autorizacao).expect(422)
       expect(jaAtivo.body).toMatchObject({ codigo: 'REGRA' })
+    })
+
+    it('reativar sem matricula no ano: volta na hora com a classe da regua, nao a escolhida antes', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const amigo = await classeOficial('Amigo')
+      const dbv = await criarDbv({ clubeId: clube.id, nascimento: nascidoEm(11, '03-15') })
+      await criarMatricula({ clubeId: clube.id, dbvId: dbv.id, classeId: amigo.id, anoClube: anoCorrente() })
+      await api.post(`/api/desbravadores/${dbv.id}/inativar`, adm.autorizacao, { saidaEm: '2026-08-10' }).expect(200)
+
+      const reativado = corpo<Dbv>(await api.post(`/api/desbravadores/${dbv.id}/reativar`, adm.autorizacao).expect(200))
+      expect(reativado.classeAtual?.nome).toBe('Companheiro')
+      expect(await app.get(ServicoClassePelaIdade).sincronizarClube(clube.id)).toBe(0)
+    })
+
+    it('inativar espera a trava do desbravador: matricula criada por quem a segurava tambem vira DESISTIU', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const amigo = await classeOficial('Amigo')
+      const dbv = await criarDbv({ clubeId: clube.id, nascimento: nascidoEm(10, '03-15') })
+
+      // Faz o papel da varredura: segura a trava, deixa a inativação começar e só então grava a matrícula.
+      let inativacao: Promise<unknown> | undefined
+      await prismaDeTeste().$transaction(async (tx) => {
+        await travarMatriculasDoDesbravador(tx, dbv.id)
+        inativacao = api.post(`/api/desbravadores/${dbv.id}/inativar`, adm.autorizacao, { saidaEm: '2026-08-10' }).expect(200).then()
+        await new Promise((resolver) => setTimeout(resolver, 500))
+        await tx.matriculaClasse.create({ data: { clubeId: clube.id, dbvId: dbv.id, classeId: amigo.id, anoClube: anoCorrente() } })
+      })
+      await inativacao
+
+      const matricula = await prismaDeTeste().matriculaClasse.findFirstOrThrow({ where: { clubeId: clube.id, dbvId: dbv.id } })
+      expect(matricula.status).toBe('DESISTIU')
+    })
+
+    it('matricular espera a trava do desbravador: inativado por quem a segurava, a matricula e recusada', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const amigo = await classeOficial('Amigo')
+      const dbv = await criarDbv({ clubeId: clube.id, nascimento: nascidoEm(10, '03-15') })
+
+      // Faz o papel da inativação: segura a trava, deixa a matrícula começar e só então inativa.
+      let matricula: Promise<{ body: unknown }> | undefined
+      await prismaDeTeste().$transaction(async (tx) => {
+        await travarMatriculasDoDesbravador(tx, dbv.id)
+        matricula = api
+          .post(`/api/desbravadores/${dbv.id}/matriculas`, adm.autorizacao, { classeId: amigo.id, anoClube: anoCorrente(), incluirAvancada: false })
+          .expect(422)
+          .then((resposta) => resposta)
+        await new Promise((resolver) => setTimeout(resolver, 500))
+        await tx.desbravador.update({ where: { id: dbv.id }, data: { ativo: false } })
+      })
+      expect((await matricula)?.body).toMatchObject({ mensagem: 'Reative o desbravador antes de matricular.' })
+      expect(await prismaDeTeste().matriculaClasse.count({ where: { clubeId: clube.id, dbvId: dbv.id } })).toBe(0)
+    })
+
+    it('DBV so com matricula em AGRUPADAS: a varredura nao cria a individual', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const agrupada = await classeOficial('Agrupadas (Amigo a Guia)', 'AGRUPADAS')
+      const dbv = await criarDbv({ clubeId: clube.id, nascimento: nascidoEm(11, '03-15') })
+      await criarMatricula({ clubeId: clube.id, dbvId: dbv.id, classeId: agrupada.id, anoClube: anoCorrente() })
+
+      expect(await app.get(ServicoClassePelaIdade).sincronizarClube(clube.id)).toBe(0)
+
+      const ficha = corpo<Dbv>(await api.get(`/api/desbravadores/${dbv.id}`, adm.autorizacao).expect(200))
+      expect(ficha.classeAtual?.nome).toBe('Agrupadas (Amigo a Guia)')
     })
 
     it('conselheiro nao inativa nem reativa (403)', async () => {

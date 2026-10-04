@@ -269,6 +269,20 @@ describe('A1 · novo desbravador', () => {
     expect(screen.getByLabelText('Conta de usuário (opcional)')).toBeInTheDocument()
   })
 
+  it('cadastro de Desbravador: a classe vazia é "Pela idade", com a ajuda; na Diretoria continua "Sem classe"', async () => {
+    await abrirNovo()
+    const classe = () => screen.getByLabelText('Classe do ano')
+    const ajuda = 'Fica na classe da idade que completa até 30/06, quando houver. Dá para trocar depois.'
+    expect(within(classe()).getByRole('option', { name: 'Pela idade' })).toBeInTheDocument()
+    expect(within(classe()).queryByRole('option', { name: 'Sem classe' })).not.toBeInTheDocument()
+    expect(classe()).toHaveAccessibleDescription(ajuda)
+
+    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'Diretoria')
+    expect(within(classe()).getByRole('option', { name: 'Sem classe' })).toBeInTheDocument()
+    expect(within(classe()).queryByRole('option', { name: 'Pela idade' })).not.toBeInTheDocument()
+    expect(screen.queryByText(ajuda)).not.toBeInTheDocument()
+  })
+
   it('mostra os avisos da API em faixa amarela sem impedir o cadastro', async () => {
     servidor.use(handlerCriarDesbravador(criarDesbravador(), [{ codigo: 'AVISO_SEXO_UNIDADE', mensagem: 'A unidade Águias é masculina.' }]))
     await abrirNovo()
@@ -337,16 +351,40 @@ describe('A1 · editar a classe do ano', () => {
   const configuracao = criarConfiguracao()
   const anoEsperado = anoClube(hojeNoFuso(configuracao.fuso, new Date()), configuracao.inicioAnoClube)
 
-  it('desbravador sem classe: escolher a classe na edição matricula no ano do clube, com a avançada', async () => {
+  it('desbravador sem classe: a opção vazia é "Pela idade", com a ajuda da verificação automática; escolher a classe na edição matricula no ano do clube, com a avançada', async () => {
     let matricula: { id: string; classeId: string; anoClube: number; incluirAvancada: boolean } | undefined
     servidor.use(handlerConfiguracao(configuracao), handlerEditarDesbravador(bruno), handlerMatricular((id, corpo) => (matricula = { id, ...corpo })))
     await abrirEdicao(bruno)
     expect(screen.getByLabelText('Classe do ano')).toHaveValue('')
+    expect(within(screen.getByLabelText('Classe do ano')).getByRole('option', { name: 'Pela idade' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Classe do ano')).toHaveAccessibleDescription(
+      'Recebe a classe da idade na próxima verificação automática, em até 6 horas. Ou escolha agora.',
+    )
     await userEvent.selectOptions(screen.getByLabelText('Classe do ano'), 'Amigo')
     expect(screen.getByRole('checkbox', { name: 'Matricular também na avançada' })).toBeChecked()
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() => expect(matricula).toEqual({ id: bruno.id, classeId: amigo.id, anoClube: anoEsperado, incluirAvancada: true }))
     await esperarFicha()
+  })
+
+  it('desbravador sem classe salvo com "Pela idade": a edição não pede matrícula, quem matricula é a verificação automática', async () => {
+    let matricula: unknown
+    servidor.use(handlerConfiguracao(configuracao), handlerEditarDesbravador(bruno), handlerMatricular((id, corpo) => (matricula = { id, ...corpo })))
+    await abrirEdicao(bruno)
+    expect(screen.getByLabelText('Classe do ano')).toHaveValue('')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await esperarFicha()
+    expect(matricula).toBeUndefined()
+  })
+
+  it('Diretoria sem classe: na edição a opção vazia continua "Sem classe", sem a ajuda da idade', async () => {
+    const diretora = criarDesbravador({ id: uuid(303), nome: 'Clara Dias', tipo: 'DIRETORIA', idade: 16, unidade: null, motivosDiretoria: ['IDADE'] })
+    servidor.use(handlerEditarDesbravador(diretora))
+    await abrirEdicao(diretora)
+    expect(within(screen.getByLabelText('Classe do ano')).getByRole('option', { name: 'Sem classe' })).toBeInTheDocument()
+    expect(within(screen.getByLabelText('Classe do ano')).queryByRole('option', { name: 'Pela idade' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Fica na classe da idade que completa até 30/06, quando houver. Dá para trocar depois.')).not.toBeInTheDocument()
+    expect(screen.queryByText('Recebe a classe da idade na próxima verificação automática, em até 6 horas. Ou escolha agora.')).not.toBeInTheDocument()
   })
 
   it('trocar a classe: a ficha abre já com a classe nova, sem esperar a releitura do perfil', async () => {

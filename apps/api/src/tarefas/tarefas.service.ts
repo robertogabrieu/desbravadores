@@ -1,13 +1,15 @@
 import { Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common'
 import { PrismaSistema } from '../comum/prisma/prisma-sistema'
+import { ServicoClassePelaIdade } from '../desbravadores/classe-pela-idade.service'
 import { ServicoTipoDaFicha } from '../desbravadores/tipo-da-ficha.service'
 
 const SEIS_HORAS_MS = 6 * 60 * 60 * 1000
 
 /**
- * Varredura do Tipo em todos os clubes, ao subir e a cada 6 horas: leva a virada de ano (os novos 16)
- * à Diretoria. Só liga com `TAREFAS_PERIODICAS=1`. O client sem guarda só lista os clubes; o resto roda
- * pelo client com guarda, clube a clube.
+ * Duas varreduras em todos os clubes, ao subir e a cada 6 horas: a do Tipo leva a virada de ano (os novos 16)
+ * à Diretoria; depois dela, a da classe pela idade matricula quem ficou sem classe no ano do clube — quem
+ * acabou de virar Diretoria já não recebe. Só liga com `TAREFAS_PERIODICAS=1`. O client sem guarda só lista
+ * os clubes; o resto roda pelo client com guarda, clube a clube.
  */
 @Injectable()
 export class TarefasPeriodicas implements OnModuleInit, OnModuleDestroy {
@@ -19,12 +21,13 @@ export class TarefasPeriodicas implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly sistema: PrismaSistema,
     private readonly tipo: ServicoTipoDaFicha,
+    private readonly classe: ServicoClassePelaIdade,
   ) {}
 
   onModuleInit(): void {
     if (process.env['TAREFAS_PERIODICAS'] !== '1') return
     const rodar = (): void => {
-      this.sincronizarTodos().catch((erro: unknown) => this.logger.error(`Varredura do Tipo falhou: ${String(erro)}`))
+      this.sincronizarTodos().catch((erro: unknown) => this.logger.error(`Varreduras periódicas falharam: ${String(erro)}`))
     }
     rodar()
     this.intervalo = setInterval(rodar, SEIS_HORAS_MS)
@@ -52,6 +55,12 @@ export class TarefasPeriodicas implements OnModuleInit, OnModuleDestroy {
         if (mudaram > 0) this.logger.log(`Clube ${clube.id}: ${mudaram} ficha(s) com o Tipo recalculado.`)
       } catch (erro) {
         this.logger.error(`Clube ${clube.id}: varredura do Tipo falhou: ${erro instanceof Error ? erro.message : String(erro)}`)
+      }
+      try {
+        const matriculados = await this.classe.sincronizarClube(clube.id, hoje)
+        if (matriculados > 0) this.logger.log(`Clube ${clube.id}: ${matriculados} desbravador(es) matriculado(s) pela idade.`)
+      } catch (erro) {
+        this.logger.error(`Clube ${clube.id}: varredura da classe pela idade falhou: ${erro instanceof Error ? erro.message : String(erro)}`)
       }
     }
   }

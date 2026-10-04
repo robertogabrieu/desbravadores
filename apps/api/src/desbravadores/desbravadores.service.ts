@@ -3,6 +3,7 @@ import {
   AVISOS_IMPORTACAO,
   avisoDeSexoDaUnidade,
   idade,
+  idadeDaClasse,
   MENSAGEM_DIRETORIA_SEM_UNIDADE,
   motivosDiretoria,
   nomePublico as calcularNomePublico,
@@ -35,6 +36,7 @@ type Matricula = z.infer<typeof MatriculaSaida>
 type Aviso = z.infer<typeof AvisoContrato>
 type Cliente = Prisma.TransactionClient
 export type ClasseParaMatricula = { id: string; tipo: 'REGULAR' | 'AVANCADA'; trilha: 'INDIVIDUAL' | 'AGRUPADAS' }
+export type ClasseDaIdade = ClasseParaMatricula & { nome: string }
 
 /** Uma conta liga no maximo uma ficha por clube: o indice parcial de Desbravador recusa a segunda. */
 function recusarContaJaLigada(falha: unknown): never {
@@ -148,21 +150,46 @@ export function montarSaida(dbv: DesbravadorCompleto, relogio: RelogioDoClube, c
   return saida
 }
 
+/** Classe desligada pelo clube (`ClasseClube.ativa = false`) não existe para matrícula nova. */
+export const ativaNoClube = (clubeId: string) => ({ clubes: { none: { clubeId, ativa: false } } }) satisfies Prisma.ClasseWhereInput
+
 /**
- * Classe regular ativa que a idade no início do ano do clube pede: na individual, a da idade exata; nas
- * agrupadas, a maior que a idade já alcança (com `ORDEM_CLASSE_DA_IDADE`).
+ * Classe regular ativa (e ativa no clube) que a idade de referência pede: na individual, a da idade exata;
+ * nas agrupadas, a maior que a idade já alcança (com `ORDEM_CLASSE_DA_IDADE`).
  */
-export function ondeClasseDaIdade(clubeId: string, trilha: 'INDIVIDUAL' | 'AGRUPADAS', idadeNoInicio: number): Prisma.ClasseWhereInput {
+export function ondeClasseDaIdade(clubeId: string, trilha: 'INDIVIDUAL' | 'AGRUPADAS', idadeDeReferencia: number): Prisma.ClasseWhereInput {
   return {
     OR: [{ clubeId: null }, { clubeId }],
     ativa: true,
     tipo: 'REGULAR',
     trilha,
-    idade: trilha === 'INDIVIDUAL' ? idadeNoInicio : { lte: idadeNoInicio },
+    idade: trilha === 'INDIVIDUAL' ? idadeDeReferencia : { lte: idadeDeReferencia },
+    ...ativaNoClube(clubeId),
   }
 }
 
-export const ORDEM_CLASSE_DA_IDADE = { idade: 'desc' } satisfies Prisma.ClasseOrderByWithRelationInput
+export const ORDEM_CLASSE_DA_IDADE = [{ idade: 'desc' }, { ordem: 'asc' }] satisfies Prisma.ClasseOrderByWithRelationInput[]
+
+/**
+ * Serializa a escrita de matrícula de um desbravador até o fim da transação: a varredura que leu "sem classe"
+ * espera o Adm que está matriculando. O lock advisory é reentrante na mesma transação.
+ */
+export async function travarMatriculasDoDesbravador(tx: Cliente, dbvId: string): Promise<void> {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`matriculas-desbravador:${dbvId}`}, 0))`
+}
+
+/**
+ * Desbravador ativo sem nenhuma matrícula regular (de qualquer trilha) no ano que não seja desistência.
+ * Quem tem uma — inclusive a escolhida pelo Adm fora da idade — não é tocado.
+ */
+export function semClasseNoAno(clubeId: string, anoClube: number): Prisma.DesbravadorWhereInput {
+  return {
+    clubeId,
+    tipo: 'DBV',
+    ativo: true,
+    matriculas: { none: { clubeId, anoClube, status: { not: 'DESISTIU' }, classe: { tipo: 'REGULAR' } } },
+  }
+}
 
 @Injectable()
 export class DesbravadoresService {
@@ -244,7 +271,8 @@ export class DesbravadoresService {
 
   /**
    * Miolo do cadastro: pessoa, membro da unidade e matrícula (regular + avançada), no cliente da transação.
-   * O Tipo é decidido antes de gravar: quem já tem a regra da Diretoria entra nela, sem unidade.
+   * O Tipo é decidido antes de gravar: quem já tem a regra da Diretoria entra nela, sem unidade. Desbravador
+   * sem classe escolhida entra na classe da idade, quando houver.
    */
   async gravarNovo(
     tx: Cliente,
@@ -300,6 +328,14 @@ export class DesbravadoresService {
         anoClube,
         incluirAvancada: entrada.incluirAvancada,
       })
+    } else if (tipo === 'DBV') {
+      await this.matricularPelaIdade(tx, {
+        clubeId,
+        dbvId: dbv.id,
+        nascimento: entrada.nascimento,
+        anoClube,
+        incluirAvancada: entrada.incluirAvancada,
+      })
     }
     return { id: dbv.id, unidadeIgnorada: Boolean(entrada.unidadeId) && tipo !== 'DBV' }
   }
@@ -350,6 +386,8 @@ export class DesbravadoresService {
     if (saida < dbv.entradaEm) throw new ErroApp('REGRA', 'A saída não pode ser antes da entrada.')
 
     await this.prisma.$transaction(async (tx) => {
+      // Sem a trava, a varredura poderia gravar uma matrícula CURSANDO depois da desistência abaixo.
+      await travarMatriculasDoDesbravador(tx, id)
       await tx.desbravador.update({ where: { id, clubeId }, data: { ativo: false, saidaEm: saida } })
       for (const membro of dbv.membros) {
         await tx.membroUnidade.update({
@@ -365,11 +403,17 @@ export class DesbravadoresService {
     return this.obter(sessao, id)
   }
 
+  /** Volta com a classe da idade quando não tem classe regular no ano, sem esperar a varredura. */
   async reativar(sessao: SessaoLogada, id: string): Promise<Saida> {
-    const relogio = await this.escopo.relogio(sessao.clubeId)
+    const { clubeId } = sessao
+    const relogio = await this.escopo.relogio(clubeId)
     const dbv = await this.carregarNoEscopo(sessao, id, relogio)
     if (dbv.ativo) throw new ErroApp('REGRA', 'Este desbravador já está ativo.')
-    await this.prisma.desbravador.update({ where: { id, clubeId: sessao.clubeId }, data: { ativo: true, saidaEm: null } })
+    await this.prisma.$transaction(async (tx) => {
+      await travarMatriculasDoDesbravador(tx, id)
+      await tx.desbravador.update({ where: { id, clubeId }, data: { ativo: true, saidaEm: null } })
+      await this.preencherClassePelaIdade(tx, clubeId, id, relogio.anoClube)
+    })
     return this.obter(sessao, id)
   }
 
@@ -403,15 +447,70 @@ export class DesbravadoresService {
     const dbv = await this.carregarNoEscopo(sessao, id, relogio)
     if (!dbv.ativo) throw new ErroApp('REGRA', 'Reative o desbravador antes de matricular.')
     const classe = await this.exigirClasse(clubeId, entrada.classeId)
-    return this.prisma.$transaction((tx) =>
-      this.matricular(tx, {
+    return this.prisma.$transaction(async (tx) => {
+      // A inativação pode ter terminado entre a leitura acima e a trava; sob a trava, ela já gravou.
+      await travarMatriculasDoDesbravador(tx, id)
+      const segueAtivo = await tx.desbravador.findFirst({ where: { id, clubeId, ativo: true }, select: { id: true } })
+      if (!segueAtivo) throw new ErroApp('REGRA', 'Reative o desbravador antes de matricular.')
+      return this.matricular(tx, {
         clubeId,
         dbvId: id,
         classe,
         anoClube: entrada.anoClube,
         incluirAvancada: entrada.incluirAvancada,
-      }),
-    )
+      })
+    })
+  }
+
+  /** Classe regular individual da idade completada até 30/06 do ano do clube; empate, a de menor ordem. */
+  async classeDaIdade(cliente: Cliente, clubeId: string, nascimento: string, anoClube: number): Promise<ClasseDaIdade | null> {
+    return cliente.classe.findFirst({
+      where: ondeClasseDaIdade(clubeId, 'INDIVIDUAL', idadeDaClasse(nascimento, anoClube)),
+      orderBy: ORDEM_CLASSE_DA_IDADE,
+      select: { id: true, nome: true, tipo: true, trilha: true },
+    })
+  }
+
+  /**
+   * Matricula na classe da idade, com a avançada quando pedida — menos quando a avançada que entraria já foi
+   * concluída ou investida no ano, que recusaria a matrícula inteira. Devolve se havia classe para a idade.
+   */
+  async matricularPelaIdade(
+    tx: Cliente,
+    dados: { clubeId: string; dbvId: string; nascimento: string; anoClube: number; incluirAvancada: boolean },
+  ): Promise<boolean> {
+    const { clubeId, dbvId, nascimento, anoClube } = dados
+    const classe = await this.classeDaIdade(tx, clubeId, nascimento, anoClube)
+    if (!classe) return false
+    const avancada = dados.incluirAvancada ? await this.avancadaVigente(tx, clubeId, classe.id) : null
+    const avancadaConcluida = avancada
+      ? await tx.matriculaClasse.findFirst({
+          where: { clubeId, dbvId, anoClube, classeId: avancada.id, status: { in: ['CONCLUIDA', 'INVESTIDA'] } },
+          select: { id: true },
+        })
+      : null
+    await this.matricular(tx, { clubeId, dbvId, classe, anoClube, incluirAvancada: Boolean(avancada) && !avancadaConcluida })
+    return true
+  }
+
+  /**
+   * Sob a trava do desbravador, confere que ele está sem classe regular no ano (DBV ativo) e o matricula na
+   * classe da idade. Quem já tem classe, mesmo fora da idade, não é tocado. Devolve se matriculou.
+   */
+  async preencherClassePelaIdade(tx: Cliente, clubeId: string, dbvId: string, anoClube: number): Promise<boolean> {
+    await travarMatriculasDoDesbravador(tx, dbvId)
+    const semClasse = await tx.desbravador.findFirst({
+      where: { ...semClasseNoAno(clubeId, anoClube), id: dbvId },
+      select: { nascimento: true },
+    })
+    if (!semClasse) return false
+    return this.matricularPelaIdade(tx, {
+      clubeId,
+      dbvId,
+      nascimento: paraDataCivil(semClasse.nascimento),
+      anoClube,
+      incluirAvancada: true,
+    })
   }
 
   private async carregarNoEscopo(sessao: SessaoLogada, id: string, relogio: RelogioDoClube): Promise<DesbravadorCompleto> {
@@ -470,6 +569,7 @@ export class DesbravadoresService {
     },
   ): Promise<Matricula[]> {
     const { clubeId, dbvId, classe, anoClube } = dados
+    await travarMatriculasDoDesbravador(tx, dbvId)
     if (classe.tipo === 'REGULAR') {
       const anteriores = await tx.matriculaClasse.findMany({
         where: {
@@ -498,16 +598,21 @@ export class DesbravadoresService {
     }
     const classeIds = [classe.id]
     if (classe.tipo === 'REGULAR' && dados.incluirAvancada) {
-      const avancada = await tx.classe.findFirst({
-        where: { classeBaseId: classe.id, tipo: 'AVANCADA', OR: [{ clubeId: null }, { clubeId }] },
-        orderBy: { ordem: 'asc' },
-        select: { id: true },
-      })
+      const avancada = await this.avancadaVigente(tx, clubeId, classe.id)
       if (avancada) classeIds.push(avancada.id)
     }
     const matriculas: Matricula[] = []
     for (const classeId of classeIds) matriculas.push(await this.garantirMatricula(tx, { clubeId, dbvId, classeId, anoClube }))
     return matriculas
+  }
+
+  /** A avançada que acompanha a regular no clube: ativa, ligada no clube e, havendo mais de uma, a de menor ordem. */
+  private async avancadaVigente(tx: Cliente, clubeId: string, classeBaseId: string): Promise<{ id: string } | null> {
+    return tx.classe.findFirst({
+      where: { classeBaseId, tipo: 'AVANCADA', OR: [{ clubeId: null }, { clubeId }], ativa: true, ...ativaNoClube(clubeId) },
+      orderBy: { ordem: 'asc' },
+      select: { id: true },
+    })
   }
 
   private async garantirMatricula(
@@ -544,12 +649,13 @@ export class DesbravadoresService {
     if (avisoDeSexo) avisos.push(avisoDeSexo)
     const classe = classeRegularAtual(dbv)
     if (dbv.tipo === 'DBV' && classe?.idade != null) {
-      const idadeNoInicio = idade(paraDataCivil(dbv.nascimento), `${relogio.anoClube}-${relogio.inicioAnoClube}`)
-      if (classe.trilha === 'AGRUPADAS' && idadeNoInicio < IDADE_MINIMA_AGRUPADAS) {
+      const nascimento = paraDataCivil(dbv.nascimento)
+      const idadeDeReferencia = idadeDaClasse(nascimento, relogio.anoClube)
+      if (classe.trilha === 'AGRUPADAS' && idadeDeReferencia < IDADE_MINIMA_AGRUPADAS) {
         avisos.push({ codigo: 'AVISO_IDADE_CLASSE', mensagem: 'As classes agrupadas são para 16 anos ou mais.' })
       }
-      if (classe.trilha === 'INDIVIDUAL' && classe.idade !== idadeNoInicio) {
-        const esperada = await this.classeEsperada(clubeId, idadeNoInicio)
+      if (classe.trilha === 'INDIVIDUAL' && classe.idade !== idadeDeReferencia) {
+        const esperada = await this.classeDaIdade(this.prisma, clubeId, nascimento, relogio.anoClube)
         avisos.push({
           codigo: 'AVISO_IDADE_CLASSE',
           mensagem: esperada
@@ -559,13 +665,5 @@ export class DesbravadoresService {
       }
     }
     return avisos
-  }
-
-  private async classeEsperada(clubeId: string, idadeNoInicio: number) {
-    return this.prisma.classe.findFirst({
-      where: ondeClasseDaIdade(clubeId, 'INDIVIDUAL', idadeNoInicio),
-      orderBy: ORDEM_CLASSE_DA_IDADE,
-      select: { nome: true },
-    })
   }
 }

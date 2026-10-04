@@ -368,18 +368,22 @@ describe('importacao de desbravadores por planilha', () => {
       expect(linhas[0]?.avisos.map((a) => a.mensagem)).toContain('A classe Amigo não existe')
     })
 
-    it('classe vazia e sugerida pela idade no inicio do ano do clube; idade sem classe fica sem classe', async () => {
+    it('classe vazia e sugerida pela regua de 30/06; idade sem classe fica sem classe', async () => {
       const { adm } = await admDeClubeNovo()
       const amigo = await classeOficial('Amigo')
+      const companheiro = await classeOficial('Companheiro')
       const arquivo = await xlsx([
         ['Nome', 'Data de nascimento', 'Sexo'],
-        ['Dez Anos', nascimentoComIdade(10), 'F'],
+        ['Onze Cedo', `${anoCorrente() - 11}-03-15`, 'F'],
+        ['Onze Tarde', `${anoCorrente() - 11}-09-15`, 'F'],
         ['Tres Anos', nascimentoComIdade(3), 'F'],
       ])
       const { linhas } = corpo<Previa>(await previa(adm.autorizacao, arquivo).expect(200))
-      expect(linhas[0]?.classeId).toBe(amigo.id)
-      expect(linhas[0]?.avisos.map((a) => a.mensagem)).toEqual(['Classe sugerida pela idade: Amigo'])
-      expect(linhas[1]).toMatchObject({ classeId: null, avisos: [] })
+      expect(linhas[0]?.classeId).toBe(companheiro.id)
+      expect(linhas[0]?.avisos.map((a) => a.mensagem)).toEqual(['Classe sugerida pela idade: Companheiro'])
+      expect(linhas[1]?.classeId).toBe(amigo.id)
+      expect(linhas[1]?.avisos.map((a) => a.mensagem)).toEqual(['Classe sugerida pela idade: Amigo'])
+      expect(linhas[2]).toMatchObject({ classeId: null, avisos: [] })
     })
 
     it('avisa unidade de sexo diferente, como no cadastro', async () => {
@@ -570,6 +574,21 @@ describe('importacao de desbravadores por planilha', () => {
       expect(matriculas.map((m) => m.classe.tipo).sort()).toEqual(['AVANCADA', 'REGULAR'])
       expect(matriculas.every((m) => m.anoClube === anoCorrente() && m.status === 'CURSANDO')).toBe(true)
       expect(await prisma.desbravador.count({ where: { clubeId: clube.id } })).toBe(2)
+    })
+
+    it('linha sem classe grava a matricula pela regua de 30/06, com a avancada', async () => {
+      const { clube, adm } = await admDeClubeNovo()
+      const companheiro = await classeOficial('Companheiro')
+      await confirmar(adm.autorizacao, [linhaPronta({ nascimento: `${anoCorrente() - 11}-03-15` })]).expect(201)
+      const prisma = prismaDeTeste()
+      const matriculas = await prisma.matriculaClasse.findMany({
+        where: { clubeId: clube.id },
+        include: { classe: { select: { tipo: true, classeBaseId: true } } },
+      })
+      expect(matriculas).toHaveLength(2)
+      expect(matriculas.find((m) => m.classe.tipo === 'REGULAR')?.classeId).toBe(companheiro.id)
+      expect(matriculas.find((m) => m.classe.tipo === 'AVANCADA')?.classe.classeBaseId).toBe(companheiro.id)
+      expect(matriculas.every((m) => m.anoClube === anoCorrente() && m.status === 'CURSANDO')).toBe(true)
     })
 
     it('linha de 16 ate junho grava Diretoria desde a entrada, sem unidade e sem passagem, mesmo com a unidade enviada', async () => {

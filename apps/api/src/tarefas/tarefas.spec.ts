@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto'
 import { Logger } from '@nestjs/common'
 import { criarBancoIsolado, type BancoIsolado } from '../../test/banco-isolado'
 import { PrismaService } from '../comum/prisma/prisma.service'
+import { ServicoClassePelaIdade } from '../desbravadores/classe-pela-idade.service'
+import { DesbravadoresService } from '../desbravadores/desbravadores.service'
 import { ServicoTipoDaFicha } from '../desbravadores/tipo-da-ficha.service'
 import { ServicoEscopo } from '../desbravadores/escopo.service'
 import { criarClubeBase } from '../scripts/clube-criar'
@@ -14,13 +16,16 @@ describe('tarefas periodicas: varredura do Tipo', () => {
   let banco: BancoIsolado
   let prisma: PrismaService
   let tipo: ServicoTipoDaFicha
+  let classe: ServicoClassePelaIdade
   let tarefas: TarefasPeriodicas
 
   beforeAll(async () => {
     banco = await criarBancoIsolado()
     prisma = new PrismaService(banco.url)
-    tipo = new ServicoTipoDaFicha(prisma, new ServicoEscopo(prisma))
-    tarefas = new TarefasPeriodicas(banco.prisma, tipo)
+    const escopo = new ServicoEscopo(prisma)
+    tipo = new ServicoTipoDaFicha(prisma, escopo)
+    classe = new ServicoClassePelaIdade(prisma, escopo, new DesbravadoresService(prisma, escopo, tipo))
+    tarefas = new TarefasPeriodicas(banco.prisma, tipo, classe)
   })
 
   afterAll(async () => {
@@ -157,6 +162,43 @@ describe('tarefas periodicas: varredura do Tipo', () => {
     await Promise.all([tarefas.sincronizarTodos('2026-09-30'), tarefas.sincronizarTodos('2026-09-30')])
 
     expect(porClube).toHaveBeenCalledTimes(clubes)
+  })
+
+  it('por clube, sincroniza o Tipo antes da classe pela idade', async () => {
+    const { clube } = await clubeComUnidade()
+    const ordem: string[] = []
+    jest.spyOn(tipo, 'sincronizarClube').mockImplementation((clubeId) => {
+      if (clubeId === clube.id) ordem.push('tipo')
+      return Promise.resolve(0)
+    })
+    const porClasse = jest.spyOn(classe, 'sincronizarClube').mockImplementation((clubeId) => {
+      if (clubeId === clube.id) ordem.push('classe')
+      return Promise.resolve(0)
+    })
+
+    await tarefas.sincronizarTodos('2026-09-30')
+
+    expect(ordem).toEqual(['tipo', 'classe'])
+    expect(porClasse).toHaveBeenCalledWith(clube.id, '2026-09-30')
+  })
+
+  it('erro numa sincronização não impede a outra; o efeito da classe vai para o log', async () => {
+    const { clube } = await clubeComUnidade()
+    const registro = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
+    const informe = jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined)
+    jest.spyOn(tipo, 'sincronizarClube').mockRejectedValue(new Error('tipo falhou'))
+    const porClasse = jest.spyOn(classe, 'sincronizarClube').mockResolvedValue(3)
+
+    await tarefas.sincronizarTodos('2026-09-30')
+
+    expect(porClasse).toHaveBeenCalledWith(clube.id, '2026-09-30')
+    expect(registro).toHaveBeenCalledWith(expect.stringContaining('tipo falhou'))
+    expect(informe).toHaveBeenCalledWith(`Clube ${clube.id}: 3 desbravador(es) matriculado(s) pela idade.`)
+
+    jest.spyOn(tipo, 'sincronizarClube').mockResolvedValue(0)
+    porClasse.mockRejectedValue(new Error('classe falhou'))
+    await expect(tarefas.sincronizarTodos('2026-09-30')).resolves.toBeUndefined()
+    expect(registro).toHaveBeenCalledWith(expect.stringContaining('classe falhou'))
   })
 
   it('só liga com TAREFAS_PERIODICAS=1: sem ela, subir não varre nada', () => {

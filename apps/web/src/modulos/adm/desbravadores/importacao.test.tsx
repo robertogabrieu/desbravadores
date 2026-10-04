@@ -1,5 +1,5 @@
 import { LinhaImportada } from '@desbravadores/shared'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ModoConexao } from '../../../offline'
@@ -160,6 +160,15 @@ describe('importar planilha · revisar', () => {
     expect(screen.getByText('O nome precisa ter de 2 a 120 letras.')).toBeInTheDocument()
     expect(screen.getByText('Já existe no clube um desbravador com este nome e nascimento.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Importar 2 desbravadores' })).toBeEnabled()
+  })
+
+  it('a classe vazia da linha é "Pela idade, se houver": a linha sem classe é matriculada pela régua ao gravar', async () => {
+    simularPrevia(previaCompleta)
+    abrir()
+    await enviar()
+    const classe = await screen.findByLabelText('Classe, linha 2')
+    expect(within(classe).getByRole('option', { name: 'Pela idade, se houver' })).toBeInTheDocument()
+    expect(within(classe).queryByRole('option', { name: 'Sem classe' })).not.toBeInTheDocument()
   })
 
   it('linha com erro não pode ser marcada; duplicada chega desmarcada mas pode ser marcada', async () => {
