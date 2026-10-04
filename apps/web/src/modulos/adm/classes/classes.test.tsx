@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -17,6 +17,7 @@ import {
 } from '../../../testes/handlers/classes-adm'
 import { criarClasse, handlerClasses } from '../../../testes/handlers/leitura'
 import { uuid } from '../../../testes/handlers/sessao'
+import { simularLargura } from '../../../testes/midia'
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
 import { rotasAdmClasses } from './rotas'
@@ -293,5 +294,66 @@ describe('A5 · especialidades', () => {
     await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
     expect(await painel.findByText('Já existe uma especialidade com esse nome nesta área.')).toBeInTheDocument()
     expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+})
+
+describe('classes · no celular', () => {
+  it('a lista vem sozinha; tocar numa classe abre o detalhe no lugar dela', async () => {
+    simularLargura(390)
+    const { roteador } = abrirClasses()
+    expect(await screen.findByRole('navigation', { name: 'Classes' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Amigo', level: 2 })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /^Amigo10/ }))
+    expect(await screen.findByRole('heading', { name: 'Amigo', level: 2 })).toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: 'Classes' })).not.toBeInTheDocument()
+    expect(roteador.state.location.search).toBe(`?classe=${amigo.id}`)
+  })
+
+  it('"Voltar para Classes" volta à lista', async () => {
+    simularLargura(390)
+    abrirClasses()
+    await userEvent.click(await screen.findByRole('button', { name: /^Amigo10/ }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Voltar para Classes' }))
+    expect(await screen.findByRole('navigation', { name: 'Classes' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Amigo', level: 2 })).not.toBeInTheDocument()
+  })
+
+  it('voltar do navegador também volta à lista', async () => {
+    simularLargura(390)
+    const { roteador } = abrirClasses()
+    await userEvent.click(await screen.findByRole('button', { name: /^Amigo10/ }))
+    expect(await screen.findByRole('heading', { name: 'Amigo', level: 2 })).toBeInTheDocument()
+    await act(() => roteador.navigate(-1))
+    expect(await screen.findByRole('navigation', { name: 'Classes' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Amigo', level: 2 })).not.toBeInTheDocument()
+  })
+
+  it('o endereço com a classe abre direto no detalhe, e Voltar leva à lista', async () => {
+    simularLargura(390)
+    abrirClasses(`/adm/classes?classe=${amigo.id}`)
+    expect(await screen.findByRole('heading', { name: 'Amigo', level: 2 })).toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: 'Classes' })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Voltar para Classes' }))
+    expect(await screen.findByRole('navigation', { name: 'Classes' })).toBeInTheDocument()
+  })
+
+  it('no computador, lista e detalhe lado a lado, sem Voltar', async () => {
+    abrirClasses()
+    expect(await screen.findByRole('heading', { name: 'Amigo', level: 2 })).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Classes' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Voltar para Classes' })).not.toBeInTheDocument()
+  })
+})
+
+describe('especialidades · no celular', () => {
+  it('a contagem desce para baixo do nome e a prévia quebra em até 2 linhas', async () => {
+    simularLargura(390)
+    await abrirEspecialidades()
+    const aventura = within(await screen.findByRole('region', { name: 'Aventura' }))
+    const nome = aventura.getByText('Aventura')
+    const contagem = aventura.getByText('2 especialidades · 1 do clube')
+    expect(nome.parentElement).toBe(contagem.parentElement)
+    expect(nome.compareDocumentPosition(contagem) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(aventura.getByText('Acampamento, Orientação')).toHaveClass('line-clamp-2')
   })
 })

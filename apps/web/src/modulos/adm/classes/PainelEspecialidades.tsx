@@ -2,12 +2,14 @@ import { ChevronRight, Plus, Search } from 'lucide-react'
 import { useCallback, useId, useState } from 'react'
 import { useEspecialidades } from '../../../api/classes-adm'
 import type { AreaEspecialidades } from '../../../api/classes-adm'
+import { useLarguraMenorQue } from '../../../layouts/useLarguraMenorQue'
 import { Botao } from '../../../ui/Botao'
 import { Campo } from '../../../ui/Campo'
 import { Cartao } from '../../../ui/Cartao'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { FolhaLateral } from '../../../ui/FolhaLateral'
 import { Selo } from '../../../ui/Selo'
+import { LARGURA_DO_CELULAR } from '../../../ui/Tabela'
 import { cn } from '../../../ui/cn'
 import { CorpoDaConsulta } from './CorpoDaConsulta'
 import { FormularioEspecialidade } from './FormularioEspecialidade'
@@ -37,12 +39,14 @@ const QUANTOS_EXEMPLOS = 3
 function Area({ area, buscando }: { area: AreaEspecialidades; buscando: boolean }) {
   const [aberta, setAberta] = useState(false)
   const idLista = useId()
+  const celular = useLarguraMenorQue(LARGURA_DO_CELULAR)
   const expandida = aberta || buscando
   const doClube = area.especialidades.filter((e) => e.origem === 'CLUBE').length
   const exemplos = area.especialidades
     .slice(0, QUANTOS_EXEMPLOS)
     .map((e) => e.nome)
     .join(', ')
+  const contagem = `${plural(area.especialidades.length, 'especialidade', 'especialidades')}${doClube > 0 ? ` · ${doClube} do clube` : ''}`
 
   return (
     <section aria-label={area.nome} className="border-t border-divisor first:border-t-0">
@@ -61,14 +65,22 @@ function Area({ area, buscando }: { area: AreaEspecialidades; buscando: boolean 
             expandida && 'rotate-90',
           )}
         />
-        <span className="flex min-w-0 flex-1 flex-col">
-          <span className="font-titulo text-lg font-bold text-texto">{area.nome}</span>
-          {!expandida && <span className="truncate text-sm text-texto-2">{exemplos}</span>}
-        </span>
-        <span className="shrink-0 text-sm text-texto-2">
-          {plural(area.especialidades.length, 'especialidade', 'especialidades')}
-          {doClube > 0 && ` · ${doClube} do clube`}
-        </span>
+        {/* No celular a contagem desce para baixo do nome, para não espremê-lo, e a prévia ganha 2 linhas. */}
+        {celular ? (
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="font-titulo text-lg font-bold text-texto">{area.nome}</span>
+            <span className="text-sm text-texto-2">{contagem}</span>
+            {!expandida && <span className="line-clamp-2 text-sm text-texto-2">{exemplos}</span>}
+          </span>
+        ) : (
+          <>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="font-titulo text-lg font-bold text-texto">{area.nome}</span>
+              {!expandida && <span className="truncate text-sm text-texto-2">{exemplos}</span>}
+            </span>
+            <span className="shrink-0 text-sm text-texto-2">{contagem}</span>
+          </>
+        )}
       </button>
       {expandida && (
         <ul id={idLista} className="columns-1 gap-x-8 pb-4 pl-9 sm:columns-2 xl:columns-3">
