@@ -13,6 +13,7 @@ import { Campo } from '../../../ui/Campo'
 import { Cartao } from '../../../ui/Cartao'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { Carregando, DisponivelComInternet } from '../../../ui/EstadosDeCarga'
+import { LARGURA_DO_CELULAR } from '../../../ui/larguraDoCelular'
 import { CartoesImportacao } from './CartoesImportacao'
 import { MENSAGEM_GENERICA, lerErroDaApi } from './erros'
 import { GradeImportacao } from './GradeImportacao'
@@ -25,9 +26,6 @@ export const ROTA_LISTA = '/adm/desbravadores'
 export interface ResultadoDaImportacao {
   importados: number
 }
-
-/** Abaixo desta largura o Adm está no celular: é a mesma medida em que o menu lateral vira gaveta. */
-const LARGURA_DO_CELULAR = 900
 
 const plural = (n: number, um: string, varios: string): string => `${n} ${n === 1 ? um : varios}`
 

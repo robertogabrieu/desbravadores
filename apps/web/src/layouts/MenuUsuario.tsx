@@ -13,14 +13,20 @@ const ROTULO_DA_SAIDA: Record<Saida, string> = {
   SAIR_DE_TODOS: 'Sair de todos os aparelhos',
 }
 
-/** Menu do cabeçalho: nome do usuário com trocar de papel, sair e sair de todos os aparelhos. */
-export function MenuUsuario() {
+const primeiroNome = (nome: string): string => nome.trim().split(/\s+/)[0] ?? nome
+
+/**
+ * Menu do cabeçalho: nome do usuário com trocar de papel, sair e sair de todos os aparelhos. Com
+ * `soPrimeiroNome`, o botão encurta para o primeiro nome e o nome inteiro abre o menu.
+ */
+export function MenuUsuario({ soPrimeiroNome = false }: { soPrimeiroNome?: boolean }) {
   const { eu, vinculos, sair, sairDeTodos } = useSessao()
   const { contagem } = useFila()
   const navegar = useNavigate()
   const [saidaPendente, definirSaidaPendente] = useState<Saida | null>(null)
 
   const itensNaFila = contagem.pendentes + contagem.erros
+  const nome = eu?.usuario.nome
 
   const executar = (saida: Saida) => void (saida === 'SAIR' ? sair() : sairDeTodos())
 
@@ -37,7 +43,11 @@ export function MenuUsuario() {
 
   return (
     <>
-      <MenuCabecalho rotulo={eu?.usuario.nome ?? 'Menu'} itens={itens} />
+      {nome && soPrimeiroNome ? (
+        <MenuCabecalho rotulo={primeiroNome(nome)} rotuloAcessivel={nome} cabecalho={nome} itens={itens} />
+      ) : (
+        <MenuCabecalho rotulo={nome ?? 'Menu'} itens={itens} />
+      )}
       <Confirmacao
         aberta={saidaPendente !== null}
         titulo="Sair mesmo assim?"

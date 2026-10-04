@@ -89,15 +89,21 @@ describe('ranking do mês', () => {
     expect(screen.queryByRole('link', { name: /Mateus V\./ })).not.toBeInTheDocument()
   })
 
-  it('filtro por unidade: aparece com 2 ou mais unidades e refaz a busca com a unidade escolhida', async () => {
+  it('filtro por unidade: lista de escolha "Unidade" com 2 ou mais unidades, que refaz a busca com a unidade escolhida', async () => {
     const unidades: Array<string | null> = []
     servidor.use(handlerRanking(criarRanking(), (consulta) => unidades.push(consulta.get('unidadeId'))), handlerRankingUnidades())
     abrir()
-    await userEvent.click(await screen.findByRole('button', { name: UNIDADE_LEOES.nome }))
+    const filtro = await screen.findByRole('combobox', { name: 'Unidade' })
+    expect(within(filtro).getAllByRole('option').map((opcao) => opcao.textContent)).toEqual([
+      'Todas as unidades',
+      UNIDADE_LEOES.nome,
+      UNIDADE_AGUIAS.nome,
+    ])
+    await userEvent.selectOptions(filtro, UNIDADE_LEOES.nome)
     await waitFor(() => expect(unidades).toContain(UNIDADE_LEOES.id))
-    expect(screen.getByRole('button', { name: UNIDADE_LEOES.nome })).toHaveAttribute('aria-pressed', 'true')
+    expect(filtro).toHaveValue(UNIDADE_LEOES.id)
 
-    await userEvent.click(screen.getByRole('button', { name: 'Todas as unidades' }))
+    await userEvent.selectOptions(filtro, 'Todas as unidades')
     await waitFor(() => expect(unidades.at(-1)).toBeNull())
   })
 
@@ -105,7 +111,27 @@ describe('ranking do mês', () => {
     servidor.use(handlerRanking(), handlerRankingUnidades([{ posicao: 1, unidade: UNIDADE_AGUIAS, mediaPontos: 10, totalDbvs: 2 }]))
     abrir()
     await screen.findByRole('list', { name: 'Classificação' })
-    expect(screen.queryByRole('button', { name: 'Todas as unidades' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: 'Unidade' })).not.toBeInTheDocument()
+  })
+
+  it('nome e unidade compridos quebram em até 2 linhas, sem cortar com reticências', async () => {
+    const nomeLongo = 'Maria Eduarda Fernandes de Oliveira Albuquerque Cavalcanti'
+    const ranking = criarRanking()
+    ranking.itens[0] = { ...ranking.itens[0], nome: nomeLongo }
+    ranking.itens[3] = { ...ranking.itens[3], nome: `${nomeLongo} Júnior` }
+    servidor.use(handlerRanking(ranking), handlerRankingUnidades())
+    abrir()
+    const podio = await screen.findByRole('list', { name: 'Pódio' })
+    const lista = screen.getByRole('list', { name: 'Classificação' })
+    const textos = [
+      within(podio).getByText(nomeLongo),
+      within(lista).getByText(`${nomeLongo} Júnior`),
+      within(lista).getByText('Leões · Amigo'),
+    ]
+    for (const texto of textos) {
+      expect(texto.closest('.line-clamp-2')).not.toBeNull()
+      expect(texto.closest('li')?.querySelector('.truncate')).toBeNull()
+    }
   })
 
   it('vazio: "Ainda não há pontos neste mês."', async () => {

@@ -18,6 +18,8 @@ interface Propriedades {
   itens: ItemMenu[]
   /** Nome do botão para o leitor de tela, quando o texto visível não basta. */
   rotuloAcessivel?: string
+  /** Linha de texto no topo do menu aberto, acima dos itens (ex.: o nome inteiro quando o botão mostra só o primeiro). */
+  cabecalho?: string
   className?: string
   classeDoBotao?: string
   classeDoRotulo?: string
@@ -30,7 +32,7 @@ const MARGEM_DA_TELA = 8
  * Botão do cabeçalho que abre um menu curto. Teclado: abrir leva o foco ao item marcado (ou ao
  * primeiro), setas e Home/End andam, Esc e escolher devolvem o foco ao botão, Tab fecha.
  */
-export function MenuCabecalho({ rotulo, itens, rotuloAcessivel, className, classeDoBotao, classeDoRotulo }: Propriedades) {
+export function MenuCabecalho({ rotulo, itens, rotuloAcessivel, cabecalho, className, classeDoBotao, classeDoRotulo }: Propriedades) {
   const [aberto, definirAberto] = useState(false)
   const raiz = useRef<HTMLDivElement>(null)
   const botao = useRef<HTMLButtonElement>(null)
@@ -113,6 +115,11 @@ export function MenuCabecalho({ rotulo, itens, rotuloAcessivel, className, class
           style={deslocamento ? { transform: `translateX(${deslocamento}px)` } : undefined}
           className="absolute right-0 z-40 mt-1 w-max max-w-[calc(100vw-1rem)] min-w-56 rounded-cartao border border-borda-controle bg-superficie py-1 text-texto shadow-lg"
         >
+          {cabecalho && (
+            <div role="presentation" className="border-b border-borda px-4 pt-2 pb-3 text-base font-semibold break-words">
+              {cabecalho}
+            </div>
+          )}
           {itens.map((item) => (
             <button
               key={item.rotulo}

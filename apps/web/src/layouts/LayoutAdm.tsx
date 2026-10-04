@@ -3,6 +3,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { SinoNotificacoes } from '../modulos/notificacoes/SinoNotificacoes'
 import { FaixaAviso } from '../ui/FaixaAviso'
+import { LARGURA_DO_CELULAR } from '../ui/larguraDoCelular'
 import { Marca } from '../ui/Marca'
 import { FaixaSemConexao } from './FaixaSemConexao'
 import { FaixaSessaoExpirada } from './FaixaSessaoExpirada'
@@ -25,11 +26,30 @@ const ITENS_ADM: ItemDeNavegacao[] = [
   { rotulo: 'Relatórios', icone: FileText },
 ]
 
-const LARGURA_MINIMA_DO_PAINEL = 900
+const CHAVE_DA_FAIXA_FECHADA = 'adm:faixa-melhor-no-computador:fechada'
+
+/** Aparelho sem armazenamento (modo privado, cota cheia) lê como "não fechada": a faixa aparece. */
+function faixaFoiFechada(): boolean {
+  try {
+    return localStorage.getItem(CHAVE_DA_FAIXA_FECHADA) === '1'
+  } catch {
+    return false
+  }
+}
+
+/** Sem armazenamento, a faixa fecha só nesta visita. */
+function lembrarFaixaFechada(): void {
+  try {
+    localStorage.setItem(CHAVE_DA_FAIXA_FECHADA, '1')
+  } catch {
+    // Nada a fazer: o estado da tela já escondeu a faixa.
+  }
+}
 
 /** Rota-layout do Adm: menu lateral fixo no computador; abaixo de 900 px, gaveta aberta pelo cabeçalho. */
 export function LayoutAdm() {
-  const telaPequena = useLarguraMenorQue(LARGURA_MINIMA_DO_PAINEL)
+  const telaPequena = useLarguraMenorQue(LARGURA_DO_CELULAR)
+  const [faixaFechada, setFaixaFechada] = useState(faixaFoiFechada)
   const [gavetaAberta, setGavetaAberta] = useState(false)
   const botaoAbrir = useRef<HTMLButtonElement>(null)
   const idGaveta = useId()
@@ -77,11 +97,22 @@ export function LayoutAdm() {
           <div className="ml-auto flex min-w-0 items-center gap-1">
             <SeloPapel />
             <SinoNotificacoes />
-            <MenuUsuario />
+            <MenuUsuario soPrimeiroNome={telaPequena} />
           </div>
         </header>
-        {telaPequena && <FaixaAviso className="m-3">O painel do Adm é melhor no computador</FaixaAviso>}
-        <main className="flex-1 p-4 min-[900px]:p-8">
+        {telaPequena && !faixaFechada && (
+          <FaixaAviso
+            className="mx-4 mt-3"
+            aoFechar={() => {
+              setFaixaFechada(true)
+              lembrarFaixaFechada()
+            }}
+          >
+            O painel do Adm é melhor no computador
+          </FaixaAviso>
+        )}
+        {/* A margem lateral do conteúdo mora aqui, uma vez só; `data-layout` deixa a tela compartilhada com o celular saber que não precisa da dela. */}
+        <main data-layout="adm" className="flex-1 px-4 py-4 min-[900px]:p-8">
           <Outlet />
         </main>
       </div>

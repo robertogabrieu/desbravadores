@@ -3,9 +3,10 @@ import type { ReactNode } from 'react'
 import { useLarguraMenorQue } from '../layouts/useLarguraMenorQue'
 import { Botao } from './Botao'
 import { cn } from './cn'
+import { LARGURA_DO_CELULAR } from './larguraDoCelular'
 
-/** Abaixo desta largura o painel do Adm vira celular, e a Tabela mostra cartões em vez de linhas. */
-export const LARGURA_DO_CELULAR = 900
+/** Reexportada: as telas que já importam o limite daqui continuam funcionando. */
+export { LARGURA_DO_CELULAR }
 
 export interface ColunaTabela<T> {
   chave: string

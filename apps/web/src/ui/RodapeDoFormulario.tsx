@@ -2,9 +2,7 @@ import { Link } from 'react-router-dom'
 import { useLarguraMenorQue } from '../layouts/useLarguraMenorQue'
 import { Botao, estiloDoBotao } from './Botao'
 import { cn } from './cn'
-
-/** O mesmo limite em que o menu do Adm vira gaveta: abaixo dele, a tela é de celular. */
-const LARGURA_DO_CELULAR = 900
+import { LARGURA_DO_CELULAR } from './larguraDoCelular'
 
 interface Propriedades {
   cancelar: { para: string; estado?: object }
