@@ -6,6 +6,7 @@ import { useCriarUsuario, useEditarUsuario } from '../../../api/usuarios'
 import type { Usuario } from '../../../api/usuarios'
 import { CabecalhoDaPagina } from '../../../ui/CabecalhoDaPagina'
 import { Campo } from '../../../ui/Campo'
+import { focarCampo } from '../../../ui/ErrosDoFormulario'
 import { Carregando, ErroDeCarga } from '../../../ui/EstadosDeCarga'
 import { RodapeDoFormulario } from '../../../ui/RodapeDoFormulario'
 import { Selecao } from '../../../ui/Selecao'
@@ -72,7 +73,7 @@ export function NovoUsuario() {
     if (papel === null) return setErro('Escolha um papel.')
     if (papel !== 'ADM' && escolhidos.length === 0) {
       setErro(ESCOPO_VAZIO[papel])
-      grupo.current?.focus()
+      if (grupo.current) focarCampo(grupo.current)
       return
     }
     setErro(undefined)

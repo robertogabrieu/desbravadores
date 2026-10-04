@@ -7,6 +7,7 @@ import type { EventoCalendario, EventoGravado } from '../../../api/calendario'
 import { CaixaMarcacao } from '../../../ui/CaixaMarcacao'
 import { Campo } from '../../../ui/Campo'
 import { CampoData } from '../../../ui/CampoData'
+import { ResumoDosErros, useErrosAVista } from '../../../ui/ErrosDoFormulario'
 import { RodapeDoFormulario } from '../../../ui/RodapeDoFormulario'
 import { Selecao } from '../../../ui/Selecao'
 import { lerErroDaApi } from '../desbravadores/erros'
@@ -52,8 +53,10 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar }: Pr
       : { ...MARCACOES_PADRAO['EVENTO'] },
   )
   const [erros, setErros] = useState<Record<string, string>>({})
+  const { formulario, pendencias } = useErrosAVista(erros)
   const [erroGeral, setErroGeral] = useState<string | null>(null)
   const idDoErroDoGrupo = useId()
+  const idDoGrupo = useId()
   const criar = useCriarEvento()
   const editar = useEditarEvento()
   const diaReuniao = useConfiguracaoClube().data?.diaReuniao
@@ -113,7 +116,8 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar }: Pr
   }
 
   return (
-    <form noValidate onSubmit={(submissao) => void enviar(submissao)} className="flex flex-col gap-4">
+    <form ref={formulario} noValidate onSubmit={(submissao) => void enviar(submissao)} className="flex flex-col gap-4">
+      <ResumoDosErros pendencias={pendencias} />
       <Campo rotulo="Nome" value={nome} erro={erros['nome']} onChange={(e) => setNome(e.target.value)} />
       <Selecao rotulo="Tipo" value={tipo} ajuda={textoDeApoio} erro={erros['tipo']} onChange={(e) => trocarTipo(tipoConhecido(e.target.value))}>
         {TIPOS_EVENTO.map((t) => (
@@ -141,7 +145,12 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar }: Pr
         <Campo rotulo="Local" value={local} erro={erros['local']} onChange={(e) => setLocal(e.target.value)} />
       </div>
       {!ehFerias && (
-        <fieldset aria-describedby={erroDoGrupo ? idDoErroDoGrupo : undefined} className="flex flex-col gap-1">
+        <fieldset
+          id={idDoGrupo}
+          data-com-erro={erroDoGrupo ? true : undefined}
+          aria-describedby={erroDoGrupo ? idDoErroDoGrupo : undefined}
+          className="flex flex-col gap-1"
+        >
           <legend className="mb-1 text-sm font-semibold text-texto">Para a reunião e as classes</legend>
           <CaixaMarcacao rotulo="Terá reunião" checked={marcacoes.temReuniao} onChange={(e) => setMarcacoes({ ...marcacoes, temReuniao: e.target.checked })} />
           <CaixaMarcacao rotulo="Terá classe" checked={marcacoes.temClasse} onChange={(e) => setMarcacoes({ ...marcacoes, temClasse: e.target.checked })} />
