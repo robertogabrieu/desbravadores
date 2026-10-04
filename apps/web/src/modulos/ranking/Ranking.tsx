@@ -32,6 +32,12 @@ function deslocarMes(mes: string, passo: number): string {
 const QUEBRA_EM_DUAS_LINHAS = 'line-clamp-2 break-words'
 const NOME_EM_TEXTO_CORRIDO = 'inline [&>svg]:ml-1.5 [&>svg]:inline [&>svg]:align-[-0.125em]'
 
+/** Primeiro e último nome: na coluna estreita do pódio o nome inteiro passaria de 2 linhas. */
+function primeiroEUltimoNome(nome: string): string {
+  const partes = nome.trim().split(/\s+/)
+  return partes.length > 2 ? `${partes[0]} ${partes[partes.length - 1]}` : nome
+}
+
 const descricaoDoItem = (item: ItemRanking): string =>
   [item.unidade?.nome, item.classe?.nome].filter(Boolean).join(' · ')
 
@@ -39,21 +45,33 @@ interface PropriedadesComPerfil {
   item: ItemRanking
   /** Arranjo do conteúdo dentro do cartão (pódio em coluna, classificação em linha). */
   className: string
+  /** Forma curta mostrada na tela; o nome inteiro fica para o leitor de tela. */
+  nomeVisivel?: string
   children: (nome: ReactNode) => ReactNode
 }
 
 /** Cartão do participante: abre o perfil, com o ícone de ficha ao lado do nome, só quando quem pede pode abri-lo. */
-function ComPerfil({ item, className, children }: PropriedadesComPerfil) {
+function ComPerfil({ item, className, nomeVisivel = item.nome, children }: PropriedadesComPerfil) {
+  const nomeNaTela = item.abrePerfil ? <NomeDaFicha nome={nomeVisivel} className={NOME_EM_TEXTO_CORRIDO} /> : nomeVisivel
+  const nome =
+    nomeVisivel === item.nome ? (
+      nomeNaTela
+    ) : (
+      <>
+        <span aria-hidden="true">{nomeNaTela}</span>
+        <span className="sr-only">{item.nome}</span>
+      </>
+    )
   if (!item.abrePerfil) {
     return (
       <div className="rounded-cartao border border-borda-controle bg-superficie p-3">
-        <div className={className}>{children(item.nome)}</div>
+        <div className={className}>{children(nome)}</div>
       </div>
     )
   }
   return (
     <LinhaQueNavega to={`/dbv/${item.dbvId}`} forma="cartao" sinal="ficha" className="p-3">
-      <div className={className}>{children(<NomeDaFicha nome={item.nome} className={NOME_EM_TEXTO_CORRIDO} />)}</div>
+      <div className={className}>{children(nome)}</div>
     </LinhaQueNavega>
   )
 }
@@ -65,7 +83,11 @@ function Podio({ itens }: { itens: ItemRanking[] }) {
     <ol aria-label="Pódio" className="grid grid-cols-3 items-end gap-2">
       {ordemVisual.map((item) => (
         <li key={item.dbvId}>
-          <ComPerfil item={item} className={cn('flex flex-col items-center gap-1 text-center', item.posicao === 1 && 'pb-3')}>
+          <ComPerfil
+            item={item}
+            nomeVisivel={primeiroEUltimoNome(item.nome)}
+            className={cn('flex flex-col items-center gap-1 text-center', item.posicao === 1 && 'pb-3')}
+          >
             {(nome) => (
               <>
                 <Avatar nome={item.nome} classe={classeDoAvatar(item.classe?.corToken)} />
@@ -153,7 +175,7 @@ export function Ranking() {
           {['Trimestre', 'Ano'].map((periodo) => (
             <button key={periodo} type="button" disabled className="flex min-h-[var(--touch-min)] flex-1 items-center justify-center gap-2 disabled:opacity-60">
               {periodo}
-              <span className="rounded-full bg-trilho px-2 py-0.5 text-xs font-semibold text-texto-3">em breve</span>
+              <span className="rounded-full bg-trilho px-2 py-0.5 text-sm font-semibold text-texto-3">em breve</span>
             </button>
           ))}
         </div>

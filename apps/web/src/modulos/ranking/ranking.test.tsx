@@ -54,6 +54,10 @@ describe('ranking do mês', () => {
     expect(trimestre).toBeDisabled()
     expect(trimestre).toHaveTextContent('em breve')
     expect(screen.getByRole('button', { name: /Ano/ })).toBeDisabled()
+    for (const selo of screen.getAllByText('em breve')) {
+      expect(selo).toHaveClass('text-sm')
+      expect(selo).not.toHaveClass('text-xs')
+    }
   })
 
   it('mês com setas: anterior pede o mês de trás; seguinte fica desligada no mês corrente', async () => {
@@ -114,21 +118,41 @@ describe('ranking do mês', () => {
     expect(screen.queryByRole('combobox', { name: 'Unidade' })).not.toBeInTheDocument()
   })
 
-  it('nome e unidade compridos quebram em até 2 linhas, sem cortar com reticências', async () => {
+  it('nome comprido: no pódio mostra primeiro e último nome em até 2 linhas, com o nome inteiro no nome acessível', async () => {
     const nomeLongo = 'Maria Eduarda Fernandes de Oliveira Albuquerque Cavalcanti'
     const ranking = criarRanking()
     ranking.itens[0] = { ...ranking.itens[0], nome: nomeLongo }
-    ranking.itens[3] = { ...ranking.itens[3], nome: `${nomeLongo} Júnior` }
+    ranking.itens[2] = { ...ranking.itens[2], nome: 'João Pedro Albuquerque Nogueira' }
     servidor.use(handlerRanking(ranking), handlerRankingUnidades())
     abrir()
     const podio = await screen.findByRole('list', { name: 'Pódio' })
-    const lista = screen.getByRole('list', { name: 'Classificação' })
-    const textos = [
-      within(podio).getByText(nomeLongo),
-      within(lista).getByText(`${nomeLongo} Júnior`),
-      within(lista).getByText('Leões · Amigo'),
-    ]
-    for (const texto of textos) {
+    const visivel = within(podio).getByText('Maria Cavalcanti')
+    expect(visivel.closest('[aria-hidden="true"]')).not.toBeNull()
+    expect(visivel.closest('.line-clamp-2')).not.toBeNull()
+    const link = within(podio).getByRole('link', { name: (nome) => nome.includes(nomeLongo) })
+    expect(within(link).getByText(nomeLongo)).toHaveClass('sr-only')
+    const semPerfil = within(podio).getByText('João Nogueira')
+    expect(semPerfil.closest('.line-clamp-2')).not.toBeNull()
+    expect(within(podio).getByText('João Pedro Albuquerque Nogueira')).toHaveClass('sr-only')
+  })
+
+  it('nome curto no pódio aparece uma vez só, sem cópia para leitor de tela', async () => {
+    servidor.use(handlerRanking(), handlerRankingUnidades())
+    abrir()
+    const podio = await screen.findByRole('list', { name: 'Pódio' })
+    expect(within(podio).getAllByText('Mateus V.')).toHaveLength(1)
+    expect(within(podio).getByText('Pedro Lima').closest('[aria-hidden="true"]')).not.toBeNull()
+  })
+
+  it('nome e unidade compridos na lista ficam em até 2 linhas, com o nome inteiro no DOM', async () => {
+    const nomeLongo = 'Maria Eduarda Fernandes de Oliveira Albuquerque Cavalcanti Júnior'
+    const ranking = criarRanking()
+    ranking.itens[3] = { ...ranking.itens[3], nome: nomeLongo }
+    servidor.use(handlerRanking(ranking), handlerRankingUnidades())
+    abrir()
+    const lista = await screen.findByRole('list', { name: 'Classificação' })
+    const link = within(lista).getByRole('link', { name: (nome) => nome.includes(nomeLongo) })
+    for (const texto of [within(link).getByText(nomeLongo), within(link).getByText('Leões · Amigo')]) {
       expect(texto.closest('.line-clamp-2')).not.toBeNull()
       expect(texto.closest('li')?.querySelector('.truncate')).toBeNull()
     }
