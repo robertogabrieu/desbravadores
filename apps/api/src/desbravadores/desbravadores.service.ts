@@ -329,7 +329,13 @@ export class DesbravadoresService {
         incluirAvancada: entrada.incluirAvancada,
       })
     } else if (tipo === 'DBV') {
-      await this.matricularPelaIdade(tx, { clubeId, dbvId: dbv.id, nascimento: entrada.nascimento, anoClube })
+      await this.matricularPelaIdade(tx, {
+        clubeId,
+        dbvId: dbv.id,
+        nascimento: entrada.nascimento,
+        anoClube,
+        incluirAvancada: entrada.incluirAvancada,
+      })
     }
     return { id: dbv.id, unidadeIgnorada: Boolean(entrada.unidadeId) && tipo !== 'DBV' }
   }
@@ -349,7 +355,6 @@ export class DesbravadoresService {
     if (entrada.usuarioId) await this.exigirUsuarioDoClube(clubeId, entrada.usuarioId)
 
     await this.prisma.$transaction(async (tx) => {
-      await travarMatriculasDoDesbravador(tx, id)
       await tx.desbravador.update({
         where: { id, clubeId },
         data: {
@@ -368,7 +373,6 @@ export class DesbravadoresService {
       const ficha = await this.tipo.lerFicha(tx, clubeId, id)
       if (tipoEscolhido) await this.tipo.escolhaDoAdm(tx, clubeId, ficha, tipoEscolhido, relogio.hoje)
       else await this.tipo.aplicar(tx, clubeId, ficha, relogio.hoje)
-      await this.preencherClassePelaIdade(tx, clubeId, id, relogio.anoClube)
     }).catch(recusarContaJaLigada)
     return this.saidaComAvisos(sessao, id, relogio)
   }
@@ -468,21 +472,24 @@ export class DesbravadoresService {
   }
 
   /**
-   * Matricula na classe da idade, com a avançada — menos quando a avançada já foi concluída ou investida no
-   * ano, que recusaria a matrícula inteira. Devolve se havia classe para a idade.
+   * Matricula na classe da idade, com a avançada quando pedida — menos quando a avançada que entraria já foi
+   * concluída ou investida no ano, que recusaria a matrícula inteira. Devolve se havia classe para a idade.
    */
   async matricularPelaIdade(
     tx: Cliente,
-    dados: { clubeId: string; dbvId: string; nascimento: string; anoClube: number },
+    dados: { clubeId: string; dbvId: string; nascimento: string; anoClube: number; incluirAvancada: boolean },
   ): Promise<boolean> {
     const { clubeId, dbvId, nascimento, anoClube } = dados
     const classe = await this.classeDaIdade(tx, clubeId, nascimento, anoClube)
     if (!classe) return false
-    const avancadaConcluida = await tx.matriculaClasse.findFirst({
-      where: { clubeId, dbvId, anoClube, status: { in: ['CONCLUIDA', 'INVESTIDA'] }, classe: { tipo: 'AVANCADA', classeBaseId: classe.id } },
-      select: { id: true },
-    })
-    await this.matricular(tx, { clubeId, dbvId, classe, anoClube, incluirAvancada: !avancadaConcluida })
+    const avancada = dados.incluirAvancada ? await this.avancadaVigente(tx, clubeId, classe.id) : null
+    const avancadaConcluida = avancada
+      ? await tx.matriculaClasse.findFirst({
+          where: { clubeId, dbvId, anoClube, classeId: avancada.id, status: { in: ['CONCLUIDA', 'INVESTIDA'] } },
+          select: { id: true },
+        })
+      : null
+    await this.matricular(tx, { clubeId, dbvId, classe, anoClube, incluirAvancada: Boolean(avancada) && !avancadaConcluida })
     return true
   }
 
@@ -497,7 +504,13 @@ export class DesbravadoresService {
       select: { nascimento: true },
     })
     if (!semClasse) return false
-    return this.matricularPelaIdade(tx, { clubeId, dbvId, nascimento: paraDataCivil(semClasse.nascimento), anoClube })
+    return this.matricularPelaIdade(tx, {
+      clubeId,
+      dbvId,
+      nascimento: paraDataCivil(semClasse.nascimento),
+      anoClube,
+      incluirAvancada: true,
+    })
   }
 
   private async carregarNoEscopo(sessao: SessaoLogada, id: string, relogio: RelogioDoClube): Promise<DesbravadorCompleto> {
@@ -585,16 +598,21 @@ export class DesbravadoresService {
     }
     const classeIds = [classe.id]
     if (classe.tipo === 'REGULAR' && dados.incluirAvancada) {
-      const avancada = await tx.classe.findFirst({
-        where: { classeBaseId: classe.id, tipo: 'AVANCADA', OR: [{ clubeId: null }, { clubeId }], ativa: true, ...ativaNoClube(clubeId) },
-        orderBy: { ordem: 'asc' },
-        select: { id: true },
-      })
+      const avancada = await this.avancadaVigente(tx, clubeId, classe.id)
       if (avancada) classeIds.push(avancada.id)
     }
     const matriculas: Matricula[] = []
     for (const classeId of classeIds) matriculas.push(await this.garantirMatricula(tx, { clubeId, dbvId, classeId, anoClube }))
     return matriculas
+  }
+
+  /** A avançada que acompanha a regular no clube: ativa, ligada no clube e, havendo mais de uma, a de menor ordem. */
+  private async avancadaVigente(tx: Cliente, clubeId: string, classeBaseId: string): Promise<{ id: string } | null> {
+    return tx.classe.findFirst({
+      where: { classeBaseId, tipo: 'AVANCADA', OR: [{ clubeId: null }, { clubeId }], ativa: true, ...ativaNoClube(clubeId) },
+      orderBy: { ordem: 'asc' },
+      select: { id: true },
+    })
   }
 
   private async garantirMatricula(

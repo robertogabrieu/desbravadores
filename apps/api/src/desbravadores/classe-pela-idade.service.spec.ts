@@ -149,6 +149,20 @@ describe('classe pela idade: a varredura preenche quem está sem classe regular 
     expect(await doAno(dbv.id, 2027)).toEqual([`${classes.companheiro}:CURSANDO`, `${classes.companheiroAvancada}:CONCLUIDA`].sort())
   })
 
+  it('avançada concluída que não é a vigente no clube não impede a matrícula na vigente', async () => {
+    const { id: clubeId } = await clube()
+    const daCasa = await banco.prisma.classe.create({
+      data: {
+        clubeId, origem: 'CLUBE', nome: 'Companheiro da Casa', idade: 11, tipo: 'AVANCADA', trilha: 'INDIVIDUAL', ordem: 99, classeBaseId: classes.companheiro,
+      },
+    })
+    const dbv = await ficha(clubeId, { nascimento: '2016-03-15' })
+    await matricula(clubeId, dbv.id, daCasa.id, 2027, 'CONCLUIDA')
+
+    expect(await servico.aplicar(clubeId, dbv.id, 2027)).toBe(true)
+    expect(await doAno(dbv.id, 2027)).toEqual([...cursando(classes.companheiro, classes.companheiroAvancada), `${daCasa.id}:CONCLUIDA`].sort())
+  })
+
   it('ignora Diretoria, Líder e inativo', async () => {
     const { id: clubeId } = await clube()
     const fichas = [

@@ -351,14 +351,14 @@ describe('A1 · editar a classe do ano', () => {
   const configuracao = criarConfiguracao()
   const anoEsperado = anoClube(hojeNoFuso(configuracao.fuso, new Date()), configuracao.inicioAnoClube)
 
-  it('desbravador sem classe: a opção vazia é "Pela idade", com a ajuda; escolher a classe na edição matricula no ano do clube, com a avançada', async () => {
+  it('desbravador sem classe: a opção vazia é "Pela idade", com a ajuda da verificação automática; escolher a classe na edição matricula no ano do clube, com a avançada', async () => {
     let matricula: { id: string; classeId: string; anoClube: number; incluirAvancada: boolean } | undefined
     servidor.use(handlerConfiguracao(configuracao), handlerEditarDesbravador(bruno), handlerMatricular((id, corpo) => (matricula = { id, ...corpo })))
     await abrirEdicao(bruno)
     expect(screen.getByLabelText('Classe do ano')).toHaveValue('')
     expect(within(screen.getByLabelText('Classe do ano')).getByRole('option', { name: 'Pela idade' })).toBeInTheDocument()
     expect(screen.getByLabelText('Classe do ano')).toHaveAccessibleDescription(
-      'Fica na classe da idade que completa até 30/06, quando houver. Dá para trocar depois.',
+      'Recebe a classe da idade na próxima verificação automática, em até 6 horas. Ou escolha agora.',
     )
     await userEvent.selectOptions(screen.getByLabelText('Classe do ano'), 'Amigo')
     expect(screen.getByRole('checkbox', { name: 'Matricular também na avançada' })).toBeChecked()
@@ -367,7 +367,7 @@ describe('A1 · editar a classe do ano', () => {
     await esperarFicha()
   })
 
-  it('desbravador sem classe salvo com "Pela idade": a edição não pede matrícula, quem matricula é a API', async () => {
+  it('desbravador sem classe salvo com "Pela idade": a edição não pede matrícula, quem matricula é a verificação automática', async () => {
     let matricula: unknown
     servidor.use(handlerConfiguracao(configuracao), handlerEditarDesbravador(bruno), handlerMatricular((id, corpo) => (matricula = { id, ...corpo })))
     await abrirEdicao(bruno)
@@ -384,6 +384,7 @@ describe('A1 · editar a classe do ano', () => {
     expect(within(screen.getByLabelText('Classe do ano')).getByRole('option', { name: 'Sem classe' })).toBeInTheDocument()
     expect(within(screen.getByLabelText('Classe do ano')).queryByRole('option', { name: 'Pela idade' })).not.toBeInTheDocument()
     expect(screen.queryByText('Fica na classe da idade que completa até 30/06, quando houver. Dá para trocar depois.')).not.toBeInTheDocument()
+    expect(screen.queryByText('Recebe a classe da idade na próxima verificação automática, em até 6 horas. Ou escolha agora.')).not.toBeInTheDocument()
   })
 
   it('trocar a classe: a ficha abre já com a classe nova, sem esperar a releitura do perfil', async () => {
