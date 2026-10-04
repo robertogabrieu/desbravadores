@@ -13,12 +13,13 @@ interface Linha {
   nome: string
 }
 const colunas = [{ chave: 'nome', titulo: 'Nome', celula: (l: Linha) => l.nome }]
+const cartaoSimples = (l: Linha) => l.nome
 
 describe('Tabela', () => {
   it('mostra o estado vazio quando não há itens', () => {
     render(
       <Tabela colunas={colunas} itens={[]} chaveItem={(l: Linha) => l.id} pagina={1} porPagina={25} total={0}
-        aoMudarPagina={() => undefined} vazio={<EstadoVazio titulo="Nada aqui" />} />,
+        aoMudarPagina={() => undefined} vazio={<EstadoVazio titulo="Nada aqui" />} cartao={cartaoSimples} />,
     )
     expect(screen.getByText('Nada aqui')).toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
@@ -28,7 +29,7 @@ describe('Tabela', () => {
     const aoMudar = vi.fn()
     render(
       <Tabela colunas={colunas} itens={[{ id: '1', nome: 'Ana' }]} chaveItem={(l: Linha) => l.id}
-        pagina={2} porPagina={25} total={60} aoMudarPagina={aoMudar} />,
+        pagina={2} porPagina={25} total={60} aoMudarPagina={aoMudar} cartao={cartaoSimples} />,
     )
     expect(screen.getByText('Ana')).toBeInTheDocument()
     expect(screen.getByText('26–50 de 60')).toBeInTheDocument()
@@ -42,26 +43,22 @@ describe('Tabela', () => {
   it('na última página a próxima fica desabilitada; na primeira, a anterior', () => {
     const { rerender } = render(
       <Tabela colunas={colunas} itens={[{ id: '1', nome: 'Ana' }]} chaveItem={(l: Linha) => l.id}
-        pagina={3} porPagina={25} total={60} aoMudarPagina={() => undefined} />,
+        pagina={3} porPagina={25} total={60} aoMudarPagina={() => undefined} cartao={cartaoSimples} />,
     )
     expect(screen.getByRole('button', { name: 'Próxima página' })).toBeDisabled()
     rerender(
       <Tabela colunas={colunas} itens={[{ id: '1', nome: 'Ana' }]} chaveItem={(l: Linha) => l.id}
-        pagina={1} porPagina={25} total={60} aoMudarPagina={() => undefined} />,
+        pagina={1} porPagina={25} total={60} aoMudarPagina={() => undefined} cartao={cartaoSimples} />,
     )
     expect(screen.getByRole('button', { name: 'Página anterior' })).toBeDisabled()
   })
 
-  it('no celular, sem o cartão da tela, continua tabela', () => {
-    simularLargura(390)
-    render(
-      <Tabela colunas={colunas} itens={[{ id: '1', nome: 'Ana' }, { id: '2', nome: 'Bia' }]} chaveItem={(l: Linha) => l.id}
-        pagina={1} porPagina={25} total={2} aoMudarPagina={() => undefined} />,
+  it('o cartão do celular é obrigatório: sem ele a tela voltaria à tabela que rola de lado', () => {
+    const semCartao = (
+      // @ts-expect-error `cartao` é obrigatório
+      <Tabela colunas={colunas} itens={[]} chaveItem={(l: Linha) => l.id} pagina={1} porPagina={25} total={0} aoMudarPagina={() => undefined} />
     )
-    expect(screen.getByRole('table')).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Nome' })).toBeInTheDocument()
-    expect(screen.queryByRole('listitem')).not.toBeInTheDocument()
-    expect(screen.getByText('1–2 de 2')).toBeInTheDocument()
+    expect(semCartao).toBeTruthy()
   })
 
   it('no celular a tela que usa decide o cartão; no computador a mesma Tabela continua tabela', () => {

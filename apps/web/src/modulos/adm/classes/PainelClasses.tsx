@@ -61,11 +61,6 @@ const VEIO_DA_LISTA = { veioDaLista: true }
 const veioDaLista = (estado: unknown): boolean =>
   typeof estado === 'object' && estado !== null && 'veioDaLista' in estado
 
-// Fora do navegador (nos testes) a janela pode não ter rolagem.
-function rolarAte(top: number) {
-  if (typeof window.scrollTo === 'function') window.scrollTo({ top })
-}
-
 function BotaoVoltar({ aoVoltar }: { aoVoltar: () => void }) {
   return (
     <button
@@ -93,7 +88,7 @@ export function PainelClasses() {
   useEffect(() => {
     if (classeAberta === classeAntes.current) return
     classeAntes.current = classeAberta
-    rolarAte(classeAberta === null ? posicaoDaLista.current : 0)
+    window.scrollTo({ top: classeAberta === null ? posicaoDaLista.current : 0 })
   }, [classeAberta])
 
   return (

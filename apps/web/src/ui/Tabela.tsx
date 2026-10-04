@@ -21,8 +21,8 @@ interface Propriedades<T> {
   aoMudarPagina: (pagina: number) => void
   /** Mostrado no lugar da tabela quando `itens` está vazio. */
   vazio?: ReactNode
-  /** Conteúdo do cartão de cada item no celular; sem ele, o celular mostra a mesma tabela do computador. */
-  cartao?: (item: T) => ReactNode
+  /** Conteúdo do cartão de cada item no celular, onde a tabela rolaria de lado. */
+  cartao: (item: T) => ReactNode
 }
 
 interface PropriedadesDaPaginacao {
@@ -59,7 +59,7 @@ export function Tabela<T>({ colunas, itens, chaveItem, pagina, porPagina, total,
 
   const paginacao = { pagina, porPagina, total, aoMudarPagina }
 
-  if (celular && cartao) {
+  if (celular) {
     return (
       <div className="flex flex-col gap-3">
         <ul className="flex flex-col gap-2">

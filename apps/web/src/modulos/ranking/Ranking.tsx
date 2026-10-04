@@ -1,3 +1,4 @@
+import { primeiroEUltimoNome } from '@desbravadores/shared'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
@@ -31,12 +32,6 @@ function deslocarMes(mes: string, passo: number): string {
  */
 const QUEBRA_EM_DUAS_LINHAS = 'line-clamp-2 break-words'
 const NOME_EM_TEXTO_CORRIDO = 'inline [&>svg]:ml-1.5 [&>svg]:inline [&>svg]:align-[-0.125em]'
-
-/** Primeiro e último nome: na coluna estreita do pódio o nome inteiro passaria de 2 linhas. */
-function primeiroEUltimoNome(nome: string): string {
-  const partes = nome.trim().split(/\s+/)
-  return partes.length > 2 ? `${partes[0]} ${partes[partes.length - 1]}` : nome
-}
 
 const descricaoDoItem = (item: ItemRanking): string =>
   [item.unidade?.nome, item.classe?.nome].filter(Boolean).join(' · ')

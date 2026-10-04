@@ -1,6 +1,6 @@
 import { Papel as EsquemaPapel } from '@desbravadores/shared'
 import type { Papel } from '@desbravadores/shared'
-import { Ban, Check, ChevronRight, Clock, Plus } from 'lucide-react'
+import { Ban, Check, Clock, Plus } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -13,6 +13,7 @@ import { Campo } from '../../../ui/Campo'
 import { cn } from '../../../ui/cn'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { ErroDeCarga } from '../../../ui/EstadosDeCarga'
+import { LinhaQueNavega } from '../../../ui/LinhaQueNavega'
 import { LinkDeFicha } from '../../../ui/LinkDeFicha'
 import { Tabela } from '../../../ui/Tabela'
 import type { ColunaTabela } from '../../../ui/Tabela'
@@ -108,19 +109,14 @@ export function AdmUsuarios() {
   ]
 
   const cartao = (u: Usuario) => (
-    <Link
-      to={`/adm/usuarios/${u.id}`}
-      state={estadoDeVolta}
-      className="flex items-center gap-2 rounded-cartao border border-borda-controle bg-superficie py-3 pr-2 pl-4 text-texto focus-visible:outline-2 focus-visible:outline-marca"
-    >
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
+    <LinhaQueNavega to={`/adm/usuarios/${u.id}`} state={estadoDeVolta} forma="cartao" className="gap-2 py-3 pr-2 pl-4">
+      <div className="flex flex-col gap-1">
         <span className="font-semibold">{u.nome}</span>
         <span className="break-all text-sm text-texto-2">{u.email}</span>
         <SelosDePapel usuario={u} />
         <Situacao usuario={u} />
       </div>
-      <ChevronRight aria-hidden className="size-5 shrink-0 text-texto-2" />
-    </Link>
+    </LinhaQueNavega>
   )
 
   return (
