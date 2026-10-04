@@ -50,9 +50,9 @@ export function LinhaData({ dado, requisitos, destaqueCampo = false, desabilitad
       )}
     >
       <div className="flex w-12 shrink-0 flex-col items-center text-texto">
-        <span className="text-xs font-bold text-texto-2">{semana}</span>
+        <span className="text-sm font-bold text-texto-2">{semana}</span>
         <span className="font-titulo text-xl font-extrabold">{dia}</span>
-        <span className="text-xs font-bold text-texto-2">{mes}</span>
+        <span className="text-sm font-bold text-texto-2">{mes}</span>
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -82,7 +82,7 @@ export function LinhaData({ dado, requisitos, destaqueCampo = false, desabilitad
                 className="flex min-h-[var(--touch-min)] shrink-0 items-center justify-center gap-1 rounded-controle px-2 hover:bg-superficie disabled:opacity-50"
               >
                 <X aria-hidden className="size-4" />
-                <span className="text-xs font-bold">remover</span>
+                <span className="text-sm font-bold">remover</span>
               </button>
             )}
           </div>

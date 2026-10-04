@@ -20,6 +20,7 @@ import {
 } from '../../testes/handlers/montagem'
 import { criarVinculo, handlersSessao, uuid } from '../../testes/handlers/sessao'
 import { renderizarRotas } from '../../testes/renderizar'
+import { simularLargura } from '../../testes/midia'
 import { servidor } from '../../testes/servidor'
 import { rotasAdmCronogramas } from './rotas'
 
@@ -81,6 +82,96 @@ describe('A7 · largura no celular', () => {
     await screen.findByText(/agendados/)
     const colunas = screen.getByRole('region', { name: 'Datas' }).parentElement as HTMLElement
     expect(colunas.className).toContain('grid-cols-[minmax(0,1fr)]')
+  })
+})
+
+describe('A7 · montar no celular: folha "Em qual data?"', () => {
+  async function abrirNoCelular(montagem = criarMontagemDeExemplo()) {
+    simularLargura(390)
+    const registro = abrir(montagem)
+    await screen.findByText(/agendados/)
+    return { registro, usuario: userEvent.setup() }
+  }
+
+  const folha = () => screen.getByRole('dialog', { name: 'Em qual data?' })
+  const botaoDaData = (diaEMes: string) => within(folha()).getByRole('button', { name: new RegExp(diaEMes) })
+
+  it('tocar no requisito abre a folha com o requisito, onde ele está e as datas com quantos requisitos já têm', async () => {
+    const { usuario } = await abrirNoCelular()
+    expect(screen.queryByRole('button', { name: /Colocar aqui/ })).not.toBeInTheDocument()
+    await usuario.click(screen.getByRole('button', { name: new RegExp(REQ_LIVRE.texto) }))
+    expect(folha()).toHaveTextContent(`${REQ_LIVRE.codigo} · ${REQ_LIVRE.texto}`)
+    expect(within(folha()).getByText('Ainda sem data')).toBeInTheDocument()
+    expect(botaoDaData('04/10')).toHaveTextContent('Dom, 04/10')
+    expect(botaoDaData('04/10')).toHaveTextContent('já tem 1 requisito')
+    expect(botaoDaData('18/10')).toHaveTextContent('Acampamento do clube · ótimo para campo · nenhum requisito ainda')
+    expect(botaoDaData('04/10')).toBeEnabled()
+  })
+
+  it('data que não admite fica desligada, diz o motivo em texto e não grava', async () => {
+    const { registro, usuario } = await abrirNoCelular()
+    await usuario.click(screen.getByRole('button', { name: new RegExp(REQ_LIVRE.texto) }))
+    expect(botaoDaData('11/10')).toBeDisabled()
+    expect(botaoDaData('11/10')).toHaveTextContent('Sem classe: Feriado prolongado. Não dá para colocar aqui.')
+    expect(botaoDaData('25/10')).toHaveTextContent('Sem classe: Ensaio da investidura. Não dá para colocar aqui.')
+    expect(botaoDaData('01/11')).toHaveTextContent('Classe já dada. Não dá para colocar aqui.')
+    await usuario.click(botaoDaData('11/10'))
+    expect(registro.chamadas).toHaveLength(0)
+    expect(folha()).toBeInTheDocument()
+  })
+
+  it('tocar numa data grava pela mesma chamada do "Colocar aqui", fecha a folha e confirma em texto', async () => {
+    const { registro, usuario } = await abrirNoCelular()
+    await usuario.click(screen.getByRole('button', { name: new RegExp(REQ_LIVRE.texto) }))
+    await usuario.click(botaoDaData('04/10'))
+    await waitFor(() => expect(registro.chamadas).toHaveLength(1))
+    expect(registro.chamadas[0]).toMatchObject({
+      metodo: 'PUT',
+      caminho: `/api/cronogramas/${CRONOGRAMA_ID}/requisitos/${REQ_LIVRE.id}`,
+      corpo: { data: '2026-10-04' },
+    })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByText(`${REQ_LIVRE.codigo} ficou em 04/10`)).toHaveAttribute('role', 'status')
+  })
+
+  it('move um requisito que já tinha data: mostra a data atual, desliga ela e grava a nova', async () => {
+    const { registro, usuario } = await abrirNoCelular()
+    await usuario.click(screen.getByRole('button', { name: new RegExp(REQ_COLOCADO.texto) }))
+    expect(within(folha()).getByText('Hoje em 04/10')).toBeInTheDocument()
+    expect(botaoDaData('04/10')).toBeDisabled()
+    expect(botaoDaData('04/10')).toHaveTextContent('O requisito já está nesta data.')
+    await usuario.click(botaoDaData('18/10'))
+    await waitFor(() => expect(registro.chamadas).toHaveLength(1))
+    expect(registro.chamadas[0]).toMatchObject({ metodo: 'PUT', caminho: `/api/cronogramas/${CRONOGRAMA_ID}/requisitos/${REQ_COLOCADO.id}`, corpo: { data: '2026-10-18' } })
+    expect(await screen.findByText(`${REQ_COLOCADO.codigo} ficou em 18/10`)).toBeInTheDocument()
+  })
+
+  it('conflito que ainda é dia de aula: desligado nas individuais, com o motivo; aceito nas agrupadas', async () => {
+    const conflito = criarDataMontagem('2026-10-04', { aulaId: uuid(2001), conflito: true })
+    const { usuario } = await abrirNoCelular(criarMontagem({ datasLivres: false, requisitos: [REQ_LIVRE], datas: [conflito] }))
+    await usuario.click(screen.getByRole('button', { name: new RegExp(REQ_LIVRE.texto) }))
+    expect(botaoDaData('04/10')).toBeDisabled()
+    expect(botaoDaData('04/10')).toHaveTextContent('Conflito: não há classe nesta data. Não dá para colocar aqui.')
+  })
+
+  it('conflito nas agrupadas continua aceitando', async () => {
+    const conflito = criarDataMontagem('2026-10-04', { aulaId: uuid(2001), conflito: true })
+    const { usuario } = await abrirNoCelular(criarMontagem({ datasLivres: true, requisitos: [REQ_LIVRE], datas: [conflito] }))
+    await usuario.click(screen.getByRole('button', { name: new RegExp(REQ_LIVRE.texto) }))
+    expect(botaoDaData('04/10')).toBeEnabled()
+  })
+
+  it('gravação recusada: a folha fica aberta e mostra a mensagem', async () => {
+    const { registro, usuario } = await abrirNoCelular()
+    registro.falharProxima(422, { codigo: 'VALIDACAO', mensagem: 'Esta classe está desativada no clube.' })
+    await usuario.click(screen.getByRole('button', { name: new RegExp(REQ_LIVRE.texto) }))
+    await usuario.click(botaoDaData('04/10'))
+    expect(await within(folha()).findByText('Esta classe está desativada no clube.')).toBeInTheDocument()
+  })
+
+  it('"Alterar em Classes" tem alvo de 44px', async () => {
+    await abrirNoCelular()
+    expect(screen.getByRole('link', { name: 'Alterar em Classes' }).className).toContain('min-h-[var(--touch-min)]')
   })
 })
 

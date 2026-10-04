@@ -3,11 +3,14 @@ import { Link } from 'react-router-dom'
 import type { Classe } from '../../api/leitura'
 import type { CronogramaDaMontagem, Montagem } from '../../api/montagem'
 import { Botao } from '../../ui/Botao'
+import { useLarguraMenorQue } from '../../layouts/useLarguraMenorQue'
 import { BarraProgresso } from '../../ui/BarraProgresso'
 import { EstadoVazio } from '../../ui/EstadoVazio'
+import { LARGURA_DO_CELULAR } from '../../ui/Tabela'
 import { cn } from '../../ui/cn'
 import { EtiquetaCampo } from './EtiquetaCampo'
 import { FaixaDeMontagem } from './FaixaDeMontagem'
+import { FolhaEmQualData } from './FolhaEmQualData'
 import { FormularioAula } from './FormularioAula'
 import type { AulaEmEdicao } from './FormularioAula'
 import { LinhaData } from './LinhaData'
@@ -25,11 +28,16 @@ interface Propriedades {
 
 const QUEM_MONTA = { ADM: 'Adm', INSTRUTOR: 'Instrutores da classe' } as const
 
-/** A7 com cronograma: requisitos à esquerda, datas à direita; escolhe um requisito e "Colocar aqui" numa data. */
+/**
+ * A7 com cronograma: requisitos à esquerda, datas à direita; escolhe um requisito e "Colocar aqui" numa data.
+ * No celular as colunas empilham, então o requisito escolhido abre a folha "Em qual data?".
+ */
 export function PainelAdm({ montagem, cronograma, classe, ano, aoAtualizar }: Propriedades) {
   const acoes = useAcoesDeMontagem(montagem.classe.id, ano, cronograma.id, montagem)
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null)
   const [aulaEmEdicao, setAulaEmEdicao] = useState<AulaEmEdicao | null>(null)
+  const [confirmacao, setConfirmacao] = useState<string | null>(null)
+  const celular = useLarguraMenorQue(LARGURA_DO_CELULAR)
 
   const selecionado = montagem.requisitos.find((requisito) => requisito.id === selecionadoId) ?? null
   const agendados = montagem.requisitos.filter((requisito) => requisito.data !== null).length
@@ -40,6 +48,21 @@ export function PainelAdm({ montagem, cronograma, classe, ano, aoAtualizar }: Pr
     if (!selecionado) return
     if (await acoes.colocar(selecionado.id, data)) setSelecionadoId(null)
   }
+
+  async function colocarPelaFolha(data: string) {
+    if (!selecionado) return
+    if (!(await acoes.colocar(selecionado.id, data))) return
+    setSelecionadoId(null)
+    setConfirmacao(`${selecionado.codigo} ficou em ${diaMes(data)}`)
+  }
+
+  function escolherRequisito(id: string) {
+    setConfirmacao(null)
+    setSelecionadoId(id === selecionadoId ? null : id)
+  }
+
+  const folhaAberta = celular && selecionado !== null
+  const faixaDeErro = acoes.erro && <FaixaDeMontagem erro={acoes.erro} aoAtualizar={() => { acoes.limparErro(); aoAtualizar() }} />
 
   async function salvarAula(aula: AulaEmEdicao, data: string): Promise<boolean> {
     return aula.aulaId ? acoes.editarAula(aula.aulaId, aula.dados) : acoes.criarAula(data, aula.dados)
@@ -52,7 +75,7 @@ export function PainelAdm({ montagem, cronograma, classe, ano, aoAtualizar }: Pr
         <span className="text-sm text-texto-2">
           Quem monta: <strong className="text-texto">{classe ? QUEM_MONTA[classe.quemMontaCronograma] : '—'}</strong>
           {' · '}
-          <Link className="font-semibold text-marca underline" to={`/adm/classes?classe=${montagem.classe.id}`}>
+          <Link className="inline-flex min-h-[var(--touch-min)] items-center font-semibold text-marca underline" to={`/adm/classes?classe=${montagem.classe.id}`}>
             Alterar em Classes
           </Link>
         </span>
@@ -66,7 +89,7 @@ export function PainelAdm({ montagem, cronograma, classe, ano, aoAtualizar }: Pr
         </Botao>
       </div>
 
-      {acoes.erro && <FaixaDeMontagem erro={acoes.erro} aoAtualizar={() => { acoes.limparErro(); aoAtualizar() }} />}
+      {!folhaAberta && faixaDeErro}
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 min-[900px]:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <section aria-label="Requisitos" className="flex flex-col gap-3 rounded-cartao border border-borda-controle bg-superficie p-4">
@@ -77,14 +100,21 @@ export function PainelAdm({ montagem, cronograma, classe, ano, aoAtualizar }: Pr
             </span>
           </div>
           <BarraProgresso valor={total === 0 ? 0 : (agendados / total) * 100} rotulo="Requisitos agendados" />
-          <p className="text-sm text-texto-2">1. Escolha um requisito · 2. Clique em “Colocar aqui” na data</p>
+          <p className="text-sm text-texto-2">
+            {celular ? 'Toque num requisito para escolher a data' : '1. Escolha um requisito · 2. Clique em “Colocar aqui” na data'}
+          </p>
+          {confirmacao && (
+            <p role="status" className="text-base font-semibold text-marca">
+              {confirmacao}
+            </p>
+          )}
           <div className="flex flex-col gap-2">
             {montagem.requisitos.map((requisito) => (
               <button
                 key={requisito.id}
                 type="button"
                 aria-pressed={requisito.id === selecionadoId}
-                onClick={() => setSelecionadoId(requisito.id === selecionadoId ? null : requisito.id)}
+                onClick={() => escolherRequisito(requisito.id)}
                 className={cn(
                   'flex min-h-[var(--touch-min)] items-start gap-3 rounded-controle border p-3 text-left focus-visible:outline-2 focus-visible:outline-marca',
                   requisito.id === selecionadoId ? 'border-2 border-marca bg-marca-tinta' : 'border-divisor bg-superficie',
@@ -132,7 +162,7 @@ export function PainelAdm({ montagem, cronograma, classe, ano, aoAtualizar }: Pr
                     setAulaEmEdicao({ data: aula.data, aulaId: aula.aulaId, dados: { horario: aula.horario, local: aula.local, titulo: aula.titulo } })
                   }
                   acaoDaData={
-                    aceitaRequisitoNovo(montagem, dado) && selecionado?.data !== dado.data && (
+                    !celular && aceitaRequisitoNovo(montagem, dado) && selecionado?.data !== dado.data && (
                       <Botao
                         variante="secundario"
                         aria-label={`Colocar aqui em ${diaMes(dado.data)}`}
@@ -149,6 +179,18 @@ export function PainelAdm({ montagem, cronograma, classe, ano, aoAtualizar }: Pr
           )}
         </section>
       </div>
+
+      {celular && selecionado && (
+        <FolhaEmQualData
+          requisito={selecionado}
+          datas={montagem.datas}
+          datasLivres={montagem.datasLivres}
+          desabilitado={acoes.ocupada}
+          aviso={faixaDeErro}
+          aoEscolher={(data) => void colocarPelaFolha(data)}
+          aoFechar={() => setSelecionadoId(null)}
+        />
+      )}
 
       {aulaEmEdicao && (
         <FormularioAula aula={aulaEmEdicao} desabilitado={acoes.ocupada} aoSalvar={salvarAula} aoFechar={() => setAulaEmEdicao(null)} />
