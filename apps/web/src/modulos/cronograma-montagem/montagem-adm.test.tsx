@@ -89,9 +89,12 @@ describe('A7 · montar no celular: folha "Em qual data?"', () => {
   async function abrirNoCelular(montagem = criarMontagemDeExemplo()) {
     simularLargura(390)
     const registro = abrir(montagem)
-    await screen.findByText(/agendados/)
+    await screen.findByText(/requisitos com data/)
     return { registro, usuario: userEvent.setup() }
   }
+
+  const mostrarTodasAsDatas = (usuario: ReturnType<typeof userEvent.setup>) =>
+    usuario.click(within(folha()).getByRole('checkbox', { name: 'Esconder datas que não aceitam' }))
 
   const folha = () => screen.getByRole('dialog', { name: 'Em qual data?' })
   const botaoDaData = (diaEMes: string) => within(folha()).getByRole('button', { name: new RegExp(diaEMes) })
@@ -111,6 +114,7 @@ describe('A7 · montar no celular: folha "Em qual data?"', () => {
   it('data que não admite fica desligada, diz o motivo em texto e não grava', async () => {
     const { registro, usuario } = await abrirNoCelular()
     await usuario.click(screen.getByRole('button', { name: new RegExp(REQ_LIVRE.texto) }))
+    await mostrarTodasAsDatas(usuario)
     expect(botaoDaData('11/10')).toBeDisabled()
     expect(botaoDaData('11/10')).toHaveTextContent('Sem classe: Feriado prolongado. Não dá para colocar aqui.')
     expect(botaoDaData('25/10')).toHaveTextContent('Sem classe: Ensaio da investidura. Não dá para colocar aqui.')
@@ -136,8 +140,10 @@ describe('A7 · montar no celular: folha "Em qual data?"', () => {
 
   it('move um requisito que já tinha data: mostra a data atual, desliga ela e grava a nova', async () => {
     const { registro, usuario } = await abrirNoCelular()
+    await usuario.click(screen.getByRole('tab', { name: /Com data/ }))
     await usuario.click(screen.getByRole('button', { name: new RegExp(REQ_COLOCADO.texto) }))
     expect(within(folha()).getByText('Hoje em 04/10')).toBeInTheDocument()
+    await mostrarTodasAsDatas(usuario)
     expect(botaoDaData('04/10')).toBeDisabled()
     expect(botaoDaData('04/10')).toHaveTextContent('O requisito já está nesta data.')
     await usuario.click(botaoDaData('18/10'))
@@ -150,6 +156,7 @@ describe('A7 · montar no celular: folha "Em qual data?"', () => {
     const conflito = criarDataMontagem('2026-10-04', { aulaId: uuid(2001), conflito: true })
     const { usuario } = await abrirNoCelular(criarMontagem({ datasLivres: false, requisitos: [REQ_LIVRE], datas: [conflito] }))
     await usuario.click(screen.getByRole('button', { name: new RegExp(REQ_LIVRE.texto) }))
+    await mostrarTodasAsDatas(usuario)
     expect(botaoDaData('04/10')).toBeDisabled()
     expect(botaoDaData('04/10')).toHaveTextContent('Conflito: não há classe nesta data. Não dá para colocar aqui.')
   })
@@ -425,6 +432,10 @@ describe('A7 · concorrência e publicação', () => {
     if (publicado.cronograma) publicado.cronograma.status = 'PUBLICADO'
     registro.responder(publicado)
     await usuario.click(screen.getByRole('button', { name: 'Publicar' }))
+    const dialogo = screen.getByRole('dialog', { name: 'Publicar o cronograma de Amigo?' })
+    expect(dialogo).toHaveTextContent('2 requisitos ainda estão sem data. Você pode colocá-los depois.')
+    expect(registro.chamadas).toHaveLength(0)
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Publicar cronograma' }))
     await waitFor(() => expect(registro.chamadas).toHaveLength(1))
     expect(registro.chamadas[0]).toMatchObject({
       metodo: 'POST',
@@ -433,6 +444,20 @@ describe('A7 · concorrência e publicação', () => {
     })
     expect(await screen.findByText('Publicado')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Publicar' })).toBeDisabled()
+  })
+
+  it('confirmação no computador: sem requisito sem data não fala deles, e "Continuar montando" não grava', async () => {
+    const data = criarDataMontagem('2026-10-04', { aulaId: uuid(2001), requisitoIds: [REQ_COLOCADO.id] })
+    const registro = abrir(criarMontagem({ requisitos: [REQ_COLOCADO], datas: [data] }))
+    const usuario = userEvent.setup()
+    await screen.findByText(/agendados/)
+    await usuario.click(screen.getByRole('button', { name: 'Publicar' }))
+    const dialogo = screen.getByRole('dialog', { name: 'Publicar o cronograma de Amigo?' })
+    expect(dialogo).toHaveTextContent('Os instrutores da classe recebem um aviso e passam a ver as datas.')
+    expect(dialogo).not.toHaveTextContent('sem data')
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Continuar montando' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(registro.chamadas).toHaveLength(0)
   })
 })
 
