@@ -8,6 +8,10 @@ que **toda a liderança do clube** (Adm, conselheiros e instrutores) lê no app 
 visual pedida é a Desbravateca do Clube Guardiões do Advento: prateleiras por categoria, cartão com
 capa, nome, uma linha abaixo dele e os botões "Ler" e "Baixar".
 
+O modelo aprovado está em `modelo/` (`Main.dc.html` é o índice; capas, nomes e números são
+fictícios). **Ele é o alvo:** se esta SPEC e o modelo divergirem, vale o modelo. Do modelo copia-se
+estrutura, ordem e texto, **nunca CSS**: as classes saem dos tokens e dos componentes de `ui/`.
+
 Textos ao usuário usam **"Biblioteca"**, **"categoria"** e **"item"**. Não há i18n: os textos vão
 direto no componente, como no resto do app.
 
@@ -90,7 +94,7 @@ direto no componente, como no resto do app.
 | Cota | **2 GB à parte.** Cadernos de classe ilustrados passam de 20 MB; somar à cota dos materiais (1 GB) faria a biblioteca bloquear o instrutor de enviar material de classe. |
 | Limite de upload no nginx **do container** | **Bloco próprio** `location /api/biblioteca/` com `client_max_body_size 51m`, repetindo o proxy e os cabeçalhos do bloco de materiais (`apps/web/nginx.conf:32-44`; `location` não herda), sem CSP própria. O PDF vai sozinho no corpo (a capa tem rota própria), então 1 MB de folga basta, como nos materiais. O tempo de 60 s (`:42`) **não muda**: o nginx recebe o corpo inteiro antes de repassar (não há `proxy_request_buffering off`) e os 60 s contam entre leituras. |
 | Limite de upload no nginx **do servidor** | **Sobe de 21m para 51m** em `scripts/nginx-host.conf:21`, na mensagem de `scripts/instalar.sh:259` e no `README.md:141,195-205` (que ainda diz que o nginx do servidor fica fora do repositório). Sem isso, todo PDF acima de 21 MB volta 413 em produção. |
-| Instrutor sem classe | Hoje `Conteudo` devolve só o `EstadoVazio` e os atalhos não aparecem (`TelaInicioInstrutor.tsx:173-176`). **Passa a devolver o `EstadoVazio` seguido de `<Atalhos>`**, para o instrutor recém-chegado também chegar à biblioteca. Os atalhos que apontam para a classe (`para(classeUnica)`) já lidam com `classeUnica` indefinido, que é o caso de quem tem mais de uma classe. |
+| Instrutor sem classe | Hoje `Conteudo` devolve só o `EstadoVazio` e os atalhos não aparecem (`TelaInicioInstrutor.tsx:173-176`). **Passa a mostrar, abaixo do estado vazio, a seção "Atalhos" só com "Biblioteca"** (`modelo/Inicio-Instrutor-SemClasse.dc.html`). Os outros seis levariam a telas que dependem de classe e abririam vazias. |
 | Adm lê onde? | Na **mesma tela**, em `/adm/biblioteca` dentro do `LayoutAdm`; conselheiro e instrutor em `/biblioteca` dentro do `LayoutCelular`. Os botões de alteração aparecem por `pode('biblioteca.gerenciar')` (`sessao/useSessao.ts:20`), não por papel. |
 | PDF abre sem CSP, com o JavaScript do PDF | **Risco aceito**, como nos materiais (`arquivos.controller.ts:64-66`): só quem tem `biblioteca.gerenciar` envia. |
 
@@ -180,28 +184,38 @@ Uma tela só, `modulos/biblioteca/TelaBiblioteca.tsx`, em duas rotas: `/adm/bibl
 2. Uma seção por categoria: título da categoria e, com permissão, o menu dela (`MenuCabecalho`, como
    `TelaMateriais.tsx:217`).
 3. Grade de cartões: 2 colunas até 640 px, 3 até 1024, 4 acima. Cartão (`ui/Cartao.tsx`): capa em
-   proporção 3:4, nome (até 2 linhas, o resto cortado), descrição (1 linha), e os botões "Ler" e
-   "Baixar" lado a lado; com permissão, o menu do item. Os botões têm `aria-label` com o nome do
-   item ("Ler Caminho a Cristo").
+   proporção 3:4, nome (até 2 linhas, o resto cortado), descrição (1 linha), e os botões "Ler"
+   (contorno verde, como o "Abrir" de `TelaMateriais.tsx:207-216`) e "Baixar" (`Botao`
+   secundário) lado a lado — com ícone no computador, só texto no celular, onde o cartão tem
+   ~170 px. Com permissão, abaixo deles, "Opções" (`MenuCabecalho`, como `TelaMateriais.tsx:217`),
+   à direita. Os botões têm `aria-label` com o nome do item ("Ler Caminho a Cristo").
 4. Sem capa: o espaço da capa com fundo de token e o nome do item centralizado.
 
 **Diálogos** (`ui/Confirmacao.tsx`, como `TelaMateriais.tsx:78-106`):
 
-- *Adicionar*: PDF (`Campo type="file" accept="application/pdf"`), Nome, Descrição, Categoria
+- *Adicionar* (`modelo/Adicionar.dc.html`; campos com ajuda: "Até 50 MB.", "É o nome que aparece
+  na estante e no arquivo baixado.", "Opcional. Uma linha abaixo do nome.", "Opcional. JPG, PNG ou
+  WebP, até 5 MB."): PDF (`Campo type="file" accept="application/pdf"`), Nome, Descrição, Categoria
   (`Selecao`), Capa (`accept="image/jpeg,image/png,image/webp"`). Ao escolher o PDF, o Nome é
   preenchido com o nome do arquivo sem `.pdf` **só se estiver vazio**. PDF acima de 50 MB ou capa
-  acima de 5 MB é recusado na hora, antes do envio. Durante o envio, barra de progresso e o botão
-  desabilitado.
-- *Editar item*: Nome, Descrição, Categoria, e a capa com "Trocar capa" e "Tirar capa".
-- *Nova categoria* / *Renomear*: um campo.
+  acima de 5 MB é recusado na hora, antes do envio. Durante o envio, campos travados, barra de
+  andamento (`ui/BarraProgresso.tsx`) com "Enviando o PDF…" e depois "Enviando a capa…", e o botão
+  "Adicionando" girando (`modelo/Adicionar-Enviando.dc.html`).
+- *Capa recusada depois do item criado* (`modelo/Adicionar-CapaFalhou.dc.html`): o diálogo passa a
+  se chamar "<nome> foi adicionado", mostra o motivo e oferece outra imagem ("Enviar capa") ou
+  "Fechar".
+- *Editar item* (`modelo/Editar-Item.dc.html`): Nome, Descrição, Categoria ("Ao mudar de
+  categoria, o item vai para o fim dela."), a capa em miniatura com "Trocar capa" e "Tirar capa", e
+  "Para trocar o PDF, remova o item e adicione de novo." 
+- *Nova categoria* / *Renomear*: um campo, "Nome da categoria"; botão "Criar" / "Salvar".
 - *Remover item*: "Remover \"<nome>\" da biblioteca? O arquivo é apagado e não dá para desfazer."
 - *Excluir categoria*: "Excluir a categoria \"<nome>\"?"
 
 **Atalhos de Início:**
 
 - Conselheiro: 5º item em `ATALHOS` (`modulos/inicio/InicioConselheiro.tsx:31-36`).
-- Instrutor: 7º item em `ATALHOS` (`modulos/inicio-instrutor/TelaInicioInstrutor.tsx:29-36`), e os
-  atalhos também sem classe (decisão acima).
+- Instrutor: 7º item em `ATALHOS` (`modulos/inicio-instrutor/TelaInicioInstrutor.tsx:29-36`); sem classe, só
+  o da Biblioteca (decisão acima).
 - Adm: `ITENS_ADM` (`layouts/LayoutAdm.tsx:16-27`), depois de "Cronogramas" (`:23`), ícone
   `BookOpen` do `lucide-react` (se a versão instalada não tiver, `Library`).
 
@@ -213,11 +227,14 @@ Um PDF já aberto numa aba não é afetado.
 ## Descobribilidade (as quatro perguntas)
 
 - **Pré-requisitos:** para adicionar, uma categoria ativa. Clube sem nenhuma (carga ainda não rodou,
-  ou o Adm excluiu todas): o botão "Adicionar à biblioteca" não aparece e a tela mostra "Crie uma
-  categoria para começar a montar a biblioteca." com o botão "Nova categoria".
-- **Vazio:** biblioteca sem item — Adm: "A biblioteca está vazia. Adicione o primeiro PDF." com o
-  botão; conselheiro e instrutor: "O Adm do clube ainda não adicionou nada à biblioteca." Categoria
-  sem item: o Adm vê a seção com "Nenhum item nesta categoria."; para quem só lê, a seção some.
+  ou o Adm excluiu todas): o cabeçalho fica sem botões e a tela mostra "Crie uma categoria para
+  começar a montar a biblioteca." com o único botão, "Nova categoria" (`modelo/Sem-Categoria-Adm.dc.html`).
+- **Vazio:** biblioteca sem nenhum item — só a mensagem, sem prateleiras vazias empilhadas. Adm:
+  "A biblioteca está vazia." / "Use “Adicionar à biblioteca” para colocar o primeiro PDF. As
+  categorias … já estão prontas." (o botão é o do cabeçalho, `modelo/Vazio-Adm.dc.html`);
+  conselheiro e instrutor: "A biblioteca ainda está vazia." / "O Adm do clube adiciona aqui os
+  cadernos de classe, livros e manuais." (`modelo/Vazio-Celular.dc.html`). Com algum item, categoria
+  vazia aparece para o Adm com "Nenhum item nesta categoria."; para quem só lê, ela some.
 - **Bloqueio:** "Excluir" só aparece em categoria vazia (não há mensagem de bloqueio a mostrar);
   cota e formato voltam como mensagem no próprio diálogo — estado que a tela não tem como contornar.
 - **Perfil e escopo:** só quem tem `biblioteca.gerenciar` vê botões e menus de alteração; para os
@@ -252,7 +269,7 @@ Um PDF já aberto numa aba não é afetado.
   leitor; sem categoria; adicionar (nome preenchido do arquivo só se vazio, PDF e capa grandes
   recusados na hora, progresso, capa que falha depois do item criado); editar; mover (sem "para
   cima" no primeiro); excluir só em categoria vazia; atalhos nos dois Inícios e no menu do Adm;
-  instrutor sem classe vê os atalhos.
+  instrutor sem classe vê só o atalho da Biblioteca.
 - **e2e** (`e2e/adm.spec.ts`): Adm adiciona um PDF com nome próprio, o conselheiro o vê e o "Ler"
   abre o PDF.
 - **Testes existentes que mudam:**
@@ -266,7 +283,7 @@ Um PDF já aberto numa aba não é afetado.
   - `apps/web/src/layouts/layouts.test.tsx:153-170` (menu do Adm), `apps/web/src/rotas.test.tsx`
     (rotas novas);
   - `modulos/inicio/inicio.test.tsx`, `modulos/inicio-instrutor/inicio-instrutor.test.tsx` (atalho
-    novo; atalhos sem classe);
+    novo; sem classe, só o da Biblioteca);
   - handlers em `apps/web/src/testes/handlers/` (novo `biblioteca.ts`).
 
 ## Documentação que muda
@@ -293,6 +310,7 @@ Um PDF já aberto numa aba não é afetado.
   de API e web passando; e2e verde no CI.
 - Medido no DOM em 390, 820 e 1280 px, com 3 categorias e 9 itens: sem rolagem lateral, nomes
   longos cortados sem empurrar o cartão, nenhum elemento `fixed`/`sticky` novo.
+- Cada tela de `modelo/` vira item do roteiro de QA.
 - QA no navegador: Adm cria categoria, adiciona PDF com capa e sem capa, renomeia, move, remove;
   conselheiro e instrutor veem, leem e baixam; outro clube não vê.
 
