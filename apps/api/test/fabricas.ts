@@ -784,6 +784,9 @@ export async function criarGrupoCB(dados: {
   unidadeIds: string[]
   nome?: string
   material?: { titulo: string; url?: string; arquivoId?: string }
+  /** Período das unidades no grupo; sem `inicio`, vale o início da edição. */
+  inicio?: string
+  fim?: string
 }): Promise<GrupoClasseBiblica> {
   const prisma = prismaDeTeste()
   const ordem = await prisma.grupoClasseBiblica.count({ where: { clubeId: dados.clubeId, edicaoId: dados.edicaoId } })
@@ -798,9 +801,15 @@ export async function criarGrupoCB(dados: {
       materialArquivoId: dados.material?.arquivoId ?? null,
     },
   })
+  const edicao = await prisma.edicaoClasseBiblica.findUniqueOrThrow({
+    where: { clubeId_id: { clubeId: dados.clubeId, id: dados.edicaoId } },
+    select: { inicio: true },
+  })
+  const inicio = dados.inicio ? dataCivil(dados.inicio) : (edicao.inicio ?? dataCivil('2026-01-01'))
   await prisma.grupoUnidadeClasseBiblica.createMany({
     data: dados.unidadeIds.map((unidadeId) => ({
       clubeId: dados.clubeId, edicaoId: dados.edicaoId, grupoId: grupo.id, unidadeId,
+      inicio, fim: dados.fim ? dataCivil(dados.fim) : null,
     })),
   })
   return grupo

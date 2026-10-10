@@ -615,6 +615,39 @@ uma: impasse → escolha | alternativa e o que mudaria para quem usa.
 | D29 | (revisão) Concorrência ao terminar: trava por clube, reconferência e idempotência por `terminadaEm`; rascunhos podem disputar a unidade (regras 3 e 5, R7) | Bloquear a unidade já no rascunho (um rascunho esquecido travaria a unidade) |
 | D30 | (usuário) Não há "desfazer chamada"; corrige-se marcando as faltas (regra 10, R2) | Botão de desfazer (destravaria remarcar e cancelar depois de chamada feita) |
 
+## Adendo — unidade que troca de grupo (depois da revisão)
+
+O vínculo unidade–grupo não guardava histórico: tirar uma unidade de um grupo apagava a linha.
+Daí três buracos, achados na revisão: o painel e a frequência cortavam o escopo do Conselheiro
+pela unidade de hoje; um encontro passado que nenhum grupo registrou seguia a composição atual;
+e o Conselheiro perdia o grupo antigo depois que a unidade dele mudava de grupo. O usuário pediu
+que o painel mostre a história: em tal data a unidade estava neste grupo, com a chamada assim, e
+depois trocou.
+
+| # | Impasse → escolha | Alternativa (e o que mudaria) |
+|---|---|---|
+| D31 | (usuário) Mostrar a troca de grupo → na lista de encontros do painel, cada encontro diz as unidades do grupo naquele dia, e uma linha "dd/mm · <unidade> saiu do grupo (foi para o <grupo>)" ou "entrou no grupo (veio do <grupo>)" fica entre os encontros, na data da troca | Bloco separado "Unidades ao longo da edição" (a pessoa cruzaria duas listas para ligar a troca às chamadas) |
+| D32 | O vínculo unidade–grupo ganha período (`inicio`, `fim`), como `MembroUnidade`. Em rascunho, salvar os grupos substitui as linhas; ao terminar, todas começam no início da edição. Em edição terminada, tirar a unidade fecha o período em hoje (fuso do clube) e pô-la noutro grupo abre um período novo em hoje; período que ainda não começou é apagado. A composição de uma data D é a dos períodos com `inicio <= D` e `fim` nulo ou `> D` | Continuar sem histórico e só registrar as trocas num log (a composição de uma data passada não sairia dele) |
+| D33 | Escopo do Conselheiro no painel, na frequência e na chamada de encontro passado: vale a unidade da linha gravada (ou a da composição na data, para quem ainda não tem linha). Ele vê o grupo enquanto alguma unidade dele estiver ou tiver estado nele, e corrige as chamadas antigas das linhas da unidade dele | Só o Adm corrige essas chamadas (o Conselheiro perderia o grupo antigo) |
+
+Regras: a composição do dia substitui a "composição atual" das regras 8, 9 e 14 para qualquer data;
+as linhas gravadas continuam valendo como estão (regra 8, critério 42). Para quem só tem a chamada,
+as unidades de cada encontro e as linhas de troca saem cortadas pelo escopo (nunca afirmar a
+composição inteira para quem vê uma fatia).
+
+Descobribilidade: sem pré-requisito novo; sem troca, a lista não ganha linha nenhuma; nenhum
+bloqueio novo.
+
+Critérios:
+49. Águias sai do Grupo Daniel e entra no Grupo Ester em 12/10. No painel do Daniel, os encontros
+    até 11/10 dizem "Águias, Leões e Gaviões", os depois dizem "Leões e Gaviões", e entre eles
+    aparece "12/10 · Águias saiu do grupo (foi para o Grupo Ester)". No do Ester, "12/10 · Águias
+    entrou no grupo (veio do Grupo Daniel)".
+50. A chamada de um encontro de 04/10 que nenhum grupo registrou lista Águias no Daniel e não no
+    Ester, mesmo depois da troca.
+51. O Conselheiro de Águias, depois da troca, continua vendo o Grupo Daniel e corrige as linhas de
+    Águias de 04/10; no painel e na frequência do Daniel, vê os números das linhas de Águias.
+
 ## Regras de negócio respondidas pelo usuário
 
 1. Chamada de Conselheiro ou Instrutor: só grupos que contêm unidade do escopo dele; fora, 404. O

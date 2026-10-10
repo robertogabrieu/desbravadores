@@ -58,8 +58,10 @@ CREATE TABLE "GrupoUnidadeClasseBiblica" (
     "edicaoId" UUID NOT NULL,
     "grupoId" UUID NOT NULL,
     "unidadeId" UUID NOT NULL,
+    "inicio" DATE NOT NULL,
+    "fim" DATE,
 
-    CONSTRAINT "GrupoUnidadeClasseBiblica_pkey" PRIMARY KEY ("grupoId","unidadeId")
+    CONSTRAINT "GrupoUnidadeClasseBiblica_pkey" PRIMARY KEY ("grupoId","unidadeId","inicio")
 );
 
 -- CreateTable
@@ -133,7 +135,10 @@ CREATE UNIQUE INDEX "GrupoClasseBiblica_clubeId_id_key" ON "GrupoClasseBiblica"(
 CREATE INDEX "GrupoUnidadeClasseBiblica_clubeId_unidadeId_idx" ON "GrupoUnidadeClasseBiblica"("clubeId", "unidadeId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "GrupoUnidadeClasseBiblica_edicaoId_unidadeId_key" ON "GrupoUnidadeClasseBiblica"("edicaoId", "unidadeId");
+CREATE INDEX "GrupoUnidadeClasseBiblica_clubeId_edicaoId_inicio_idx" ON "GrupoUnidadeClasseBiblica"("clubeId", "edicaoId", "inicio");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "grupo_unidade_cb_aberta_por_edicao" ON "GrupoUnidadeClasseBiblica"("edicaoId", "unidadeId") WHERE ("fim" IS NULL);
 
 -- CreateIndex
 CREATE UNIQUE INDEX "EncontroClasseBiblica_eventoId_key" ON "EncontroClasseBiblica"("eventoId");

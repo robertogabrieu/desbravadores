@@ -127,6 +127,8 @@ export const EncontroDoPainel = z.object({
   motivo: z.string().nullable(),
   /** Chamada de qualquer grupo: o encontro não remarca nem cancela. */
   temChamada: z.boolean(),
+  /** Unidades do grupo naquele dia (composição da data); para quem só tem a chamada, as do escopo. */
+  unidades: z.array(z.string()),
   /** Do grupo do painel; null sem chamada registrada dele. */
   chamada: z.object({
     presentes: z.number().int(), total: z.number().int(), participaram: z.number().int(),
@@ -145,6 +147,13 @@ export const PainelSaida = z.object({
     encontrosPorVir: z.number().int(),
     abaixoDaMetade: z.number().int(),     // desbravadores com presença < 50% dos encontros em que têm linha
     encontros: z.array(EncontroDoPainel), // data ↓: feitos, cancelados e remarcados (sem os futuros sem chamada)
+    /** Trocas de unidade depois do início da edição, data ↓; a tela as intercala entre os encontros (D31). */
+    mudancas: z.array(z.object({
+      data: DataCivil,
+      unidade: z.string(),
+      tipo: z.enum(['ENTROU', 'SAIU']),
+      outroGrupo: z.string().nullable(),  // de onde veio ou para onde foi; null se saiu da edição
+    })),
   })),                                    // para quem só tem a chamada: só os grupos do escopo
   podeGerenciar: z.boolean(),
   podeFazerChamada: z.boolean(),

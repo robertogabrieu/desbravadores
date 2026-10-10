@@ -160,7 +160,7 @@ function encontroDoPainel(data: string, parcial: Partial<Painel['grupos'][number
   return {
     id: uuid(5100 + Number(data.slice(5, 7)) * 31 + Number(data.slice(8, 10))),
     data, horario: '14:00', local: 'Sala 3 da igreja', dataOriginal: null, cancelado: false, motivo: null,
-    temChamada: true, chamada: { presentes: 26, total: 31, participaram: 16 },
+    temChamada: true, unidades: ['Águias', 'Leões', 'Gaviões'], chamada: { presentes: 26, total: 31, participaram: 16 },
     ...parcial,
   }
 }
@@ -176,6 +176,7 @@ export function criarPainel(parcial: Partial<Painel> = {}): Painel {
         id: GRUPO_DANIEL_ID, nome: 'Grupo Daniel', unidades: unidades(['aguias', 'leoes', 'gavioes']),
         material: { titulo: 'Estudo Bíblico Ilustrado — lições 1 a 20', tipo: 'PDF', url: 'https://arquivos.exemplo/estudo.pdf', bytes: 4_404_019 },
         proximoEncontro: proximo, frequenciaMedia: 84, encontrosFeitos: 8, encontrosPorVir: 9, abaixoDaMetade: 3,
+        mudancas: [],
         encontros: [
           encontroDoPainel('2026-10-04'),
           encontroDoPainel('2026-09-27', { chamada: { presentes: 24, total: 31, participaram: 14 } }),
@@ -189,7 +190,7 @@ export function criarPainel(parcial: Partial<Painel> = {}): Painel {
       },
       {
         id: GRUPO_ESTER_ID, nome: 'Grupo Ester', unidades: unidades(['falcoes', 'panteras']), material: null,
-        proximoEncontro: proximo, frequenciaMedia: 88, encontrosFeitos: 8, encontrosPorVir: 9, abaixoDaMetade: 0, encontros: [],
+        proximoEncontro: proximo, frequenciaMedia: 88, encontrosFeitos: 8, encontrosPorVir: 9, abaixoDaMetade: 0, encontros: [], mudancas: [],
       },
     ],
     podeGerenciar: true,

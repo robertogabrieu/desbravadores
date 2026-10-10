@@ -1257,21 +1257,25 @@ model GrupoClasseBiblica {
   @@index([clubeId, edicaoId])
 }
 
-// Uma unidade fica em no máximo um grupo por edição.
+// Uma unidade fica em no máximo um grupo por edição de cada vez. O período guarda a troca de
+// grupo: a composição de uma data é a dos períodos com inicio <= data e fim nulo ou > data.
 model GrupoUnidadeClasseBiblica {
-  clubeId   String @db.Uuid
-  edicaoId  String @db.Uuid
-  grupoId   String @db.Uuid
-  unidadeId String @db.Uuid
+  clubeId   String    @db.Uuid
+  edicaoId  String    @db.Uuid
+  grupoId   String    @db.Uuid
+  unidadeId String    @db.Uuid
+  inicio    DateTime  @db.Date
+  fim       DateTime? @db.Date
 
   clube   Clube               @relation(fields: [clubeId], references: [id], onDelete: Restrict)
   edicao  EdicaoClasseBiblica @relation(fields: [clubeId, edicaoId], references: [clubeId, id], onDelete: Restrict)
   grupo   GrupoClasseBiblica  @relation(fields: [clubeId, grupoId], references: [clubeId, id], onDelete: Restrict)
   unidade Unidade             @relation(fields: [clubeId, unidadeId], references: [clubeId, id], onDelete: Restrict)
 
-  @@id([grupoId, unidadeId])
-  @@unique([edicaoId, unidadeId])
+  @@id([grupoId, unidadeId, inicio])
+  @@unique([edicaoId, unidadeId], where: { fim: null }, map: "grupo_unidade_cb_aberta_por_edicao")
   @@index([clubeId, unidadeId])
+  @@index([clubeId, edicaoId, inicio])
 }
 
 // Um por data marcada, com o EventoCalendario do tipo CLASSE_BIBLICA que o mostra no calendário.
