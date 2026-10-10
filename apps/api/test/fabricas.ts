@@ -41,6 +41,8 @@ import type {
   Sexo,
   StatusMatricula,
   StatusUsuario,
+  Substituicao,
+  TipoSubstituicao,
   TipoPessoa,
   TipoUnidade,
   Trilha,
@@ -102,6 +104,18 @@ export async function criarUsuario(
       senhaHash,
       status,
       genero: dados.genero ?? null,
+    },
+  })
+}
+
+/** Usuario de substituicao (S2): status `SUBSTITUTO`, sem senha e sem vinculo. */
+export async function criarUsuarioDeSubstituicao(dados: { nome?: string } = {}): Promise<Usuario> {
+  return prismaDeTeste().usuario.create({
+    data: {
+      nome: dados.nome ?? `Substituto ${unico()}`,
+      email: `substituto-${randomUUID()}@substituto.invalid`,
+      senhaHash: null,
+      status: 'SUBSTITUTO',
     },
   })
 }
@@ -212,6 +226,61 @@ export async function criarAcesso(dados: {
   const vinculo = await criarVinculo({ ...dados, usuarioId: usuario.id })
   const accessToken = criarSessao({ usuarioId: usuario.id, vinculoId: vinculo.id })
   return { usuario, vinculo, accessToken, autorizacao: `Bearer ${accessToken}` }
+}
+
+/**
+ * Link de substituicao ja identificado num aparelho e aberto agora (inicio ha 1 h, fim em 2 h, envio
+ * 12 h depois do fim). Sem `substitutoId`, cria um usuario de substituicao para ser o autor.
+ */
+export async function criarSubstituicao(dados: {
+  clubeId: string
+  tipo: TipoSubstituicao
+  unidadeId?: string
+  classeId?: string
+  data?: string
+  inicioEm?: Date
+  fimEm?: Date
+  fimEnvioEm?: Date
+  aparelhoHash?: string | null
+  substitutoId?: string | null
+  cancelada?: boolean
+}): Promise<Substituicao> {
+  const agora = Date.now()
+  const inicioEm = dados.inicioEm ?? new Date(agora - 60 * 60 * 1000)
+  const fimEm = dados.fimEm ?? new Date(inicioEm.getTime() + 3 * 60 * 60 * 1000)
+  const fimEnvioEm = dados.fimEnvioEm ?? new Date(fimEm.getTime() + 12 * 60 * 60 * 1000)
+  const criadoPorId = (await criarUsuario()).id
+  const substitutoId =
+    dados.substitutoId === undefined ? (await criarUsuarioDeSubstituicao()).id : dados.substitutoId
+  return prismaDeTeste().substituicao.create({
+    data: {
+      clubeId: dados.clubeId,
+      tipo: dados.tipo,
+      unidadeId: dados.unidadeId ?? null,
+      classeId: dados.classeId ?? null,
+      data: dataCivil(dados.data ?? hojeNoFuso('America/Sao_Paulo', inicioEm)),
+      inicioEm,
+      fimEm,
+      fimEnvioEm,
+      tokenHash: randomUUID(),
+      aparelhoHash: dados.aparelhoHash === undefined ? `aparelho-${unico()}` : dados.aparelhoHash,
+      identificadaEm: dados.aparelhoHash === null ? null : inicioEm,
+      substitutoId,
+      criadoPorId,
+      canceladoEm: dados.cancelada ? new Date(agora) : null,
+      canceladoPorId: dados.cancelada ? criadoPorId : null,
+    },
+  })
+}
+
+/** Credencial do link (JWT `tipo: 'substituicao'`) valida ate o fim do envio, assinada direto. */
+export function credencialDeSubstituicao(substituicao: Pick<Substituicao, 'id' | 'fimEnvioEm'>): {
+  token: string
+  autorizacao: string
+} {
+  const servico = new ServicoAccessToken(new JwtService({ secret: process.env['JWT_SEGREDO'] }))
+  const token = servico.emitirSubstituicao(substituicao.id, substituicao.fimEnvioEm)
+  return { token, autorizacao: `Bearer ${token}` }
 }
 
 /** Instante exato de uma data civil (meia-noite UTC), para colunas `@db.Date`. */
