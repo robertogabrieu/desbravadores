@@ -125,6 +125,8 @@ h1,h2,h3,p{margin:0}
 .fx.feriado{background:var(--cal-feriado-bg);color:var(--cal-feriado-fg)}
 .fx.especial{background:var(--cal-especial-bg);color:var(--cal-especial-fg);min-height:44px}
 .fx.gala-mini{background:var(--color-surface);color:var(--cal-especial-fg);border:2px solid var(--cal-especial-fg);font-weight:700}
+.fx.campo-mini{background:var(--color-surface);color:var(--color-text);border:2px dashed var(--color-border-control);font-weight:700}
+.campo-un{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:2px 12px;border-radius:999px;border:2px dashed var(--color-border-control);background:var(--color-surface);color:var(--color-text);font-size:16px;font-weight:700;align-self:flex-start}
 .dia{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:48px;border-radius:var(--radius-sm);font-size:16px;font-weight:600;border:0;background:var(--color-surface);color:var(--color-text);font-family:inherit}
 .dia.hoje{border:2px solid var(--color-primary);font-weight:800}
 .dia.sel{background:var(--color-primary);color:var(--color-on-primary)}
@@ -194,8 +196,8 @@ h1,h2,h3,p{margin:0}
 <div class="mb" style="min-height:2650px"><header class="mtopo"><button class="btn txt" aria-label="Abrir o menu" style="color:#fff"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h16"/><path d="M4 6h16"/><path d="M4 18h16"/></svg></button><span class="marca">App do Desbravador</span><button class="btn txt" style="color:#fff">Rosa</button></header><main class="mmain">
 <a class="volta" href="Ficha-Especial.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg> Dia do Desbravador</a>
 <div style="display:flex;flex-direction:column;gap:4px"><span class="rot">Editar evento</span><h1 class="h1">Dia do Desbravador</h1></div>
-<p class="rotulo-quadro">Evento com a lista concluída · depende da pergunta 3 da spec</p>
-<p class="aviso"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><span>A lista deste evento já foi concluída: 38 desbravadores foram. Se você mudar a data, os pontos ou o uniforme de gala, os pontos desses 38 serão refeitos.</span></p>
+<p class="rotulo-quadro">Evento com a lista concluída · decisão 6c da spec</p>
+<p class="aviso"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><span>A lista deste evento já foi concluída: 38 desbravadores foram. Se você mudar a data ou os pontos, os pontos desses 38 serão refeitos.</span></p>
 <form style="display:flex;flex-direction:column;gap:16px">
 <label class="campo"><span class="lbl">Nome</span><input class="in" type="text" value="Dia do Desbravador"></label>
 <label class="campo"><span class="lbl">Tipo</span><select class="in" disabled aria-describedby="apoio-tipo3"><option>Evento especial</option></select><span id="apoio-tipo3" class="ajuda">O tipo não muda depois que a lista é começada.</span></label>
@@ -203,9 +205,9 @@ h1,h2,h3,p{margin:0}
 <label class="campo"><span class="lbl">Horário</span><input class="in" type="text" value="17:00"></label><label class="campo"><span class="lbl">Local</span><input class="in" type="text" value="Igreja Central"></label>
 <fieldset class="grupo"><legend>Uniforme e pontos</legend>
 <label class="campo"><span class="lbl">Pontos por ir ao evento</span><input class="in curto" type="number" inputmode="numeric" value="25" aria-describedby="pp3-a"><span id="pp3-a" class="ajuda">Quem for ganha estes pontos no ranking. Pode ser 0.</span></label>
-<label class="cx"><input type="checkbox" checked> <span>Pede uniforme de gala</span></label>
-<label class="campo"><span class="lbl">Pontos por ir de gala</span><input class="in curto" type="number" inputmode="numeric" value="10" aria-describedby="pu3-a"><span id="pu3-a" class="ajuda">Só quem for de gala ganha estes pontos, além dos de ir. Pode ser 0.</span></label>
-<p class="resumo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span>Quem for ganha 25 pontos. Quem for de gala ganha mais 10.</span></p>
+<fieldset class="campo" id="un3" style="border:0;margin:0;padding:0"><legend class="lbl" style="padding:0">Uniforme do evento</legend><div style="display:flex;flex-wrap:wrap;gap:0 24px"><label class="cx"><input type="radio" name="un3" checked> <span>Uniforme de gala</span></label><label class="cx"><input type="radio" name="un3"> <span>Uniforme de campo</span></label></div><span class="ajuda">Se você trocar o uniforme, as marcas de quem foi com o uniforme continuam como estão. Confira a lista depois.</span></fieldset>
+<label class="campo"><span class="lbl">Pontos por usar o uniforme</span><input class="in curto" type="number" inputmode="numeric" value="10" aria-describedby="pu3-a"><span id="pu3-a" class="ajuda">Só quem for com o uniforme pedido ganha estes pontos, além dos de ir. Pode ser 0.</span></label>
+<p class="resumo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span>Quem for ganha 25 pontos. Quem for com o uniforme de gala ganha mais 10.</span></p>
 </fieldset>
 <div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--color-border);padding-top:16px"><button class="btn pri cheio" type="button">Salvar alterações</button><a class="btn sec cheio" href="Ficha-Especial.dc.html">Cancelar</a></div>
 </form>

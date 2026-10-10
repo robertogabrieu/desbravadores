@@ -125,6 +125,8 @@ h1,h2,h3,p{margin:0}
 .fx.feriado{background:var(--cal-feriado-bg);color:var(--cal-feriado-fg)}
 .fx.especial{background:var(--cal-especial-bg);color:var(--cal-especial-fg);min-height:44px}
 .fx.gala-mini{background:var(--color-surface);color:var(--cal-especial-fg);border:2px solid var(--cal-especial-fg);font-weight:700}
+.fx.campo-mini{background:var(--color-surface);color:var(--color-text);border:2px dashed var(--color-border-control);font-weight:700}
+.campo-un{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:2px 12px;border-radius:999px;border:2px dashed var(--color-border-control);background:var(--color-surface);color:var(--color-text);font-size:16px;font-weight:700;align-self:flex-start}
 .dia{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:48px;border-radius:var(--radius-sm);font-size:16px;font-weight:600;border:0;background:var(--color-surface);color:var(--color-text);font-family:inherit}
 .dia.hoje{border:2px solid var(--color-primary);font-weight:800}
 .dia.sel{background:var(--color-primary);color:var(--color-on-primary)}
@@ -191,18 +193,19 @@ h1,h2,h3,p{margin:0}
 }
 </style>
 </helmet>
-<div class="mb" style="min-height:1700px"><header class="mtopo"><button class="btn txt" aria-label="Abrir o menu" style="color:#fff"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h16"/><path d="M4 6h16"/><path d="M4 18h16"/></svg></button><span class="marca">App do Desbravador</span><button class="btn txt" style="color:#fff">Rosa</button></header><main class="mmain">
+<div class="mb" style="min-height:2050px"><header class="mtopo"><button class="btn txt" aria-label="Abrir o menu" style="color:#fff"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h16"/><path d="M4 6h16"/><path d="M4 18h16"/></svg></button><span class="marca">App do Desbravador</span><button class="btn txt" style="color:#fff">Rosa</button></header><main class="mmain">
 <a class="volta" href="Calendario-Celular.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg> Calendário do clube</a>
 <h1 class="h1">Novo evento</h1>
-<p class="rotulo-quadro">Erro no campo, ao sair dele · sem gala</p>
+<p class="rotulo-quadro">Erro no campo, ao sair dele · uniforme de campo</p>
 <form style="display:flex;flex-direction:column;gap:16px">
 <label class="campo"><span class="lbl">Nome</span><input class="in" type="text" value="Aniversário do clube"></label>
-<label class="campo"><span class="lbl">Tipo</span><select class="in" aria-describedby="apoio-tipo2"><option>Evento especial</option></select><span id="apoio-tipo2" class="ajuda">Evento especial: vale pontos no ranking, tem lista de quem foi e pode pedir uniforme de gala. A reunião e a classe do dia continuam, salvo se você desmarcar abaixo.</span></label>
+<label class="campo"><span class="lbl">Tipo</span><select class="in" aria-describedby="apoio-tipo2"><option>Evento especial</option></select><span id="apoio-tipo2" class="ajuda">Evento especial: vale pontos no ranking, tem lista de quem foi e pede uniforme de gala ou de campo. A reunião e a classe do dia continuam, salvo se você desmarcar abaixo.</span></label>
 <label class="campo"><span class="lbl">Início</span><input class="in" type="text" value="17/10/2026"></label><label class="campo"><span class="lbl">Fim</span><input class="in" type="text" value="17/10/2026"></label>
 <label class="campo"><span class="lbl">Horário</span><input class="in" type="text" value="19:00"></label><label class="campo"><span class="lbl">Local</span><input class="in" type="text" value="Salão da igreja"></label>
 <fieldset class="grupo"><legend>Uniforme e pontos</legend>
 <label class="campo"><span class="lbl">Pontos por ir ao evento</span><input class="in curto erro" type="number" inputmode="numeric" value="" aria-invalid="true" aria-describedby="pp2-e"><span id="pp2-e" class="err" role="alert"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-top:2px;flex-shrink:0"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><span>Informe os pontos de quem for ao evento. Pode ser 0.</span></span></label>
-<label class="cx"><input type="checkbox"> <span>Pede uniforme de gala</span></label>
+<fieldset class="campo" id="un2" style="border:0;margin:0;padding:0"><legend class="lbl" style="padding:0">Uniforme do evento</legend><div style="display:flex;flex-wrap:wrap;gap:0 24px"><label class="cx"><input type="radio" name="un2"> <span>Uniforme de gala</span></label><label class="cx"><input type="radio" name="un2" checked> <span>Uniforme de campo</span></label></div></fieldset>
+<label class="campo"><span class="lbl">Pontos por usar o uniforme</span><input class="in curto" type="number" inputmode="numeric" value="5" aria-describedby="pu2-a"><span id="pu2-a" class="ajuda">Só quem for com o uniforme pedido ganha estes pontos, além dos de ir. Pode ser 0.</span></label>
 </fieldset>
 <fieldset class="grupo"><legend>Para a reunião e as classes</legend>
 <div style="display:flex;flex-direction:column"><label class="cx"><input type="checkbox" checked> <span>Terá reunião</span></label><label class="cx"><input type="checkbox" checked> <span>Terá classe</span></label><label class="cx"><input type="checkbox"> <span>Terá atividade de campo</span></label></div>
@@ -210,9 +213,11 @@ h1,h2,h3,p{margin:0}
 </fieldset>
 <p class="ajuda">Quem monta o cronograma vê este evento ao escolher as datas.</p>
 <div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--color-border);padding-top:16px"><button class="btn pri cheio" type="button">Salvar</button><a class="btn sec cheio" href="Calendario-Celular.dc.html">Cancelar</a></div>
-</form></main></div>
+</form>
+<p class="rotulo-quadro">Evento novo sem escolher o uniforme · o formulário abre sem marca, e ao salvar o erro leva o foco até ele</p>
+<fieldset class="campo" id="un4" style="border:0;margin:0;padding:0" aria-invalid="true" aria-describedby="un4-e"><legend class="lbl" style="padding:0">Uniforme do evento</legend><div style="display:flex;flex-wrap:wrap;gap:0 24px"><label class="cx"><input type="radio" name="un4"> <span>Uniforme de gala</span></label><label class="cx"><input type="radio" name="un4"> <span>Uniforme de campo</span></label></div><span id="un4-e" class="err" role="alert"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-top:2px;flex-shrink:0"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><span>Escolha o uniforme do evento.</span></span></fieldset></main></div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":360,"height":1700}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":360,"height":2050}}'>
 class Component extends DCLogic {
 renderVals() { return {}; }
 }

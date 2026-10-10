@@ -125,6 +125,8 @@ h1,h2,h3,p{margin:0}
 .fx.feriado{background:var(--cal-feriado-bg);color:var(--cal-feriado-fg)}
 .fx.especial{background:var(--cal-especial-bg);color:var(--cal-especial-fg);min-height:44px}
 .fx.gala-mini{background:var(--color-surface);color:var(--cal-especial-fg);border:2px solid var(--cal-especial-fg);font-weight:700}
+.fx.campo-mini{background:var(--color-surface);color:var(--color-text);border:2px dashed var(--color-border-control);font-weight:700}
+.campo-un{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:2px 12px;border-radius:999px;border:2px dashed var(--color-border-control);background:var(--color-surface);color:var(--color-text);font-size:16px;font-weight:700;align-self:flex-start}
 .dia{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:48px;border-radius:var(--radius-sm);font-size:16px;font-weight:600;border:0;background:var(--color-surface);color:var(--color-text);font-family:inherit}
 .dia.hoje{border:2px solid var(--color-primary);font-weight:800}
 .dia.sel{background:var(--color-primary);color:var(--color-on-primary)}
@@ -191,7 +193,7 @@ h1,h2,h3,p{margin:0}
 }
 </style>
 </helmet>
-<div class="mb" style="min-height:4900px"><header class="mtopo"><button class="btn txt" aria-label="Abrir o menu" style="color:#fff"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h16"/><path d="M4 6h16"/><path d="M4 18h16"/></svg></button><span class="marca">App do Desbravador</span><button class="btn txt" style="color:#fff">Rosa</button></header><main class="mmain">
+<div class="mb" style="min-height:5500px"><header class="mtopo"><button class="btn txt" aria-label="Abrir o menu" style="color:#fff"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h16"/><path d="M4 6h16"/><path d="M4 18h16"/></svg></button><span class="marca">App do Desbravador</span><button class="btn txt" style="color:#fff">Rosa</button></header><main class="mmain">
 <a class="volta" href="Ficha-Especial.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg> Culto de Ação de Graças</a>
 <div style="display:flex;flex-direction:column;gap:6px"><h1 class="h1">Quem foi</h1><p class="sub">Culto de Ação de Graças · sábado, 3 de outubro</p></div>
 <p class="rotulo-quadro">Carregando</p>
@@ -224,10 +226,14 @@ h1,h2,h3,p{margin:0}
 <p class="aviso" role="alert"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><span>A lista mudou desde que você abriu: agora são 42 que foram, e eram 41. Confira a lista e conclua de novo.</span></p><button class="btn pri cheio" type="button">Ver a lista</button>
 <p class="rotulo-quadro">Evento que não existe, é de outro clube ou não é de tipo especial</p>
 <section class="centro"><h2 class="h2">Não encontramos este evento</h2><p class="corpo">Ele pode ter sido excluído, ou não ter lista de quem foi. Volte ao calendário e escolha o evento de novo.</p><a class="btn pri cheio" href="Calendario-Celular.dc.html">Voltar ao calendário</a></section>
+<p class="rotulo-quadro">Evento com uniforme de campo · a pílula e o botão em massa dizem “de campo”</p>
+<div style="display:flex;flex-direction:column;gap:6px"><p class="sub">Aniversário do clube · sábado, 17 de outubro</p><span class="campo-un"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg> Uniforme de campo</span></div>
+<ul class="lista-un"><li class="lp"><button type="button" class="lp-nome" aria-pressed="true"><span class="lp-caixa" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span class="lp-txt"><span class="lp-n">Ana Clara Souza</span><span class="lp-e">Foi</span></span></button><button type="button" class="pill on" aria-pressed="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>De campo</button></li><li class="lp nao"><button type="button" class="lp-nome" aria-pressed="false"><span class="lp-caixa" aria-hidden="true"></span><span class="lp-txt"><span class="lp-n">Enzo Barros</span><span class="lp-e">Não foi</span></span></button><button type="button" class="pill" disabled aria-pressed="false" aria-label="De campo: indisponível porque Enzo não foi">De campo</button></li></ul>
+<button class="btn sec cheio" type="button">Marcar de campo todos que foram</button>
 <p class="rotulo-quadro">Sem permissão · não existe tela</p>
 <p class="corpo">Conselheiro e instrutor não têm este caminho: a página os leva de volta ao início. Se alguém chamar a lista pelo endereço da API, a resposta é “sem permissão”. O Adm sempre tem a permissão.</p></main></div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":360,"height":4900}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":360,"height":5500}}'>
 class Component extends DCLogic {
 renderVals() { return {}; }
 }
