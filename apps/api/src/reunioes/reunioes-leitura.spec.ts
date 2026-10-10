@@ -17,7 +17,9 @@ import {
   criarLancamento,
   criarMembro,
   criarReuniao,
+  criarSubstituicao,
   criarUnidade,
+  criarUsuarioDeSubstituicao,
   desconectarPrismaDeTeste,
   prismaDeTeste,
 } from '../../test/fabricas'
@@ -191,6 +193,57 @@ describe('leituras de reunioes, grade e membros', () => {
       expect((await api.get(`/api/reunioes/${alheia.id}`, instrutor.autorizacao)).status).toBe(403)
       expect((await api.get(`/api/reunioes/${alheia.id}`, adm.autorizacao)).status).toBe(200)
       expect((await api.get('/api/reunioes/abc', c.acesso.autorizacao)).status).toBe(400)
+    })
+
+    describe('substituicao (R1)', () => {
+      async function nomeDeQuemGerou(criadoPorId: string): Promise<string> {
+        return (await prismaDeTeste().usuario.findUniqueOrThrow({ where: { id: criadoPorId } })).nome
+      }
+
+      it('chamada lancada pelo usuario de substituicao: autor sem marca, semConta, geradoPor e lancou', async () => {
+        const c = await cenario()
+        const substituto = await criarUsuarioDeSubstituicao({ nome: 'Joana Visitante' })
+        const substituicao = await criarSubstituicao({ clubeId: c.clube.id, tipo: 'CHAMADA', unidadeId: c.unidade.id, substitutoId: substituto.id })
+        const reuniao = await criarReuniao({ unidadeId: c.unidade.id, data: diasAtras(0), registradaPorId: substituto.id, chamada: [{ dbvId: c.ana.id }] })
+        await prismaDeTeste().reuniao.update({ where: { id: reuniao.id }, data: { substituicaoId: substituicao.id } })
+
+        const detalhe = ReuniaoDetalhe.parse(corpo<unknown>(await api.get(`/api/reunioes/${reuniao.id}`, c.acesso.autorizacao)))
+        expect(detalhe.substituicao).toEqual({
+          autor: 'Joana Visitante',
+          semConta: true,
+          geradoPor: await nomeDeQuemGerou(substituicao.criadoPorId),
+          lancou: true,
+        })
+      })
+
+      it('titular lancou e o substituto membro alterou: lancou falso e semConta falso', async () => {
+        const c = await cenario()
+        const membro = await criarAcesso({ clubeId: c.clube.id, papel: 'CONSELHEIRO' })
+        const substituicao = await criarSubstituicao({ clubeId: c.clube.id, tipo: 'CHAMADA', unidadeId: c.unidade.id, substitutoId: membro.usuario.id })
+        const reuniao = await criarReuniao({ unidadeId: c.unidade.id, data: diasAtras(0), registradaPorId: c.acesso.usuario.id, chamada: [{ dbvId: c.ana.id }] })
+        await prismaDeTeste().reuniao.update({ where: { id: reuniao.id }, data: { substituicaoId: substituicao.id } })
+
+        const detalhe = ReuniaoDetalhe.parse(corpo<unknown>(await api.get(`/api/reunioes/${reuniao.id}`, c.acesso.autorizacao)))
+        expect(detalhe.substituicao).toEqual({
+          autor: membro.usuario.nome,
+          semConta: false,
+          geradoPor: await nomeDeQuemGerou(substituicao.criadoPorId),
+          lancou: false,
+        })
+      })
+
+      it('sem substituicao e null; substituicao de outro clube nao se liga a reuniao', async () => {
+        const c = await cenario()
+        const reuniao = await criarReuniao({ unidadeId: c.unidade.id, data: diasAtras(0), registradaPorId: c.acesso.usuario.id })
+        const outro = await cenario()
+        const alheia = await criarSubstituicao({ clubeId: outro.clube.id, tipo: 'CHAMADA', unidadeId: outro.unidade.id })
+
+        await expect(
+          prismaDeTeste().reuniao.update({ where: { id: reuniao.id }, data: { substituicaoId: alheia.id } }),
+        ).rejects.toThrow()
+        const detalhe = ReuniaoDetalhe.parse(corpo<unknown>(await api.get(`/api/reunioes/${reuniao.id}`, c.acesso.autorizacao)))
+        expect(detalhe.substituicao).toBeNull()
+      })
     })
   })
 
