@@ -7,6 +7,7 @@ import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { daDataCivil, paraDataCivil } from '../desbravadores/apoio'
 import { ServicoEscopo } from '../desbravadores/escopo.service'
+import { PacoteClasseBiblicaService } from './pacote-classe-biblica.service'
 import { PacoteInstrutorService } from './pacote-instrutor.service'
 
 type Pacote = z.infer<typeof PacoteSaida>
@@ -31,6 +32,7 @@ export class SyncService {
     private readonly prisma: PrismaService,
     private readonly escopo: ServicoEscopo,
     private readonly instrutor: PacoteInstrutorService,
+    private readonly classeBiblica: PacoteClasseBiblicaService,
   ) {}
 
   /** Pacote do domingo (SPEC Fase 1, 4.2). So o conselheiro recebe unidades; ADM e instrutor, lista vazia. */
@@ -77,6 +79,8 @@ export class SyncService {
         sessao.papel === 'INSTRUTOR'
           ? await this.instrutor.montar(sessao, await this.escopo.classesDoInstrutor(sessao), configuracao, hoje)
           : null,
+      // O link de substituição vale só para a reunião ou a aula do alvo naquele dia.
+      classeBiblica: substituicao ? null : await this.classeBiblica.montar(sessao, hoje),
     }
     const versao = createHash('sha256').update(JSON.stringify(conteudo)).digest('hex')
     return { versao, geradoEm: agora.toISOString(), ...conteudo }

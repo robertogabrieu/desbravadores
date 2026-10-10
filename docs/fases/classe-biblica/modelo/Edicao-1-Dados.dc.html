@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Nova edição · etapa 1 — dados</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;font-family:'Figtree',system-ui,sans-serif;color:#1B221F}
+a{color:#1F4D3A}a:hover{color:#163828}
+.t{font-family:'Bricolage Grotesque',system-ui,sans-serif}
+.card{background:#fff;border:1px solid #D9D3C5;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.h2{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:18px;font-weight:700;margin:0}
+.rot{font-size:13px;font-weight:600;color:#5B645F}
+.val{font-size:16px;color:#1B221F}
+.dl3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 24px}
+.par{display:flex;flex-direction:column;gap:2px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 20px;border-radius:12px;font-size:16px;font-weight:600;text-decoration:none;border:0;font-family:inherit;cursor:pointer;box-sizing:border-box}
+.pri{background:#1F4D3A;color:#fff}
+.sec{background:#fff;color:#1B221F;border:1px solid #D9D3C5}
+.txt{background:transparent;color:#1F4D3A;padding:0 12px}
+.per{background:#fff;color:#B42318;border:1px solid #D9D3C5}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 10px;font-size:13px;font-weight:600}
+.lbl{font-size:14px;font-weight:700;color:#1B221F}
+.in{min-height:44px;border:1px solid #D9D3C5;border-radius:9px;background:#fff;padding:0 14px;font-size:16px;font-family:inherit;color:#1B221F;box-sizing:border-box;width:100%}
+.ajuda{font-size:13px;color:#5B645F}
+.err{font-size:14px;font-weight:600;color:#B42318;margin:0;display:flex;align-items:center;gap:6px}
+.aviso{font-size:14px;color:#9A3412;background:#FBEFE3;border-radius:9px;padding:10px 12px;margin:0;display:flex;gap:8px;align-items:flex-start}
+.cx{display:flex;align-items:center;gap:10px;min-height:44px;font-size:16px}
+.cx input{width:20px;height:20px;margin:0;accent-color:#1F4D3A}
+.lin{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid #EFEBE1}
+.nav{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:12px;color:#CFE0D6;font-weight:600;font-size:16px}
+.nav.on{background:#163828;color:#fff}
+.bnav{flex-grow:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:12px;font-weight:600;color:#5B645F;text-decoration:none}
+.cel{display:flex;flex-direction:column;gap:4px;min-height:96px;border:1px solid #EFEBE1;border-radius:9px;padding:6px;box-sizing:border-box;min-width:0}
+.fx{display:flex;align-items:center;gap:4px;border-radius:9px;padding:2px 6px;font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:999px;font-size:15px;font-weight:700;font-family:inherit;border:1px solid #D9D3C5;background:#fff;color:#1B221F;cursor:pointer}
+.pill.on{background:#1F4D3A;border-color:#1F4D3A;color:#fff}
+</style>
+<style>
+.ok{font-size:14px;font-weight:600;color:#1D7442;margin:0;display:flex;align-items:center;gap:6px}
+.etapas{display:flex;gap:4px}
+.etapas span{flex-grow:1;height:8px;border-radius:999px;background:#E8E3D7}
+.etapas span.feita{background:#1D7442}
+.etapas span.atual{background:#1F4D3A}
+.sub{margin:0;font-size:14px;color:#5B645F}
+.secao{font-size:13px;font-weight:800;color:#4A524E;text-transform:uppercase;letter-spacing:.04em;margin:0}
+.rotulo-quadro{font-size:13px;font-weight:800;color:#5B3391;background:#EDE4F6;border-radius:9px;padding:6px 10px;margin:0}
+.desab{color:#5B645F}
+.desab input{accent-color:#8A8375}
+</style>
+</helmet>
+<div style="width:390px;min-height:1180px;display:flex;flex-direction:column;background:#F4F1EA;position:relative"><header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 16px;background:#1F4D3A;color:#fff"><span class="t" style="font-size:17px;font-weight:700">App do Desbravador</span><button class="btn txt" style="color:#fff;padding:0 12px">Rosa <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></header><main style="flex-grow:1;padding:16px;display:flex;flex-direction:column;gap:16px"><a href="#" style="display:inline-flex;align-items:center;gap:4px;font-weight:600;text-decoration:none;min-height:44px;align-self:flex-start"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg> Classe Bíblica</a><div style="display:flex;flex-direction:column;gap:4px"><span class="rot">Nova edição da Classe Bíblica</span><h1 class="t" style="margin:0;font-size:26px;font-weight:800">Dados da edição</h1></div><div style="display:flex;flex-direction:column;gap:6px"><p style="margin:0;font-size:15px;font-weight:700">Etapa 1 de 3 — Dados da edição<span style="font-weight:500;color:#5B645F"> · depois: Grupos e Datas</span></p><div class="etapas" role="progressbar" aria-valuemin="0" aria-valuemax="3" aria-valuenow="0" aria-label="Etapa 1 de 3"><span class="atual"></span><span class=""></span><span class=""></span></div></div><p class="sub" style="font-size:16px;color:#1B221F">Leva uns 5 minutos. O material de estudo de cada grupo (um PDF ou um link) pode ir agora ou depois. O que você preencher fica salvo.</p><form style="display:flex;flex-direction:column;gap:16px"><label style="display:flex;flex-direction:column;gap:6px"><span class="lbl">Nome da edição</span><span class="ajuda" style="font-size:14px;color:#4A524E">Ex.: Classe Bíblica 2027 · 1º semestre</span><input class="in" type="text" value="Classe Bíblica 2027 · 1º semestre"></label><div style="display:flex;gap:12px"><div style="flex:1;min-width:0"><label style="display:flex;flex-direction:column;gap:6px"><span class="lbl">Início</span><input class="in" type="text" value="07/03/2027"></label></div><div style="flex:1;min-width:0"><label style="display:flex;flex-direction:column;gap:6px"><span class="lbl">Fim</span><input class="in" type="text" value="27/06/2027"></label></div></div><p class="ok" style="margin-top:-8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> 17 domingos entre as duas datas</p><label style="display:flex;flex-direction:column;gap:6px"><span class="lbl">Dia da semana</span><span class="ajuda" style="font-size:14px;color:#4A524E">Veio das configurações do clube. Mude se a Classe Bíblica for em outro dia.</span><select class="in"><option>Domingo</option></select></label><label style="display:flex;flex-direction:column;gap:6px"><span class="lbl">Horário</span><span class="ajuda" style="font-size:14px;color:#4A524E">Ex.: 14:00</span><input class="in" type="text" value="14:00"></label><label style="display:flex;flex-direction:column;gap:6px"><span class="lbl">Local</span><span class="ajuda" style="font-size:14px;color:#4A524E">Veio das configurações do clube.</span><input class="in" type="text" value="Sala 3 da igreja"></label><div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid #D9D3C5;padding-top:20px"><p role="status" aria-live="polite" class="ajuda" style="margin:0;display:flex;gap:6px;align-items:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Salvo às 15:42. Pode sair e continuar depois de onde parou.</p><button class="btn pri" type="button" style="width:100%">Continuar para os grupos</button><a class="btn sec" href="#" style="width:100%">Sair e continuar depois</a></div></form></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1180}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

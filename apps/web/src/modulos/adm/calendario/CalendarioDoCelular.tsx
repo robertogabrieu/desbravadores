@@ -9,7 +9,7 @@ import { cn } from '../../../ui/cn'
 import { horaCurta, juntarNomes } from '../formatos'
 import type { EstadoDaFicha } from '../navegacao'
 import { DIAS_DA_SEMANA, MESES, chaveDoDia, chaveDoMes, diaDaSemanaEDoMes, diaDoMesPorExtenso, diasDaGrade, eventosDoDia, periodoCurto, ultimoDiaDoMes } from './datas'
-import { PONTO_DA_REUNIAO, PONTO_DO_TIPO, ROTULOS_DO_TIPO } from './tipos'
+import { ICONE_DO_TIPO, PONTO_DA_REUNIAO, PONTO_DO_TIPO, ROTULOS_DO_TIPO, textoDoCancelamento } from './tipos'
 
 const MAXIMO_DE_PONTOS = 3
 
@@ -17,15 +17,22 @@ export const fichaDoEvento = (evento: EventoCalendario): string => `/adm/calenda
 
 /** Cartão de um evento que abre a ficha dele; o mesmo na lista do mês e no painel do dia. */
 export function CartaoDoEvento({ evento, estadoDeVolta }: { evento: EventoCalendario; estadoDeVolta: EstadoDaFicha }) {
+  const encontro = evento.classeBiblica
+  const Icone = ICONE_DO_TIPO[evento.tipo]
   return (
     <LinhaQueNavega to={fichaDoEvento(evento)} state={estadoDeVolta} forma="cartao">
       <span className="flex flex-col gap-0.5">
-        <span className="text-base font-bold text-texto">{evento.nome}</span>
+        <span className="flex items-center gap-1.5 text-base font-bold text-texto">
+          {encontro && Icone && <Icone aria-hidden className="size-4 shrink-0 text-[var(--cal-evento-fg)]" />}
+          {encontro?.cancelado ? <s>{evento.nome}</s> : evento.nome}
+        </span>
         <span className="text-sm text-texto-2">
           {ROTULOS_DO_TIPO[evento.tipo]} · {periodoCurto(evento.inicio, evento.fim)}
           {evento.horario && ` · ${horaCurta(evento.horario)}`}
           {evento.local && ` · ${evento.local}`}
+          {encontro && encontro.grupos.length > 0 && ` · ${juntarNomes(encontro.grupos)}`}
         </span>
+        {encontro?.cancelado && <span className="text-sm font-semibold text-texto">{textoDoCancelamento(encontro.motivo)}</span>}
       </span>
     </LinhaQueNavega>
   )

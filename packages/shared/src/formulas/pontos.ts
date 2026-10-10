@@ -9,6 +9,8 @@ export type GatilhoCriterio =
   | 'REQUISITO'
   | 'ESPECIALIDADE'
   | 'MANUAL'
+  | 'CLASSE_BIBLICA_PRESENCA'
+  | 'CLASSE_BIBLICA_PARTICIPACAO'
 
 export interface Criterio {
   gatilho: GatilhoCriterio

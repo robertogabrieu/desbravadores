@@ -10,7 +10,10 @@ import {
   criarAcesso,
   criarClube,
   criarCronograma,
+  criarEdicaoCB,
+  criarEncontroCB,
   criarEvento,
+  criarGrupoCB,
   criarRegistroAula,
   desconectarPrismaDeTeste,
   prismaDeTeste,
@@ -404,6 +407,73 @@ describe('calendário do clube — eventos', () => {
       const alvo = await criarEvento({ clubeId: clube.id, tipo: 'SEM_REUNIAO', inicio: dia(10) })
       expect((await apagar(`/api/calendario/eventos/${alvo.id}`, adm.autorizacao)).status).toBe(204)
       expect(await notificacoesDe(instrutor.usuario.id)).toEqual([])
+    })
+  })
+
+  describe('encontro da Classe Bíblica no calendário', () => {
+    const RECUSA = 'Este encontro é da Classe Bíblica: remarque ou cancele pela edição.'
+
+    async function comEncontros() {
+      const base = await cenario()
+      const edicao = await criarEdicaoCB({ clubeId: base.clube.id, terminada: true })
+      await criarGrupoCB({ clubeId: base.clube.id, edicaoId: edicao.id, unidadeIds: [], nome: 'Grupo Daniel' })
+      await criarGrupoCB({ clubeId: base.clube.id, edicaoId: edicao.id, unidadeIds: [], nome: 'Grupo Ester' })
+      const removido = await criarGrupoCB({ clubeId: base.clube.id, edicaoId: edicao.id, unidadeIds: [], nome: 'Grupo Removido' })
+      await prismaDeTeste().grupoClasseBiblica.update({ where: { id: removido.id }, data: { removidoEm: new Date() } })
+      const ativo = await criarEncontroCB({ clubeId: base.clube.id, edicaoId: edicao.id, data: dia(5) })
+      const cancelado = await criarEncontroCB({ clubeId: base.clube.id, edicaoId: edicao.id, data: dia(12), cancelado: true })
+      return { ...base, edicao, ativo, cancelado }
+    }
+
+    it('o ano e a ficha trazem a edição, os grupos não removidos, o cancelamento e o motivo; os outros tipos trazem null', async () => {
+      const { clube, adm, edicao, ativo, cancelado } = await comEncontros()
+      const feriado = await criarEvento({ clubeId: clube.id, tipo: 'FERIADO', inicio: dia(5) })
+      const ano = corpo<Ano>(await http.get(`/api/calendario?ano=${dia(5).slice(0, 4)}`, adm.autorizacao).expect(200))
+      const doAno = (id: string) => ano.eventos.find((e) => e.id === id)
+      expect(doAno(ativo.eventoId)?.classeBiblica).toEqual({ edicaoId: edicao.id, grupos: ['Grupo Daniel', 'Grupo Ester'], cancelado: false, motivo: null })
+      expect(doAno(feriado.id)?.classeBiblica).toBeNull()
+      const lido = corpo<Saida>(await http.get(`/api/calendario/eventos/${cancelado.eventoId}`, adm.autorizacao).expect(200))
+      expect(lido).toMatchObject({ tipo: 'CLASSE_BIBLICA', classeBiblica: { edicaoId: edicao.id, grupos: ['Grupo Daniel', 'Grupo Ester'], cancelado: true, motivo: 'chuva forte' } })
+      const outro = corpo<Saida>(await http.get(`/api/calendario/eventos/${feriado.id}`, adm.autorizacao).expect(200))
+      expect(outro.classeBiblica).toBeNull()
+    })
+
+    it('o encontro não muda os dias de reunião do ano', async () => {
+      const { adm } = await cenario()
+      const outroAdm = await comEncontros()
+      const ano = dia(5).slice(0, 4)
+      const sem = corpo<Ano>(await http.get(`/api/calendario?ano=${ano}`, adm.autorizacao).expect(200))
+      const com = corpo<Ano>(await http.get(`/api/calendario?ano=${ano}`, outroAdm.adm.autorizacao).expect(200))
+      expect(com.diasDeReuniao).toEqual(sem.diasDeReuniao)
+    })
+
+    it('POST, PATCH e DELETE recusam o tipo, também ao levar um evento comum para ele, e o encontro fica como estava', async () => {
+      const { clube, adm, ativo } = await comEncontros()
+      const comum = await criarEvento({ clubeId: clube.id, tipo: 'EVENTO', inicio: dia(4) })
+      const recusas = [
+        await http.post('/api/calendario/eventos', adm.autorizacao, evento({ tipo: 'CLASSE_BIBLICA' })),
+        await http.patch(`/api/calendario/eventos/${ativo.eventoId}`, adm.autorizacao, evento()),
+        await http.patch(`/api/calendario/eventos/${comum.id}`, adm.autorizacao, evento({ tipo: 'CLASSE_BIBLICA' })),
+        await apagar(`/api/calendario/eventos/${ativo.eventoId}`, adm.autorizacao),
+      ]
+      for (const resposta of recusas) {
+        expect(resposta.status).toBe(422)
+        expect(resposta.body).toMatchObject({ codigo: 'REGRA', mensagem: RECUSA })
+      }
+      const doEncontro = await prismaDeTeste().eventoCalendario.findUniqueOrThrow({ where: { id: ativo.eventoId } })
+      expect(doEncontro).toMatchObject({ nome: 'Classe Bíblica', tipo: 'CLASSE_BIBLICA', removidoEm: null })
+      expect(await prismaDeTeste().eventoCalendario.count({ where: { clubeId: clube.id, tipo: 'CLASSE_BIBLICA' } })).toBe(2)
+      expect((await prismaDeTeste().eventoCalendario.findUniqueOrThrow({ where: { id: comum.id } })).tipo).toBe('EVENTO')
+    })
+
+    it('encontro de outro clube não aparece no ano e responde 404 na ficha, no PATCH e no DELETE', async () => {
+      const { adm } = await cenario()
+      const alheio = await comEncontros()
+      const ano = corpo<Ano>(await http.get(`/api/calendario?ano=${dia(5).slice(0, 4)}`, adm.autorizacao).expect(200))
+      expect(ano.eventos.some((e) => e.tipo === 'CLASSE_BIBLICA')).toBe(false)
+      await http.get(`/api/calendario/eventos/${alheio.ativo.eventoId}`, adm.autorizacao).expect(404)
+      expect((await http.patch(`/api/calendario/eventos/${alheio.ativo.eventoId}`, adm.autorizacao, evento())).status).toBe(404)
+      expect((await apagar(`/api/calendario/eventos/${alheio.ativo.eventoId}`, adm.autorizacao)).status).toBe(404)
     })
   })
 

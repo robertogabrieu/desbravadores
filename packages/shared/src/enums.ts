@@ -34,7 +34,7 @@ export const MesCivil = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Mês invál
 export const Horario = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Horário inválido')
 
 // Fases 2 e 3
-export const TIPOS_EVENTO = ['SEM_REUNIAO', 'ACAMPAMENTO', 'EVENTO', 'FERIADO', 'FERIAS', 'REUNIAO_EXTRA'] as const
+export const TIPOS_EVENTO = ['SEM_REUNIAO', 'ACAMPAMENTO', 'EVENTO', 'FERIADO', 'FERIAS', 'REUNIAO_EXTRA', 'CLASSE_BIBLICA'] as const
 export const TipoEvento = z.enum(TIPOS_EVENTO)
 export const STATUS_CRONOGRAMA = ['RASCUNHO', 'ENVIADO', 'PUBLICADO'] as const
 export const StatusCronograma = z.enum(STATUS_CRONOGRAMA)
@@ -61,4 +61,6 @@ export const MARCACOES_PADRAO = {
   FERIADO: { temReuniao: true, temClasse: true, bomParaCampo: false },
   FERIAS: { temReuniao: false, temClasse: true, bomParaCampo: false },
   REUNIAO_EXTRA: { temReuniao: true, temClasse: true, bomParaCampo: false },
+  // Neutras nas três contas do dia: o encontro não muda a reunião nem a classe
+  CLASSE_BIBLICA: { temReuniao: true, temClasse: true, bomParaCampo: false },
 } as const

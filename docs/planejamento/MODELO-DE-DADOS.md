@@ -85,7 +85,8 @@ Classe(id, nome, idade?, cor,
   # instrutores vêm de VinculoClasse
 
 SecaoRequisito(id, classeId, codigo: "G"|"DE"|..., nome, ordem)
-Requisito(id, secaoId, codigo: "DE1", texto, campo: bool, ordem, ativo)
+Requisito(id, secaoId, codigo: "DE1", texto, campo: bool, classeBiblica: bool, ordem, ativo)
+  # classeBiblica = "participar ativamente da classe bíblica": a ficha mostra a frequência da Classe Bíblica ao lado
 
 AreaEspecialidade(id, codigo: "AD"|"HM"|..., nome, cor, ordem)
 Especialidade(id, areaId, nome, origem: OFICIAL|CLUBE, ativa)
@@ -145,7 +146,7 @@ EspecialidadeConcluida(id, dbvId, especialidadeId, concluidaEm, instrutorId,
 ## 5. Calendário e cronograma
 
 ```
-EventoCalendario(id, nome, tipo: SEM_REUNIAO|ACAMPAMENTO|EVENTO|FERIADO|FERIAS|REUNIAO_EXTRA,
+EventoCalendario(id, nome, tipo: SEM_REUNIAO|ACAMPAMENTO|EVENTO|FERIADO|FERIAS|REUNIAO_EXTRA|CLASSE_BIBLICA,
   inicio: date, fim: date, horario?, local?,
   temReuniao: bool, temClasse: bool,             # marcações afirmativas: "terá reunião", "terá classe"
   bomParaCampo: bool)
@@ -162,7 +163,9 @@ Padrões por tipo (`MARCACOES_PADRAO`, editáveis no formulário): SEM_REUNIAO �
 classe; EVENTO → com reunião, sem classe; ACAMPAMENTO → sem reunião, com classe, bom para campo;
 FERIADO → com reunião e com classe; FERIAS → sem reunião, com classe (a API grava sempre este
 padrão; "com classe" evita que as férias derrubem um acampamento dentro delas, e sem reunião e sem
-campo não há classe); REUNIAO_EXTRA → com reunião e com classe, e nunca bom para campo.
+campo não há classe); REUNIAO_EXTRA → com reunião e com classe, e nunca bom para campo. O encontro da Classe Bíblica
+(`CLASSE_BIBLICA`, criado só pela edição dela) fica fora das contas: divide o dia com a reunião sem
+mudá-la, e as marcações dele não entram na regra do dia.
 
 Cronograma(id, classeId, anoClube, inicio: date, fim: date,
   status: RASCUNHO|ENVIADO|PUBLICADO,            # ENVIADO = instrutor mandou para o Adm publicar
@@ -227,17 +230,44 @@ Frequência (função em `shared`): `presenças (PRESENTE+ATRASADO) ÷ reuniões
 unidade no período em que o DBV era membro dela`. `FALTA_JUSTIFICADA` conta como falta na
 frequência, mas não sofre desconto de pontos. A chamada não guarda pontos.
 
+## Classe Bíblica
+
+Modelos do clube (todos com `clubeId`):
+
+```
+EdicaoClasseBiblica(id, nome?, inicio?, fim?, diaSemana, horario?, local?,
+  etapa: 1-3,                                    # onde o Adm parou; nome, período e horário nascem opcionais (rascunho)
+  terminadaEm?, criadaPorId)                     # terminada = tem encontros e eventos
+GrupoClasseBiblica(id, edicaoId, nome, ordem, materialTitulo?, materialArquivoId?, materialUrl?,
+  removidoEm?)                                   # material: PDF (Arquivo) ou link; trocar substitui
+GrupoUnidadeClasseBiblica(grupoId, unidadeId, edicaoId)
+  UNIQUE(edicaoId, unidadeId)                    # uma unidade em um só grupo por edição
+EncontroClasseBiblica(id, edicaoId, data, horario, local?, dataOriginal?,   # dataOriginal = preenchida ao remarcar
+  eventoId UNIQUE,                               # o EventoCalendario CLASSE_BIBLICA que o mostra
+  canceladoEm?, motivoCancelamento?, canceladoPorId?)
+ChamadaClasseBiblica(encontroId, grupoId, registradaPorId, registradaEm)   # PK (encontroId, grupoId); existe também para grupo sem ninguém
+PresencaClasseBiblica(encontroId, dbvId, grupoId, unidadeId, presente, participou, versao, alteradaPorId, envioId)
+  # grupo e unidade do dia ficam na linha: mover a unidade de grupo depois não muda o passado
+EnvioClasseBiblicaProcessado(envioId, encontroId, grupoId)   # o reenvio da fila não duplica
+```
+
+Nenhuma linha é apagada com histórico: grupo sai por `removidoEm`, e só se não tiver chamada. Os
+pontos não ficam aqui: saem em `LancamentoPontos` (origem `CLASSE_BIBLICA`, `origemId` =
+`<encontroId>:<dbvId>`).
+
 ## 7. Ranking
 
 ```
 CriterioRanking(id, nome, descricao, pontos: int, ativo, ordem,
-  gatilho: PRESENCA|PONTUALIDADE|UNIFORME|BIBLIA|LICAO|REQUISITO|ESPECIALIDADE|MANUAL,
+  gatilho: PRESENCA|PONTUALIDADE|UNIFORME|BIBLIA|LICAO|REQUISITO|ESPECIALIDADE|MANUAL|
+          CLASSE_BIBLICA_PRESENCA|CLASSE_BIBLICA_PARTICIPACAO,
   lancadoPor: CONSELHEIRO|INSTRUTOR|ADM,
   padrao: bool)                                  # os 8 de fábrica não podem ser apagados, só desligados
+  # os dois da Classe Bíblica (10 e 5 pontos) nascem por clube ao terminar a primeira edição ou na primeira chamada
 
 LancamentoPontos(id, dbvId, criterioId, pontos: int,   # valor COPIADO do critério no momento
   data: date,
-  origemTipo: CHAMADA|REQUISITO|ESPECIALIDADE|MANUAL|FALTA,
+  origemTipo: CHAMADA|REQUISITO|ESPECIALIDADE|MANUAL|FALTA|CLASSE_BIBLICA,
   origemId,                                      # chave da origem, para estornar
   lancadoPor, estornadoEm?)
   UNIQUE(origemTipo, origemId, criterioId) entre os não estornados

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ModoConexao } from '../../offline'
+import { criarClasseBiblicaDoRequisito } from '../../testes/handlers/classe-biblica'
 import { handlerPerfil } from '../../testes/handlers/perfil'
 import {
   criarProgressoDbv,
@@ -152,3 +153,63 @@ function botaoDoDialogo(nome: string) {
   if (!botao) throw new Error(`botão ${nome} não está no diálogo`)
   return botao
 }
+
+describe('quadro da Classe Bíblica sob o requisito', () => {
+  type DoRequisito = ReturnType<typeof criarClasseBiblicaDoRequisito>
+
+  /** DE.1 concluído e DE.2 pendente, cada um com o quadro dado (a seção DE já abre sozinha). */
+  function progressoCom(pendente: DoRequisito | null | undefined, concluido?: DoRequisito) {
+    const base = criarProgressoDbv()
+    const [regular, avancada] = base.matriculas
+    const [gerais, descoberta] = regular.secoes
+    const [feito, aberto] = descoberta.requisitos
+    return {
+      matriculas: [
+        { ...regular, secoes: [gerais, { ...descoberta, requisitos: [{ ...feito, classeBiblica: concluido }, { ...aberto, classeBiblica: pendente }] }] },
+        avancada,
+      ],
+    }
+  }
+
+  const textoDoRequisito = (codigo: string) => {
+    const botao = screen.queryByRole('button', { name: `Marcar ${codigo}` }) ?? screen.getByRole('button', { name: `Desmarcar ${codigo}` })
+    const linha = botao.closest('li')
+    return (linha as HTMLElement).textContent ?? ''
+  }
+
+  it('requisito pendente: a edição em destaque, a participação com o grupo e a linha "Antes"', async () => {
+    abrir(handlerProgressoDbv(progressoCom(criarClasseBiblicaDoRequisito())))
+    expect(await screen.findByText('Classe Bíblica 2026 · 2º semestre: 6 de 8 encontros')).toBeInTheDocument()
+    expect(screen.getByText('Participou ativamente em 5 · Grupo Daniel')).toBeInTheDocument()
+    expect(screen.getByText('Antes: Classe Bíblica 2026 · 1º semestre — 12 de 16 encontros · participou ativamente em 9')).toBeInTheDocument()
+    expect(textoDoRequisito('DE.2')).toContain('Ainda não concluído')
+  })
+
+  it('sem edição anterior: sem a linha "Antes"; sem grupo na linha mais recente: só a participação', async () => {
+    abrir(handlerProgressoDbv(progressoCom(criarClasseBiblicaDoRequisito({ anteriores: [], grupo: null }))))
+    expect(await screen.findByText('Classe Bíblica 2026 · 2º semestre: 6 de 8 encontros')).toBeInTheDocument()
+    expect(screen.getByText('Participou ativamente em 5')).toBeInTheDocument()
+    expect(screen.queryByText(/^Antes:/)).not.toBeInTheDocument()
+  })
+
+  it('unidade fora de qualquer grupo: "<edição>: a unidade dele(a) não está em nenhum grupo", sem números', async () => {
+    abrir(handlerProgressoDbv(progressoCom(criarClasseBiblicaDoRequisito({ semGrupo: true, encontros: 0, presencas: 0, participacoes: 0, grupo: null, anteriores: [] }))))
+    expect(await screen.findByText('Classe Bíblica 2026 · 2º semestre: a unidade dele(a) não está em nenhum grupo')).toBeInTheDocument()
+    expect(screen.queryByText(/encontros$/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Participou ativamente em/)).not.toBeInTheDocument()
+  })
+
+  it('requisito concluído também mostra o quadro, abaixo de "Concluído em"', async () => {
+    abrir(handlerProgressoDbv(progressoCom(undefined, criarClasseBiblicaDoRequisito())))
+    expect(await screen.findByText('Classe Bíblica 2026 · 2º semestre: 6 de 8 encontros')).toBeInTheDocument()
+    const texto = textoDoRequisito('DE.1')
+    expect(texto).toContain('Concluído em')
+    expect(texto.indexOf('Concluído em')).toBeLessThan(texto.indexOf('Classe Bíblica 2026'))
+  })
+
+  it('requisito sem a marca (sem o campo ou nulo) não mostra quadro', async () => {
+    abrir(handlerProgressoDbv(progressoCom(null)))
+    await screen.findByRole('button', { name: 'Marcar DE.2' })
+    expect(screen.queryByText(/Classe Bíblica/)).not.toBeInTheDocument()
+  })
+})

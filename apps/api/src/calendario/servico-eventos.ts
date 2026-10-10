@@ -42,6 +42,40 @@ interface AulaVista {
 const RetratoLido = z.object({ aulas: z.array(z.object({ id: Uuid, data: DataCivil, requisitoIds: z.array(Uuid) })) })
 
 const NAO_ENCONTRADO = 'Evento não encontrado.'
+const DA_CLASSE_BIBLICA = 'Este encontro é da Classe Bíblica: remarque ou cancele pela edição.'
+
+/** O encontro ligado ao evento; a relação é pela chave (clubeId, eventoId), e os grupos levam o clube no where. */
+function comEncontro(clubeId: string) {
+  return {
+    encontroClasseBiblica: {
+      select: {
+        edicaoId: true,
+        canceladoEm: true,
+        motivoCancelamento: true,
+        edicao: {
+          select: { grupos: { where: { clubeId, removidoEm: null }, orderBy: [{ ordem: 'asc' }, { id: 'asc' }], select: { nome: true } } },
+        },
+      },
+    },
+  } satisfies Prisma.EventoCalendarioInclude
+}
+
+type EventoComEncontro = Prisma.EventoCalendarioGetPayload<{ include: ReturnType<typeof comEncontro> }>
+
+function classeBiblicaDe(evento: EventoComEncontro): Saida['classeBiblica'] {
+  const encontro = evento.encontroClasseBiblica
+  if (!encontro) return null
+  return {
+    edicaoId: encontro.edicaoId,
+    grupos: encontro.edicao.grupos.map((grupo) => grupo.nome),
+    cancelado: encontro.canceladoEm !== null,
+    motivo: encontro.motivoCancelamento,
+  }
+}
+
+function paraSaidaComEncontro(evento: EventoComEncontro): Saida {
+  return { ...paraSaida(evento), classeBiblica: classeBiblicaDe(evento) }
+}
 
 function paraSaida(evento: EventoCalendario): Saida {
   return {
@@ -55,6 +89,7 @@ function paraSaida(evento: EventoCalendario): Saida {
     temReuniao: evento.temReuniao,
     temClasse: evento.temClasse,
     bomParaCampo: evento.bomParaCampo,
+    classeBiblica: null,
   }
 }
 
@@ -80,16 +115,17 @@ export class ServicoEventos {
     const registros = await this.prisma.eventoCalendario.findMany({
       where: { clubeId, removidoEm: null, inicio: { lte: daDataCivil(fim) }, fim: { gte: daDataCivil(inicio) } },
       orderBy: [{ inicio: 'asc' }, { nome: 'asc' }, { id: 'asc' }],
+      include: comEncontro(clubeId),
     })
-    const eventos = registros.map(paraSaida)
+    const eventos = registros.map(paraSaidaComEncontro)
     const configuracao = await this.prisma.configuracaoClube.findUniqueOrThrow({ where: { clubeId } })
     return { eventos, diasDeReuniao: diasDeReuniao(inicio, fim, configuracao.diaReuniao, eventos.map(paraCalendario)) }
   }
 
   async obter(clubeId: string, id: string): Promise<Saida> {
-    const evento = await this.prisma.eventoCalendario.findFirst({ where: { id, clubeId, removidoEm: null } })
+    const evento = await this.prisma.eventoCalendario.findFirst({ where: { id, clubeId, removidoEm: null }, include: comEncontro(clubeId) })
     if (!evento) throw new ErroApp('NAO_ENCONTRADO', NAO_ENCONTRADO)
-    return paraSaida(evento)
+    return paraSaidaComEncontro(evento)
   }
 
   criar(sessao: SessaoLogada, entrada: Entrada): Promise<Gravado> {
@@ -150,6 +186,8 @@ export class ServicoEventos {
       async (tx) => {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('eventos-do-clube'), hashtext(${clubeId}))`
         const antes = id ? await this.eventoDoClube(tx, clubeId, id) : null
+        // O encontro é da edição: remarcar ou cancelar por aqui burlaria "com chamada não remarca".
+        if (antes?.tipo === 'CLASSE_BIBLICA' || depois?.tipo === 'CLASSE_BIBLICA') throw new ErroApp('REGRA', DA_CLASSE_BIBLICA)
         if (depois?.tipo === 'REUNIAO_EXTRA') await this.exigirUmaExtraPorData(tx, clubeId, depois.inicio, antes?.id)
         const datas = [antes && paraDataCivil(antes.inicio), antes && paraDataCivil(antes.fim), depois?.inicio, depois?.fim].filter(
           (d): d is string => d != null,

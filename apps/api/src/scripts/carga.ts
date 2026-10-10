@@ -12,6 +12,7 @@ const CargaRequisito = z.object({
   texto: z.string(),
   campo: z.boolean().default(false),
   pagina: z.number().int().nullish(),
+  classeBiblica: z.boolean().default(false),
 })
 const CargaSecao = z.object({
   codigo: z.string(),
@@ -235,6 +236,7 @@ async function sincronizarRequisitos(
       campo: requisito.campo,
       ordem: indice + 1,
       pagina: requisito.pagina ?? null,
+      classeBiblica: requisito.classeBiblica,
       ativo: true,
     }
     const existente = existentes.get(requisito.codigo)

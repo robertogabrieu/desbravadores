@@ -100,7 +100,8 @@
               "codigo": "G15",
               "texto": "Participar ativamente da Classe Bíblica do seu Clube.",
               "campo": false,
-              "pagina": 23
+              "pagina": 23,
+              "classeBiblica": true
             }
           ]
         },

@@ -20,6 +20,7 @@ import { NomeDaFicha } from '../../ui/LinkDeFicha'
 import { Selecao } from '../../ui/Selecao'
 import { Selo } from '../../ui/Selo'
 import { rotuloDoPapel } from '../acesso/papeis'
+import { CartaoClasseBiblica } from './CartaoClasseBiblica'
 import { ConviteInstalacao } from './ConviteInstalacao'
 import { Carregando, ErroDeCarga } from '../../ui/EstadosDeCarga'
 
@@ -285,6 +286,7 @@ function PainelDaUnidade({ unidades, papel, primeiroNome }: PropriedadesPainel) 
           ))}
         </Selecao>
       )}
+      <CartaoClasseBiblica />
       {conteudo}
       <ConviteInstalacao />
     </div>

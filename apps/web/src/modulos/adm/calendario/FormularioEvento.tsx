@@ -38,7 +38,10 @@ interface Marcacoes {
   bomParaCampo: boolean
 }
 
-const tipoConhecido = (valor: string): TipoDeEvento => TIPOS_EVENTO.find((t) => t === valor) ?? 'EVENTO'
+/** O encontro da Classe Bíblica nasce e muda só pela edição dele. */
+const TIPOS_DO_FORMULARIO = TIPOS_EVENTO.filter((t) => t !== 'CLASSE_BIBLICA')
+
+const tipoConhecido = (valor: string): TipoDeEvento => TIPOS_DO_FORMULARIO.find((t) => t === valor) ?? 'EVENTO'
 
 export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar }: Propriedades) {
   const [nome, setNome] = useState(evento?.nome ?? '')
@@ -120,7 +123,7 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar }: Pr
       <ResumoDosErros pendencias={pendencias} />
       <Campo rotulo="Nome" value={nome} erro={erros['nome']} onChange={(e) => setNome(e.target.value)} />
       <Selecao rotulo="Tipo" value={tipo} ajuda={textoDeApoio} erro={erros['tipo']} onChange={(e) => trocarTipo(tipoConhecido(e.target.value))}>
-        {TIPOS_EVENTO.map((t) => (
+        {TIPOS_DO_FORMULARIO.map((t) => (
           <option key={t} value={t}>
             {ROTULOS_DO_TIPO[t]}
           </option>

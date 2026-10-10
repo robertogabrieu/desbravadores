@@ -83,6 +83,19 @@ describe('situacaoDaData', () => {
     const feriado = evento({ nome: 'Feriado', inicio: '2026-10-07' })
     expect(situacaoDaData('2026-10-07', DOMINGO, [feriado, EXTRA_QUARTA]).eventos).toEqual(['Feriado', 'Encontro de pais'])
   })
+
+  it('encontro da Classe Bíblica não muda a regra do dia, nem com marcações fora do padrão', () => {
+    const contas = (situacao: ReturnType<typeof situacaoDaData>) => ({ ...situacao, eventos: [] })
+    const neutro = evento({ nome: 'Classe Bíblica', tipo: 'CLASSE_BIBLICA', inicio: '2026-10-11' })
+    const torto = { ...neutro, temReuniao: false, temClasse: false, bomParaCampo: true }
+    for (const data of ['2026-10-11', '2026-10-25']) {
+      const semEle = situacaoDaData(data, DOMINGO, data === '2026-10-25' ? [SEM_REUNIAO_25] : [])
+      for (const cb of [neutro, torto]) {
+        const comEle = situacaoDaData(data, DOMINGO, [...(data === '2026-10-25' ? [SEM_REUNIAO_25] : []), { ...cb, inicio: data, fim: data }])
+        expect(contas(comEle)).toEqual(contas(semEle))
+      }
+    }
+  })
 })
 
 describe('equivalência com as marcações negativas de antes', () => {
@@ -181,6 +194,13 @@ describe('datasDaMontagem', () => {
     expect(datasDaMontagem('2026-10-01', '2026-10-31', DOMINGO, [FERIAS_OUTUBRO, ACAMPAMENTO, EXTRA_QUARTA, extraSoReuniao])).toEqual([
       '2026-10-04', '2026-10-07', '2026-10-16', '2026-10-17', '2026-10-18', '2026-10-25',
     ])
+  })
+
+  it('encontro da Classe Bíblica no domingo ou numa quarta não tira nem acrescenta data', () => {
+    const cb = (inicio: string) => ({ ...evento({ nome: 'Classe Bíblica', tipo: 'CLASSE_BIBLICA', inicio }), bomParaCampo: true, temReuniao: false })
+    const sem = datasDaMontagem('2026-10-01', '2026-10-31', DOMINGO, [SEM_REUNIAO_25])
+    expect(datasDaMontagem('2026-10-01', '2026-10-31', DOMINGO, [SEM_REUNIAO_25, cb('2026-10-11'), cb('2026-10-14')])).toEqual(sem)
+    expect(sem).toContain('2026-10-11')
   })
 })
 

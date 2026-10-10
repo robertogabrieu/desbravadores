@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Painel da edição · Grupo Daniel</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;font-family:'Figtree',system-ui,sans-serif;color:#1B221F}
+a{color:#1F4D3A}a:hover{color:#163828}
+.t{font-family:'Bricolage Grotesque',system-ui,sans-serif}
+.card{background:#fff;border:1px solid #D9D3C5;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.h2{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:18px;font-weight:700;margin:0}
+.rot{font-size:13px;font-weight:600;color:#5B645F}
+.val{font-size:16px;color:#1B221F}
+.dl3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 24px}
+.par{display:flex;flex-direction:column;gap:2px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 20px;border-radius:12px;font-size:16px;font-weight:600;text-decoration:none;border:0;font-family:inherit;cursor:pointer;box-sizing:border-box}
+.pri{background:#1F4D3A;color:#fff}
+.sec{background:#fff;color:#1B221F;border:1px solid #D9D3C5}
+.txt{background:transparent;color:#1F4D3A;padding:0 12px}
+.per{background:#fff;color:#B42318;border:1px solid #D9D3C5}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 10px;font-size:13px;font-weight:600}
+.lbl{font-size:14px;font-weight:700;color:#1B221F}
+.in{min-height:44px;border:1px solid #D9D3C5;border-radius:9px;background:#fff;padding:0 14px;font-size:16px;font-family:inherit;color:#1B221F;box-sizing:border-box;width:100%}
+.ajuda{font-size:13px;color:#5B645F}
+.err{font-size:14px;font-weight:600;color:#B42318;margin:0;display:flex;align-items:center;gap:6px}
+.aviso{font-size:14px;color:#9A3412;background:#FBEFE3;border-radius:9px;padding:10px 12px;margin:0;display:flex;gap:8px;align-items:flex-start}
+.cx{display:flex;align-items:center;gap:10px;min-height:44px;font-size:16px}
+.cx input{width:20px;height:20px;margin:0;accent-color:#1F4D3A}
+.lin{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid #EFEBE1}
+.nav{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:12px;color:#CFE0D6;font-weight:600;font-size:16px}
+.nav.on{background:#163828;color:#fff}
+.bnav{flex-grow:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:12px;font-weight:600;color:#5B645F;text-decoration:none}
+.cel{display:flex;flex-direction:column;gap:4px;min-height:96px;border:1px solid #EFEBE1;border-radius:9px;padding:6px;box-sizing:border-box;min-width:0}
+.fx{display:flex;align-items:center;gap:4px;border-radius:9px;padding:2px 6px;font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:999px;font-size:15px;font-weight:700;font-family:inherit;border:1px solid #D9D3C5;background:#fff;color:#1B221F;cursor:pointer}
+.pill.on{background:#1F4D3A;border-color:#1F4D3A;color:#fff}
+</style>
+<style>
+.ok{font-size:14px;font-weight:600;color:#1D7442;margin:0;display:flex;align-items:center;gap:6px}
+.etapas{display:flex;gap:4px}
+.etapas span{flex-grow:1;height:8px;border-radius:999px;background:#E8E3D7}
+.etapas span.feita{background:#1D7442}
+.etapas span.atual{background:#1F4D3A}
+.sub{margin:0;font-size:14px;color:#5B645F}
+.secao{font-size:13px;font-weight:800;color:#4A524E;text-transform:uppercase;letter-spacing:.04em;margin:0}
+.rotulo-quadro{font-size:13px;font-weight:800;color:#5B3391;background:#EDE4F6;border-radius:9px;padding:6px 10px;margin:0}
+.desab{color:#5B645F}
+.desab input{accent-color:#8A8375}
+</style>
+</helmet>
+<div style="width:390px;min-height:1900px;display:flex;flex-direction:column;background:#F4F1EA;position:relative"><header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 16px;background:#1F4D3A;color:#fff"><span class="t" style="font-size:17px;font-weight:700">App do Desbravador</span><button class="btn txt" style="color:#fff;padding:0 12px">Rosa <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></header><main style="flex-grow:1;padding:16px;display:flex;flex-direction:column;gap:16px"><a href="Lista-Edicoes.dc.html" style="display:inline-flex;align-items:center;gap:4px;font-weight:600;text-decoration:none;min-height:44px;align-self:flex-start"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg> Classe Bíblica</a><div style="display:flex;flex-direction:column;gap:4px"><span class="rot">Classe Bíblica</span><h1 class="t" style="margin:0;font-size:26px;font-weight:800">2026 · 2º semestre</h1><p class="sub">Domingos às 14h · Sala 3 da igreja · 16/08 a 13/12</p></div><a class="btn txt" href="#" style="align-self:flex-start;padding:0">Editar edição</a><div role="tablist" aria-label="Grupo" style="display:flex;gap:4px;background:#E8E3D7;border-radius:12px;padding:4px"><button role="tab" aria-selected="true" style="min-height:44px;flex-grow:1;border:0;border-radius:9px;font-family:inherit;font-size:15px;font-weight:700;background:#fff;color:#1B221F;box-shadow:0 1px 3px rgba(27,34,31,0.12)">Grupo Daniel</button><button role="tab" aria-selected="false" style="min-height:44px;flex-grow:1;border:0;border-radius:9px;font-family:inherit;font-size:15px;font-weight:700;background:transparent;color:#4A524E">Grupo Ester</button></div><section class="card" style="gap:10px"><span class="rot">Próximo encontro</span><h2 class="h2">Domingo, 11/10 · 14h</h2><p class="sub">Sala 3 da igreja · Águias, Leões e Gaviões (31 DBVs)</p><a class="btn pri" href="Chamada-Encontro.dc.html" style="width:100%">Fazer a chamada do Grupo Daniel</a><a class="btn txt" href="Encontro-Remarcar.dc.html" style="align-self:flex-start;padding:0">Remarcar ou cancelar este encontro</a></section><section class="card" style="gap:10px"><h2 class="h2">Frequência do grupo</h2><p style="margin:0;font-size:16px"><b>84%</b> de presença média em 8 encontros feitos · 9 ainda por vir</p><div role="progressbar" aria-valuenow="84" aria-valuemin="0" aria-valuemax="100" aria-label="84% de presença" style="height:8px;border-radius:999px;background:#E3EEE7"><div style="width:84%;height:8px;border-radius:999px;background:#1F4D3A"></div></div><p class="sub">3 desbravadores vieram a menos da metade dos encontros.</p><a class="btn sec" href="#" style="width:100%">Ver a frequência de cada um</a></section><section class="card" style="gap:10px"><h2 class="h2">Material do grupo</h2><a href="#" style="display:flex;gap:10px;align-items:center;font-weight:600;min-height:44px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg> Estudo Bíblico Ilustrado — lições 1 a 20 (PDF)</a><a class="btn txt" href="#" style="align-self:flex-start;padding:0">Trocar o material</a></section><p class="rotulo-quadro">Como fica num grupo ainda sem material (Grupo Ester)</p><section class="card" style="gap:10px"><h2 class="h2">Material do grupo</h2><p style="margin:0;font-size:16px">Ainda sem material de estudo. Os encontros e a chamada funcionam sem ele.</p><button class="btn sec" type="button" style="width:100%"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg> Anexar PDF ou link</button></section><section class="card" style="gap:0"><h2 class="h2" style="margin-bottom:4px">Encontros feitos</h2><ul style="list-style:none;margin:0;padding:0"><li class="lin"><span style="display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">04/10</span><span class="sub">26 de 31 presentes · 16 participaram ativamente</span></span><a class="btn txt" href="Chamada-Encontro.dc.html" style="padding:0 8px">Ver</a></li><li class="lin"><span style="display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">27/09</span><span class="sub">24 de 31 presentes · 14 participaram ativamente</span></span><a class="btn txt" href="Chamada-Encontro.dc.html" style="padding:0 8px">Ver</a></li><li class="lin"><span style="display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">20/09</span><span class="sub">28 de 31 presentes · 19 participaram ativamente</span></span><a class="btn txt" href="Chamada-Encontro.dc.html" style="padding:0 8px">Ver</a></li><li class="lin"><span style="display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">19/09 (sáb)</span><span class="sub">22 de 31 presentes · 12 participaram ativamente</span></span><a class="btn txt" href="Chamada-Encontro.dc.html" style="padding:0 8px">Ver</a></li><li class="lin" style="align-items:flex-start"><span style="display:flex;flex-direction:column;gap:2px"><span style="font-weight:600;text-decoration:line-through;color:#5B645F">domingo 13/09</span><span class="sub">Cancelado: chuva forte · remarcado para sábado 19/09</span></span></li><li class="lin"><span style="display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">06/09</span><span class="sub">26 de 31 presentes · 17 participaram ativamente</span></span><a class="btn txt" href="Chamada-Encontro.dc.html" style="padding:0 8px">Ver</a></li><li class="lin"><span style="display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">30/08</span><span class="sub">25 de 31 presentes · 15 participaram ativamente</span></span><a class="btn txt" href="Chamada-Encontro.dc.html" style="padding:0 8px">Ver</a></li><li class="lin"><span style="display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">23/08</span><span class="sub">29 de 31 presentes · 20 participaram ativamente</span></span><a class="btn txt" href="Chamada-Encontro.dc.html" style="padding:0 8px">Ver</a></li><li class="lin"><span style="display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">16/08</span><span class="sub">27 de 31 presentes · 18 participaram ativamente</span></span><a class="btn txt" href="Chamada-Encontro.dc.html" style="padding:0 8px">Ver</a></li></ul></section></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1900}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -247,7 +247,7 @@ function CelulaDoDia({
             )}
           >
             {Icone && <Icone aria-hidden className="mr-1 inline size-3.5" />}
-            {evento.nome}
+            {evento.classeBiblica?.cancelado ? <s>{evento.nome}</s> : evento.nome}
           </Link>
         )
       })}

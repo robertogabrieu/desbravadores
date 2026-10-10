@@ -5,6 +5,7 @@ import { criarEvento, handlerCalendario } from '../../../testes/handlers/calenda
 import { criarConfiguracao, handlerConfiguracao } from '../../../testes/handlers/clube'
 import { simularLargura } from '../../../testes/midia'
 import { renderizarRotas } from '../../../testes/renderizar'
+import { uuid } from '../../../testes/handlers/sessao'
 import { servidor } from '../../../testes/servidor'
 import { rotasAdmCalendario } from './rotas'
 
@@ -111,6 +112,50 @@ describe('calendário · no celular', () => {
     const painel = await screen.findByRole('region', { name: 'Segunda-feira, 5 de outubro' })
     const lista = screen.getByRole('list', { name: 'Eventos de Outubro' })
     expect(painel.compareDocumentPosition(lista) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+})
+
+const doEncontro = (n: number, inicio: string, cancelado: boolean) =>
+  criarEvento(n, {
+    nome: 'Classe Bíblica 2026 · 2º semestre', tipo: 'CLASSE_BIBLICA', inicio, fim: inicio, horario: '14:00', local: 'Sala 3 da igreja',
+    temReuniao: true, temClasse: true, bomParaCampo: false,
+    classeBiblica: { edicaoId: uuid(950), grupos: ['Grupo Daniel', 'Grupo Ester'], cancelado, motivo: cancelado ? 'chuva forte' : null },
+  })
+
+function abrirComEncontros(rota: string) {
+  servidor.use(
+    handlerConfiguracao(criarConfiguracao({ diaReuniao: 0, horaReuniao: '09:00' })),
+    handlerCalendario({ eventos: [doEncontro(11, '2026-10-11', false), doEncontro(12, '2026-10-25', true)], diasDeReuniao: ['2026-10-11', '2026-10-25'] }),
+  )
+  return renderizarRotas(rotasAdmCalendario, rota)
+}
+
+describe('calendário · encontro da Classe Bíblica', () => {
+  it('no celular, o dia mostra a reunião e o encontro com o texto do tipo e os grupos', async () => {
+    simularLargura(390)
+    abrirComEncontros('/adm/calendario?mes=2026-10&dia=2026-10-11')
+    const painel = within(await screen.findByRole('region', { name: 'Domingo, 11 de outubro' }))
+    expect(painel.getByText('Reunião regular')).toBeInTheDocument()
+    expect(painel.getByText('Classe Bíblica · 11/10 · 14h · Sala 3 da igreja · Grupo Daniel e Grupo Ester')).toBeInTheDocument()
+    expect(painel.queryByText(/^Cancelado/)).not.toBeInTheDocument()
+  })
+
+  it('cancelado aparece riscado com o motivo', async () => {
+    simularLargura(390)
+    abrirComEncontros('/adm/calendario?mes=2026-10&dia=2026-10-25')
+    const painel = within(await screen.findByRole('region', { name: 'Domingo, 25 de outubro' }))
+    expect(painel.getByText('Classe Bíblica 2026 · 2º semestre').closest('s')).not.toBeNull()
+    expect(painel.getByText('Cancelado: chuva forte')).toBeInTheDocument()
+  })
+
+  it('no computador, o encontro na grade e na legenda leva o ícone de livro, na cor de evento do clube', async () => {
+    abrirComEncontros('/adm/calendario?mes=2026-10')
+    const dias = await grade()
+    const [noDia] = dias.getAllByRole('link', { name: 'Classe Bíblica 2026 · 2º semestre' })
+    expect(noDia?.querySelector('svg.lucide-book-open')).not.toBeNull()
+    expect(noDia?.className).toContain('--cal-evento-bg')
+    const legenda = within(screen.getByRole('list', { name: 'Legenda' }))
+    expect(legenda.getByText('Classe Bíblica').closest('li')?.querySelector('svg.lucide-book-open')).not.toBeNull()
   })
 })
 

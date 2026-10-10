@@ -1,8 +1,9 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { http } from 'msw'
+import { HttpResponse, http } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { criarConfiguracao, handlerConfiguracao, handlerErroConfiguracao, handlerErroSalvarConfiguracao, handlerSalvarConfiguracao } from '../../../testes/handlers/clube'
+import { criarPontosCB, handlersClasseBiblica } from '../../../testes/handlers/classe-biblica'
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
 import { rotasAdmConfiguracoes } from './rotas'
@@ -18,7 +19,7 @@ beforeEach(() => {
 })
 
 const abrir = (...handlers: Parameters<typeof servidor.use>) => {
-  servidor.use(...handlers)
+  servidor.use(...handlers, ...handlersClasseBiblica())
   return renderizarRotas(rotasAdmConfiguracoes, '/adm/configuracoes')
 }
 
@@ -95,5 +96,76 @@ describe('Configurações do clube · salvar', () => {
 
     expect(await screen.findByText('Informe um número de 0 a 100')).toBeInTheDocument()
     await waitFor(() => expect(chamadas).toBe(0))
+  })
+})
+
+describe('Configurações do clube · pontos da Classe Bíblica', () => {
+  const PRESENCA = 'Presença na Classe Bíblica'
+  const PARTICIPACAO = 'Participou ativamente da Classe Bíblica'
+
+  it('mostra os dois valores e "Contar" de cada um, lidos da API', async () => {
+    abrir(handlerConfiguracao(), ...handlersClasseBiblica({ pontos: criarPontosCB({
+      itens: [
+        { gatilho: 'CLASSE_BIBLICA_PRESENCA', nome: PRESENCA, pontos: 10, ativo: true },
+        { gatilho: 'CLASSE_BIBLICA_PARTICIPACAO', nome: PARTICIPACAO, pontos: 5, ativo: false },
+      ],
+    }) }))
+    expect(await screen.findByRole('heading', { name: 'Pontos da Classe Bíblica' })).toBeInTheDocument()
+    expect(await screen.findByRole('spinbutton', { name: PRESENCA })).toHaveValue(10)
+    expect(screen.getByRole('spinbutton', { name: PARTICIPACAO })).toHaveValue(5)
+    expect(screen.getByRole('switch', { name: `Contar ${PRESENCA}` })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('switch', { name: `Contar ${PARTICIPACAO}` })).toHaveAttribute('aria-checked', 'false')
+  })
+
+  it('"Salvar configurações" grava os pontos junto: presença 8 e participação sem contar', async () => {
+    const escritas: Array<{ metodo: string; caminho: string; corpo: unknown }> = []
+    abrir(
+      handlerConfiguracao(),
+      handlerSalvarConfiguracao(criarConfiguracao()),
+      ...handlersClasseBiblica({ aoGravar: (metodo, caminho, corpo) => escritas.push({ metodo, caminho, corpo }) }),
+    )
+    await userEvent.clear(await screen.findByRole('spinbutton', { name: PRESENCA }))
+    await userEvent.type(screen.getByRole('spinbutton', { name: PRESENCA }), '8')
+    await userEvent.click(screen.getByRole('switch', { name: `Contar ${PARTICIPACAO}` }))
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar configurações' }))
+
+    expect(await screen.findByText('Configurações salvas.')).toBeInTheDocument()
+    expect(escritas).toEqual([{
+      metodo: 'PATCH',
+      caminho: '/api/classe-biblica/pontos',
+      corpo: { itens: [
+        { gatilho: 'CLASSE_BIBLICA_PRESENCA', pontos: 8, ativo: true },
+        { gatilho: 'CLASSE_BIBLICA_PARTICIPACAO', pontos: 5, ativo: false },
+      ] },
+    }])
+  })
+
+  it('valor fora de 0–1000 é barrado antes de enviar qualquer coisa', async () => {
+    let configuracoes = 0
+    const escritas: string[] = []
+    abrir(
+      handlerConfiguracao(),
+      handlerSalvarConfiguracao(criarConfiguracao(), () => configuracoes++),
+      ...handlersClasseBiblica({ aoGravar: (_metodo, caminho) => escritas.push(caminho) }),
+    )
+    await userEvent.clear(await screen.findByRole('spinbutton', { name: PARTICIPACAO }))
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar configurações' }))
+
+    expect(await screen.findByText('Informe um número de 0 a 1000')).toBeInTheDocument()
+    await waitFor(() => expect(configuracoes).toBe(0))
+    expect(escritas).toEqual([])
+  })
+
+  it('falha ao ler os pontos: a seção avisa e o resto da tela continua salvando', async () => {
+    let configuracoes = 0
+    abrir(
+      handlerConfiguracao(),
+      handlerSalvarConfiguracao(criarConfiguracao(), () => configuracoes++),
+      http.get('/api/classe-biblica/pontos', () => HttpResponse.json({ codigo: 'ERRO_INTERNO', mensagem: 'Falha ao ler os pontos' }, { status: 500 })),
+    )
+    expect(await screen.findByText('Falha ao ler os pontos')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar configurações' }))
+    expect(await screen.findByText('Configurações salvas.')).toBeInTheDocument()
+    expect(configuracoes).toBe(1)
   })
 })
