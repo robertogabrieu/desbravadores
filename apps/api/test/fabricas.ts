@@ -22,10 +22,14 @@ import type {
   TarefaCasa,
   TarefaItem,
   Chamada,
+  ChamadaClasseBiblica,
   Clube,
   ConfiguracaoClube,
   CriterioRanking,
   Desbravador,
+  EdicaoClasseBiblica,
+  EncontroClasseBiblica,
+  GrupoClasseBiblica,
   Foto,
   GatilhoCriterio,
   LancamentoPontos,
@@ -747,4 +751,127 @@ export async function admCriarEspecialidadeClube(dados: {
   return prismaDeTeste().especialidade.create({
     data: { clubeId: dados.clubeId, origem: 'CLUBE', areaId, nome: dados.nome ?? `Especialidade ${unico()}` },
   })
+}
+
+/** Edição da Classe Bíblica; `terminada` preenche `terminadaEm` e deixa a etapa em 3. Padrão: domingos às 14h, 2026-08-16 a 2026-12-13. */
+export async function criarEdicaoCB(dados: {
+  clubeId: string
+  terminada?: boolean
+  inicio?: string
+  fim?: string
+  nome?: string
+}): Promise<EdicaoClasseBiblica> {
+  return prismaDeTeste().edicaoClasseBiblica.create({
+    data: {
+      clubeId: dados.clubeId,
+      nome: dados.nome ?? `Classe Bíblica ${unico()}`,
+      inicio: dataCivil(dados.inicio ?? '2026-08-16'),
+      fim: dataCivil(dados.fim ?? '2026-12-13'),
+      diaSemana: 0,
+      horario: '14:00',
+      local: 'Sala 3 da igreja',
+      etapa: dados.terminada ? 3 : 1,
+      terminadaEm: dados.terminada ? new Date() : null,
+      criadaPorId: (await criarUsuario()).id,
+    },
+  })
+}
+
+/** Grupo com as unidades dadas; `material` como link (`url`) ou como PDF (`arquivoId`). */
+export async function criarGrupoCB(dados: {
+  clubeId: string
+  edicaoId: string
+  unidadeIds: string[]
+  nome?: string
+  material?: { titulo: string; url?: string; arquivoId?: string }
+}): Promise<GrupoClasseBiblica> {
+  const prisma = prismaDeTeste()
+  const ordem = await prisma.grupoClasseBiblica.count({ where: { clubeId: dados.clubeId, edicaoId: dados.edicaoId } })
+  const grupo = await prisma.grupoClasseBiblica.create({
+    data: {
+      clubeId: dados.clubeId,
+      edicaoId: dados.edicaoId,
+      nome: dados.nome ?? `Grupo ${unico()}`,
+      ordem,
+      materialTitulo: dados.material?.titulo ?? null,
+      materialUrl: dados.material?.url ?? null,
+      materialArquivoId: dados.material?.arquivoId ?? null,
+    },
+  })
+  await prisma.grupoUnidadeClasseBiblica.createMany({
+    data: dados.unidadeIds.map((unidadeId) => ({
+      clubeId: dados.clubeId, edicaoId: dados.edicaoId, grupoId: grupo.id, unidadeId,
+    })),
+  })
+  return grupo
+}
+
+/** Encontro com o EventoCalendario CLASSE_BIBLICA dele, nas marcações neutras do tipo. */
+export async function criarEncontroCB(dados: {
+  clubeId: string
+  edicaoId: string
+  data: string
+  cancelado?: boolean
+}): Promise<EncontroClasseBiblica> {
+  const prisma = prismaDeTeste()
+  const usuarioId = (await criarUsuario()).id
+  const evento = await prisma.eventoCalendario.create({
+    data: {
+      clubeId: dados.clubeId,
+      nome: 'Classe Bíblica',
+      tipo: 'CLASSE_BIBLICA',
+      inicio: dataCivil(dados.data),
+      fim: dataCivil(dados.data),
+      horario: '14:00',
+      local: 'Sala 3 da igreja',
+      ...MARCACOES_PADRAO.CLASSE_BIBLICA,
+      criadoPorId: usuarioId,
+    },
+  })
+  return prisma.encontroClasseBiblica.create({
+    data: {
+      clubeId: dados.clubeId,
+      edicaoId: dados.edicaoId,
+      data: dataCivil(dados.data),
+      horario: '14:00',
+      local: 'Sala 3 da igreja',
+      eventoId: evento.id,
+      canceladoEm: dados.cancelado ? new Date() : null,
+      motivoCancelamento: dados.cancelado ? 'chuva forte' : null,
+      canceladoPorId: dados.cancelado ? usuarioId : null,
+    },
+  })
+}
+
+/** Chamada registrada do grupo no encontro, com as presenças (presente padrão; participou só vale para presente). */
+export async function criarChamadaCB(dados: {
+  clubeId: string
+  encontroId: string
+  grupoId: string
+  linhas: { dbvId: string; unidadeId: string; presente?: boolean; participou?: boolean }[]
+}): Promise<ChamadaClasseBiblica> {
+  const prisma = prismaDeTeste()
+  const registradaPorId = (await criarUsuario()).id
+  const chamada = await prisma.chamadaClasseBiblica.create({
+    data: { clubeId: dados.clubeId, encontroId: dados.encontroId, grupoId: dados.grupoId, registradaPorId },
+  })
+  const versao = new Date()
+  await prisma.presencaClasseBiblica.createMany({
+    data: dados.linhas.map((linha) => {
+      const presente = linha.presente ?? true
+      return {
+        clubeId: dados.clubeId,
+        encontroId: dados.encontroId,
+        grupoId: dados.grupoId,
+        dbvId: linha.dbvId,
+        unidadeId: linha.unidadeId,
+        presente,
+        participou: presente && (linha.participou ?? false),
+        versao,
+        alteradaPorId: registradaPorId,
+        envioId: randomUUID(),
+      }
+    }),
+  })
+  return chamada
 }
