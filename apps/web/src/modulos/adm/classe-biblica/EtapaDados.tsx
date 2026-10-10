@@ -193,10 +193,11 @@ function Formulario({ edicao, padroes }: { edicao: EdicaoCB | null; padroes: { d
   )
 }
 
-function Pagina({ sobretitulo, children }: { sobretitulo: string | undefined; children: ReactNode }) {
+/** `edicao` indefinida enquanto carrega: o cabeçalho ainda não sabe se é criação ou edição. */
+function Pagina({ edicao, children }: { edicao: EdicaoCB | null | undefined; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-5 py-4">
-      <CabecalhoDaPagina voltar={VOLTAR} sobretitulo={sobretitulo} titulo="Dados da edição" />
+      <CabecalhoDaPagina voltar={VOLTAR} sobretitulo={sobretituloDaEtapa(edicao)} titulo="Dados da edição" />
       <IndicadorDeEtapas etapas={ETAPAS_DA_EDICAO} atual={1} />
       <p className="text-base text-texto-2">
         Leva uns 5 minutos. O material de estudo de cada grupo (um PDF ou um link) pode ir agora ou depois. O que você preencher fica salvo.
@@ -213,7 +214,7 @@ function EdicaoNova() {
   if (lista.isPending) conteudo = modo === 'SEM_CONEXAO' ? <DisponivelComInternet /> : <Carregando rotulo="Carregando a edição" />
   else if (lista.isError) conteudo = <ErroDeCarga erro={lista.error} aoTentarDeNovo={() => void lista.refetch()} />
   else conteudo = <Formulario edicao={null} padroes={lista.data.padroes} />
-  return <Pagina sobretitulo={sobretituloDaEtapa(null)}>{conteudo}</Pagina>
+  return <Pagina edicao={null}>{conteudo}</Pagina>
 }
 
 function EdicaoExistente({ id }: { id: string }) {
@@ -223,7 +224,7 @@ function EdicaoExistente({ id }: { id: string }) {
   if (painel.isPending) conteudo = modo === 'SEM_CONEXAO' ? <DisponivelComInternet /> : <Carregando rotulo="Carregando a edição" />
   else if (painel.isError) conteudo = <ErroDeCarga erro={painel.error} aoTentarDeNovo={() => void painel.refetch()} />
   else conteudo = <Formulario edicao={painel.data.edicao} padroes={{ diaSemana: painel.data.edicao.diaSemana, local: painel.data.edicao.local }} />
-  return <Pagina sobretitulo={sobretituloDaEtapa(painel.data?.edicao)}>{conteudo}</Pagina>
+  return <Pagina edicao={painel.data?.edicao}>{conteudo}</Pagina>
 }
 
 /** Etapa 1: `/adm/classe-biblica/nova` (sem id) ou `/adm/classe-biblica/:id/etapa/1`. */

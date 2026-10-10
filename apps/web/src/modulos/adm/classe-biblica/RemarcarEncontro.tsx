@@ -61,7 +61,7 @@ function Formulario({ detalhe }: { detalhe: DetalheDoEncontro }) {
 
   const hoje = hojeNoFuso(FUSO_PADRAO_DO_CLUBE, new Date())
   const leitura = data ? lerData(data, detalhe, hoje) : null
-  const voltarAoPainel = () => navegar(`/adm/classe-biblica/${edicao.id}`)
+  const voltarAoPainel = () => void navegar(`/adm/classe-biblica/${edicao.id}`)
   const dataDoEncontro = diaMes(encontro.data)
 
   const enviarRemarcacao = () => {
@@ -185,7 +185,7 @@ function Cancelado({ detalhe }: { detalhe: DetalheDoEncontro }) {
           <Botao
             className="w-fit"
             carregando={desfazer.isPending}
-            onClick={() => desfazer.mutate({ id: encontro.id, entrada: null }, { onSuccess: () => navegar(`/adm/classe-biblica/${edicao.id}`) })}
+            onClick={() => desfazer.mutate({ id: encontro.id, entrada: null }, { onSuccess: () => void navegar(`/adm/classe-biblica/${edicao.id}`) })}
           >
             Desfazer o cancelamento
           </Botao>
