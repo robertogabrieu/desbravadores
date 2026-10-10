@@ -190,6 +190,29 @@ describe('Etapa 1 — dados', () => {
   })
 })
 
+describe('Etapa 1 — edição terminada (13, D14)', () => {
+  it('início, fim e dia ficam desabilitados e não vão no PATCH; horário continua editável', async () => {
+    const usuario = userEvent.setup()
+    const terminada = criarEdicaoCB({ horario: null })
+    const { gravacoes } = abrir(`/adm/classe-biblica/${EDICAO_CB_ID}/etapa/1`, { edicao: terminada })
+    expect(await screen.findByLabelText('Início')).toBeDisabled()
+    expect(screen.getByLabelText('Fim')).toBeDisabled()
+    expect(screen.getByLabelText('Dia da semana')).toBeDisabled()
+    expect(screen.getByLabelText('Nome da edição')).toBeEnabled()
+    expect(screen.getByLabelText('Local')).toBeEnabled()
+    await usuario.type(screen.getByLabelText('Horário'), '15:00')
+    await usuario.click(screen.getByRole('button', { name: 'Continuar para os grupos' }))
+    await screen.findByRole('heading', { name: 'Grupos' })
+    const corpos = gravacoes.filter((g) => g.metodo === 'PATCH').map((g) => g.corpo as Record<string, unknown>)
+    expect(corpos.some((corpo) => corpo.horario === '15:00')).toBe(true)
+    for (const corpo of corpos) {
+      expect(corpo).not.toHaveProperty('inicio')
+      expect(corpo).not.toHaveProperty('fim')
+      expect(corpo).not.toHaveProperty('diaSemana')
+    }
+  })
+})
+
 describe('Etapa 2 — grupos', () => {
   it('12 · o indicador diz a etapa 2 de 3', async () => {
     abrir(`/adm/classe-biblica/${EDICAO_CB_ID}/etapa/2`)
@@ -211,6 +234,17 @@ describe('Etapa 2 — grupos', () => {
     const corpo = gravacoes.find((g) => g.metodo === 'PUT')?.corpo as { grupos: { unidadeIds: string[] }[] }
     expect(corpo.grupos[0].unidadeIds).not.toContain(UNIDADES_CB.aguias.id)
     expect(screen.getByText(/5 de 6 unidades estão em um grupo|4 de 6 unidades estão em um grupo/)).toBeInTheDocument()
+  })
+
+  it('14 · grupo com chamada não oferece "Tirar este grupo"; sem chamada, oferece', async () => {
+    const base = criarGrupos()
+    const comChamada = { ...base, grupos: base.grupos.map((g, i) => (i === 1 ? { ...g, temChamada: true } : g)) }
+    const { unmount } = abrir(`/adm/classe-biblica/${EDICAO_CB_ID}/etapa/2`, { grupos: comChamada })
+    await waitFor(() => grupo('Grupo 2').getByRole('checkbox', { name: /^Falcões/ }))
+    expect(grupo('Grupo 2').queryByRole('button', { name: 'Tirar este grupo' })).not.toBeInTheDocument()
+    unmount()
+    abrir(`/adm/classe-biblica/${EDICAO_CB_ID}/etapa/2`)
+    expect(await waitFor(() => grupo('Grupo 2').getByRole('button', { name: 'Tirar este grupo' }))).toBeInTheDocument()
   })
 
   it('7 · unidade numa edição terminada com período cruzado fica desabilitada com "na <edição>"', async () => {
@@ -302,6 +336,7 @@ describe('Edição pronta', () => {
   it('10 · diz o que foi feito, os grupos com e sem material e um único botão', async () => {
     abrir(`/adm/classe-biblica/${EDICAO_CB_ID}/pronta`, { painel: criarPainel({ edicao: { ...RASCUNHO, situacao: 'EM_ANDAMENTO', etapa: 3 } }) })
     expect(await screen.findByRole('heading', { name: 'Classe Bíblica 2027 · 1º semestre criada' })).toBeInTheDocument()
+    expect(screen.getByText('17 encontros estão no calendário do clube, aos domingos às 14h. Local: Sala 3 da igreja.')).toBeInTheDocument()
     expect(screen.getByText('Grupo Daniel: Águias, Leões e Gaviões · material enviado')).toBeInTheDocument()
     expect(screen.getByText('Grupo Ester: Falcões e Panteras · ainda sem material')).toBeInTheDocument()
     expect(screen.getByText(/A edição já está valendo sem ele./)).toBeInTheDocument()

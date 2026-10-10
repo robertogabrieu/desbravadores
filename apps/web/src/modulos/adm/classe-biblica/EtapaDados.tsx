@@ -87,6 +87,8 @@ function Formulario({ edicao, padroes }: { edicao: EdicaoCB | null; padroes: { d
     horario: edicao?.horario ?? '',
     local: edicao ? (edicao.local ?? '') : (padroes.local ?? ''),
   }
+  // Regra 14 (D14): terminada, a edição já tem encontros nessas datas; só nome, horário e local mudam.
+  const travada = edicao !== null && edicao.situacao !== 'NAO_TERMINADA'
   const [valores, setValores] = useState(inicial)
   const [salvos, setSalvos] = useState(inicial)
   const [erros, setErros] = useState<Erros>({})
@@ -117,9 +119,9 @@ function Formulario({ edicao, padroes }: { edicao: EdicaoCB | null; padroes: { d
     setErrosDoEnvio(encontrados)
     if (Object.values(encontrados).some(Boolean) || rascunho.semConexao) return
     setSeguindo(true)
+    const datas = travada ? {} : { inicio: valores.inicio, fim: valores.fim, diaSemana: valores.diaSemana }
     const salva = await rascunho.salvar({
-      nome: valores.nome.trim(), inicio: valores.inicio, fim: valores.fim, diaSemana: valores.diaSemana,
-      horario: valores.horario, local: valores.local.trim() || null, etapa: Math.max(2, edicao?.etapa ?? 1),
+      ...datas, nome: valores.nome.trim(), horario: valores.horario, local: valores.local.trim() || null, etapa: Math.max(2, edicao?.etapa ?? 1),
     })
     setSeguindo(false)
     if (salva) void navegar(`/adm/classe-biblica/${salva.id}/etapa/2`)
@@ -143,15 +145,17 @@ function Formulario({ edicao, padroes }: { edicao: EdicaoCB | null; padroes: { d
       />
       <div className="flex flex-col gap-2">
         <div className="grid gap-4 sm:grid-cols-2">
-          <CampoData rotulo="Início" value={valores.inicio} erro={erros.inicio} onChange={(e) => mudar('inicio', e.target.value)} onBlur={() => sair('inicio')} />
-          <CampoData rotulo="Fim" value={valores.fim} erro={erros.fim} onChange={(e) => mudar('fim', e.target.value)} onBlur={() => sair('fim')} />
+          <CampoData rotulo="Início" disabled={travada} value={valores.inicio} erro={erros.inicio} onChange={(e) => mudar('inicio', e.target.value)} onBlur={() => sair('inicio')} />
+          <CampoData rotulo="Fim" disabled={travada} value={valores.fim} erro={erros.fim} onChange={(e) => mudar('fim', e.target.value)} onBlur={() => sair('fim')} />
         </div>
         {quantos !== null && <p className="text-sm text-texto-2">{`${quantos} ${diasNoPlural(valores.diaSemana)} entre as duas datas`}</p>}
+        {travada && <p className="text-sm text-texto-2">Início, fim e dia da semana não mudam depois de a edição ser criada: os encontros já estão no calendário.</p>}
       </div>
       <Selecao
         rotulo="Dia da semana"
-        ajuda="Veio das configurações do clube. Mude se a Classe Bíblica for em outro dia."
+        ajuda={travada ? undefined : 'Veio das configurações do clube. Mude se a Classe Bíblica for em outro dia.'}
         value={String(valores.diaSemana)}
+        disabled={travada}
         onChange={(e) => {
           const atuais = { ...valores, diaSemana: Number(e.target.value) }
           setValores(atuais)

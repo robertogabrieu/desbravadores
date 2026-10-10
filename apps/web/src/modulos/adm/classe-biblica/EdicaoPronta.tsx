@@ -11,8 +11,8 @@ function oQueFoiFeito({ edicao, grupos }: PainelDaEdicao): string {
   const encontros = Math.max(0, ...grupos.map((g) => g.encontrosFeitos + g.encontrosPorVir))
   const noCalendario = encontros === 1 ? '1 encontro está no calendário do clube' : `${encontros} encontros estão no calendário do clube`
   const quando = `aos ${diasNoPlural(edicao.diaSemana)}${edicao.horario ? ` às ${horaCurta(edicao.horario)}` : ''}`
-  const onde = edicao.local ? `, na ${edicao.local}` : ''
-  return `${noCalendario}, ${quando}${onde}.`
+  const onde = edicao.local ? ` Local: ${edicao.local}.` : ''
+  return `${noCalendario}, ${quando}.${onde}`
 }
 
 function primeiroEncontro(painel: PainelDaEdicao): string | null {
