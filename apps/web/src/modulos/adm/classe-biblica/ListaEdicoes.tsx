@@ -59,7 +59,7 @@ function Terminada({ edicao }: { edicao: EdicaoResumoCB }) {
 
 function SemUnidades() {
   return (
-    <section aria-labelledby="cb-sem-unidades" className="flex flex-col items-center gap-3 px-6 py-12 text-center">
+    <section aria-labelledby="cb-sem-unidades" className="flex flex-col items-center gap-3 py-12 text-center">
       <h2 id="cb-sem-unidades" className="font-titulo text-lg font-bold text-texto">Antes, cadastre as unidades</h2>
       <p className="max-w-sm text-base text-texto-2">Cada grupo da Classe Bíblica é formado por unidades, e o clube ainda não tem nenhuma.</p>
       <Link to="/adm/unidades" className={estiloDoBotao()}>Cadastrar unidade</Link>

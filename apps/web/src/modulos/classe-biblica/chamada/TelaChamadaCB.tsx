@@ -332,7 +332,7 @@ function LinhaDbv({ nome, entrou, marca, aoTocarNome, aoTocarParticipacao }: Pro
       aria-label={nome}
       className={cn(
         'flex flex-col gap-2 rounded-cartao p-3',
-        presente ? 'border border-superficie bg-superficie' : 'border border-dashed border-borda bg-superficie-suave',
+        presente ? 'border border-superficie bg-superficie' : 'border border-dashed border-borda-controle bg-superficie-suave',
       )}
     >
       <button
@@ -345,7 +345,7 @@ function LinhaDbv({ nome, entrou, marca, aoTocarNome, aoTocarParticipacao }: Pro
           aria-hidden
           className={cn(
             'flex size-8 shrink-0 items-center justify-center rounded-lg',
-            presente ? 'bg-marca text-white' : 'border-2 border-borda bg-superficie',
+            presente ? 'bg-marca text-white' : 'border-2 border-borda-controle bg-superficie',
           )}
         >
           {presente && <Check className="size-5" />}
