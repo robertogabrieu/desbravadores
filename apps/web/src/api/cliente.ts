@@ -32,6 +32,8 @@ export interface OpcoesRequisicao {
   corpo?: unknown
   /** Vínculo em nome do qual o pedido sai (a fila): se a sessão renovada for de outro, o pedido não é repetido. */
   vinculoEsperado?: string
+  /** Cabeçalhos a mais (ex.: o segredo do aparelho nas rotas públicas do link de substituição). */
+  cabecalhos?: Record<string, string>
 }
 
 /** A sessão renovada no meio de um pedido é de outro vínculo (o papel foi trocado em outra aba). */
@@ -119,7 +121,7 @@ const ROTAS_SEM_TOKEN = [
 const ehRotaSemToken = (caminho: string): boolean => ROTAS_SEM_TOKEN.some((rota) => caminho.startsWith(rota))
 
 async function enviar(caminho: string, opcoes: OpcoesRequisicao): Promise<Response> {
-  const cabecalhos: Record<string, string> = { Accept: 'application/json' }
+  const cabecalhos: Record<string, string> = { ...opcoes.cabecalhos, Accept: 'application/json' }
   if (tokenAcesso) cabecalhos['Authorization'] = `Bearer ${tokenAcesso}`
   if (opcoes.corpo !== undefined) cabecalhos['Content-Type'] = 'application/json'
 
@@ -160,6 +162,8 @@ const erroForaDoContrato = (status: number): ErroDaApi =>
   new ErroDaApi(status, { codigo: 'ERRO_INTERNO', mensagem: MENSAGEM_GENERICA }, 'REDE')
 
 function tratarVinculoInativo(erro: ErroDaApi, avisarSessao: boolean): void {
+  // Na tela do link não há papel a escolher: /papel levaria o substituto ao app da conta.
+  if (modoSubstituicao) return
   if (erro.status !== 403 || erro.erro.codigo !== 'VINCULO_INATIVO') return
   ouvintes.navegar?.('/papel')
   if (avisarSessao) ouvintes.aoVinculoInativo?.()

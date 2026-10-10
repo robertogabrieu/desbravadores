@@ -1,4 +1,4 @@
-import { LinkPublico, permissoesEfetivas } from '@desbravadores/shared'
+import { CABECALHO_DO_SEGREDO_DO_APARELHO, LinkPublico, permissoesEfetivas } from '@desbravadores/shared'
 import type { Entrada, IdentidadeDaSubstituicao, Papel } from '@desbravadores/shared'
 import { useQueryClient } from '@tanstack/react-query'
 import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useState } from 'react'
@@ -60,7 +60,18 @@ const semEfeito = (): Promise<void> => Promise.resolve()
  * a credencial do link, cuida da própria conexão e roda a fila sob a trava `fila:<id da substituição>`.
  * Nunca grava a identidade no aparelho: o app do membro reabriria como substituto.
  */
-export function ProvedorSessaoSubstituto({ entrada, token, children }: { entrada: EntradaDoLink; token: string; children: ReactNode }) {
+export function ProvedorSessaoSubstituto({
+  entrada,
+  token,
+  segredo = null,
+  children,
+}: {
+  entrada: EntradaDoLink
+  token: string
+  /** Segredo deste aparelho: a sondagem o reapresenta, e o servidor responde como a este celular. */
+  segredo?: string | null
+  children: ReactNode
+}) {
   const clienteConsultas = useQueryClient()
   const [encerrada, definirEncerrada] = useState(false)
   const { modo } = useConexao()
@@ -108,7 +119,8 @@ export function ProvedorSessaoSubstituto({ entrada, token, children }: { entrada
       if (emTentativa) return
       emTentativa = true
       try {
-        const link = await requisitar(`/api/auth/substituicao/${encodeURIComponent(token)}`, LinkPublico)
+        const cabecalhos = segredo ? { [CABECALHO_DO_SEGREDO_DO_APARELHO]: segredo } : undefined
+        const link = await requisitar(`/api/auth/substituicao/${encodeURIComponent(token)}`, LinkPublico, { cabecalhos })
         registrarAgoraDoServidor(link.agora)
         definirConexao('ONLINE')
       } catch {
@@ -126,7 +138,7 @@ export function ProvedorSessaoSubstituto({ entrada, token, children }: { entrada
       window.removeEventListener('online', aoVoltarInternet)
       clearInterval(intervalo)
     }
-  }, [modo, token])
+  }, [modo, token, segredo])
 
   const eu = useMemo(() => montarEu(identidade), [identidade])
 
