@@ -1,4 +1,5 @@
 import { ErroApi as EsquemaErroApi, SessaoSaida } from '@desbravadores/shared'
+import { captureException } from '@sentry/react'
 import type { z } from 'zod'
 import type { ClasseFalha } from '../offline/tipos'
 
@@ -64,10 +65,17 @@ interface Ouvintes {
 const ROTA_DE_REFRESH = '/api/auth/refresh'
 const MENSAGEM_GENERICA = 'Não foi possível concluir agora. Tente de novo.'
 
+/** Modo do link de substituição: o token é a credencial do link e o cookie de refresh (da conta do membro) não é tocado. */
+interface ModoSubstituicao {
+  /** 401 SUBSTITUICAO_ENCERRADA: o link foi cancelado ou saiu do prazo. */
+  aoEncerrar: () => void
+}
+
 /** O access token vive só neste módulo: fora de localStorage, sessionStorage e cookie. */
 let tokenAcesso: string | null = null
 let ouvintes: Ouvintes = {}
 let renovacaoEmAndamento: Promise<Sessao> | null = null
+let modoSubstituicao: ModoSubstituicao | null = null
 
 export const lerTokenAcesso = (): string | null => tokenAcesso
 export const definirTokenAcesso = (token: string | null): void => {
@@ -82,6 +90,19 @@ export function reiniciarCliente(): void {
   tokenAcesso = null
   ouvintes = {}
   renovacaoEmAndamento = null
+  modoSubstituicao = null
+}
+
+/** Passa a falar com a credencial do link: nenhum 401 chama o refresh, e só SUBSTITUICAO_ENCERRADA encerra. */
+export function entrarNoModoSubstituicao(credencial: string, aoEncerrar: () => void): void {
+  tokenAcesso = credencial
+  modoSubstituicao = { aoEncerrar }
+}
+
+export function sairDoModoSubstituicao(): void {
+  if (!modoSubstituicao) return
+  modoSubstituicao = null
+  tokenAcesso = null
 }
 
 /** Rotas de auth que dispensam token: 401 nelas é resposta, não sessão vencida. sair-de-todos exige token e fica fora daqui. */
@@ -93,6 +114,7 @@ const ROTAS_SEM_TOKEN = [
   '/api/auth/convite/',
   '/api/auth/senha/',
   '/api/acesso/',
+  '/api/auth/substituicao/',
 ]
 const ehRotaSemToken = (caminho: string): boolean => ROTAS_SEM_TOKEN.some((rota) => caminho.startsWith(rota))
 
@@ -163,6 +185,8 @@ async function chamarRefresh(): Promise<Sessao> {
  * promessa só, e entre abas o pedido entra na fila do Web Lock `refresh` (o cookie gira a cada uso).
  */
 export function renovarSessao(): Promise<Sessao> {
+  // O cookie é da conta do membro: renovar daqui trocaria a sessão dele pela aba do substituto.
+  if (modoSubstituicao) return Promise.reject(new ErroDaApi(401, { codigo: 'NAO_AUTENTICADO', mensagem: MENSAGEM_GENERICA }))
   if (renovacaoEmAndamento) return renovacaoEmAndamento
   const atual: Promise<Sessao> = (async () => await navigator.locks.request('refresh', chamarRefresh))().finally(() => {
     if (renovacaoEmAndamento === atual) renovacaoEmAndamento = null
@@ -173,6 +197,7 @@ export function renovarSessao(): Promise<Sessao> {
 
 /** Recusa do refresh (401/403 com `ErroApi`, E7) acaba a sessão; vínculo inativo é outra coisa: leva a /papel. */
 export function avisarSeRefreshRecusado(erroRefresh: unknown): void {
+  if (modoSubstituicao) return
   if (!(erroRefresh instanceof ErroDaApi) || erroRefresh.classe !== 'RECUSA') return
   if (erroRefresh.status !== 401 && erroRefresh.status !== 403) return
   if (erroRefresh.erro.codigo === 'VINCULO_INATIVO') return
@@ -181,11 +206,27 @@ export function avisarSeRefreshRecusado(erroRefresh: unknown): void {
 
 /** A repetição autenticada também levou 401: o refresh valeu, mas a sessão não. */
 export function avisarSessaoPerdida(): void {
+  if (modoSubstituicao) return
   ouvintes.aoSessaoPerdida?.()
+}
+
+/** 401 com a credencial do link: só SUBSTITUICAO_ENCERRADA encerra; outro código é rota fora da lista, um defeito. */
+function tratar401DaSubstituicao(modo: ModoSubstituicao, erro: ErroDaApi, caminho: string): void {
+  if (erro.erro.codigo === 'SUBSTITUICAO_ENCERRADA') {
+    modo.aoEncerrar()
+    return
+  }
+  captureException(new Error(`401 ${erro.erro.codigo} com a credencial de substituição`), { level: 'error', extra: { caminho } })
 }
 
 async function executar(caminho: string, opcoes: OpcoesRequisicao): Promise<Response> {
   let resposta = await enviar(caminho, opcoes)
+
+  if (resposta.status === 401 && modoSubstituicao && !ehRotaSemToken(caminho)) {
+    const erro = await lerErro(resposta)
+    tratar401DaSubstituicao(modoSubstituicao, erro, caminho)
+    throw erro
+  }
 
   if (resposta.status === 401 && !ehRotaSemToken(caminho)) {
     const erroOriginal = await lerErro(resposta)

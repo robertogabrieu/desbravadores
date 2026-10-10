@@ -12,6 +12,8 @@ import { MAXIMO_DE_TENTATIVAS_SERVIDOR, tempos } from './tempos'
 import type { ContextoAposEnvio, FalhaEnvio, ItemFila, TipoFila } from './tipos'
 
 interface Execucao {
+  /** Web Lock sob o qual este motor roda. */
+  trava: string
   parada: { valor: boolean }
   comTrava: boolean
   terminou: Promise<void>
@@ -22,6 +24,9 @@ interface Execucao {
 
 let execucao: Execucao | null = null
 
+/** Trava da conta do aparelho; a de uma substituição é `fila:<id da substituição>`. */
+const TRAVA_DA_CONTA = 'fila'
+
 const MENSAGEM_ERRO_INTERNO = 'Não foi possível enviar. Avise o suporte.'
 const MENSAGEM_SERVIDOR = 'O servidor não respondeu. Tente de novo mais tarde.'
 
@@ -30,6 +35,23 @@ const MENSAGEM_SERVIDOR = 'O servidor não respondeu. Tente de novo mais tarde.'
  * O motor vive sob o Web Lock `fila`: uma aba por vez, as outras esperam a vez.
  */
 export function iniciarMotor(sessao: SessaoMotor): void {
+  ligarMotor(sessao, TRAVA_DA_CONTA)
+}
+
+/**
+ * Motor do link de substituição: a identidade é o id da substituição (usuário e vínculo) e a trava é
+ * `fila:<id>`, para a fila dele andar com o app do membro aberto noutra aba segurando `fila`.
+ */
+export function iniciarMotorDaSubstituicao(sessao: SessaoMotor): void {
+  ligarMotor(sessao, `${TRAVA_DA_CONTA}:${sessao.usuarioId}`)
+}
+
+function ligarMotor(sessao: SessaoMotor, trava: string): void {
+  // Ligado sob outra trava: só troca depois de soltar a de antes.
+  if (execucao && execucao.trava !== trava) {
+    void pararMotor().then(() => ligarMotor(sessao, trava))
+    return
+  }
   estadoOffline.sessao = sessao
   estadoOffline.pausadaPorSessao = false
   // A troca de papel só termina quando a sessão do motor já é a do vínculo novo.
@@ -52,6 +74,7 @@ export function iniciarMotor(sessao: SessaoMotor): void {
     liberarPronto = resolver
   })
   const nova: Execucao = {
+    trava,
     parada,
     comTrava: false,
     terminou: Promise.resolve(),
@@ -62,11 +85,15 @@ export function iniciarMotor(sessao: SessaoMotor): void {
       desligarAbas()
     },
   }
-  const pedido: Promise<unknown> = navigator.locks.request('fila', async () => {
+  // Cada trava só devolve à fila os ENVIANDO que são dela: o item que outra aba está enviando sob a
+  // outra trava não pode voltar a NA_FILA no meio do envio. Item de substituição tem usuário = vínculo.
+  const presoDestaTrava = (item: ItemFila): boolean =>
+    trava === TRAVA_DA_CONTA ? item.usuarioId !== item.vinculoId : item.usuarioId === sessao.usuarioId
+  const pedido: Promise<unknown> = navigator.locks.request(trava, async () => {
     if (parada.valor) return
     nova.comTrava = true
     try {
-      await banco.fila.filter((item) => item.estado === 'ENVIANDO').modify({ estado: 'NA_FILA' })
+      await banco.fila.filter((item) => item.estado === 'ENVIANDO' && presoDestaTrava(item)).modify({ estado: 'NA_FILA' })
       liberarPronto()
       await rodar(parada)
     } catch (erro) {
