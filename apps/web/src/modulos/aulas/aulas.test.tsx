@@ -13,6 +13,8 @@ import { criarAulaDoCronograma, criarCronograma, handlerCronograma } from '../..
 import { criarPacote, criarPacoteInstrutor, criarPacoteInstrutorAntigo, handlerPacote } from '../../testes/handlers/offline'
 import { criarEu, criarVinculo, uuid } from '../../testes/handlers/sessao'
 import { servidor } from '../../testes/servidor'
+import { ProvedorDeAlvoFixo, ProvedorDeDestinos } from '../../substituicao/contextos'
+import { ClassesSemConexao } from './RegistroSemConexao'
 import { TelaRegistroAula } from './TelaRegistroAula'
 
 const estado = vi.hoisted(() => ({
@@ -80,7 +82,7 @@ function guardar(classes = [classe()], pontos = { pontos: 5, ativo: true }, cata
   }
 }
 
-function montar(rota: string) {
+function montar(rota: string, envolver = (filho: ReactNode): ReactNode => filho) {
   const vinculo = criarVinculo('INSTRUTOR', 1, { classes: [CLASSE_COMPANHEIRO] })
   const eu = criarEu([vinculo], vinculo.id)
   const sessao = { situacao: 'autenticada', eu, vinculoAtivo: vinculo, papel: 'INSTRUTOR', vinculos: [vinculo], pode: (permissao: string) => permissao !== 'requisito.marcar' || estado.podeMarcar } as unknown as ContextoSessao
@@ -89,12 +91,13 @@ function montar(rota: string) {
       { path: '/aulas/nova', element: <TelaRegistroAula /> },
       { path: '/aulas/:id/editar', element: <TelaRegistroAula /> },
       { path: '/inicio', element: <p>Início</p> },
+      { path: '*', element: <p>Outro destino</p> },
     ],
     { initialEntries: [rota] },
   )
   const Envoltorio = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <ContextoDaSessao.Provider value={sessao}>{children}</ContextoDaSessao.Provider>
+      <ContextoDaSessao.Provider value={sessao}>{envolver(children)}</ContextoDaSessao.Provider>
     </QueryClientProvider>
   )
   render(<RouterProvider router={roteador} />, { wrapper: Envoltorio })
@@ -627,5 +630,77 @@ describe('Estados da tela', () => {
     estado.pacote = { pacote: null, carregando: false, baixadoEm: null }
     montar(NOVA)
     expect(await screen.findByText('Disponível quando houver internet')).toBeInTheDocument()
+  })
+})
+
+describe('Substituição: alvo fixo, destinos e R1', () => {
+  const OUTRA = { ...CLASSE_COMPANHEIRO, id: uuid(401), nome: 'Pesquisador' }
+  const comAlvo = (filho: ReactNode) => <ProvedorDeAlvoFixo alvo={{ classeId: CLASSE_COMPANHEIRO.id, data: HOJE }}>{filho}</ProvedorDeAlvoFixo>
+  const substituicao = { autor: 'Ana Souza', semConta: true, geradoPor: 'Rita Campos', lancou: true }
+
+  it('critério 13: com alvo fixo a data não pode ser trocada e a classe é a do alvo', async () => {
+    guardar([classe({ classe: OUTRA }), classe()])
+    montar(`/aulas/nova?classe=${OUTRA.id}&data=${DATA}`, comAlvo)
+    expect(await screen.findByText('Ana Clara')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Data')).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: 'Classe' })).not.toBeInTheDocument()
+    expect(screen.getByText(/^Companheiro · .* 15\/03$/)).toBeInTheDocument()
+  })
+
+  it('sem alvo fixo, os seletores de classe e de data continuam', async () => {
+    guardar([classe({ classe: OUTRA }), classe()])
+    montar(NOVA)
+    await screen.findByText('Ana Clara')
+    expect(screen.getByLabelText('Data')).toHaveValue(DATA)
+    expect(screen.getByRole('combobox', { name: 'Classe' })).toBeInTheDocument()
+  })
+
+  it('com o contexto de destinos trocado, salvar vai ao destino dado', async () => {
+    const roteador = montar(NOVA, (filho) => <ProvedorDeDestinos destinos={{ depoisDeSalvarRegistroDaClasse: '/substituto/t/salvo' }}>{filho}</ProvedorDeDestinos>)
+    await screen.findByText('Ana Clara')
+    await waitFor(() => expect(botaoSalvar()).toBeEnabled())
+    await userEvent.click(botaoSalvar())
+    await waitFor(() => expect(roteador.state.location.pathname).toBe('/substituto/t/salvo'))
+  })
+
+  it('o estado vazio volta ao destino dado', async () => {
+    guardar([])
+    montar(NOVA, (filho) => <ProvedorDeDestinos destinos={{ voltarDoRegistroDaClasse: { caminho: '/substituto/t', rotulo: 'Voltar ao link' } }}>{filho}</ProvedorDeDestinos>)
+    expect(await screen.findByRole('link', { name: 'Voltar ao link' })).toHaveAttribute('href', '/substituto/t')
+  })
+
+  it('sem conexão, "Registrar classe" abre o registro pelo caminho dado', async () => {
+    const roteador = createMemoryRouter([{ path: '/', element: <ProvedorDeDestinos destinos={{ registroDaClasse: () => '/substituto/t/classe' }}><ClassesSemConexao /></ProvedorDeDestinos> }])
+    render(<RouterProvider router={roteador} />)
+    expect(screen.getByRole('link', { name: 'Registrar classe' })).toHaveAttribute('href', '/substituto/t/classe')
+  })
+
+  it('R1: registro lançado pelo substituto sem conta, com o Adm que gerou o link', async () => {
+    servidor.use(handlerAula(criarDetalheAula({ substituicao })))
+    montar(`/aulas/${uuid(700)}/editar`)
+    await screen.findByText('Ana Clara')
+    const aviso = screen.getByText(/^Substituição\./).closest('p')
+    expect(aviso).toHaveTextContent('Substituição. Registro da classe lançado por Ana Souza (sem conta no app), pelo link que Rita Campos (Adm) gerou.')
+  })
+
+  it('R1: membro que só alterou o registro, sem o parêntese', async () => {
+    servidor.use(handlerAula(criarDetalheAula({ substituicao: { ...substituicao, autor: 'Marcos Lima', semConta: false, lancou: false } })))
+    montar(`/aulas/${uuid(700)}/editar`)
+    await screen.findByText('Ana Clara')
+    expect(screen.getByText(/^Substituição\./).closest('p')).toHaveTextContent('Substituição. Registro da classe alterado por Marcos Lima, pelo link que Rita Campos (Adm) gerou.')
+  })
+
+  it('R1 também no registro da data que já existe no servidor', async () => {
+    servidor.use(handlerAulas([criarResumoAula({ id: uuid(700), data: DATA })]), handlerAula(criarDetalheAula({ substituicao })))
+    montar(NOVA)
+    await screen.findByText('Ana Clara')
+    expect(await screen.findByText(/^Substituição\./)).toBeInTheDocument()
+  })
+
+  it('sem substituição não há R1', async () => {
+    servidor.use(handlerAula(criarDetalheAula()))
+    montar(`/aulas/${uuid(700)}/editar`)
+    await screen.findByText('Ana Clara')
+    expect(screen.queryByText(/^Substituição\./)).not.toBeInTheDocument()
   })
 })
