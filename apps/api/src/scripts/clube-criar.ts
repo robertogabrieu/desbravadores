@@ -1,4 +1,5 @@
 import { parseArgs } from 'node:util'
+import { CATEGORIAS_INICIAIS } from '../biblioteca/constantes'
 import { PrismaSistema } from '../comum/prisma/prisma-sistema'
 import { emailAdicionado, emailConvite } from '../email/modelos'
 import type { MensagemDeEmail, ServicoEmail } from '../email/servico-email'
@@ -36,7 +37,7 @@ const CRITERIOS_PADRAO = [
 
 const FORMATO_SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/
 
-/** Clube, configuracao, uma ClasseClube por classe oficial ativa e os 8 criterios padrao. */
+/** Clube, configuracao, uma ClasseClube por classe oficial ativa, os 8 criterios padrao e as 3 categorias da biblioteca. */
 export async function criarClubeBase(
   tx: Prisma.TransactionClient,
   dados: { nome: string; slug: string },
@@ -52,6 +53,9 @@ export async function criarClubeBase(
       ordem: indice + 1,
       padrao: true,
     })),
+  })
+  await tx.categoriaBiblioteca.createMany({
+    data: CATEGORIAS_INICIAIS.map((nome, indice) => ({ clubeId: clube.id, nome, ordem: indice + 1 })),
   })
   return clube
 }

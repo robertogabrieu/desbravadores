@@ -26,7 +26,7 @@ const ARMAZENAMENTO_TEMPORARIO = diskStorage({
 })
 
 @Controller()
-@UseFilters(FiltroArquivoGrande)
+@UseFilters(new FiltroArquivoGrande())
 export class MateriaisController {
   constructor(private readonly materiais: MateriaisService) {}
 

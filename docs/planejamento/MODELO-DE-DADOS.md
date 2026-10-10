@@ -296,6 +296,15 @@ Foto(id, albumId, arquivoId, legenda?, enviadaPor, clienteUuid UNIQUE)
 Material(id, classeId, secaoId?, titulo, tipo: PDF|APRESENTACAO|VIDEO|LINK,
   arquivoId?, url?, enviadoPor)
 Arquivo(id, caminho, mime, bytes, larguraPx?, alturaPx?, miniaturaCaminho?)
+  # dono de um Arquivo: Foto, Material ou ItemBiblioteca (o PDF ou a capa)
+
+CategoriaBiblioteca(id, nome, ordem, removidaEm?, removidaPorId?)
+  # prateleira da biblioteca do clube; nome único só entre as ativas (conferido no serviço, não por índice)
+ItemBiblioteca(id, categoriaId, nome, descricao?, ordem, arquivoId UNIQUE, capaId? UNIQUE,
+  enviadoPorId, removidoEm?, removidoPorId?)
+  # arquivoId é o PDF; capaId, a imagem (outra linha de Arquivo, com miniatura). ordem vale dentro da categoria
+  # remoção lógica: a linha fica, PDF e capa saem do disco. Trocar ou tirar a capa apaga a linha antiga de Arquivo
+  # cota por clube, calculada na hora sobre Arquivo: materiais 1 GB; biblioteca 2 GB (PDFs e capas dos itens ativos)
 
 Observacao(id, autorId, classeId, alvo: AULA|DBV, registroAulaId?, dbvId?,
   titulo?, texto, editadaEm?, removidaEm?)
@@ -329,4 +338,4 @@ Atividade(id, autorId, tipo, descricao, link, criadaEm)   # feed da visão geral
 | `Observacao` | + `classeId`, `titulo`, remoção | Instrutor com duas classes; editar/apagar |
 | `CriterioRanking.lancadoPor` | + `gatilho`, `padrao` | O sistema precisa saber quando lançar cada critério |
 | `LancamentoPontos` | + `origemTipo`, `estornadoEm`, unicidade | Estorno e regravação da chamada sem duplicar |
-| — | `ConfiguracaoClube`, `Notificacao`, `Atividade`, `Convite`, `RefreshToken`, `Arquivo`, `AreaEspecialidade`, `MembroUnidade`, `MatriculaClasse` | Exigidos pelas telas ou pelas decisões |
+| — | `ConfiguracaoClube`, `Notificacao`, `Atividade`, `Convite`, `RefreshToken`, `Arquivo`, `AreaEspecialidade`, `MembroUnidade`, `MatriculaClasse`, `CategoriaBiblioteca`, `ItemBiblioteca` | Exigidos pelas telas ou pelas decisões |

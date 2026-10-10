@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Biblioteca — modelo</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;font-family:'Figtree',system-ui,sans-serif;color:#1B221F}
+*{box-sizing:border-box}
+.t{font-family:'Bricolage Grotesque',system-ui,sans-serif}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 20px;border-radius:12px;font-size:16px;font-weight:600;text-decoration:none;border:0;font-family:inherit;cursor:pointer;white-space:nowrap}
+.pri{background:#1F4D3A;color:#fff}
+.sec{background:#fff;color:#1B221F;border:1px solid #8A8375}
+.per{background:#B42318;color:#fff}
+.txt{background:transparent;color:#1B221F;padding:0 12px}
+.out{background:#fff;color:#1F4D3A;border:1px solid #1F4D3A}
+.cartao{background:#fff;border:1px solid #8A8375;border-radius:16px}
+.lbl{font-size:14px;font-weight:600;color:#1B221F}
+.in{display:flex;align-items:center;min-height:44px;border:1px solid #8A8375;border-radius:9px;background:#fff;padding:0 14px;font-size:16px;font-family:inherit;color:#1B221F;width:100%}
+.ajuda{font-size:14px;color:#5B645F;margin:0}
+.campo{display:flex;flex-direction:column;gap:6px}
+.nav{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:12px;color:#CFE0D6;font-weight:600;font-size:16px}
+.nav.on{background:#163828;color:#fff}
+.bnav{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:600;color:#5B645F}
+.bnav.on{color:#1F4D3A}
+.secao{display:flex;flex-direction:column;gap:12px}
+.cab-secao{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.h2{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:18px;font-weight:700;margin:0}
+.conta{font-size:14px;color:#5B645F}
+.capa{container-type:inline-size;position:relative;aspect-ratio:3/4;border-radius:9px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:10px;color:#fff}
+.nome{font-size:16px;font-weight:700;line-height:1.3;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.desc{font-size:14px;color:#5B645F;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.menu{position:absolute;z-index:5;background:#fff;border:1px solid #D9D3C5;border-radius:12px;box-shadow:0 8px 24px rgba(27,34,31,.18);padding:6px;display:flex;flex-direction:column;min-width:200px}
+.menu span{display:flex;align-items:center;min-height:44px;padding:0 12px;border-radius:9px;font-size:16px;font-weight:600}
+.fundo{position:absolute;inset:0;background:rgba(27,34,31,.4);z-index:10}
+.dialogo{position:absolute;z-index:11;background:#fff;border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:16px;box-shadow:0 20px 40px rgba(27,34,31,.25)}
+.dialogo h2{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:20px;font-weight:700;margin:0}
+.arquivo{display:flex;align-items:center;gap:12px;min-height:44px;border:1px solid #8A8375;border-radius:9px;background:#fff;padding:0 6px;font-size:16px}
+.arquivo b{display:inline-flex;align-items:center;min-height:32px;padding:0 10px;border-radius:6px;background:#E8E3D7;font-size:14px;font-weight:600}
+.etiqueta{display:inline-block;border-radius:999px;padding:4px 12px;font-size:13px;font-weight:700;letter-spacing:.04em}
+</style>
+</helmet>
+<div style="width:1280px;min-height:1100px;background:#F4F1EA;padding:40px 48px;display:flex;flex-direction:column;gap:20px">
+<div><h1 class="t" style="margin:0;font-size:28px;font-weight:800">Biblioteca do clube — modelo das telas</h1>
+<p style="margin:6px 0 0;font-size:16px;color:#5B645F;max-width:60rem">Alvo aprovado da SPEC (<code>../SPEC.md</code>): se as duas divergirem, vale o modelo. Daqui se copia estrutura, ordem e texto, nunca CSS — as classes saem dos tokens e de <code>ui/</code> (Cartao, Botao, Confirmacao, Campo, Selecao, EstadoVazio, MenuCabecalho, BarraProgresso). Capas, nomes e números são fictícios.</p></div>
+<div style="display:flex;gap:12px;font-size:14px;color:#5B645F;align-items:center"><span class="etiqueta" style="align-self:flex-start;background:#1F4D3A;color:#fff">NOVA</span> tela que não existe hoje <span class="etiqueta" style="align-self:flex-start;background:#9A3412;color:#fff">ALTERADA</span> tela existente que muda</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><a href="Biblioteca-Adm.dc.html" class="cartao" style="display:flex;gap:16px;align-items:flex-start;padding:16px;text-decoration:none;color:#1B221F"><span class="etiqueta" style="align-self:flex-start;background:#1F4D3A;color:#fff">NOVA</span><span style="display:flex;flex-direction:column;gap:2px"><b style="font-size:16px">Biblioteca-Adm</b><span style="font-size:14px;color:#5B645F">Estante do Adm (computador): menu lateral com "Biblioteca", botões de adicionar e de nova categoria, "Opções" em cada categoria e item. O menu aberto no 1º item não tem "Mover para cima".</span></span></a><a href="Biblioteca-Celular.dc.html" class="cartao" style="display:flex;gap:16px;align-items:flex-start;padding:16px;text-decoration:none;color:#1B221F"><span class="etiqueta" style="align-self:flex-start;background:#1F4D3A;color:#fff">NOVA</span><span style="display:flex;flex-direction:column;gap:2px"><b style="font-size:16px">Biblioteca-Celular</b><span style="font-size:14px;color:#5B645F">Estante de conselheiro e instrutor (celular): só leitura, 2 colunas, "Ler" e "Baixar".</span></span></a><a href="Adicionar.dc.html" class="cartao" style="display:flex;gap:16px;align-items:flex-start;padding:16px;text-decoration:none;color:#1B221F"><span class="etiqueta" style="align-self:flex-start;background:#1F4D3A;color:#fff">NOVA</span><span style="display:flex;flex-direction:column;gap:2px"><b style="font-size:16px">Adicionar</b><span style="font-size:14px;color:#5B645F">Diálogo "Adicionar à biblioteca" preenchido. O nome vem do arquivo e o Adm edita.</span></span></a><a href="Adicionar-Enviando.dc.html" class="cartao" style="display:flex;gap:16px;align-items:flex-start;padding:16px;text-decoration:none;color:#1B221F"><span class="etiqueta" style="align-self:flex-start;background:#1F4D3A;color:#fff">NOVA</span><span style="display:flex;flex-direction:column;gap:2px"><b style="font-size:16px">Adicionar-Enviando</b><span style="font-size:14px;color:#5B645F">O mesmo diálogo durante o envio: campos travados e barra de andamento.</span></span></a><a href="Adicionar-CapaFalhou.dc.html" class="cartao" style="display:flex;gap:16px;align-items:flex-start;padding:16px;text-decoration:none;color:#1B221F"><span class="etiqueta" style="align-self:flex-start;background:#1F4D3A;color:#fff">NOVA</span><span style="display:flex;flex-direction:column;gap:2px"><b style="font-size:16px">Adicionar-CapaFalhou</b><span style="font-size:14px;color:#5B645F">O PDF entrou e a capa foi recusada: o diálogo diz o que aconteceu e oferece tentar outra imagem.</span></span></a><a href="Editar-Item.dc.html" class="cartao" style="display:flex;gap:16px;align-items:flex-start;padding:16px;text-decoration:none;color:#1B221F"><span class="etiqueta" style="align-self:flex-start;background:#1F4D3A;color:#fff">NOVA</span><span style="display:flex;flex-direction:column;gap:2px"><b style="font-size:16px">Editar-Item</b><span style="font-size:14px;color:#5B645F">Editar item: nome, descrição, categoria, trocar ou tirar a capa.</span></span></a><a href="Remover-Item.dc.html" class="cartao" style="display:flex;gap:16px;align-items:flex-start;padding:16px;text-decoration:none;color:#1B221F"><span class="etiqueta" style="align-self:flex-start;background:#1F4D3A;color:#fff">NOVA</span><span style="display:flex;flex-direction:column;gap:2px"><b style="font-size:16px">Remover-Item</b><span style="font-size:14px;color:#5B645F">Confirmação de remoção, botão vermelho.</span></span></a><a href="Nova-Categoria.dc.html" class="cartao" style="display:flex;gap:16px;align-items:flex-start;padding:16px;text-decoration:none;color:#1B221F"><span class="etiqueta" style="align-self:flex-start;background:#1F4D3A;color:#fff">NOVA</span><span style="display:flex;flex-direction:column;gap:2px"><b style="font-size:16px">Nova-Categoria</b><span style="font-size:14px;color:#5B645F">Nova categoria (renomear usa o mesmo diálogo, com "Salvar").</span></span></a><a href="Vazio-Adm.dc.html" class="cartao" style="display:flex;gap:16px;align-items:flex-start;padding:16px;text-decoration:none;color:#1B221F"><span class="etiqueta" style="align-self:flex-start;background:#1F4D3A;color:#fff">NOVA</span><span style="display:flex;flex-direction:column;gap:2px"><b style="font-size:16px">Vazio-Adm</b><span style="font-size:14px;color:#5B645F">Biblioteca sem nenhum item, vista pelo Adm.</span></span></a><a href="Sem-Categoria-Adm.dc.html" class="cartao" style="display:flex;gap:16px;align-items:flex-start;padding:16px;text-decoration:none;color:#1B221F"><span class="etiqueta" style="align-self:flex-start;background:#1F4D3A;color:#fff">NOVA</span><span style="display:flex;flex-direction:column;gap:2px"><b style="font-size:16px">Sem-Categoria-Adm</b><span style="font-size:14px;color:#5B645F">Clube sem nenhuma categoria: o único botão é "Nova categoria".</span></span></a><a href="Vazio-Celular.dc.html" class="cartao" style="display:flex;gap:16px;align-items:flex-start;padding:16px;text-decoration:none;color:#1B221F"><span class="etiqueta" style="align-self:flex-start;background:#1F4D3A;color:#fff">NOVA</span><span style="display:flex;flex-direction:column;gap:2px"><b style="font-size:16px">Vazio-Celular</b><span style="font-size:14px;color:#5B645F">Biblioteca vazia, vista por conselheiro e instrutor.</span></span></a><a href="Inicio-Conselheiro.dc.html" class="cartao" style="display:flex;gap:16px;align-items:flex-start;padding:16px;text-decoration:none;color:#1B221F"><span class="etiqueta" style="align-self:flex-start;background:#9A3412;color:#fff">ALTERADA</span><span style="display:flex;flex-direction:column;gap:2px"><b style="font-size:16px">Inicio-Conselheiro</b><span style="font-size:14px;color:#5B645F">Início do conselheiro, hoje e depois: atalho "Biblioteca".</span></span></a><a href="Inicio-Instrutor-SemClasse.dc.html" class="cartao" style="display:flex;gap:16px;align-items:flex-start;padding:16px;text-decoration:none;color:#1B221F"><span class="etiqueta" style="align-self:flex-start;background:#9A3412;color:#fff">ALTERADA</span><span style="display:flex;flex-direction:column;gap:2px"><b style="font-size:16px">Inicio-Instrutor-SemClasse</b><span style="font-size:14px;color:#5B645F">Início do instrutor sem classe, hoje e depois: aparece só o atalho "Biblioteca". Com classe, ele vira o 7º atalho.</span></span></a></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1100}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

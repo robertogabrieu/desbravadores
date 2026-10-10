@@ -21,7 +21,7 @@ import {
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { ArquivosController } from './arquivos.controller'
 import { ARMAZENAMENTO, ArmazenamentoDisco, type Armazenamento } from './armazenamento'
-import { ServicoArquivos, caminhoDoMaterial } from './servico-arquivos'
+import { ServicoArquivos, caminhoDaBiblioteca, caminhoDoMaterial } from './servico-arquivos'
 
 // Embrulha rename/readFile para espiar as chamadas; sem `mockImplementation`, valem as reais.
 jest.mock('node:fs/promises', () => {
@@ -305,5 +305,134 @@ describe('GET /api/arquivos/:id (documentos de material)', () => {
     expect(resposta.headers['x-content-type-options']).toBe('nosniff')
     expect(resposta.headers['content-disposition']).toBeUndefined()
     expect(resposta.headers['content-security-policy']).toBe('sandbox')
+  })
+})
+
+describe('GET /api/arquivos/:id (biblioteca)', () => {
+  let app: INestApplication
+  let armazenamento: Armazenamento
+  let servico: ServicoArquivos
+
+  beforeAll(async () => {
+    app = await criarAppDeTeste()
+    armazenamento = app.get<Armazenamento>(ARMAZENAMENTO)
+    servico = app.get(ServicoArquivos)
+  })
+  afterAll(async () => {
+    await app.close()
+    await desconectarPrismaDeTeste()
+  })
+
+  const PDF = Buffer.from('%PDF-1.4 fake biblioteca')
+  const pedir = (url: string): request.Test => request(app.getHttpServer() as Server).get(url).buffer(true)
+
+  /** Item com PDF e capa gravados no disco; `removido` marca o item inteiro como removido. */
+  async function itemComCapa(dados: { nome: string; removido?: boolean }) {
+    const clube = await criarClube()
+    const enviadoPorId = (await criarUsuario()).id
+    const categoria = await prismaDeTeste().categoriaBiblioteca.create({ data: { clubeId: clube.id, nome: 'Livros de teste', ordem: 10 } })
+    const arquivoId = randomUUID()
+    const capaId = randomUUID()
+    const arquivo = await criarArquivo({
+      clubeId: clube.id, criadoPorId: enviadoPorId, mime: 'application/pdf', miniaturaCaminho: null,
+      caminho: caminhoDaBiblioteca(clube.id, arquivoId, 'pdf'),
+    })
+    const capa = await criarArquivo({
+      clubeId: clube.id, criadoPorId: enviadoPorId, mime: 'image/jpeg',
+      caminho: caminhoDaBiblioteca(clube.id, capaId, 'jpg'),
+      miniaturaCaminho: caminhoDaBiblioteca(clube.id, capaId, 'jpg', true),
+    })
+    await armazenamento.gravar(arquivo.caminho, PDF)
+    await armazenamento.gravar(capa.caminho, JPEG)
+    await armazenamento.gravar(capa.miniaturaCaminho ?? '', MINIATURA)
+    await prismaDeTeste().itemBiblioteca.create({
+      data: {
+        clubeId: clube.id, categoriaId: categoria.id, nome: dados.nome, ordem: 1, arquivoId: arquivo.id, capaId: capa.id,
+        enviadoPorId, removidoEm: dados.removido ? new Date() : null, removidoPorId: dados.removido ? enviadoPorId : null,
+      },
+    })
+    return { clube, arquivo, capa }
+  }
+
+  it('baixar: PDF do item sai attachment com o nome do item, sem CSP sandbox', async () => {
+    const { clube, arquivo } = await itemComCapa({ nome: 'Manual de Liderança' })
+    const resposta = await pedir(servico.urlAssinada(clube.id, arquivo.id, 'baixar'))
+    expect(resposta.status).toBe(200)
+    expect(resposta.headers['content-type']).toContain('application/pdf')
+    expect(resposta.headers['content-disposition']).toBe(
+      `attachment; filename="Manual de Lideranca.pdf"; filename*=UTF-8''Manual%20de%20Lideran%C3%A7a.pdf`,
+    )
+    expect(resposta.headers['x-content-type-options']).toBe('nosniff')
+    expect(resposta.headers['content-security-policy']).toBeUndefined()
+    expect(resposta.body).toEqual(PDF)
+  })
+
+  it('original: o mesmo PDF abre inline, com o nome do item', async () => {
+    const { clube, arquivo } = await itemComCapa({ nome: 'Manual de Liderança' })
+    const resposta = await pedir(servico.urlAssinada(clube.id, arquivo.id, 'original'))
+    expect(resposta.status).toBe(200)
+    expect(resposta.headers['content-disposition']).toBe(
+      `inline; filename="Manual de Lideranca.pdf"; filename*=UTF-8''Manual%20de%20Lideran%C3%A7a.pdf`,
+    )
+    expect(resposta.body).toEqual(PDF)
+  })
+
+  it('a assinatura de original nao serve para baixar (e vice-versa): 403', async () => {
+    const { clube, arquivo } = await itemComCapa({ nome: 'Guia' })
+    const leitura = servico.urlAssinada(clube.id, arquivo.id, 'original')
+    expect((await pedir(leitura.replace('v=original', 'v=baixar'))).status).toBe(403)
+    const download = servico.urlAssinada(clube.id, arquivo.id, 'baixar')
+    expect((await pedir(download.replace('v=baixar', 'v=original'))).status).toBe(403)
+  })
+
+  it('capa ativa: original e miniatura servem image/jpeg, sem disposicao e sob sandbox', async () => {
+    const { clube, capa } = await itemComCapa({ nome: 'Guia' })
+    const original = await pedir(servico.urlAssinada(clube.id, capa.id, 'original'))
+    expect(original.status).toBe(200)
+    expect(original.headers['content-type']).toContain('image/jpeg')
+    expect(original.headers['content-disposition']).toBeUndefined()
+    expect(original.headers['content-security-policy']).toBe('sandbox')
+    expect(original.body).toEqual(JPEG)
+    const miniatura = await pedir(servico.urlAssinada(clube.id, capa.id, 'miniatura'))
+    expect(miniatura.status).toBe(200)
+    expect(miniatura.headers['content-type']).toContain('image/jpeg')
+    expect(miniatura.headers['content-disposition']).toBeUndefined()
+    expect(miniatura.body).toEqual(MINIATURA)
+  })
+
+  it('baixar sai attachment qualquer que seja o mime, ate a imagem', async () => {
+    const { clube, capa } = await itemComCapa({ nome: 'Guia' })
+    const resposta = await pedir(servico.urlAssinada(clube.id, capa.id, 'baixar'))
+    expect(resposta.status).toBe(200)
+    expect(resposta.headers['content-type']).toContain('image/jpeg')
+    expect(resposta.headers['content-disposition']).toMatch(/^attachment; filename="arquivo\.jpg"/)
+    expect(resposta.body).toEqual(JPEG)
+  })
+
+  it('item removido: 404 no PDF (original e baixar) e na capa (original, baixar e miniatura)', async () => {
+    const { clube, arquivo, capa } = await itemComCapa({ nome: 'Velho', removido: true })
+    for (const variante of ['original', 'baixar'] as const) {
+      expect((await pedir(servico.urlAssinada(clube.id, arquivo.id, variante))).status).toBe(404)
+      expect((await pedir(servico.urlAssinada(clube.id, capa.id, variante))).status).toBe(404)
+    }
+    expect((await pedir(servico.urlAssinada(clube.id, capa.id, 'miniatura'))).status).toBe(404)
+  })
+
+  it('material: baixar sai attachment com o titulo do material', async () => {
+    const clube = await criarClube()
+    const enviadoPorId = (await criarUsuario()).id
+    const classe = await classeOficial('Amigo')
+    const arquivoId = randomUUID()
+    const caminho = caminhoDoMaterial(clube.id, arquivoId, 'pdf')
+    const arquivo = await prismaDeTeste().arquivo.create({
+      data: { id: arquivoId, clubeId: clube.id, caminho, miniaturaCaminho: null, bytes: 10, criadoPorId: enviadoPorId, mime: 'application/pdf' },
+    })
+    await armazenamento.gravar(caminho, PDF)
+    await prismaDeTeste().material.create({
+      data: { clubeId: clube.id, classeId: classe.id, titulo: 'Guia', tipo: 'PDF', arquivoId: arquivo.id, enviadoPorId },
+    })
+    const resposta = await pedir(servico.urlAssinada(clube.id, arquivo.id, 'baixar'))
+    expect(resposta.status).toBe(200)
+    expect(resposta.headers['content-disposition']).toBe(`attachment; filename="Guia.pdf"; filename*=UTF-8''Guia.pdf`)
   })
 })

@@ -78,11 +78,24 @@ Os arquivos ficam em `telas/`. As telas de celular têm 390×844; as de desktop,
 | `Adm-Ranking.dc.html` | Critérios de pontuação (ligar/desligar, pontos, quem lança) + simulação |
 | `Adm-Relatorios.dc.html` | Frequência mensal, especialidades mais concluídas, tabela por classe, exportar PDF/Excel |
 
+### Biblioteca (desenhada depois, fora das 31)
+Os arquivos não ficam em `telas/`, e sim em `docs/fases/biblioteca/modelo/` (índice: `Main.dc.html`). Na implementação, a mesma tela atende o Adm (`/adm/biblioteca`, dentro do menu lateral) e o conselheiro e o instrutor (`/biblioteca`, no layout do celular).
+
+| Arquivo | Tela |
+|---|---|
+| `Biblioteca-Adm.dc.html` | Biblioteca no desktop: uma seção por categoria, cartões com capa, nome, descrição curta, "Ler" e "Baixar", e os menus de alteração do Adm |
+| `Biblioteca-Celular.dc.html` | A mesma estante em leitura, no celular |
+| `Adicionar.dc.html`, `Adicionar-Enviando.dc.html`, `Adicionar-CapaFalhou.dc.html` | Diálogo "Adicionar à biblioteca"; com a barra de andamento do envio; e a capa recusada depois de o item ser criado |
+| `Editar-Item.dc.html`, `Remover-Item.dc.html`, `Nova-Categoria.dc.html` | Diálogos de editar item, remover item e criar categoria |
+| `Vazio-Adm.dc.html`, `Vazio-Celular.dc.html`, `Sem-Categoria-Adm.dc.html` | Estados vazios: biblioteca sem item (Adm e leitor) e clube sem nenhuma categoria |
+| `Inicio-Conselheiro.dc.html`, `Inicio-Instrutor-SemClasse.dc.html` | O atalho "Biblioteca" no Início; o instrutor sem classe vê só ele |
+
 ## 4. Navegação
 
 - **Conselheiro**, barra inferior: Início · Unidade · Reuniões · Ranking. Fluxos extras: Histórico → Detalhe da reunião → Editar; Galeria → Enviar fotos; Início (selo de pendências) → Aguardando envio
 - **Instrutor**, barra inferior: Início · Classes · Cronograma · Ranking. Fluxo extra: Cronograma → Montar cronograma (se liberado)
-- **Adm**, menu lateral: Visão geral · Desbravadores · Usuários · Unidades · Classes e especialidades · Calendário do clube · Cronogramas · Ranking · Relatórios
+- **Conselheiro e instrutor** chegam à Biblioteca pelo atalho do Início; a barra inferior não muda
+- **Adm**, menu lateral: Visão geral · Desbravadores · Usuários · Unidades · Classes e especialidades · Calendário do clube · Cronogramas · Biblioteca · Ranking · Relatórios
 - Os `<a href="X.dc.html">` dentro das telas indicam o destino de cada botão ou link. Trate cada arquivo como uma rota. Sugestão de rotas: `/login`, `/inicio`, `/ranking`, `/dbv/:id`, `/unidade`, `/reunioes/nova`, `/reunioes`, `/reunioes/:id`, `/galeria/enviar`, `/pendencias`, `/cronograma/montar`, `/galeria`, `/classes`, `/cronograma`, `/aulas/:id/registro`, `/materiais`, `/observacoes`, `/classes/:id/progresso`, `/especialidades`, `/adm/...`.
 
 ## 5. Regras de negócio que as telas assumem
