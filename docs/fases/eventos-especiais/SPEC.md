@@ -1,11 +1,11 @@
-# Eventos festivos — SPEC
+# Eventos especiais — SPEC
 
 > **RASCUNHO — layout não aprovado.** Esta é a spec parcial da fase 1: diagnóstico, mecânicas, desenho e
 > rascunho técnico, já corrigida pela revisão adversarial contra o código. Critérios de pronto, "Como saber
 > se funcionou" e "Fora de escopo" só se escrevem depois que o usuário aprovar o desenho em `modelo/`.
 > Tudo marcado **a revisar** é proposta, não decisão.
 
-O Adm cadastra **eventos festivos** no calendário do clube (cultos, aniversário, jantar de Natal…), diz
+O Adm cadastra **eventos especiais** no calendário do clube (cultos, aniversário, jantar de Natal…), diz
 em cada um quantos pontos vale ir e se pede **uniforme de gala**, e depois do evento marca numa lista
 quem foi e quem foi de gala. Os pontos entram no ranking do mês. Conselheiro e instrutor veem o
 calendário (só leitura) e um aviso do próximo evento na tela inicial, com o sinal de gala.
@@ -26,10 +26,17 @@ uma sinalização se é necessário o uso de uniforme de gala."*
 4. **Uniforme.** O calendário mostra "Uniforme de gala" quando o evento exige. Na lista, o Adm marca quem
    foi com o uniforme pedido, e só esses ganham os pontos de uniforme do evento. (O usuário respondeu
    imaginando o conselheiro marcando; com a decisão 2, quem marca é o Adm, na mesma lista.)
+5. **Nome do tipo: "Evento especial".** O primeiro nome, "Evento festivo" (da palavra do pedido), não combinou
+   com o contexto religioso do clube. Alternativas apresentadas: "Programação especial" (recomendada: linguagem de
+   igreja e sem confusão com "Evento do clube"), "Data comemorativa" (não cobre culto de investidura nem
+   camporee) e "Evento com pontos" (descreve o mecanismo, não o evento). **Risco aceito:** "Evento especial" fica
+   parecido com "Evento do clube", que já existe e não tem pontos nem lista; o apoio escrito sob o seletor de tipo
+   ("vale pontos no ranking, tem lista de quem foi e pode pedir uniforme de gala") é o que separa os dois. O
+   nome vira valor no banco (`EVENTO_ESPECIAL`) e não sai mais depois de lançado.
 
 ## Problema
 
-O clube tem eventos festivos que valem pontos no ranking, mas o app não sabe que eles existem:
+O clube tem eventos especiais que valem pontos no ranking, mas o app não sabe que eles existem:
 
 - **O Adm não tem como dar os pontos.** Não há rota nem tela para lançar pontos de evento; o critério de
   fábrica "Participação em evento" (20 pontos, lançado pelo Adm) nunca é usado por nada.
@@ -42,44 +49,44 @@ O clube tem eventos festivos que valem pontos no ranking, mas o app não sabe qu
 
 O que muda para quem usa:
 
-- **Adm:** um tipo novo no calendário, "Evento festivo", com três perguntas a mais (pontos por ir, pede
+- **Adm:** um tipo novo no calendário, "Evento especial", com três perguntas a mais (pontos por ir, pede
   gala?, pontos por ir de gala); depois do dia, uma lista "Quem foi" com duas marcas por pessoa (foi / de
   gala), que se salva sozinha; ao concluir, os pontos entram no ranking do mês do evento. Corrigir a lista
   depois de concluída é possível e pede confirmação que diz quantos pontos saem.
 - **Conselheiro e instrutor:** um cartão "Próximo evento" no início e um item "Calendário" na barra
   inferior, com a lista dos eventos que ainda vão acontecer. "Uniforme de gala" aparece em texto e ícone.
 - **Ninguém mais muda.** Reunião, classe, Classe Bíblica e ranking seguem como estão. O instrutor passa a
-  ver o festivo também na montagem do cronograma, como já vê os outros eventos.
+  ver o evento especial também na montagem do cronograma, como já vê os outros eventos.
 
 ## Diagnóstico
 
 **Não há dado de uso**: o projeto não tem analytics nem tabela de rascunho, e nenhum evento tem presença
 hoje. O diagnóstico é do código. O que não foi medido: tempo para marcar uma lista, presença típica
-num evento, número de eventos festivos por ano, tamanho real do clube (o planejamento assume ~60
+num evento, número de eventos especiais por ano, tamanho real do clube (o planejamento assume ~60
 desbravadores, `docs/planejamento/VISAO.md:78`, e unidades de 10, `docs/planejamento/ROADMAP.md:59`).
 
 ### Atritos, do maior para o menor
 
 | # | O que trava | Onde | Medida |
 |---|---|---|---|
-| A1 | Os pontos do evento não chegam ao ranking | A escrita de pontos é só `ServicoPontos.sincronizar` (`apps/api/src/pontos/servico-pontos.ts:28`), chamada em 8 lugares de 6 arquivos (requisitos-dbv:44,73; especialidades-dbv:68,96; reunioes-envio:334; aulas-envio:407; tarefas-envio:280; classe-biblica/servico-chamada:196), todos com origem de reunião, requisito, especialidade ou Classe Bíblica (`OrigemPontos`, `apps/api/prisma/schema.prisma:126-132`) e **nenhum de evento**; `ranking.lancar_manual` existe sem rota (`packages/shared/src/permissoes.ts:26`; promessa em `docs/planejamento/API.md:186-187`); o critério "Participação em evento" (`apps/api/src/scripts/clube-criar.ts:34`) não tem tela | 0 rotas, 0 telas, 1 critério parado. **Todo** evento festivo do ano pega |
+| A1 | Os pontos do evento não chegam ao ranking | A escrita de pontos é só `ServicoPontos.sincronizar` (`apps/api/src/pontos/servico-pontos.ts:28`), chamada em 8 lugares de 6 arquivos (requisitos-dbv:44,73; especialidades-dbv:68,96; reunioes-envio:334; aulas-envio:407; tarefas-envio:280; classe-biblica/servico-chamada:196), todos com origem de reunião, requisito, especialidade ou Classe Bíblica (`OrigemPontos`, `apps/api/prisma/schema.prisma:126-132`) e **nenhum de evento**; `ranking.lancar_manual` existe sem rota (`packages/shared/src/permissoes.ts:26`; promessa em `docs/planejamento/API.md:186-187`); o critério "Participação em evento" (`apps/api/src/scripts/clube-criar.ts:34`) não tem tela | 0 rotas, 0 telas, 1 critério parado. **Todo** evento especial do ano pega |
 | A2 | Lista de presença é trabalho de escala | Não existe lista de evento. A mais parecida, a chamada da reunião, começa sem marca e exige todas (`apps/web/src/modulos/reunioes/chamada/FormularioChamada.tsx:185-190`) | **Conta de cenário, não medida:** com 62 na lista (7 blocos), 41 que foram e 12 de gala, são 41 + 12 = **53 toques**; no pior caso (todos, todos de gala) 62 + 62 = **124**. Pega o Adm em toda lista |
 | A3 | Perder o que marcou | No modo do Adm a chamada da reunião não guarda rascunho: "sem fila nem rascunho do aparelho" (`FormularioChamada.tsx:31`; `:144` e `:194` pulam a leitura e a gravação do rascunho quando é envio direto) | Toda marca ainda não enviada se perde ao recarregar, quando a tela é descartada ou ao trocar de aparelho (decorre de `:31`; não testado no navegador) |
 | A4 | Não saber onde está numa lista de 62 | A chamada da reunião mostra "Marque os N que faltam" (`FormularioChamada.tsx:251`) porque exige todos; na lista do evento quem não foi não leva toque, então esse contador não existe e nada o substitui. A lista da Classe Bíblica já divide por unidade com contagem (`apps/web/src/modulos/classe-biblica/chamada/TelaChamadaCB.tsx:225-299`) | No cenário: 62 linhas seguidas contra 7 blocos de 2 a 11 |
 | A5 | Esquecer de registrar, sem aviso | A Visão geral só chama atenção para unidade abaixo do limite e cronograma enviado (`apps/web/src/modulos/adm/visao-geral/VisaoGeral.tsx:156-158`); nada marca evento passado sem lista | 0 sinais. Atrito silencioso: os pontos nunca chegam |
-| A6 | Cadastro com decisões que valem para todos | O formulário tem 6 campos e 3 caixas (`apps/web/src/modulos/adm/calendario/FormularioEvento.tsx:124-170`); o festivo soma 3 controles (12) e **3 deles decidem os pontos de todos**. A validação roda só ao enviar (`:92-111`); `useErrosAVista` só leva o foco ao erro depois do envio (`apps/web/src/ui/ErrosDoFormulario.tsx:30-45`) | Erro de digitação (200 em vez de 20) só aparece no ranking |
+| A6 | Cadastro com decisões que valem para todos | O formulário tem 6 campos e 3 caixas (`apps/web/src/modulos/adm/calendario/FormularioEvento.tsx:124-170`); o evento especial soma 3 controles (12) e **3 deles decidem os pontos de todos**. A validação roda só ao enviar (`:92-111`); `useErrosAVista` só leva o foco ao erro depois do envio (`apps/web/src/ui/ErrosDoFormulario.tsx:30-45`) | Erro de digitação (200 em vez de 20) só aparece no ranking |
 | A7 | Conselheiro e instrutor não veem o evento | Rotas do calendário só no grupo ADM (`apps/web/src/rotas.tsx:86-105`); barra do celular sem calendário (`apps/web/src/layouts/LayoutCelular.tsx:18-22`); início do conselheiro só "Próxima reunião" (`apps/web/src/modulos/inicio/InicioConselheiro.tsx:102-142`); o do instrutor não mostra evento (`apps/web/src/modulos/inicio-instrutor/TelaInicioInstrutor.tsx:224` é só o cartão da Classe Bíblica). **O dado já chega:** `GET /calendario` é `@Logado` (`apps/api/src/calendario/eventos.controller.ts:54-55`) e o pacote offline leva 120 dias de eventos para todo papel (`apps/api/src/sync/sync.service.ts:90-111`) | Todos os conselheiros e instrutores |
 | A8 | O sinal de gala se perderia no calendário | Célula do computador: nome com `truncate` e no máximo 2 eventos (`apps/web/src/modulos/adm/calendario/AdmCalendario.tsx:25`, `:237-253`); no celular o tipo é só um ponto colorido (`apps/web/src/modulos/adm/calendario/CalendarioDoCelular.tsx:115-118`) | Texto longo é cortado; cor sozinha não conta |
 
 ### O que o código já decide (e molda o desenho)
 
 - **A regra do dia fica como está.** `situacaoDaData` trata todo evento, menos a reunião extra e a Classe
-  Bíblica, como "comum" (`packages/shared/src/formulas/calendario.ts:57-75`). O festivo entra como comum
+  Bíblica, como "comum" (`packages/shared/src/formulas/calendario.ts:57-75`). O evento especial entra como comum
   com marcações neutras (`temReuniao`, `temClasse` ligadas, campo desligado: não muda nenhuma das três
   contas do dia). Diferente da Classe Bíblica, **não sai da conta** (`:59`), porque o Adm pode desmarcar
   "Terá reunião" se o evento toma o lugar dela.
 - **O aviso ao instrutor só nasce quando a classe do dia se perde.** `perdeuAClasse` e `entrouEmConflito`
-  (`apps/api/src/calendario/servico-eventos.ts:230-240`) ficam falsos com as marcações neutras: o festivo,
+  (`apps/api/src/calendario/servico-eventos.ts:230-240`) ficam falsos com as marcações neutras: o evento especial,
   como nasce, **não avisa ninguém**. O texto fixo do formulário, "Se já houver classes marcadas no período, o
   instrutor é avisado" (`FormularioEvento.tsx:171`), passa a aparecer só quando o Adm desmarca "Terá classe".
 - **Ranking:** soma `LancamentoPontos` do mês pela `data` do lançamento e usa a **unidade atual**
@@ -206,7 +213,7 @@ ganha 20 pontos. Quem for de gala ganha mais 10."* — o Adm lê o efeito antes 
 ### M8 — Sinal de gala que não depende da cor (resolve A7 e A8)
 "Uniforme de gala" aparece **escrito, com ícone de camisa e contorno**, em toda parte onde o evento aparece:
 legenda do calendário, célula do computador (em segunda linha, sem cortar), cartão do evento, ficha, cartão
-"Próximo evento" e lista de leitura. O tipo "Evento festivo" também leva texto e ícone, além da cor nova.
+"Próximo evento" e lista de leitura. O tipo "Evento especial" também leva texto e ícone, além da cor nova.
 
 ### Telas sem mecânica (informação)
 Calendário do Adm, calendário de leitura e cartão "Próximo evento": **sem mecânica**. Têm desenho porque o
@@ -216,7 +223,7 @@ sinal de gala é decisão de layout, não de adesão.
 
 - **Pré-requisitos.** Lista: precisa de desbravador ativo (condicional: sem nenhum, a lista mostra "Nenhum
   desbravador ativo no clube" com "Cadastrar desbravador"); unidade **não** é exigida (quem não tem fica em
-  "Sem unidade", último bloco). Evento festivo: "Pontos por ir de gala" só existe se "Pede uniforme de gala"
+  "Sem unidade", último bloco). Evento especial: "Pontos por ir de gala" só existe se "Pede uniforme de gala"
   estiver marcado, e a segunda marca da lista só existe nesse caso. A lista abre no dia do evento.
 - **Vazio.** Calendário de leitura sem evento: "Nenhum evento nos dados deste aparelho" com a data da última
   atualização (o texto **não afirma** que não há evento no clube, só no que o aparelho guarda), e diz que
@@ -228,7 +235,7 @@ sinal de gala é decisão de layout, não de adesão.
   lista abre no dia do evento"); mudar o tipo do evento depois que a lista começou ("O tipo não muda depois
   que a lista é começada"); mudar o início para uma data que ainda não chegou com a lista começada ("Esta
   data ainda não chegou e a lista deste evento já tem marcas…"); concluir com a lista diferente da que o Adm
-  viu; evento que não existe, é de outro clube ou não é festivo ("Não encontramos este evento", 404).
+  viu; evento que não existe, é de outro clube ou não é de tipo especial ("Não encontramos este evento", 404).
 - **Perfil e escopo.** Criar, editar, apagar, listar e concluir: só Adm (`calendario.gerenciar` e
   `ranking.lancar_manual`, as duas só do Adm). Conselheiro e instrutor leem o calendário **do clube inteiro**
   (não é por unidade) e não veem botão de escrita. **Sem permissão não vira tela:** conselheiro e instrutor
@@ -243,9 +250,9 @@ sinal de gala é decisão de layout, não de adesão.
 
 ## Desenho
 
-`docs/fases/eventos-festivos/modelo/` — 18 quadros (`*.dc.html`) e `canvas.json`. **Se esta SPEC e o desenho
+`docs/fases/eventos-especiais/modelo/` — 18 quadros (`*.dc.html`) e `canvas.json`. **Se esta SPEC e o desenho
 divergirem, o desenho vence.** Do desenho copia-se estrutura, ordem e texto, **nunca CSS**: as classes saem
-dos tokens (`apps/web/src/ui/tokens.css`, com `--cal-festivo-bg/fg` como **únicos tokens novos**) e destes
+dos tokens (`apps/web/src/ui/tokens.css`, com `--cal-especial-bg/fg` como **únicos tokens novos**) e destes
 componentes de `apps/web/src/ui/`: `CabecalhoDaPagina`, `Cartao`, `Campo`/`CampoRotulado`, `CampoData`, `Selecao`,
 `CaixaMarcacao`, `Botao`/`estiloDoBotao`, `Selo`, `Chip`, `EstadoVazio`, `Carregando`/`ErroDeCarga`/
 `DisponivelComInternet` (`EstadosDeCarga`), `Esqueleto`, `FaixaAviso`, `Confirmacao`, `ListaDePares`,
@@ -261,14 +268,14 @@ usa nomes de cor que **não existem** no app (`--color-on-primary`, `--color-on-
 
 | Quadro | O que mostra |
 |---|---|
-| `Form-Festivo` (1280) | Novo evento, tipo Evento festivo, gala marcada: grupo "Uniforme e pontos" com a frase de efeito |
-| `Form-Festivo-Celular` (360) | O mesmo sem gala, com o erro no campo de pontos ao sair dele |
-| `Form-Festivo-Editar` (360) | Editar evento com a lista concluída: aviso, tipo travado, a confirmação "Refazer os pontos" (depende da pergunta 3) e a recusa de data futura |
-| `Ficha-Festivo` (1280) | Ficha: cartão "Quem foi ao evento" (4 estados), "Pontos e uniforme", dados e "O que muda no calendário" |
-| `Ficha-Festivo-Celular` (360) | Logo depois de salvar: "Evento salvo" e o cartão antes do dia |
-| `Ficha-Festivo-Excluir` (360) | Excluir evento com a lista concluída: a confirmação diz que os pontos saem |
-| `Calendario-Adm` (1280) | Mês com 3 festivos, gala em texto, **legenda completa na ordem real** e cartões com "Falta registrar quem foi" |
-| `Calendario-Celular` (360) | Grade com losango para o festivo, painel do dia e lista do mês |
+| `Form-Especial` (1280) | Novo evento, tipo Evento especial, gala marcada: grupo "Uniforme e pontos" com a frase de efeito |
+| `Form-Especial-Celular` (360) | O mesmo sem gala, com o erro no campo de pontos ao sair dele |
+| `Form-Especial-Editar` (360) | Editar evento com a lista concluída: aviso, tipo travado, a confirmação "Refazer os pontos" (depende da pergunta 3) e a recusa de data futura |
+| `Ficha-Especial` (1280) | Ficha: cartão "Quem foi ao evento" (4 estados), "Pontos e uniforme", dados e "O que muda no calendário" |
+| `Ficha-Especial-Celular` (360) | Logo depois de salvar: "Evento salvo" e o cartão antes do dia |
+| `Ficha-Especial-Excluir` (360) | Excluir evento com a lista concluída: a confirmação diz que os pontos saem |
+| `Calendario-Adm` (1280) | Mês com 3 eventos especiais, gala em texto, **legenda completa na ordem real** e cartões com "Falta registrar quem foi" |
+| `Calendario-Celular` (360) | Grade com losango para o evento especial, painel do dia e lista do mês |
 | `Presenca-Celular` (360) | "Quem foi": status "Salvo às", contagem, botões em massa, busca, sete blocos (o último, "Sem unidade") |
 | `Presenca-Computador` (1280) | O mesmo, com tabela: nome, foi, foi de gala (os dois com botão de verdade) e as confirmações de correção |
 | `Presenca-Estados` (360) | Carregando, vazio, busca sem resultado, erro ao abrir, marca sendo salva, erro ao salvar uma marca, sem internet (nada pendente, com marcas pendentes, ao abrir), antes do dia, concluir sem ninguém, concluir com a lista mudada, evento não encontrado, sem permissão |
@@ -296,14 +303,14 @@ itens a 320 px (o layout trata 320 px) também fica para a implementação medir
 
 Tudo abaixo é proposta, já confrontada com o código pela revisão. Os números de linha são da base `77755d2`.
 
-**Banco** — uma migration `AAAAMMDDHHMMSS_eventos_festivos` (`ALTER TYPE … ADD VALUE` sem usar o valor na mesma
+**Banco** — uma migration `AAAAMMDDHHMMSS_eventos_especiais` (`ALTER TYPE … ADD VALUE` sem usar o valor na mesma
 migration, como a de férias, `docs/fases/calendario-ferias-extras/SPEC.md:103-104`). O banco é PostgreSQL
 (`schema.prisma:22`):
-- Enums: `TipoEvento` + `EVENTO_FESTIVO` (`schema.prisma:140`); `GatilhoCriterio` +
-  `EVENTO_FESTIVO_PARTICIPACAO`, `EVENTO_FESTIVO_UNIFORME` (`:93`); `OrigemPontos` + `EVENTO_FESTIVO` (`:126`).
+- Enums: `TipoEvento` + `EVENTO_ESPECIAL` (`schema.prisma:140`); `GatilhoCriterio` +
+  `EVENTO_ESPECIAL_PARTICIPACAO`, `EVENTO_ESPECIAL_UNIFORME` (`:93`); `OrigemPontos` + `EVENTO_ESPECIAL` (`:126`).
 - `EventoCalendario` (`:878`) + `exigeGala Boolean @default(false)`, `pontosParticipacao Int?`,
   `pontosUniforme Int?`, `listaConcluidaEm DateTime? @db.Timestamptz` (nulo = rascunho ou sem lista).
-- **`PresencaEventoFestivo`**: `clubeId`, `eventoId`, `dbvId`, `foi Boolean`, `comUniforme Boolean @default(false)`,
+- **`PresencaEventoEspecial`**: `clubeId`, `eventoId`, `dbvId`, `foi Boolean`, `comUniforme Boolean @default(false)`,
   `alteradaPorId`, `alteradaEm`; chave `(eventoId, dbvId)`; FKs compostas `(clubeId, id)` como
   `PresencaClasseBiblica` (`:1344`). **Nunca se apaga linha** (`CLAUDE.md:20`): desmarcar grava `foi=false` e
   `comUniforme=false`, e cada alteração de lista concluída vai também para `Atividade` (`:1208`, via
@@ -312,30 +319,30 @@ migration, como a de férias, `docs/fases/calendario-ferias-extras/SPEC.md:103-1
   `guarda-clube.spec.ts:71-122` (mais os `describe.each`/`it.each` por modelo, `:123`, `:340`, `:354`, `:402`).
 - Critérios: sem INSERT em SQL; `garantirCriteriosDeEvento(tx, clubeId)` idempotente, no molde de
   `apps/api/src/classe-biblica/criterios.ts`, chamado sob demanda (ao concluir), o que cobre clube novo **e**
-  clube existente; com "Participação em evento festivo" e "Uniforme de gala em evento festivo", `padrao: true`,
+  clube existente; com "Participação em evento especial" e "Uniforme de gala em evento especial", `padrao: true`,
   `ativo: true`, `lancadoPor: ADM`, **pontos 0 e não usados** (o valor vem do evento; `sincronizar` nunca lê
   `criterio.pontos` e ignora `ativo`, então o `ativo` desses dois critérios não liga nem desliga nada). O
   `nomeLivre` não herda o sufixo "(Classe Bíblica)". `clube-criar.spec.ts:25` segue em 8; `carga.ts` não toca
   critério nem evento.
 - **Fato sobre a migration:** o PostgreSQL não remove valor de enum, então ela só vai para a frente. Depois do
-  primeiro evento festivo e do primeiro `concluir`, uma API antiga lê tipo e gatilho desconhecidos e quebra o
+  primeiro evento especial e do primeiro `concluir`, uma API antiga lê tipo e gatilho desconhecidos e quebra o
   calendário, o pacote e o envio de chamada (`reunioes-envio.service.ts:324`, `criterioRanking.findMany` por
   gatilho). Nota de volta: antes de reverter, `UPDATE "EventoCalendario" SET tipo = 'EVENTO' WHERE tipo =
-  'EVENTO_FESTIVO'` e desativar os dois critérios.
+  'EVENTO_ESPECIAL'` e desativar os dois critérios.
 
-**Compartilhado** (`packages/shared`): `TIPOS_EVENTO` + `EVENTO_FESTIVO` (`enums.ts:37`), **logo depois de
+**Compartilhado** (`packages/shared`): `TIPOS_EVENTO` + `EVENTO_ESPECIAL` (`enums.ts:37`), **logo depois de
 `EVENTO`** na ordem de `ROTULOS_DO_TIPO` (a legenda segue essa ordem);
-`MARCACOES_PADRAO.EVENTO_FESTIVO = { temReuniao: true, temClasse: true, bomParaCampo: false }` (`enums.ts:57-66`;
+`MARCACOES_PADRAO.EVENTO_ESPECIAL = { temReuniao: true, temClasse: true, bomParaCampo: false }` (`enums.ts:57-66`;
 o tipo é `Record` no front, então o compilador cobra `tipos.ts`); gatilhos em `formulas/pontos.ts:3-14`.
 - **Contrato do evento, campos planos** (nomes planos também por causa do mapa de erros do formulário:
   `zod-validation.pipe.ts:14`, `FormularioEvento.tsx:101` e `validarEvento`, que hoje só conhece
   `'fim' | 'temReuniao'`, `formulas/calendario.ts:183`): `exigeGala`, `pontosParticipacao`, `pontosUniforme`,
-  nulos fora do tipo festivo, `optional` na entrada e na saída (o pacote guardado antes continua válido; **não
+  nulos fora do tipo especial, `optional` na entrada e na saída (o pacote guardado antes continua válido; **não
   existe versão de schema do pacote**, só o hash, então `optional` basta). `validarEvento` (`:188`) ganha as
-  chaves `pontosParticipacao` e `pontosUniforme` (inteiro de 0 a 1000; uniforme só com gala; fora do festivo,
+  chaves `pontosParticipacao` e `pontosUniforme` (inteiro de 0 a 1000; uniforme só com gala; fora do evento especial,
   descartados).
 - **O resumo da lista é só do Adm e fica fora do pacote:** `EventoSaida` ganha `lista: ResumoDaLista.nullish()`
-  (`concluidaEm`, `foram`, `deGala`), preenchido **só para sessão Adm e só para festivo**; `EventoDoPacote`
+  (`concluidaEm`, `foram`, `deGala`), preenchido **só para sessão Adm e só para evento especial**; `EventoDoPacote`
   passa a ser `EventoSaida.omit({ id, lista })` (`contratos/sync.ts:55`). Assim a ficha, o cartão do calendário
   e a Visão geral têm o que o desenho mostra e o hash do pacote não oscila a cada toque.
 - Contrato novo da presença (`PresencaDoEventoSaida`, `PresencaDoEventoEntrada`, `ConclusaoEntrada`,
@@ -343,19 +350,19 @@ o tipo é `Record` no front, então o compilador cobra `tipos.ts`); gatilhos em 
   sem o default quebram o handler `apps/web/src/testes/handlers/visao-geral.ts:5-21` e `visao-geral.spec.ts`).
 **`situacaoDaData` não muda.**
 
-**API** (módulo novo `apps/api/src/eventos-festivos/`):
+**API** (módulo novo `apps/api/src/eventos-especiais/`):
 
 | Rota | Guarda | O que faz |
 |---|---|---|
-| `GET /calendario/eventos/:id/presenca` | `@Pode('ranking.lancar_manual')` | Quem entra no ranking do mês do evento, agrupado pela unidade (ordem alfabética, "Sem unidade" por último), com `foi` e `comUniforme` de cada um, `resumo` (`foram`, `deGala`, `total`), `aberta` (hoje ≥ `inicio` no fuso do clube) e `listaConcluidaEm`. Evento de outro clube, apagado ou que não é festivo: 404 |
+| `GET /calendario/eventos/:id/presenca` | `@Pode('ranking.lancar_manual')` | Quem entra no ranking do mês do evento, agrupado pela unidade (ordem alfabética, "Sem unidade" por último), com `foi` e `comUniforme` de cada um, `resumo` (`foram`, `deGala`, `total`), `aberta` (hoje ≥ `inicio` no fuso do clube) e `listaConcluidaEm`. Evento de outro clube, apagado ou que não é do tipo especial: 404 |
 | `PUT /calendario/eventos/:id/presenca` | idem | Corpo `{ marcas: [{ dbvId, foi?, comUniforme? }] }`, só o que mudou; **uma gravação por toque**, e cada botão em massa é **uma** requisição, tudo ou nada. `foi: false` grava `foi=false` e `comUniforme=false` (não apaga); `comUniforme` só vale com `foi` e `exigeGala`; `comUniforme` omitido **não mexe**. Recusa antes do dia. Devolve as **linhas autoritativas** das pessoas tocadas, o `resumo` e `listaConcluidaEm`, e a tela reconcilia com isso; avisos só para ids que existem no clube (nunca ecoa nome de id desconhecido). **Com a lista não concluída, não toca em pontos.** Concluída: sincroniza os pontos de quem mudou, na mesma transação |
 | `POST /calendario/eventos/:id/presenca/concluir` | idem | Corpo `{ foram, deGala }` com os totais que o Adm viu; se divergirem do servidor, recusa (`REGRA`). Antes de `inicio`, recusa (`REGRA`). Marca `listaConcluidaEm` (**chamar de novo não regrava o carimbo**), chama `garantirCriteriosDeEvento` e sincroniza as linhas **do roster** (ver abaixo), com aviso para as que estão fora dele; devolve "foram" e "de gala" |
-| `POST/PATCH/DELETE /calendario/eventos…` | `calendario.gerenciar` (já existe, `eventos.controller.ts:69-94`) | Gravam os campos planos, **mapeados para colunas** (`gravar` hoje faz spread de `entrada` direto no Prisma, `servico-eventos.ts:146-151`: sem mapear, um campo desconhecido estoura em tempo de execução, e o Jest não checa tipo), com `null` explícito ao trocar o tipo; bundle antigo recusado como em `RecusarMarcacoesAntigas` (`eventos.controller.ts:11-18`). Evento **concluído**: mudar pontos, gala ou data (para outra já passada) estorna e relança todas as linhas na transação (`servico-eventos.ts:177`); **mudar `inicio` para o futuro com lista começada ou concluída: `REGRA`**; apagar estorna todas (confirmação forte, D22). Mudar o tipo de ou para festivo com linhas ou lista concluída: `REGRA`. Gala desligada depois: `comUniforme` fica guardado e é ignorado |
+| `POST/PATCH/DELETE /calendario/eventos…` | `calendario.gerenciar` (já existe, `eventos.controller.ts:69-94`) | Gravam os campos planos, **mapeados para colunas** (`gravar` hoje faz spread de `entrada` direto no Prisma, `servico-eventos.ts:146-151`: sem mapear, um campo desconhecido estoura em tempo de execução, e o Jest não checa tipo), com `null` explícito ao trocar o tipo; bundle antigo recusado como em `RecusarMarcacoesAntigas` (`eventos.controller.ts:11-18`). Evento **concluído**: mudar pontos, gala ou data (para outra já passada) estorna e relança todas as linhas na transação (`servico-eventos.ts:177`); **mudar `inicio` para o futuro com lista começada ou concluída: `REGRA`**; apagar estorna todas (confirmação forte, D22). Mudar o tipo de ou para especial com linhas ou lista concluída: `REGRA`. Gala desligada depois: `comUniforme` fica guardado e é ignorado |
 | `GET /calendario`, `GET /calendario/eventos/:id` | `@Logado` | Devolvem os campos planos (`paraSaida`, `servico-eventos.ts:80-94`) e `lista` **só para o Adm**. Se a pergunta 2 for "não", `doAno` e `obter` passam a receber o papel e devolvem `pontos*` nulos aos outros (hoje não recebem: `:112,125`) |
 | `GET /sync/pacote` | já existe (`LogadoOuSubstituto`) | Campos planos entram no mapeamento à mão (`sync.service.ts:100-110`); `pontos*` nulos para o substituto sempre, e para conselheiro e instrutor se a pergunta 2 for "não" |
 | `GET /visao-geral` | já existe | `eventosSemLista` pela regra única de M5/D22 (`visao-geral.service.ts:86-122`) |
 
-- **Pontos:** só por `ServicoPontos.sincronizar` (`CLAUDE.md:29`), `origemTipo: EVENTO_FESTIVO`, `origemId:
+- **Pontos:** só por `ServicoPontos.sincronizar` (`CLAUDE.md:29`), `origemTipo: EVENTO_ESPECIAL`, `origemId:
   "<eventoId>:<dbvId>"`, `data` = `inicio` do evento, até dois devidos (participação; uniforme se
   `comUniforme && exigeGala`), valores do evento; devido de 0 não gera lançamento. Para refazer valores:
   `devidos: []` e depois os novos, na mesma transação (o índice único só vale para lançamento ativo). Refazer
@@ -370,14 +377,14 @@ o tipo é `Record` no front, então o compilador cobra `tipos.ts`); gatilhos em 
   fora dele (virou Diretoria sem ser DBV, ficou inativo) fica guardada, vira aviso, e não entra na conta.
 - **Concorrência:** três travas, **sempre nesta ordem**: a do clube (`'eventos-do-clube'`,
   `servico-eventos.ts:187`) só nas gravações do evento; a do evento, **chave própria**
-  `hashtext('presenca-festivo'), hashtext(eventoId)`, em marcas, conclusão e regravação do evento; e a de
+  `hashtext('presenca-especial'), hashtext(eventoId)`, em marcas, conclusão e regravação do evento; e a de
   critérios. Presença **não** toma a trava do clube (senão cada toque serializaria as edições de evento).
   Dois Adm na mesma lista: vale a última marca de cada linha (D20), e o PUT devolve as linhas autoritativas.
 - **Isolamento:** toda leitura e escrita leva `clubeId`; `include` aninhado leva `clubeId` no `where`
   (`CLAUDE.md:9-10`); evento fora do clube responde 404 (`eventoDoClube` e `obter` já filtram `clubeId` e
   `removidoEm`); a guarda de permissão devolve 403 a conselheiro e instrutor antes do 404.
 - **Módulos:** `EventosModule` não importa `PontosModule` (`apps/api/src/calendario/eventos.module.ts:10`) e o módulo novo precisa de
-  `CalculoRanking` (`RankingModule`) e de `PontosModule`; o sentido é **eventos-festivos → eventos, pontos,
+  `CalculoRanking` (`RankingModule`) e de `PontosModule`; o sentido é **eventos-especiais → eventos, pontos,
   ranking**, nunca o contrário, para não criar ciclo. O `eventos` chama o novo só por uma função de
   "refazer pontos do evento", passada por injeção.
 
@@ -387,17 +394,17 @@ com 24 chaves** (`permissoes.test.ts:6`): nenhum teste de contagem muda. **Risco
 lista de evento e o `concluir`, e o rótulo "Lançar pontos manuais" não diz isso. Recomendação e alternativa em D11.
 
 **Web:**
-- `tipos.ts:10-60` — rótulo "Evento festivo", cor `--cal-festivo-*` (a criar ao lado de
-  `ui/tokens.css:39-45`), ícone `PartyPopper` e `Shirt` para a gala (existem em `lucide-react` 1.0.1),
+- `tipos.ts:10-60` — rótulo "Evento especial", cor `--cal-especial-*` (a criar ao lado de
+  `ui/tokens.css:39-45`), ícone `Sparkles` e `Shirt` para a gala (existem em `lucide-react` 1.0.1),
   losango no celular, texto de apoio do tipo. Todo `Record` por tipo é cobrado pelo compilador.
-- `FormularioEvento.tsx` — grupo "Uniforme e pontos" só no tipo festivo; marcações do tipo pelo `MARCACOES_PADRAO`
+- `FormularioEvento.tsx` — grupo "Uniforme e pontos" só no tipo especial; marcações do tipo pelo `MARCACOES_PADRAO`
   (`:76` já cobre); validação ao sair dos dois campos de pontos (estado local, M7); frase de efeito; aviso de
   refazer pontos; a frase "o instrutor é avisado" (`:171`) só aparece quando "Terá classe" está desmarcada.
 - `FichaEvento.tsx` — cartão "Quem foi ao evento" (4 estados), "Pontos e uniforme"; "Editar" fica secundário
   quando há botão primário; confirmação de excluir que diz quantos pontos saem (`:166-175`); "Evento salvo" por
   um campo novo `salvo` no estado de navegação (`apps/web/src/modulos/adm/navegacao.ts:5-19`; `lerEstado`
   ignora chave nova e `useAvisosDaFicha` limpa o estado, então o aviso precisa ser lido uma vez).
-- `AdmCalendario.tsx` e `CalendarioDoCelular.tsx` — pílula festiva que quebra linha, gala em segunda linha,
+- `AdmCalendario.tsx` e `CalendarioDoCelular.tsx` — pílula especial que quebra linha, gala em segunda linha,
   **legenda na ordem real de `ROTULOS_DO_TIPO`** com "Uniforme de gala" como item à parte (não entra no
   `Record`), cartão com "Falta registrar quem foi".
 - Nova tela `PresencaDoEvento` em `/adm/calendario/eventos/:id/presenca` (`adm/calendario/rotas.tsx:6-11`).
@@ -410,10 +417,10 @@ lista de evento e o `concluir`, e o rótulo "Lançar pontos manuais" não diz is
   sem confirmação); só `situacao: 'salva'` desenha a caixa marcada; reconcilia com as linhas devolvidas pelo PUT
   e refaz a leitura ao voltar o foco. Sem internet, `marcar` não aceita toque novo.
 - Leitura: `modulos/calendario/` com `CalendarioDeLeitura` (rota `/calendario` no grupo CONSELHEIRO + INSTRUTOR,
-  `rotas.tsx:68-85`) lendo `usePacote`; lista **todo** evento do pacote que ainda vai acontecer (festivo,
+  `rotas.tsx:68-85`) lendo `usePacote`; lista **todo** evento do pacote que ainda vai acontecer (evento especial,
   acampamento, evento do clube, feriado, férias, reunião extra, sem reunião), **exceto Classe Bíblica**, que
   tem cartão próprio; sem estado de erro (ver acima). `CartaoProximoEvento` em `InicioConselheiro.tsx:289` e
-  `TelaInicioInstrutor.tsx:224`, ao lado de `<CartaoClasseBiblica />`: festivo, acampamento e evento do clube;
+  `TelaInicioInstrutor.tsx:224`, ao lado de `<CartaoClasseBiblica />`: evento especial, acampamento e evento do clube;
   a data diz "Hoje" no dia e "Até <dia>" em evento de vários dias já em andamento; a linha de pontos mostra só o
   que vale ("20 por ir", "mais 10 de gala"; só gala: "10 por ir de gala") e some se tudo for zero. Item
   "Calendário" em `LayoutCelular.tsx:18-22`: a barra passa de 4 para 5 itens, com `CalendarRange` (o
@@ -429,7 +436,7 @@ lista de evento e o `concluir`, e o rótulo "Lançar pontos manuais" não diz is
   (`apps/api/test/fabricas.ts:486-505`); handlers MSW de calendário, de presença (novo), de Visão geral e do
   pacote; `links-que-navegam.test.ts` (obriga `LinhaQueNavega`/`LinkDeFicha` em `modulos/`); testes de
   `calendario*.test.tsx`, `rotas.test.tsx`, `layouts.test.tsx`; `calendario.test.ts` e `permissoes.test.ts` no
-  shared; e2e (só no CI) com um cenário do Adm e um de leitura. O contraste de `--cal-festivo-*` é conferido
+  shared; e2e (só no CI) com um cenário do Adm e um de leitura. O contraste de `--cal-especial-*` é conferido
   pelas medições do desenho e **repetido no DOM** na implementação.
 - **Tamanho:** a revisão estima 78 a 85 arquivos alterados, em quatro camadas (shared + schema + migration ~12;
   API ~17; web do Adm ~30; web de conselheiro e instrutor ~14; docs ~5). **Não cabe num pacote só.** O
@@ -466,8 +473,7 @@ estão primeiro (a numeração é a do texto, não a da ordem). As cinco **pergu
 | D8 | Como a lista começa? → **Ninguém marcado**, com dois botões em massa | Todos presentes (como na Classe Bíblica): 1 toque a menos se quase todos foram; quem faltou e não foi desmarcado ganha pontos |
 | D21 | Corrigir lista concluída → **desmarcar nunca apaga a linha**; tirar alguém ou o uniforme pede confirmação que diz quantos pontos saem | Sem confirmação (um toque errado tira 30 pontos de alguém, sem aviso e sem rastro) ou linha apagada (some o registro de quem marcou e quando) |
 | D22 | Excluir evento com lista concluída e cobrança da lista → excluir **pede confirmação que diz quantos pontos saem** e não dá para desfazer; a cobrança ("Falta registrar quem foi") vale **depois do fim, por 60 dias, e só se o evento vale pontos** | Recusar a exclusão (o Adm sem saída para evento errado) / cobrar desde o início do evento, sem limite e mesmo com 0 pontos (evento de vários dias cobra no meio dele; evento antigo vira pendência eterna). **Os 60 dias são parâmetro meu** |
-| D1 | Tipo novo ou campo no existente? → tipo **"Evento festivo"** (palavra do pedido); "Evento do clube" não tem pontos nem lista e por padrão tira a classe do dia (`tipos.ts:41-42`) | Opção "conta pontos" dentro de "Evento do clube": um tipo só, mas campos de pontos em eventos que não pontuam e padrão que tira a classe |
-| D18 | Nome do tipo → "Evento festivo", com apoio escrito sob o seletor | "Evento com pontos": diz o que muda, mas foge da palavra do usuário |
+| D1 | Tipo novo ou campo no existente? → tipo **"Evento especial"** (decisão 5); "Evento do clube" não tem pontos nem lista e por padrão tira a classe do dia (`tipos.ts:41-42`) | Opção "conta pontos" dentro de "Evento do clube": um tipo só, mas campos de pontos em eventos que não pontuam e padrão que tira a classe |
 | D2 | Marcações do tipo → neutras (reunião e classe do dia continuam) e **editáveis** | Fixas, como a Classe Bíblica: o Adm não conseguiria dizer "neste dia não há reunião" |
 | D3 | Gala → sim ou não por evento | Tipos de uniforme: o formulário ganharia um seletor e a lista uma escolha por pessoa, em vez de um toque |
 | D4 | Pontos de uniforme → só para quem foi (a pílula "De gala" só liga com "Foi") | Independente: dá para ter "de gala" sem "foi" |
@@ -478,7 +484,7 @@ estão primeiro (a numeração é a do texto, não a da ordem). As cinco **pergu
 | D11 | Permissão → **reusar `ranking.lancar_manual`**: foi planejada para "participação em evento" (`API.md:186-187`), é só do Adm e sem ajuste, o catálogo fica em 24 chaves. **Risco:** liberá-la a um conselheiro no futuro libera também a lista de evento e o `concluir` | Chave própria `evento.presenca` com Conselheiro e Instrutor `false`: dá para delegar no futuro, mas +1 chave, testes de catálogo mudam e a tela de permissões ganha uma linha |
 | D12 | Que critério leva os pontos? → dois critérios novos (gatilhos próprios) com pontos 0 e valor do evento | Lançar com `criterioId` nulo e dois `origemId`: sem migration de gatilho, mas mistura com o desconto por falta e o lançamento perde o nome |
 | D13 | Teto dos pontos → inteiro de 0 a 1000 | Sem teto (um 200000 digitado vai ao ranking) ou outro teto |
-| D14 | Que eventos entram no cartão "Próximo evento"? → festivo, acampamento e evento do clube. Feriado, férias, sem reunião e reunião extra **não** entram: o cartão da reunião só mostra data, reunião extra e "Férias até" (`InicioConselheiro.tsx:102-142`), e feriado e sem reunião só deslocam a data; a Classe Bíblica tem cartão próprio. O calendário de leitura lista **todos** | Todo tipo no cartão (repetiria férias e feriado) ou só festivo (acampamento não apareceria no início) |
+| D14 | Que eventos entram no cartão "Próximo evento"? → evento especial, acampamento e evento do clube. Feriado, férias, sem reunião e reunião extra **não** entram: o cartão da reunião só mostra data, reunião extra e "Férias até" (`InicioConselheiro.tsx:102-142`), e feriado e sem reunião só deslocam a data; a Classe Bíblica tem cartão próprio. O calendário de leitura lista **todos** | Todo tipo no cartão (repetiria férias e feriado) ou só evento especial (acampamento não apareceria no início) |
 | D15 | De onde lê o calendário de leitura → do pacote offline (`sync.service.ts:90-111`); o texto não promete número de meses | Ano inteiro online pela API: vê além da janela guardada, mas não abre sem internet |
 | D16 | Onde mora o calendário → item "Calendário" na barra inferior (5 itens, ícone `CalendarRange`) | Só atalho no início e link no cartão: barra com 4 itens, calendário a um toque a mais |
 | D17 | Aviso de lista pendente → ficha, cartão do calendário **e** Visão geral (celular e computador) | Sem aviso na Visão geral: o Adm só descobre abrindo cada evento passado |
@@ -499,9 +505,9 @@ Abertas. Nenhuma tem resposta sugerida; o desenho assume o que está dito.
    pontos no ranking…" na lista de leitura e no cartão, porque hoje o calendário já entrega todos os campos a
    qualquer pessoa logada. Se a resposta for "não", o servidor filtra em três lugares (ver Descobribilidade).
 3. **Se o Adm mudar os pontos, a data ou o uniforme de gala de um evento depois de concluir a lista, os pontos
-   já dados mudam?** O quadro `Form-Festivo-Editar` desenha "sim, com aviso"; a resposta pode trocá-lo por
+   já dados mudam?** O quadro `Form-Especial-Editar` desenha "sim, com aviso"; a resposta pode trocá-lo por
    campos travados.
-4. **A falta num evento festivo desconta pontos**, como a falta na reunião quando o clube liga o desconto
+4. **A falta num evento especial desconta pontos**, como a falta na reunião quando o clube liga o desconto
    (`schema.prisma:252-253`)? O desenho não desconta nada.
 5. **Em evento de mais de um dia, basta ter ido a um dia para ganhar os pontos?** O desenho tem uma marca por
    evento, com os pontos na data de início.
@@ -510,7 +516,7 @@ ONDE FICA
 
 ```
 - tipos de evento, marcações padrão                  packages/shared/src/enums.ts:37, :57-66 ; apps/api/prisma/schema.prisma:140-148, :878-899
-- regra do dia (festivo entra como comum)             packages/shared/src/formulas/calendario.ts:57-75 ; validarEvento :183-188
+- regra do dia (evento especial entra como comum)             packages/shared/src/formulas/calendario.ts:57-75 ; validarEvento :183-188
 - contrato do evento e do pacote                      packages/shared/src/contratos/calendario.ts:7-26 ; contratos/sync.ts:55, :85
 - gatilhos e origem de pontos                         apps/api/prisma/schema.prisma:93-104, :126-132 ; packages/shared/src/formulas/pontos.ts:3-14
 - única escrita de pontos e quem a chama              apps/api/src/pontos/servico-pontos.ts:6-60 ; classe-biblica/servico-chamada.ts:177-210 ; reunioes/reunioes-envio.service.ts:315-343 ; progresso/requisitos-dbv.service.ts:44-76 ; especialidades/especialidades-dbv.service.ts:68, :96 ; aulas/aulas-envio.service.ts:407 ; aulas/tarefas-envio.ts:280

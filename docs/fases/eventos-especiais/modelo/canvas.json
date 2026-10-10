@@ -2,42 +2,42 @@
  "v": 3,
  "attachments": {},
  "boards": {
-  "Form-Festivo.dc.html": {
+  "Form-Especial.dc.html": {
    "h": 1500,
-   "title": "Novo evento festivo · computador",
+   "title": "Novo evento especial · computador",
    "w": 1280,
    "x": 0,
    "y": 300
   },
-  "Form-Festivo-Celular.dc.html": {
+  "Form-Especial-Celular.dc.html": {
    "h": 1700,
-   "title": "Novo evento festivo · celular, com erro no campo",
+   "title": "Novo evento especial · celular, com erro no campo",
    "w": 360,
    "x": 1360,
    "y": 300
   },
-  "Form-Festivo-Editar.dc.html": {
+  "Form-Especial-Editar.dc.html": {
    "h": 2650,
    "title": "Editar evento com a lista concluída · celular",
    "w": 360,
    "x": 1800,
    "y": 300
   },
-  "Ficha-Festivo.dc.html": {
+  "Ficha-Especial.dc.html": {
    "h": 1700,
    "title": "Ficha do evento · computador, com os três estados de “Quem foi”",
    "w": 1280,
    "x": 2240,
    "y": 300
   },
-  "Ficha-Festivo-Celular.dc.html": {
+  "Ficha-Especial-Celular.dc.html": {
    "h": 1700,
    "title": "Ficha do evento · celular, logo depois de salvar",
    "w": 360,
    "x": 3600,
    "y": 300
   },
-  "Ficha-Festivo-Excluir.dc.html": {
+  "Ficha-Especial-Excluir.dc.html": {
    "h": 800,
    "title": "Excluir evento com a lista concluída · celular",
    "w": 360,
@@ -137,7 +137,7 @@
   "grupo-cadastro": {
    "kind": "title1",
    "maxW": 8000,
-   "text": "Cadastrar o evento festivo (Adm)",
+   "text": "Cadastrar o evento especial (Adm)",
    "w": 240,
    "x": 0,
    "y": 0
@@ -168,12 +168,12 @@
   }
  },
  "order": [
-  "Form-Festivo.dc.html",
-  "Form-Festivo-Celular.dc.html",
-  "Form-Festivo-Editar.dc.html",
-  "Ficha-Festivo.dc.html",
-  "Ficha-Festivo-Celular.dc.html",
-  "Ficha-Festivo-Excluir.dc.html",
+  "Form-Especial.dc.html",
+  "Form-Especial-Celular.dc.html",
+  "Form-Especial-Editar.dc.html",
+  "Ficha-Especial.dc.html",
+  "Ficha-Especial-Celular.dc.html",
+  "Ficha-Especial-Excluir.dc.html",
   "Calendario-Adm.dc.html",
   "Calendario-Celular.dc.html",
   "Presenca-Celular.dc.html",
@@ -188,5 +188,5 @@
   "Calendario-Leitura-Estados.dc.html"
  ],
  "pages": [],
- "title": "Desbravador — Eventos festivos"
+ "title": "Desbravador — Eventos especiais"
 }

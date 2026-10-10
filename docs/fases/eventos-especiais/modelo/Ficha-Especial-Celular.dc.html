@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Início do conselheiro · próximo evento</title>
+<title>Ficha do evento especial · celular, logo depois de salvar</title>
 <script src="./support.js"></script>
 </head>
 <body>
@@ -24,7 +24,7 @@ x-dc{display:block}helmet{display:none}
   --cal-reuniao-bg:#E3EEE7;--cal-reuniao-fg:#1F4D3A;--cal-sem-bg:#FBE4E1;--cal-sem-fg:#9F2A20;
   --cal-acamp-bg:#E6F0D4;--cal-acamp-fg:#3F6212;--cal-evento-bg:#EDE4F6;--cal-evento-fg:#5B3391;
   --cal-feriado-bg:#FBEFE3;--cal-feriado-fg:#9A3412;--cal-ferias-bg:#DCEBF7;--cal-ferias-fg:#1D4E7A;
-  --cal-festivo-bg:#F5DC86;--cal-festivo-fg:#5A3F00;
+  --cal-especial-bg:#F5DC86;--cal-especial-fg:#5A3F00;
   --rotulo-bg:#EDE4F6;--rotulo-fg:#5B3391;
   --touch-min:44px;--radius-sm:9px;--radius-md:12px;--radius-lg:16px;
 }
@@ -39,7 +39,7 @@ x-dc{display:block}helmet{display:none}
   --cal-reuniao-bg:#1E3A2E;--cal-reuniao-fg:#BFE3D0;--cal-sem-bg:#4A1E1A;--cal-sem-fg:#F5AFA7;
   --cal-acamp-bg:#26380A;--cal-acamp-fg:#C7E08F;--cal-evento-bg:#33224D;--cal-evento-fg:#D9C4F2;
   --cal-feriado-bg:#3A2A12;--cal-feriado-fg:#F2B27B;--cal-ferias-bg:#173149;--cal-ferias-fg:#BBD9F2;
-  --cal-festivo-bg:#3B3000;--cal-festivo-fg:#F4DB85;
+  --cal-especial-bg:#3B3000;--cal-especial-fg:#F4DB85;
   --rotulo-bg:#33224D;--rotulo-fg:#D9C4F2;
 }}
 *{box-sizing:border-box}
@@ -61,7 +61,7 @@ h1,h2,h3,p{margin:0}
 .perigo{color:var(--color-danger)}
 .cheio{width:100%}
 .chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 12px;font-size:14px;font-weight:700}
-.chip-festivo{background:var(--cal-festivo-bg);color:var(--cal-festivo-fg)}
+.chip-especial{background:var(--cal-especial-bg);color:var(--cal-especial-fg)}
 .chip-extra{background:var(--cal-reuniao-bg);color:var(--cal-reuniao-fg);border:1px dashed currentColor}
 .chip-evento{background:var(--cal-evento-bg);color:var(--cal-evento-fg)}
 .chip-reuniao{background:var(--cal-reuniao-bg);color:var(--cal-reuniao-fg)}
@@ -69,7 +69,7 @@ h1,h2,h3,p{margin:0}
 .chip-feriado{background:var(--cal-feriado-bg);color:var(--cal-feriado-fg)}
 .chip-sem{background:var(--cal-sem-bg);color:var(--cal-sem-fg)}
 .chip-acamp{background:var(--cal-acamp-bg);color:var(--cal-acamp-fg)}
-.gala{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:2px 12px;border-radius:999px;border:2px solid var(--cal-festivo-fg);background:var(--color-surface);color:var(--cal-festivo-fg);font-size:16px;font-weight:700;align-self:flex-start}
+.gala{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:2px 12px;border-radius:999px;border:2px solid var(--cal-especial-fg);background:var(--color-surface);color:var(--cal-especial-fg);font-size:16px;font-weight:700;align-self:flex-start}
 .lbl{font-size:14px;font-weight:600;color:var(--color-text)}
 .in{min-height:44px;border:1px solid var(--color-border-control);border-radius:var(--radius-sm);background:var(--color-surface);padding:0 14px;font-size:16px;font-family:inherit;color:var(--color-text);width:100%}
 .in.curto{width:140px}
@@ -123,15 +123,15 @@ h1,h2,h3,p{margin:0}
 .fx.quebra{white-space:normal;line-height:1.2;align-items:flex-start}
 .fx.reuniao{background:var(--cal-reuniao-bg);color:var(--cal-reuniao-fg)}
 .fx.feriado{background:var(--cal-feriado-bg);color:var(--cal-feriado-fg)}
-.fx.festivo{background:var(--cal-festivo-bg);color:var(--cal-festivo-fg);min-height:44px}
-.fx.gala-mini{background:var(--color-surface);color:var(--cal-festivo-fg);border:2px solid var(--cal-festivo-fg);font-weight:700}
+.fx.especial{background:var(--cal-especial-bg);color:var(--cal-especial-fg);min-height:44px}
+.fx.gala-mini{background:var(--color-surface);color:var(--cal-especial-fg);border:2px solid var(--cal-especial-fg);font-weight:700}
 .dia{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:48px;border-radius:var(--radius-sm);font-size:16px;font-weight:600;border:0;background:var(--color-surface);color:var(--color-text);font-family:inherit}
 .dia.hoje{border:2px solid var(--color-primary);font-weight:800}
 .dia.sel{background:var(--color-primary);color:var(--color-on-primary)}
 .pontos{display:flex;height:10px;align-items:center;gap:4px}
 .p{width:8px;height:8px;border-radius:999px;display:inline-block;box-shadow:0 0 0 1px var(--color-surface)}
 .p.reuniao{background:var(--cal-reuniao-fg)}.p.feriado{background:var(--cal-feriado-fg)}
-.p.festivo{background:var(--cal-festivo-fg);border-radius:0;transform:rotate(45deg);width:9px;height:9px}
+.p.especial{background:var(--cal-especial-fg);border-radius:0;transform:rotate(45deg);width:9px;height:9px}
 .p.acamp{background:var(--cal-acamp-fg)}
 .cartao-ev{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:16px;min-height:44px;text-decoration:none;color:inherit}
 .cartao-ev .txt-ev{display:flex;flex-direction:column;gap:6px;min-width:0}
@@ -191,21 +191,22 @@ h1,h2,h3,p{margin:0}
 }
 </style>
 </helmet>
-<div class="mb" style="min-height:1000px"><header class="mtopo"><span class="marca">App do Desbravador</span><span style="display:flex;align-items:center;gap:4px"><button class="btn txt" style="color:#fff;padding:0 8px">Marcos <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></span></header><main class="mmain">
-<div style="display:flex;flex-direction:column;gap:4px"><span class="rot">Conselheiro · Águias</span><h1 class="h1">Olá, Marcos</h1></div>
-<p class="rotulo-quadro">Cartão novo, em 20 de outubro (depois do Aniversário do clube): o próximo evento tem gala</p>
-<section class="card" aria-labelledby="pe-566" style="gap:10px">
-<h2 id="pe-566" style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--color-text-secondary);font-family:var(--font-body)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.8 11.3 2 22l10.7-3.79"/><path d="M4 3h.01"/><path d="M22 8h.01"/><path d="M15 2h.01"/><path d="M22 20h.01"/><path d="m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10"/><path d="m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11c-.11.7-.72 1.22-1.43 1.22H17"/><path d="m11 2 .33.82c.34.86-.2 1.82-1.11 1.98C9.52 4.9 9 5.52 9 6.23V7"/><path d="M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z"/></svg> Próximo evento</h2>
-<div style="display:flex;flex-direction:column;gap:2px"><span class="h2" style="font-size:20px">Sábado, 31 de outubro</span><span class="corpo" style="font-weight:700">Culto de Investidura</span></div>
-<span class="gala"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg> Uniforme de gala</span>
-<p class="meta" style="display:flex;align-items:center;gap:6px;font-size:16px;color:var(--color-text-secondary)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> 18h30 · Igreja Central</p>
-<p class="corpo">Vale pontos no ranking: 20 por ir, mais 10 de gala.</p>
-<a class="btn txt" href="Calendario-Leitura.dc.html" style="align-self:flex-start;padding:0">Ver o calendário <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a></section>
-<section class="card" style="gap:6px"><h2 style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--color-text-secondary);font-family:var(--font-body)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg> Próxima reunião</h2>
-<span class="h2" style="font-size:18px">Domingo, 25 de outubro</span><span class="corpo" style="color:var(--color-text-secondary)">9h · Sala 3 da igreja</span></section>
-<div style="display:flex;gap:8px"><div class="card" style="flex:1;align-items:center;gap:4px;padding:12px;background:var(--color-primary-tint)"><span class="h1">10</span><span class="ajuda" style="text-align:center">DBVs na unidade</span></div><div class="card" style="flex:1;align-items:center;gap:4px;padding:12px;background:var(--color-primary-tint)"><span class="h1">87%</span><span class="ajuda" style="text-align:center">Frequência no mês</span></div></div></main><nav class="bnav" aria-label="Navegação principal"><a href="#" class="on" aria-current="page"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Início</span></a><a href="#"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Unidade</span></a><a href="#"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg><span>Reuniões</span></a><a href="#"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M3 10h18"/><path d="M8 2v4"/><path d="M17 14h-6"/><path d="M13 18H7"/><path d="M7 14h.01"/><path d="M17 18h.01"/></svg><span>Calendário</span></a><a href="#"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg><span>Ranking</span></a></nav></div>
+<div class="mb" style="min-height:1700px"><header class="mtopo"><button class="btn txt" aria-label="Abrir o menu" style="color:#fff"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h16"/><path d="M4 6h16"/><path d="M4 18h16"/></svg></button><span class="marca">App do Desbravador</span><button class="btn txt" style="color:#fff">Rosa</button></header><main class="mmain">
+<a class="volta" href="Calendario-Celular.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg> Calendário do clube</a>
+<p class="rotulo-quadro">Logo depois de salvar um evento novo</p>
+<p class="ok" role="status"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Evento salvo. Conselheiros e instrutores o veem ao abrir o app com internet.</p>
+<div style="display:flex;flex-direction:column;gap:4px"><span class="rot">Evento especial</span><h1 class="h1">Culto de Investidura</h1></div>
+<div style="display:flex;flex-direction:column;gap:8px"><a class="btn pri cheio" href="Form-Especial-Celular.dc.html">Editar</a><button class="btn sec perigo cheio" type="button">Excluir</button></div>
+<section class="card" aria-labelledby="qf2"><h2 id="qf2" class="h2">Quem foi ao evento</h2>
+<p class="corpo">A lista abre no dia do evento, sábado, 31 de outubro.</p>
+<p class="ajuda">Até lá, não há nada a registrar.</p></section>
+<section aria-label="Dados do evento" class="card"><div class="dl" style="grid-template-columns:1fr"><div class="par"><span class="rot">Datas</span><span class="val">sábado, 31 de outubro de 2026</span></div><div class="par"><span class="rot">Horário</span><span class="val">18h30</span></div><div class="par"><span class="rot">Local</span><span class="val">Igreja Central</span></div></div></section>
+<section aria-label="Pontos e uniforme" class="card"><h2 class="h2">Pontos e uniforme</h2>
+<div class="dl" style="grid-template-columns:repeat(1,minmax(0,1fr))"><div class="par"><span class="rot">Pontos por ir ao evento</span><span class="val">20</span></div><div class="par"><span class="rot">Uniforme</span><span class="val"><span class="gala"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg> Uniforme de gala</span></span></div><div class="par"><span class="rot">Pontos por ir de gala</span><span class="val">10</span></div></div></section>
+<section aria-label="O que muda no calendário" class="card"><h2 class="h2">O que muda no calendário</h2>
+<div class="dl" style="grid-template-columns:1fr"><div class="par"><span class="rot">Terá reunião</span><span class="val">Não há domingo no período</span></div><div class="par"><span class="rot">Terá classe</span><span class="val">Não há domingo no período</span></div><div class="par"><span class="rot">Terá atividade de campo</span><span class="val">Não</span></div></div></section></main></div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":360,"height":1000}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":360,"height":1700}}'>
 class Component extends DCLogic {
 renderVals() { return {}; }
 }

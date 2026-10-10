@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Editar evento festivo com lista registrada · celular</title>
+<title>Novo evento especial · computador</title>
 <script src="./support.js"></script>
 </head>
 <body>
@@ -24,7 +24,7 @@ x-dc{display:block}helmet{display:none}
   --cal-reuniao-bg:#E3EEE7;--cal-reuniao-fg:#1F4D3A;--cal-sem-bg:#FBE4E1;--cal-sem-fg:#9F2A20;
   --cal-acamp-bg:#E6F0D4;--cal-acamp-fg:#3F6212;--cal-evento-bg:#EDE4F6;--cal-evento-fg:#5B3391;
   --cal-feriado-bg:#FBEFE3;--cal-feriado-fg:#9A3412;--cal-ferias-bg:#DCEBF7;--cal-ferias-fg:#1D4E7A;
-  --cal-festivo-bg:#F5DC86;--cal-festivo-fg:#5A3F00;
+  --cal-especial-bg:#F5DC86;--cal-especial-fg:#5A3F00;
   --rotulo-bg:#EDE4F6;--rotulo-fg:#5B3391;
   --touch-min:44px;--radius-sm:9px;--radius-md:12px;--radius-lg:16px;
 }
@@ -39,7 +39,7 @@ x-dc{display:block}helmet{display:none}
   --cal-reuniao-bg:#1E3A2E;--cal-reuniao-fg:#BFE3D0;--cal-sem-bg:#4A1E1A;--cal-sem-fg:#F5AFA7;
   --cal-acamp-bg:#26380A;--cal-acamp-fg:#C7E08F;--cal-evento-bg:#33224D;--cal-evento-fg:#D9C4F2;
   --cal-feriado-bg:#3A2A12;--cal-feriado-fg:#F2B27B;--cal-ferias-bg:#173149;--cal-ferias-fg:#BBD9F2;
-  --cal-festivo-bg:#3B3000;--cal-festivo-fg:#F4DB85;
+  --cal-especial-bg:#3B3000;--cal-especial-fg:#F4DB85;
   --rotulo-bg:#33224D;--rotulo-fg:#D9C4F2;
 }}
 *{box-sizing:border-box}
@@ -61,7 +61,7 @@ h1,h2,h3,p{margin:0}
 .perigo{color:var(--color-danger)}
 .cheio{width:100%}
 .chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 12px;font-size:14px;font-weight:700}
-.chip-festivo{background:var(--cal-festivo-bg);color:var(--cal-festivo-fg)}
+.chip-especial{background:var(--cal-especial-bg);color:var(--cal-especial-fg)}
 .chip-extra{background:var(--cal-reuniao-bg);color:var(--cal-reuniao-fg);border:1px dashed currentColor}
 .chip-evento{background:var(--cal-evento-bg);color:var(--cal-evento-fg)}
 .chip-reuniao{background:var(--cal-reuniao-bg);color:var(--cal-reuniao-fg)}
@@ -69,7 +69,7 @@ h1,h2,h3,p{margin:0}
 .chip-feriado{background:var(--cal-feriado-bg);color:var(--cal-feriado-fg)}
 .chip-sem{background:var(--cal-sem-bg);color:var(--cal-sem-fg)}
 .chip-acamp{background:var(--cal-acamp-bg);color:var(--cal-acamp-fg)}
-.gala{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:2px 12px;border-radius:999px;border:2px solid var(--cal-festivo-fg);background:var(--color-surface);color:var(--cal-festivo-fg);font-size:16px;font-weight:700;align-self:flex-start}
+.gala{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:2px 12px;border-radius:999px;border:2px solid var(--cal-especial-fg);background:var(--color-surface);color:var(--cal-especial-fg);font-size:16px;font-weight:700;align-self:flex-start}
 .lbl{font-size:14px;font-weight:600;color:var(--color-text)}
 .in{min-height:44px;border:1px solid var(--color-border-control);border-radius:var(--radius-sm);background:var(--color-surface);padding:0 14px;font-size:16px;font-family:inherit;color:var(--color-text);width:100%}
 .in.curto{width:140px}
@@ -123,15 +123,15 @@ h1,h2,h3,p{margin:0}
 .fx.quebra{white-space:normal;line-height:1.2;align-items:flex-start}
 .fx.reuniao{background:var(--cal-reuniao-bg);color:var(--cal-reuniao-fg)}
 .fx.feriado{background:var(--cal-feriado-bg);color:var(--cal-feriado-fg)}
-.fx.festivo{background:var(--cal-festivo-bg);color:var(--cal-festivo-fg);min-height:44px}
-.fx.gala-mini{background:var(--color-surface);color:var(--cal-festivo-fg);border:2px solid var(--cal-festivo-fg);font-weight:700}
+.fx.especial{background:var(--cal-especial-bg);color:var(--cal-especial-fg);min-height:44px}
+.fx.gala-mini{background:var(--color-surface);color:var(--cal-especial-fg);border:2px solid var(--cal-especial-fg);font-weight:700}
 .dia{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:48px;border-radius:var(--radius-sm);font-size:16px;font-weight:600;border:0;background:var(--color-surface);color:var(--color-text);font-family:inherit}
 .dia.hoje{border:2px solid var(--color-primary);font-weight:800}
 .dia.sel{background:var(--color-primary);color:var(--color-on-primary)}
 .pontos{display:flex;height:10px;align-items:center;gap:4px}
 .p{width:8px;height:8px;border-radius:999px;display:inline-block;box-shadow:0 0 0 1px var(--color-surface)}
 .p.reuniao{background:var(--cal-reuniao-fg)}.p.feriado{background:var(--cal-feriado-fg)}
-.p.festivo{background:var(--cal-festivo-fg);border-radius:0;transform:rotate(45deg);width:9px;height:9px}
+.p.especial{background:var(--cal-especial-fg);border-radius:0;transform:rotate(45deg);width:9px;height:9px}
 .p.acamp{background:var(--cal-acamp-fg)}
 .cartao-ev{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:16px;min-height:44px;text-decoration:none;color:inherit}
 .cartao-ev .txt-ev{display:flex;flex-direction:column;gap:6px;min-width:0}
@@ -191,34 +191,31 @@ h1,h2,h3,p{margin:0}
 }
 </style>
 </helmet>
-<div class="mb" style="min-height:2650px"><header class="mtopo"><button class="btn txt" aria-label="Abrir o menu" style="color:#fff"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h16"/><path d="M4 6h16"/><path d="M4 18h16"/></svg></button><span class="marca">App do Desbravador</span><button class="btn txt" style="color:#fff">Rosa</button></header><main class="mmain">
-<a class="volta" href="Ficha-Festivo.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg> Dia do Desbravador</a>
-<div style="display:flex;flex-direction:column;gap:4px"><span class="rot">Editar evento</span><h1 class="h1">Dia do Desbravador</h1></div>
-<p class="rotulo-quadro">Evento com a lista concluída · depende da pergunta 3 da spec</p>
-<p class="aviso"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><span>A lista deste evento já foi concluída: 38 desbravadores foram. Se você mudar a data, os pontos ou o uniforme de gala, os pontos desses 38 serão refeitos.</span></p>
-<form style="display:flex;flex-direction:column;gap:16px">
-<label class="campo"><span class="lbl">Nome</span><input class="in" type="text" value="Dia do Desbravador"></label>
-<label class="campo"><span class="lbl">Tipo</span><select class="in" disabled aria-describedby="apoio-tipo3"><option>Evento festivo</option></select><span id="apoio-tipo3" class="ajuda">O tipo não muda depois que a lista é começada.</span></label>
-<label class="campo"><span class="lbl">Início</span><input class="in" type="text" value="26/09/2026"></label><label class="campo"><span class="lbl">Fim</span><input class="in" type="text" value="26/09/2026"></label>
-<label class="campo"><span class="lbl">Horário</span><input class="in" type="text" value="17:00"></label><label class="campo"><span class="lbl">Local</span><input class="in" type="text" value="Igreja Central"></label>
+<div class="desk" style="min-height:1500px"><aside class="side"><div class="t marca" style="padding:0 12px 16px">App do Desbravador</div><nav aria-label="Menu do Adm" style="display:flex;flex-direction:column;gap:4px"><span class="nav">Visão geral</span><span class="nav">Desbravadores</span><span class="nav">Usuários</span><span class="nav">Unidades</span><span class="nav">Classes e especialidades</span><span class="nav on">Calendário do clube</span><span class="nav">Cronogramas</span><span class="nav">Classe Bíblica</span><span class="nav">Configurações do clube</span><span class="nav">Ranking</span></nav></aside><div class="col"><header class="topo"><button class="btn txt" aria-label="Notificações" style="color:var(--color-text)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg></button><button class="btn txt" style="color:var(--color-text)">Rosa Almeida <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></header><main class="dmain">
+<div style="display:flex;flex-direction:column;gap:8px"><a class="volta" href="Calendario-Adm.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg> Calendário do clube</a>
+<div style="display:flex;flex-direction:column;gap:4px"><span class="rot">Calendário do clube</span><h1 class="h1" style="font-size:30px">Novo evento</h1></div></div>
+<form style="display:flex;flex-direction:column;gap:20px">
+<div class="card" style="gap:16px">
+<label class="campo"><span class="lbl">Nome</span><input class="in" type="text" value="Culto de Investidura"></label>
+<label class="campo"><span class="lbl">Tipo</span><select class="in" aria-describedby="apoio-tipo"><option>Evento especial</option></select><span id="apoio-tipo" class="ajuda">Evento especial: vale pontos no ranking, tem lista de quem foi e pode pedir uniforme de gala. A reunião e a classe do dia continuam, salvo se você desmarcar abaixo.</span></label>
+<div class="dl" style="grid-template-columns:repeat(2,minmax(0,1fr))"><label class="campo"><span class="lbl">Início</span><input class="in" type="text" value="31/10/2026"></label><label class="campo"><span class="lbl">Fim</span><input class="in" type="text" value="31/10/2026"></label></div>
+<div class="dl" style="grid-template-columns:repeat(2,minmax(0,1fr))"><label class="campo"><span class="lbl">Horário</span><input class="in" type="text" value="18:30"></label><label class="campo"><span class="lbl">Local</span><input class="in" type="text" value="Igreja Central"></label></div>
 <fieldset class="grupo"><legend>Uniforme e pontos</legend>
-<label class="campo"><span class="lbl">Pontos por ir ao evento</span><input class="in curto" type="number" inputmode="numeric" value="25" aria-describedby="pp3-a"><span id="pp3-a" class="ajuda">Quem for ganha estes pontos no ranking. Pode ser 0.</span></label>
+<label class="campo"><span class="lbl">Pontos por ir ao evento</span><input class="in curto" type="number" inputmode="numeric" value="20" aria-describedby="pp-a"><span id="pp-a" class="ajuda">Quem for ganha estes pontos no ranking. Pode ser 0.</span></label>
 <label class="cx"><input type="checkbox" checked> <span>Pede uniforme de gala</span></label>
-<label class="campo"><span class="lbl">Pontos por ir de gala</span><input class="in curto" type="number" inputmode="numeric" value="10" aria-describedby="pu3-a"><span id="pu3-a" class="ajuda">Só quem for de gala ganha estes pontos, além dos de ir. Pode ser 0.</span></label>
-<p class="resumo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span>Quem for ganha 25 pontos. Quem for de gala ganha mais 10.</span></p>
+<label class="campo"><span class="lbl">Pontos por ir de gala</span><input class="in curto" type="number" inputmode="numeric" value="10" aria-describedby="pu-a"><span id="pu-a" class="ajuda">Só quem for de gala ganha estes pontos, além dos de ir. Pode ser 0.</span></label>
+<p class="resumo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span>Quem for ganha 20 pontos. Quem for de gala ganha mais 10.</span></p>
 </fieldset>
-<div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--color-border);padding-top:16px"><button class="btn pri cheio" type="button">Salvar alterações</button><a class="btn sec cheio" href="Ficha-Festivo.dc.html">Cancelar</a></div>
-</form>
-<p class="rotulo-quadro">Ao tocar em “Salvar alterações”, porque os pontos mudaram de 20 para 25</p>
-<section class="dialogo" role="alertdialog" aria-labelledby="dlg-t" aria-describedby="dlg-d">
-<h2 id="dlg-t" class="h2">Refazer os pontos de 38 desbravadores?</h2>
-<p id="dlg-d" class="corpo">Os pontos por ir passam de 20 para 25 para quem foi ao Dia do Desbravador. O ranking de setembro muda. Você pode mudar de novo depois.</p>
-<button class="btn pri cheio" type="button">Refazer os pontos</button><button class="btn sec cheio" type="button">Voltar ao formulário</button>
-</section>
-<p class="rotulo-quadro">Ao mudar o início para uma data que ainda não chegou, com a lista já começada · o servidor recusa</p>
-<label class="campo"><span class="lbl">Início</span><input class="in erro" type="text" value="15/11/2026" aria-invalid="true" aria-describedby="ini3-e"><span id="ini3-e" class="err" role="alert"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-top:2px;flex-shrink:0"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><span>Esta data ainda não chegou e a lista deste evento já tem marcas. Escolha uma data que já passou, ou exclua o evento e cadastre de novo.</span></span></label></main></div>
+<fieldset class="grupo"><legend>Para a reunião e as classes</legend>
+<div style="display:flex;flex-direction:column"><label class="cx"><input type="checkbox" checked> <span>Terá reunião</span></label><label class="cx"><input type="checkbox" checked> <span>Terá classe</span></label><label class="cx"><input type="checkbox"> <span>Terá atividade de campo</span></label></div>
+<p class="ajuda">Já vem marcado para a reunião e a classe do dia continuarem. Desmarque “Terá reunião” se o evento toma o lugar dela.</p>
+</fieldset>
+<p class="ajuda">Quem monta o cronograma vê este evento ao escolher as datas.</p>
+</div>
+<div style="display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--color-border);padding-top:20px"><a class="btn sec" href="Calendario-Adm.dc.html">Cancelar</a><button class="btn pri" type="button">Salvar</button></div>
+</form></main></div></div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":360,"height":2650}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1500}}'>
 class Component extends DCLogic {
 renderVals() { return {}; }
 }
