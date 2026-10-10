@@ -194,10 +194,28 @@ O link é conferido no banco a cada requisição: GET e HEAD valem até o fim da
 | `POST /unidades/{id}/albuns` | Cria álbum (nome, ou vinculado a reunião/evento) | `foto.enviar` + escopo |
 | `PUT /sync/fotos/{clienteUuid}` | Upload de uma foto da fila (multipart: arquivo, albumId, legenda); idempotente | `foto.enviar` + escopo |
 | `GET /unidades/{id}/sem-autorizacao-imagem` | Nomes públicos dos DBVs da unidade sem autorização (aviso do envio) | `foto.enviar` + escopo |
-| `GET /arquivos/{id}?miniatura=1` | Entrega por URL assinada de curta duração | conforme o dono |
+| `GET /arquivos/{id}?c=&v=&exp=&sig=` | Entrega por URL assinada de 10 min. `v` é `original`, `miniatura` ou `baixar`; `baixar` serve o original sempre como anexo (a assinatura cobre a variante: link de `original` não serve para `baixar`). Item removido da biblioteca responde 404 | conforme o dono |
 | `DELETE /fotos/{id}` | Remove (autor ou Adm) | `foto.enviar` |
 | `GET /classes/{id}/materiais` | Materiais por seção | logado + escopo (conselheiro: 403) |
 | `POST /materiais/link` · `POST /materiais/arquivo` (multipart: `dados`, `arquivo`; até 20 MB) · `PATCH` · `DELETE /materiais/{id}` | Cria, edita título/seção, remove | `material.enviar` + escopo |
+
+## Biblioteca
+
+Estante de PDFs do clube, em categorias. Categoria ou item de outro clube, ou já removido, responde 404.
+
+| Método e rota | O que faz | Permissão |
+|---|---|---|
+| `GET /biblioteca` | Categorias ativas na ordem, cada uma com os itens ativos na ordem: `id`, `nome`, `descricao`, `categoriaId`, `bytes`, `urlLer` (`original`), `urlBaixar` (`baixar`) e `capaUrl` (miniatura; `null` sem capa), todas URLs assinadas de 10 min | logado |
+| `POST /biblioteca/categorias` | `{ nome }` (1–60 caracteres); entra no fim. Nome repetido entre as ativas, sem distinguir maiúsculas: 422 | `biblioteca.gerenciar` |
+| `PATCH /biblioteca/categorias/{id}` | Renomeia; devolve a categoria com os itens | `biblioteca.gerenciar` |
+| `POST /biblioteca/categorias/{id}/mover` · `POST /biblioteca/itens/{id}/mover` | `{ direcao: "acima" \| "abaixo" }`: troca de lugar com o vizinho ativo (o item, só dentro da categoria); no topo ou no fim não faz nada. 204 | `biblioteca.gerenciar` |
+| `DELETE /biblioteca/categorias/{id}` | Exclui sem apagar a linha; com item ativo, 422 "Tire os itens da categoria antes de excluí-la.". 204 | `biblioteca.gerenciar` |
+| `POST /biblioteca/itens` | multipart: `dados` (JSON: `nome` 1–120, `descricao` até 120, `categoriaId`) e `arquivo` (PDF conferido pelo conteúdo, até 50 MB); entra no fim da categoria | `biblioteca.gerenciar` |
+| `PATCH /biblioteca/itens/{id}` | `nome`, `descricao`, `categoriaId`, todos opcionais; mudar de categoria põe o item no fim dela | `biblioteca.gerenciar` |
+| `PUT /biblioteca/itens/{id}/capa` · `DELETE /biblioteca/itens/{id}/capa` | multipart `capa` (JPG, PNG ou WebP, até 5 MB; 1600 px e miniatura de 400 px): põe ou troca / tira. A capa antiga é apagada do banco e do disco | `biblioteca.gerenciar` |
+| `DELETE /biblioteca/itens/{id}` | Remove sem apagar a linha; o PDF e a capa saem do disco. 204 | `biblioteca.gerenciar` |
+
+Não há rota para trocar o PDF de um item. Recusas com 422 e mensagem pronta: "O arquivo não é um PDF.", "O PDF pode ter até 50 MB.", "A capa precisa ser JPG, PNG ou WebP.", "A capa pode ter até 5 MB." e, na cota de 2 GB por clube (PDFs e capas dos itens ativos, à parte da dos materiais), "O espaço da biblioteca do clube acabou.". Toda escrita da biblioteca de um clube roda uma de cada vez.
 
 ## Observações
 
@@ -236,6 +254,6 @@ Nenhuma rota de conselheiro, pública ou de perfil do DBV devolve observações.
 | `observacao.ver_outros` | ✔ | — | desligada |
 | `ranking.lancar_manual` | ✔ | — | — |
 | `classebiblica.chamada` | ✔ | desligada | desligada |
-| `dbv.cadastrar`, `usuario.gerenciar`, `unidade.gerenciar`, `classe.gerenciar`, `calendario.gerenciar`, `ranking.configurar`, `relatorio.geral`, `clube.configurar`, `classebiblica.gerenciar` | ✔ | — | — |
+| `dbv.cadastrar`, `usuario.gerenciar`, `unidade.gerenciar`, `classe.gerenciar`, `calendario.gerenciar`, `biblioteca.gerenciar`, `ranking.configurar`, `relatorio.geral`, `clube.configurar`, `classebiblica.gerenciar` | ✔ | — | — |
 
 "desligada" = existe para o papel, começa desligada, o Adm pode ligar. "—" = não se aplica ao papel.

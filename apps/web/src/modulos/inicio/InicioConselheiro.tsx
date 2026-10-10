@@ -1,6 +1,6 @@
 import { feriasAte, hojeNoFuso, horarioELocalDoDia, proximaReuniao, situacaoDaData } from '@desbravadores/shared'
 import type { Papel } from '@desbravadores/shared'
-import { CalendarDays, ClipboardCheck, Image, Sun, Trophy, Users } from 'lucide-react'
+import { BookOpen, CalendarDays, ClipboardCheck, Image, Sun, Trophy, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
@@ -34,6 +34,7 @@ const ATALHOS: Array<{ rotulo: string; para: string; icone: LucideIcon }> = [
   { rotulo: 'Reuniões', para: '/reunioes', icone: ClipboardCheck },
   { rotulo: 'Galeria', para: '/galeria', icone: Image },
   { rotulo: 'Ranking', para: '/ranking', icone: Trophy },
+  { rotulo: 'Biblioteca', para: '/biblioteca', icone: BookOpen },
 ]
 
 const primeiraMaiuscula = (texto: string): string => texto.charAt(0).toUpperCase() + texto.slice(1)

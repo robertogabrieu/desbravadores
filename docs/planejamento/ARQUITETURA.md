@@ -181,6 +181,12 @@ Sair da conta com fila pendente exige confirmação explícita na própria tela.
   a permissão; o link expira (URL assinada de 10 min).
 - **Materiais de apoio**: PDF, PPTX, ODP, DOCX, ODT (limite 20 MB por arquivo, 1 GB por clube) ou
   link https. Sem vídeo. Mesma interface de armazenamento.
+- **Biblioteca do clube**: só PDF (até 50 MB), em categorias que o Adm monta, com capa opcional
+  (JPG, PNG ou WebP até 5 MB, processada como as fotos: 1600 px e miniatura de 400 px). Cota de
+  2 GB por clube, à parte da dos materiais, somando PDFs e capas dos itens ativos. Mesma interface
+  de armazenamento, em `clube/<clubeId>/biblioteca/` (sem pasta de ano). "Ler" e "Baixar" são a
+  mesma URL assinada de 10 min em variantes diferentes; a de baixar sai sempre como anexo. O nginx
+  do container e o do servidor aceitam 51 MB para esse envio (ver README).
 - **Onde fica:** pasta no volume Docker do servidor, organizada por `clube/tipo/ano/uuid`. A
   interface `Armazenamento` tem duas implementações (disco e R2); troca por variável de ambiente.
 - **Volume estimado:** ~2.000 fotos/ano × ~350 KB ≈ **0,7 GB/ano**. Cabe no disco do VPS por

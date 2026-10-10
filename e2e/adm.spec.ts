@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { expect, request, test } from '@playwright/test'
 import type { APIRequestContext, Browser, Page } from '@playwright/test'
 import {
@@ -71,6 +72,25 @@ async function lerCronograma(api: APIRequestContext, classeId: string): Promise<
 
 async function apiDo(autorizacao: string): Promise<APIRequestContext> {
   return request.newContext({ baseURL: process.env['E2E_API_URL'], extraHTTPHeaders: { Authorization: autorizacao } })
+}
+
+/** PDF de uma página em branco, com tabela de referências cruzadas de verdade: só ASCII, então posição em texto é posição em bytes. */
+function pdfMinimo(): Buffer {
+  const objetos = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] >>',
+  ]
+  let conteudo = '%PDF-1.4\n'
+  const posicoes = objetos.map((objeto, indice) => {
+    const posicao = conteudo.length
+    conteudo += `${indice + 1} 0 obj\n${objeto}\nendobj\n`
+    return posicao
+  })
+  const linhasDaTabela = posicoes.map((posicao) => `${String(posicao).padStart(10, '0')} 00000 n \n`).join('')
+  conteudo += `xref\n0 ${objetos.length + 1}\n0000000000 65535 f \n${linhasDaTabela}`
+  conteudo += `trailer\n<< /Size ${objetos.length + 1} /Root 1 0 R >>\nstartxref\n${conteudo.indexOf('xref\n')}\n%%EOF\n`
+  return Buffer.from(conteudo, 'latin1')
 }
 
 test('adm: evento em conflito avisa o instrutor, ele monta e envia, o Adm publica e o outro instrutor lê o publicado', async ({ browser }) => {
@@ -182,4 +202,31 @@ test('adm: ao remover o papel de conselheiro de quem está logado como conselhei
   await expect(paginaDaPessoa.getByRole('heading', { level: 1, name: 'Como você quer entrar?' })).toBeVisible()
   await expect(paginaDaPessoa.getByRole('button', { name: /Instrutor/ })).toBeVisible()
   await expect(paginaDaPessoa.getByRole('button', { name: /Conselheiro/ })).toHaveCount(0)
+})
+
+test('biblioteca: o Adm adiciona um PDF em Livros e o conselheiro o vê na estante com o "Ler" apontando para o arquivo', async ({ browser }) => {
+  const clube = await criarClube()
+  const unidade = await criarUnidade({ clubeId: clube.id })
+  const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+  const conselheiro = await criarAcesso({ clubeId: clube.id, papel: 'CONSELHEIRO', unidadeIds: [unidade.id] })
+  const nomeDoItem = `Livro de teste ${randomUUID().slice(0, 8)}`
+
+  // O Adm escolhe o PDF, troca o nome sugerido pelo próprio e põe o item em Livros.
+  const paginaAdm = await novaSessao(browser, adm.usuario.email)
+  await paginaAdm.goto('/adm/biblioteca')
+  await paginaAdm.getByRole('button', { name: 'Adicionar à biblioteca' }).click()
+  const dialogo = paginaAdm.getByRole('dialog', { name: 'Adicionar à biblioteca' })
+  await dialogo.getByLabel('PDF', { exact: true }).setInputFiles({ name: 'arquivo-de-teste.pdf', mimeType: 'application/pdf', buffer: pdfMinimo() })
+  await dialogo.getByLabel('Nome', { exact: true }).fill(nomeDoItem)
+  await dialogo.getByLabel('Categoria', { exact: true }).selectOption({ label: 'Livros' })
+  await dialogo.getByRole('button', { name: 'Adicionar', exact: true }).click()
+  await expect(dialogo).toHaveCount(0)
+  await expect(paginaAdm.getByRole('region', { name: 'Livros' }).getByRole('listitem').filter({ hasText: nomeDoItem })).toBeVisible()
+
+  // O conselheiro abre a estante e acha o cartão na prateleira Livros; o "Ler" leva ao arquivo original.
+  const paginaConselheiro = await novaSessao(browser, conselheiro.usuario.email, CELULAR)
+  await paginaConselheiro.goto('/biblioteca')
+  const cartao = paginaConselheiro.getByRole('region', { name: 'Livros' }).getByRole('listitem').filter({ hasText: nomeDoItem })
+  await expect(cartao).toBeVisible()
+  await expect(cartao.getByRole('link', { name: `Ler ${nomeDoItem}` })).toHaveAttribute('href', /\/api\/arquivos\/[^?]+\?.*\bv=original\b/)
 })

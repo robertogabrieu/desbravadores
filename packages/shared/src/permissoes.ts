@@ -28,6 +28,7 @@ export const CATALOGO_PERMISSOES = {
   'unidade.gerenciar': { rotulo: 'Gerenciar unidades', padrao: { ADM: true } },
   'classe.gerenciar': { rotulo: 'Gerenciar classes e matrículas', padrao: { ADM: true } },
   'calendario.gerenciar': { rotulo: 'Gerenciar o calendário', padrao: { ADM: true } },
+  'biblioteca.gerenciar': { rotulo: 'Montar a biblioteca do clube', padrao: { ADM: true } },
   'ranking.configurar': { rotulo: 'Configurar o ranking', padrao: { ADM: true } },
   'relatorio.geral': { rotulo: 'Ver relatórios gerais', padrao: { ADM: true } },
   'clube.configurar': { rotulo: 'Configurar o clube', padrao: { ADM: true } },

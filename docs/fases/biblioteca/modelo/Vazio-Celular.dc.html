@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Biblioteca vazia — conselheiro e instrutor</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;font-family:'Figtree',system-ui,sans-serif;color:#1B221F}
+*{box-sizing:border-box}
+.t{font-family:'Bricolage Grotesque',system-ui,sans-serif}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 20px;border-radius:12px;font-size:16px;font-weight:600;text-decoration:none;border:0;font-family:inherit;cursor:pointer;white-space:nowrap}
+.pri{background:#1F4D3A;color:#fff}
+.sec{background:#fff;color:#1B221F;border:1px solid #8A8375}
+.per{background:#B42318;color:#fff}
+.txt{background:transparent;color:#1B221F;padding:0 12px}
+.out{background:#fff;color:#1F4D3A;border:1px solid #1F4D3A}
+.cartao{background:#fff;border:1px solid #8A8375;border-radius:16px}
+.lbl{font-size:14px;font-weight:600;color:#1B221F}
+.in{display:flex;align-items:center;min-height:44px;border:1px solid #8A8375;border-radius:9px;background:#fff;padding:0 14px;font-size:16px;font-family:inherit;color:#1B221F;width:100%}
+.ajuda{font-size:14px;color:#5B645F;margin:0}
+.campo{display:flex;flex-direction:column;gap:6px}
+.nav{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:12px;color:#CFE0D6;font-weight:600;font-size:16px}
+.nav.on{background:#163828;color:#fff}
+.bnav{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:600;color:#5B645F}
+.bnav.on{color:#1F4D3A}
+.secao{display:flex;flex-direction:column;gap:12px}
+.cab-secao{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.h2{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:18px;font-weight:700;margin:0}
+.conta{font-size:14px;color:#5B645F}
+.capa{container-type:inline-size;position:relative;aspect-ratio:3/4;border-radius:9px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:10px;color:#fff}
+.nome{font-size:16px;font-weight:700;line-height:1.3;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.desc{font-size:14px;color:#5B645F;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.menu{position:absolute;z-index:5;background:#fff;border:1px solid #D9D3C5;border-radius:12px;box-shadow:0 8px 24px rgba(27,34,31,.18);padding:6px;display:flex;flex-direction:column;min-width:200px}
+.menu span{display:flex;align-items:center;min-height:44px;padding:0 12px;border-radius:9px;font-size:16px;font-weight:600}
+.fundo{position:absolute;inset:0;background:rgba(27,34,31,.4);z-index:10}
+.dialogo{position:absolute;z-index:11;background:#fff;border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:16px;box-shadow:0 20px 40px rgba(27,34,31,.25)}
+.dialogo h2{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:20px;font-weight:700;margin:0}
+.arquivo{display:flex;align-items:center;gap:12px;min-height:44px;border:1px solid #8A8375;border-radius:9px;background:#fff;padding:0 6px;font-size:16px}
+.arquivo b{display:inline-flex;align-items:center;min-height:32px;padding:0 10px;border-radius:6px;background:#E8E3D7;font-size:14px;font-weight:600}
+.etiqueta{display:inline-block;border-radius:999px;padding:4px 12px;font-size:13px;font-weight:700;letter-spacing:.04em}
+</style>
+</helmet>
+<div style="position:relative;width:390px;min-height:844px;display:flex;flex-direction:column;background:#F4F1EA">
+<header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 16px;background:#1F4D3A;color:#fff">
+<span style="display:flex;align-items:center;gap:8px"><svg width="28" height="32" viewBox="0 0 28 32" aria-hidden="true"><path d="M2 3h24L14 30z" fill="#E8701A" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 7h12l-6 13z" fill="#fff" opacity=".9"/><path d="M11 9h6l-3 7z" fill="#E8701A"/></svg><span class="t" style="font-size:18px;font-weight:700;line-height:1.25">App do<br>Desbravador</span></span>
+<span style="display:flex;align-items:center;gap:4px"><span class="btn" style="padding:0 8px;color:#fff;min-height:44px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span><span style="font-weight:600;font-size:16px;display:flex;align-items:center;gap:6px">Marcos Vie... <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></span>
+</header>
+<main style="flex:1;padding:16px;display:flex;flex-direction:column;gap:20px"><header style="display:flex;align-items:flex-start;gap:8px">
+<span class="btn txt" style="padding:0 6px" aria-label="Voltar para o Início"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></span>
+<div><h1 class="t" style="margin:0;font-size:24px;font-weight:800">Biblioteca</h1><p style="margin:0;font-size:14px;color:#5B645F">Nenhum item ainda</p></div>
+</header><div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:48px 24px;text-align:center"><h2 class="t" style="margin:0;font-size:18px;font-weight:700">A biblioteca ainda está vazia.</h2><p style="margin:0;max-width:24rem;font-size:16px;color:#5B645F">O Adm do clube adiciona aqui os cadernos de classe, livros e manuais.</p></div></main>
+<nav aria-label="Navegação principal" style="display:flex;height:76px;background:#fff;border-top:1px solid #D9D3C5"><span class="bnav"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>Início</span><span class="bnav"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Unidade</span><span class="bnav"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/></svg>Reuniões</span><span class="bnav"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/><path d="M12 15v4"/></svg>Ranking</span></nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

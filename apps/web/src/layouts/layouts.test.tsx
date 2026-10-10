@@ -68,6 +68,7 @@ describe('LayoutCelular', () => {
     expect(itemDoMenu('Ranking')).toHaveAttribute('href', '/ranking')
     expect(within(screen.getByRole('navigation')).queryByText('em breve')).not.toBeInTheDocument()
     expect(within(screen.getByRole('navigation')).queryByText('Classes')).not.toBeInTheDocument()
+    expect(within(screen.getByRole('navigation')).queryByText('Biblioteca')).not.toBeInTheDocument()
   })
 
   it('instrutor: Início, Classes, Cronograma e Ranking habilitados', async () => {
@@ -81,6 +82,7 @@ describe('LayoutCelular', () => {
     expect(itemDoMenu('Classes')).toHaveAttribute('href', '/classes')
     expect(itemDoMenu('Cronograma')).toHaveAttribute('href', '/cronograma')
     expect(within(screen.getByRole('navigation')).queryByText('Unidade')).not.toBeInTheDocument()
+    expect(within(screen.getByRole('navigation')).queryByText('Biblioteca')).not.toBeInTheDocument()
   })
 
   it('item desabilitado não navega ao ser tocado', async () => {
@@ -164,8 +166,22 @@ describe('LayoutAdm', () => {
     expect(itemDoMenu('Classes e especialidades')).toHaveAttribute('href', '/adm/classes')
     expect(itemDoMenu('Calendário do clube')).toHaveAttribute('href', '/adm/calendario')
     expect(itemDoMenu('Cronogramas')).toHaveAttribute('href', '/adm/cronogramas')
+    expect(itemDoMenu('Biblioteca')).toHaveAttribute('href', '/adm/biblioteca')
     expect(itemDoMenu('Configurações do clube')).toHaveAttribute('href', '/adm/configuracoes')
     expect(itemDoMenu('Relatórios')).toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('"Biblioteca" vem logo depois de "Cronogramas"', async () => {
+    servidor.use(...handlersSessao([criarVinculo('ADM')]))
+    renderizarRotas(rotasAdm, '/adm/desbravadores')
+    await screen.findByText('lista')
+
+    const rotulos = within(screen.getByRole('navigation', { name: 'Menu do Adm' }))
+      .getAllByRole('link')
+      .map((link) => link.textContent)
+    const posicaoDeCronogramas = rotulos.indexOf('Cronogramas')
+    expect(posicaoDeCronogramas).toBeGreaterThanOrEqual(0)
+    expect(rotulos.slice(posicaoDeCronogramas, posicaoDeCronogramas + 2)).toEqual(['Cronogramas', 'Biblioteca'])
   })
 
   it('só o item da tela aberta fica marcado: Visão geral não acende nas outras telas do Adm', async () => {
@@ -206,6 +222,20 @@ describe('LayoutAdm', () => {
     await userEvent.click(within(gaveta).getByText('Usuários'))
 
     expect(roteador.state.location.pathname).toBe('/adm/usuarios')
+    expect(screen.queryByRole('dialog', { name: 'Menu do Adm' })).not.toBeInTheDocument()
+  })
+
+  it('abaixo de 900 px a gaveta também tem "Biblioteca", e escolhê-la abre a biblioteca do Adm', async () => {
+    simularLargura(390)
+    servidor.use(...handlersSessao([criarVinculo('ADM')]))
+    const { roteador } = renderizarRotas(rotasAdm, '/adm/desbravadores')
+    await screen.findByText('lista')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Abrir o menu' }))
+    const gaveta = screen.getByRole('dialog', { name: 'Menu do Adm' })
+    await userEvent.click(within(gaveta).getByText('Biblioteca'))
+
+    expect(roteador.state.location.pathname).toBe('/adm/biblioteca')
     expect(screen.queryByRole('dialog', { name: 'Menu do Adm' })).not.toBeInTheDocument()
   })
 

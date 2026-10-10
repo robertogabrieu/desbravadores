@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Adicionar — capa recusada</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;font-family:'Figtree',system-ui,sans-serif;color:#1B221F}
+*{box-sizing:border-box}
+.t{font-family:'Bricolage Grotesque',system-ui,sans-serif}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 20px;border-radius:12px;font-size:16px;font-weight:600;text-decoration:none;border:0;font-family:inherit;cursor:pointer;white-space:nowrap}
+.pri{background:#1F4D3A;color:#fff}
+.sec{background:#fff;color:#1B221F;border:1px solid #8A8375}
+.per{background:#B42318;color:#fff}
+.txt{background:transparent;color:#1B221F;padding:0 12px}
+.out{background:#fff;color:#1F4D3A;border:1px solid #1F4D3A}
+.cartao{background:#fff;border:1px solid #8A8375;border-radius:16px}
+.lbl{font-size:14px;font-weight:600;color:#1B221F}
+.in{display:flex;align-items:center;min-height:44px;border:1px solid #8A8375;border-radius:9px;background:#fff;padding:0 14px;font-size:16px;font-family:inherit;color:#1B221F;width:100%}
+.ajuda{font-size:14px;color:#5B645F;margin:0}
+.campo{display:flex;flex-direction:column;gap:6px}
+.nav{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:12px;color:#CFE0D6;font-weight:600;font-size:16px}
+.nav.on{background:#163828;color:#fff}
+.bnav{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:600;color:#5B645F}
+.bnav.on{color:#1F4D3A}
+.secao{display:flex;flex-direction:column;gap:12px}
+.cab-secao{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.h2{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:18px;font-weight:700;margin:0}
+.conta{font-size:14px;color:#5B645F}
+.capa{container-type:inline-size;position:relative;aspect-ratio:3/4;border-radius:9px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:10px;color:#fff}
+.nome{font-size:16px;font-weight:700;line-height:1.3;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.desc{font-size:14px;color:#5B645F;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.menu{position:absolute;z-index:5;background:#fff;border:1px solid #D9D3C5;border-radius:12px;box-shadow:0 8px 24px rgba(27,34,31,.18);padding:6px;display:flex;flex-direction:column;min-width:200px}
+.menu span{display:flex;align-items:center;min-height:44px;padding:0 12px;border-radius:9px;font-size:16px;font-weight:600}
+.fundo{position:absolute;inset:0;background:rgba(27,34,31,.4);z-index:10}
+.dialogo{position:absolute;z-index:11;background:#fff;border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:16px;box-shadow:0 20px 40px rgba(27,34,31,.25)}
+.dialogo h2{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:20px;font-weight:700;margin:0}
+.arquivo{display:flex;align-items:center;gap:12px;min-height:44px;border:1px solid #8A8375;border-radius:9px;background:#fff;padding:0 6px;font-size:16px}
+.arquivo b{display:inline-flex;align-items:center;min-height:32px;padding:0 10px;border-radius:6px;background:#E8E3D7;font-size:14px;font-weight:600}
+.etiqueta{display:inline-block;border-radius:999px;padding:4px 12px;font-size:13px;font-weight:700;letter-spacing:.04em}
+</style>
+</helmet>
+<div style="position:relative;width:1280px;min-height:1900px;display:flex;background:#F4F1EA">
+<aside style="width:248px;flex-shrink:0;background:#1F4D3A;color:#fff">
+<div style="display:flex;align-items:center;gap:8px;padding:20px"><span><svg width="28" height="32" viewBox="0 0 28 32" aria-hidden="true"><path d="M2 3h24L14 30z" fill="#E8701A" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 7h12l-6 13z" fill="#fff" opacity=".9"/><path d="M11 9h6l-3 7z" fill="#E8701A"/></svg></span><span class="t" style="font-size:18px;font-weight:700;line-height:1.25">App do<br>Desbravador</span></div>
+<nav aria-label="Menu do Adm" style="display:flex;flex-direction:column;gap:4px;padding:8px"><span class="nav"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>Visão geral</span><span class="nav"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>Desbravadores</span><span class="nav"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Usuários</span><span class="nav"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/></svg>Unidades</span><span class="nav"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/><path d="M22 10v6"/></svg>Classes e especialidades</span><span class="nav"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/></svg>Calendário do clube</span><span class="nav"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4M12 16h4M8 11h.01M8 16h.01"/></svg>Cronogramas</span><span class="nav on"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>Biblioteca</span><span class="nav"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 4.7 15a1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 9 4.7a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Configurações do clube</span><span class="nav"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/><path d="M12 15v4"/></svg>Ranking</span><span class="nav" style="opacity:.6"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8"/></svg>Relatórios <span style="border-radius:999px;background:#E8E3D7;color:#4A524E;font-size:12px;padding:2px 8px">em breve</span></span></nav>
+</aside>
+<div style="flex:1;display:flex;flex-direction:column;min-width:0">
+<header style="display:flex;align-items:center;justify-content:flex-end;gap:4px;padding:8px 32px;background:#fff;border-bottom:1px solid #D9D3C5;min-height:61px">
+<span class="btn txt" aria-label="Notificações"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span>
+<span class="btn txt" style="padding:0 12px">Ana Paula Ribeiro <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
+</header>
+<main style="flex:1;padding:32px 48px"><div style="display:flex;flex-direction:column;gap:28px"><header style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px">
+<div><h1 class="t" style="margin:0;font-size:24px;font-weight:700">Biblioteca</h1><p style="margin:0;font-size:16px;color:#5B645F">3 categorias · 9 itens</p></div><span style="display:flex;gap:8px"><span class="btn sec">Nova categoria</span><span class="btn pri"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Adicionar à biblioteca</span></span></header><section class="secao" aria-label="Cadernos de Classes">
+<div class="cab-secao"><h2 class="h2">Cadernos de Classes</h2><span style="display:flex;align-items:center;gap:4px"><span class="conta">4 itens</span><span class="btn txt" aria-label="Opções da categoria Cadernos de Classes">Opções <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></span></div>
+<ul style="margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px"><li class="cartao" style="list-style:none;padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0">
+<div class="capa" style="background:#2F5FB3">
+<span style="font-size:9px;font-weight:700;letter-spacing:.08em;opacity:.9">CADERNO DE ATIVIDADES</span>
+<span style="position:absolute;right:-18%;bottom:-8%;width:80%;aspect-ratio:1;border-radius:50%;background:rgba(255,255,255,.14)"></span>
+<span style="position:absolute;right:8%;bottom:14%;width:40%;aspect-ratio:1;border-radius:50%;border:6px solid rgba(255,255,255,.35)"></span>
+<span class="t" style="position:relative;font-size:min(22px,12cqw);font-weight:800;line-height:1">AMIGO</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:2px;min-height:62px"><p class="nome">Amigo</p><p class="desc">Classe regular e avançada</p></div>
+<div style="display:flex;gap:8px;margin-top:auto"><span class="btn out" style="flex:1;padding:0 12px" aria-label="Ler Amigo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>Ler</span><span class="btn sec" style="flex:1;padding:0 12px" aria-label="Baixar Amigo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>Baixar</span></div>
+<div style="position:relative;display:flex;justify-content:flex-end"><span class="btn txt" aria-label="Opções de Amigo">Opções <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
+</li><li class="cartao" style="list-style:none;padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0">
+<div class="capa" style="background:#B3362F">
+<span style="font-size:9px;font-weight:700;letter-spacing:.08em;opacity:.9">CADERNO DE ATIVIDADES</span>
+<span style="position:absolute;right:-18%;bottom:-8%;width:80%;aspect-ratio:1;border-radius:50%;background:rgba(255,255,255,.14)"></span>
+<span style="position:absolute;right:8%;bottom:14%;width:40%;aspect-ratio:1;border-radius:50%;border:6px solid rgba(255,255,255,.35)"></span>
+<span class="t" style="position:relative;font-size:min(22px,12cqw);font-weight:800;line-height:1">COMPANHEIRO</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:2px;min-height:62px"><p class="nome">Companheiro</p><p class="desc">Classe regular e avançada</p></div>
+<div style="display:flex;gap:8px;margin-top:auto"><span class="btn out" style="flex:1;padding:0 12px" aria-label="Ler Companheiro"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>Ler</span><span class="btn sec" style="flex:1;padding:0 12px" aria-label="Baixar Companheiro"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>Baixar</span></div>
+<div style="position:relative;display:flex;justify-content:flex-end"><span class="btn txt" aria-label="Opções de Companheiro">Opções <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
+</li><li class="cartao" style="list-style:none;padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0">
+<div class="capa" style="background:#2E7D4F">
+<span style="font-size:9px;font-weight:700;letter-spacing:.08em;opacity:.9">CADERNO DE ATIVIDADES</span>
+<span style="position:absolute;right:-18%;bottom:-8%;width:80%;aspect-ratio:1;border-radius:50%;background:rgba(255,255,255,.14)"></span>
+<span style="position:absolute;right:8%;bottom:14%;width:40%;aspect-ratio:1;border-radius:50%;border:6px solid rgba(255,255,255,.35)"></span>
+<span class="t" style="position:relative;font-size:min(22px,12cqw);font-weight:800;line-height:1">PESQUISADOR</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:2px;min-height:62px"><p class="nome">Pesquisador</p><p class="desc">Classe regular e avançada</p></div>
+<div style="display:flex;gap:8px;margin-top:auto"><span class="btn out" style="flex:1;padding:0 12px" aria-label="Ler Pesquisador"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>Ler</span><span class="btn sec" style="flex:1;padding:0 12px" aria-label="Baixar Pesquisador"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>Baixar</span></div>
+<div style="position:relative;display:flex;justify-content:flex-end"><span class="btn txt" aria-label="Opções de Pesquisador">Opções <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
+</li><li class="cartao" style="list-style:none;padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0">
+<div class="capa" style="background:#5F6670">
+<span style="font-size:9px;font-weight:700;letter-spacing:.08em;opacity:.9">CADERNO DE ATIVIDADES</span>
+<span style="position:absolute;right:-18%;bottom:-8%;width:80%;aspect-ratio:1;border-radius:50%;background:rgba(255,255,255,.14)"></span>
+<span style="position:absolute;right:8%;bottom:14%;width:40%;aspect-ratio:1;border-radius:50%;border:6px solid rgba(255,255,255,.35)"></span>
+<span class="t" style="position:relative;font-size:min(22px,12cqw);font-weight:800;line-height:1">PIONEIRO</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:2px;min-height:62px"><p class="nome">Pioneiro</p><p class="desc">Classe regular e avançada</p></div>
+<div style="display:flex;gap:8px;margin-top:auto"><span class="btn out" style="flex:1;padding:0 12px" aria-label="Ler Pioneiro"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>Ler</span><span class="btn sec" style="flex:1;padding:0 12px" aria-label="Baixar Pioneiro"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>Baixar</span></div>
+<div style="position:relative;display:flex;justify-content:flex-end"><span class="btn txt" aria-label="Opções de Pioneiro">Opções <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
+</li></ul>
+</section><section class="secao" aria-label="Livros">
+<div class="cab-secao"><h2 class="h2">Livros</h2><span style="display:flex;align-items:center;gap:4px"><span class="conta">3 itens</span><span class="btn txt" aria-label="Opções da categoria Livros">Opções <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></span></div>
+<ul style="margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px"><li class="cartao" style="list-style:none;padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0">
+<div class="capa" style="background:#5A3A1E;color:#F3E3C8;justify-content:center;gap:10px;text-align:center">
+<span style="position:absolute;inset:8px;border:1px solid currentColor;opacity:.35;border-radius:4px"></span>
+<span style="font-family:Georgia,serif;font-size:min(21px,12cqw);line-height:1.1">Caminho a Cristo</span>
+<span style="font-size:10px;letter-spacing:.06em;opacity:.8">ELLEN G. WHITE</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:2px;min-height:62px"><p class="nome">Caminho a Cristo</p><p class="desc">Ellen G. White</p></div>
+<div style="display:flex;gap:8px;margin-top:auto"><span class="btn out" style="flex:1;padding:0 12px" aria-label="Ler Caminho a Cristo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>Ler</span><span class="btn sec" style="flex:1;padding:0 12px" aria-label="Baixar Caminho a Cristo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>Baixar</span></div>
+<div style="position:relative;display:flex;justify-content:flex-end"><span class="btn txt" aria-label="Opções de Caminho a Cristo">Opções <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
+</li><li class="cartao" style="list-style:none;padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0">
+<div class="capa" style="background:#E8E3D7;color:#1D4E7A;justify-content:center;gap:10px;text-align:center">
+<span style="position:absolute;inset:8px;border:1px solid currentColor;opacity:.35;border-radius:4px"></span>
+<span style="font-family:Georgia,serif;font-size:min(21px,12cqw);line-height:1.1">Nisto Cremos</span>
+<span style="font-size:10px;letter-spacing:.06em;opacity:.8">LIVRO OFICIAL</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:2px;min-height:62px"><p class="nome">Nisto Cremos</p><p class="desc">As crenças fundamentais da igreja</p></div>
+<div style="display:flex;gap:8px;margin-top:auto"><span class="btn out" style="flex:1;padding:0 12px" aria-label="Ler Nisto Cremos"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>Ler</span><span class="btn sec" style="flex:1;padding:0 12px" aria-label="Baixar Nisto Cremos"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>Baixar</span></div>
+<div style="position:relative;display:flex;justify-content:flex-end"><span class="btn txt" aria-label="Opções de Nisto Cremos">Opções <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
+</li><li class="cartao" style="list-style:none;padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0">
+<div class="capa" style="background:#7A5230;color:#FDEBD2;justify-content:center;gap:10px;text-align:center">
+<span style="position:absolute;inset:8px;border:1px solid currentColor;opacity:.35;border-radius:4px"></span>
+<span style="font-family:Georgia,serif;font-size:min(21px,12cqw);line-height:1.1">Vaso de Barro</span>
+<span style="font-size:10px;letter-spacing:.06em;opacity:.8">LEITURA DO ANO</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:2px;min-height:62px"><p class="nome">Vaso de Barro</p><p class="desc">Leitura do ano · 2026</p></div>
+<div style="display:flex;gap:8px;margin-top:auto"><span class="btn out" style="flex:1;padding:0 12px" aria-label="Ler Vaso de Barro"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>Ler</span><span class="btn sec" style="flex:1;padding:0 12px" aria-label="Baixar Vaso de Barro"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>Baixar</span></div>
+<div style="position:relative;display:flex;justify-content:flex-end"><span class="btn txt" aria-label="Opções de Vaso de Barro">Opções <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
+</li></ul>
+</section><section class="secao" aria-label="Manuais & Documentos">
+<div class="cab-secao"><h2 class="h2">Manuais & Documentos</h2><span style="display:flex;align-items:center;gap:4px"><span class="conta">2 itens</span><span class="btn txt" aria-label="Opções da categoria Manuais & Documentos">Opções <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></span></div>
+<ul style="margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px"><li class="cartao" style="list-style:none;padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0">
+<div class="capa" style="background:#F3E3C8;color:#5A3A1E">
+<span style="font-size:9px;font-weight:700;letter-spacing:.08em">CLUBE ÓRION</span>
+<span class="t" style="font-size:min(19px,11cqw);font-weight:800;line-height:1.05">Manual Administrativo</span>
+<span style="height:6px;border-radius:3px;background:currentColor;opacity:.4;width:40%"></span>
+</div>
+<div style="display:flex;flex-direction:column;gap:2px;min-height:62px"><p class="nome">Manual Administrativo do Clube</p><p class="desc">Documento oficial</p></div>
+<div style="display:flex;gap:8px;margin-top:auto"><span class="btn out" style="flex:1;padding:0 12px" aria-label="Ler Manual Administrativo do Clube"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>Ler</span><span class="btn sec" style="flex:1;padding:0 12px" aria-label="Baixar Manual Administrativo do Clube"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>Baixar</span></div>
+<div style="position:relative;display:flex;justify-content:flex-end"><span class="btn txt" aria-label="Opções de Manual Administrativo do Clube">Opções <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
+</li><li class="cartao" style="list-style:none;padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0">
+<div class="capa" style="background:#E3EEE7;color:#1F4D3A;justify-content:center;align-items:center;text-align:center;padding:14px">
+<span style="opacity:.55"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg></span>
+<span class="t" style="font-size:17px;font-weight:700;line-height:1.2;margin-top:8px">Regulamento Interno</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:2px;min-height:42px"><p class="nome">Regulamento Interno</p></div>
+<div style="display:flex;gap:8px;margin-top:auto"><span class="btn out" style="flex:1;padding:0 12px" aria-label="Ler Regulamento Interno"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>Ler</span><span class="btn sec" style="flex:1;padding:0 12px" aria-label="Baixar Regulamento Interno"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>Baixar</span></div>
+<div style="position:relative;display:flex;justify-content:flex-end"><span class="btn txt" aria-label="Opções de Regulamento Interno">Opções <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
+</li></ul>
+</section></div></main>
+</div>
+<div class="fundo"></div>
+<div class="dialogo" role="dialog" style="left:540px;top:200px;width:448px">
+<h2>Caminho a Cristo foi adicionado</h2>
+<div style="font-size:16px;color:#5B645F;display:flex;flex-direction:column;gap:14px"><p style="margin:0;display:flex;gap:8px;align-items:flex-start;font-size:14px;color:#9A3412;background:#FBEFE3;border-radius:9px;padding:10px 12px">O item foi adicionado, mas a capa não: a capa pode ter até 5 MB.</p><div class="campo"><span class="lbl">Capa</span><span class="arquivo"><b>Escolher arquivo</b>capa-grande.png</span><p class="ajuda">Escolha outra imagem, ou feche e coloque a capa depois em “Editar”.</p></div></div>
+<div style="display:flex;justify-content:flex-end;gap:8px"><span class="btn sec">Fechar</span><span class="btn pri">Enviar capa</span></div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1900}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

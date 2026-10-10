@@ -12,7 +12,7 @@ import { ServicoArquivos, VALIDADE_URL_SEGUNDOS } from './servico-arquivos'
 
 const ConsultaArquivo = z.object({
   c: Uuid,
-  v: z.enum(['original', 'miniatura']),
+  v: z.enum(['original', 'miniatura', 'baixar']),
   exp: z.string().regex(/^\d{1,12}$/),
   sig: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
 })
@@ -51,10 +51,19 @@ export class ArquivosController {
         mime: true,
         foto: { select: { removidaEm: true } },
         material: { select: { titulo: true, removidoEm: true } },
+        itemBiblioteca: { select: { nome: true, removidoEm: true } },
+        capaDeItem: { select: { removidoEm: true } },
       },
     })
     const caminho = dados.data.v === 'miniatura' ? arquivo?.miniaturaCaminho : arquivo?.caminho
-    if (!arquivo || arquivo.foto?.removidaEm || arquivo.material?.removidoEm || !caminho) {
+    if (
+      !arquivo ||
+      arquivo.foto?.removidaEm ||
+      arquivo.material?.removidoEm ||
+      arquivo.itemBiblioteca?.removidoEm ||
+      arquivo.capaDeItem?.removidoEm ||
+      !caminho
+    ) {
       throw new ErroApp('NAO_ENCONTRADO', 'Arquivo não encontrado.')
     }
 
@@ -65,13 +74,20 @@ export class ArquivosController {
     // O helmet global poe uma CSP em toda resposta; so o PDF a dispensa (o visualizador dele nao abre sob `sandbox`).
     resposta.removeHeader('Content-Security-Policy')
     if (mime !== 'application/pdf') resposta.setHeader('Content-Security-Policy', 'sandbox')
-    if (!mime.startsWith('image/')) this.protegerDocumento(resposta, mime, arquivo.material?.titulo ?? 'arquivo', extname(caminho).slice(1))
+    const baixar = dados.data.v === 'baixar'
+    if (baixar || !mime.startsWith('image/')) {
+      const titulo = arquivo.itemBiblioteca?.nome ?? arquivo.material?.titulo ?? 'arquivo'
+      this.protegerDocumento(resposta, { mime, baixar }, titulo, extname(caminho).slice(1))
+    }
     return new StreamableFile(this.armazenamento.abrir(caminho), { type: mime })
   }
 
-  /** PDF abre no navegador; o resto baixa e nunca executa aqui (o `sandbox` de todo nao-PDF vem de quem chama). */
-  private protegerDocumento(resposta: Response, mime: string, titulo: string, ext: string): void {
-    const ehPdf = mime === 'application/pdf'
-    resposta.setHeader('Content-Disposition', cabecalhoDeDisposicao(ehPdf ? 'inline' : 'attachment', titulo, ext))
+  /**
+   * PDF abre no navegador; o resto baixa e nunca executa aqui (o `sandbox` de todo nao-PDF vem de quem chama).
+   * `baixar` e o pedido explicito de download: sai sempre como anexo, qualquer que seja o mime.
+   */
+  private protegerDocumento(resposta: Response, arquivo: { mime: string; baixar: boolean }, titulo: string, ext: string): void {
+    const abreNoNavegador = arquivo.mime === 'application/pdf' && !arquivo.baixar
+    resposta.setHeader('Content-Disposition', cabecalhoDeDisposicao(abreNoNavegador ? 'inline' : 'attachment', titulo, ext))
   }
 }

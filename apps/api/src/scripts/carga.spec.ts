@@ -152,6 +152,7 @@ describe('carga oficial (SPEC 5.3)', () => {
     for (const tipo of ['classes', 'secoes', 'requisitos', 'areas', 'especialidades', 'mestrados', 'classesClube'] as const) {
       expect(segunda[tipo]).toEqual(ZERADO)
     }
+    expect(segunda.categoriasBiblioteca).toEqual({ criados: 0 })
   })
 
   it('cria ClasseClube que faltar para cada clube existente', async () => {
@@ -160,6 +161,48 @@ describe('carga oficial (SPEC 5.3)', () => {
     expect(resumo.classesClube.criados).toBe(14)
     expect(await banco.prisma.classeClube.count({ where: { clubeId: clube.id } })).toBe(14)
     expect((await executarCarga(banco.prisma, { dir })).classesClube.criados).toBe(0)
+  })
+
+  describe('categorias iniciais da biblioteca', () => {
+    const INICIAIS = [
+      { nome: 'Cadernos de Classes', ordem: 1 },
+      { nome: 'Livros', ordem: 2 },
+      { nome: 'Manuais & Documentos', ordem: 3 },
+    ]
+
+    const categoriasDoClube = (clubeId: string) =>
+      banco.prisma.categoriaBiblioteca.findMany({ where: { clubeId }, orderBy: { ordem: 'asc' }, select: { nome: true, ordem: true } })
+
+    it('clube novo (criarClubeBase) nasce com as tres categorias, em ordem', async () => {
+      const clube = await banco.prisma.$transaction((tx) => criarClubeBase(tx, { nome: 'Novo', slug: `base-${Date.now()}` }))
+      expect(await categoriasDoClube(clube.id)).toEqual(INICIAIS)
+    })
+
+    it('a carga cria as tres nos clubes que nao tem nenhuma, soma no resumo e nao duplica ao rodar de novo', async () => {
+      await executarCarga(banco.prisma, { dir })
+      const sem1 = await banco.prisma.clube.create({ data: { nome: 'Sem 1', slug: `sem-bib-1-${Date.now()}` } })
+      const sem2 = await banco.prisma.clube.create({ data: { nome: 'Sem 2', slug: `sem-bib-2-${Date.now()}` } })
+      const completo = await banco.prisma.$transaction((tx) => criarClubeBase(tx, { nome: 'Completo', slug: `completo-${Date.now()}` }))
+
+      const resumo = await executarCarga(banco.prisma, { dir })
+      expect(resumo.categoriasBiblioteca).toEqual({ criados: 6 })
+      for (const clube of [sem1, sem2, completo]) expect(await categoriasDoClube(clube.id)).toEqual(INICIAIS)
+
+      expect((await executarCarga(banco.prisma, { dir })).categoriasBiblioteca).toEqual({ criados: 0 })
+      expect(await banco.prisma.categoriaBiblioteca.count({ where: { clubeId: sem1.id } })).toBe(3)
+    })
+
+    it('clube com uma categoria so, ainda que removida, nao recebe as tres de novo', async () => {
+      const clube = await banco.prisma.clube.create({ data: { nome: 'Removida', slug: `removida-bib-${Date.now()}` } })
+      await banco.prisma.categoriaBiblioteca.create({ data: { clubeId: clube.id, nome: 'Livros', ordem: 1, removidaEm: new Date() } })
+      await banco.prisma.categoriaBiblioteca.create({ data: { clubeId: clube.id, nome: 'Minha', ordem: 2 } })
+      const clubeSoComRemovida = await banco.prisma.clube.create({ data: { nome: 'So removida', slug: `so-removida-bib-${Date.now()}` } })
+      await banco.prisma.categoriaBiblioteca.create({ data: { clubeId: clubeSoComRemovida.id, nome: 'Livros', ordem: 1, removidaEm: new Date() } })
+
+      await executarCarga(banco.prisma, { dir })
+      expect(await categoriasDoClube(clube.id)).toEqual([{ nome: 'Livros', ordem: 1 }, { nome: 'Minha', ordem: 2 }])
+      expect(await categoriasDoClube(clubeSoComRemovida.id)).toEqual([{ nome: 'Livros', ordem: 1 }])
+    })
   })
 
   it('texto que muda atualiza o requisito (sem historico nesta fase)', async () => {

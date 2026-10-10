@@ -234,6 +234,8 @@ model Clube {
   presencasClasseBiblica   PresencaClasseBiblica[]
   enviosClasseBiblica      EnvioClasseBiblicaProcessado[]
   substituicoes            Substituicao[]
+  categoriasBiblioteca     CategoriaBiblioteca[]
+  itensBiblioteca          ItemBiblioteca[]
 }
 
 model ConfiguracaoClube {
@@ -266,45 +268,48 @@ model Usuario {
   criadoEm       DateTime      @default(now()) @db.Timestamptz
   atualizadoEm   DateTime      @updatedAt @db.Timestamptz
 
-  vinculos                Vinculo[]
-  tokens                  TokenUsoUnico[]
-  refreshTokens           RefreshToken[]
-  desbravadores           Desbravador[]
-  convitesAcessoCriados   ConviteAcesso[]
-  reunioesRegistradas     Reuniao[]                @relation("ReuniaoRegistradaPor")
-  reunioesAtualizadas     Reuniao[]                @relation("ReuniaoAtualizadaPor")
-  chamadasAlteradas       Chamada[]
-  alteracoesChamada       ChamadaAlteracao[]
-  lancamentos             LancamentoPontos[]
-  arquivos                Arquivo[]
-  albuns                  Album[]
-  fotosEnviadas           Foto[]                   @relation("FotoEnviadaPor")
-  fotosRemovidas          Foto[]                   @relation("FotoRemovidaPor")
-  pedidosAdm              PedidoAoAdm[]
-  eventosCriados          EventoCalendario[]
-  cronogramasEnviados     Cronograma[]             @relation("CronogramaEnviadoPor")
-  publicacoes             CronogramaPublicacao[]
-  registrosAula           RegistroAula[]
-  presencasAlteradas      PresencaAula[]
-  requisitosMarcados      RequisitoConcluido[]     @relation("RequisitoMarcadoPor")
-  requisitosRemovidos     RequisitoConcluido[]     @relation("RequisitoRemovidoPor")
-  especialidadesMarcadas  EspecialidadeConcluida[] @relation("EspecialidadeMarcadaPor")
-  especialidadesRemovidas EspecialidadeConcluida[] @relation("EspecialidadeRemovidaPor")
-  observacoes             Observacao[]
-  materiais               Material[]
-  notificacoes            Notificacao[]
-  atividades              Atividade[]
-  tarefasCriadas          TarefaCasa[]             @relation("TarefaCriadaPor")
-  tarefasEncerradas       TarefaCasa[]             @relation("TarefaEncerradaPor")
-  tarefaItensCriados      TarefaItem[]             @relation("TarefaItemCriadoPor")
-  tarefaItensRetirados    TarefaItem[]             @relation("TarefaItemRemovidoPor")
-  edicoesClasseBiblica    EdicaoClasseBiblica[]
-  encontrosCancelados     EncontroClasseBiblica[]
-  chamadasClasseBiblica   ChamadaClasseBiblica[]
-  presencasClasseBiblica  PresencaClasseBiblica[]
-  substituicoesCobertas   Substituicao[]           @relation("SubstituicaoSubstituto")
-  substituicoesCriadas    Substituicao[]           @relation("SubstituicaoCriadaPor")
-  substituicoesCanceladas Substituicao[]           @relation("SubstituicaoCanceladaPor")
+  vinculos                      Vinculo[]
+  tokens                        TokenUsoUnico[]
+  refreshTokens                 RefreshToken[]
+  desbravadores                 Desbravador[]
+  convitesAcessoCriados         ConviteAcesso[]
+  reunioesRegistradas           Reuniao[]                @relation("ReuniaoRegistradaPor")
+  reunioesAtualizadas           Reuniao[]                @relation("ReuniaoAtualizadaPor")
+  chamadasAlteradas             Chamada[]
+  alteracoesChamada             ChamadaAlteracao[]
+  lancamentos                   LancamentoPontos[]
+  arquivos                      Arquivo[]
+  albuns                        Album[]
+  fotosEnviadas                 Foto[]                   @relation("FotoEnviadaPor")
+  fotosRemovidas                Foto[]                   @relation("FotoRemovidaPor")
+  pedidosAdm                    PedidoAoAdm[]
+  eventosCriados                EventoCalendario[]
+  cronogramasEnviados           Cronograma[]             @relation("CronogramaEnviadoPor")
+  publicacoes                   CronogramaPublicacao[]
+  registrosAula                 RegistroAula[]
+  presencasAlteradas            PresencaAula[]
+  requisitosMarcados            RequisitoConcluido[]     @relation("RequisitoMarcadoPor")
+  requisitosRemovidos           RequisitoConcluido[]     @relation("RequisitoRemovidoPor")
+  especialidadesMarcadas        EspecialidadeConcluida[] @relation("EspecialidadeMarcadaPor")
+  especialidadesRemovidas       EspecialidadeConcluida[] @relation("EspecialidadeRemovidaPor")
+  observacoes                   Observacao[]
+  materiais                     Material[]
+  notificacoes                  Notificacao[]
+  atividades                    Atividade[]
+  tarefasCriadas                TarefaCasa[]             @relation("TarefaCriadaPor")
+  tarefasEncerradas             TarefaCasa[]             @relation("TarefaEncerradaPor")
+  tarefaItensCriados            TarefaItem[]             @relation("TarefaItemCriadoPor")
+  tarefaItensRetirados          TarefaItem[]             @relation("TarefaItemRemovidoPor")
+  edicoesClasseBiblica          EdicaoClasseBiblica[]
+  encontrosCancelados           EncontroClasseBiblica[]
+  chamadasClasseBiblica         ChamadaClasseBiblica[]
+  presencasClasseBiblica        PresencaClasseBiblica[]
+  substituicoesCobertas         Substituicao[]           @relation("SubstituicaoSubstituto")
+  substituicoesCriadas          Substituicao[]           @relation("SubstituicaoCriadaPor")
+  substituicoesCanceladas       Substituicao[]           @relation("SubstituicaoCanceladaPor")
+  categoriasBibliotecaRemovidas CategoriaBiblioteca[]    @relation("CategoriaBibliotecaRemovidaPor")
+  itensBibliotecaEnviados       ItemBiblioteca[]         @relation("ItemBibliotecaEnviadoPor")
+  itensBibliotecaRemovidos      ItemBiblioteca[]         @relation("ItemBibliotecaRemovidoPor")
 }
 
 model Vinculo {
@@ -796,6 +801,8 @@ model Arquivo {
   foto                Foto?
   material            Material?
   gruposClasseBiblica GrupoClasseBiblica[]
+  itemBiblioteca      ItemBiblioteca?      @relation("PdfDoItem")
+  capaDeItem          ItemBiblioteca?      @relation("CapaDoItem")
 
   @@unique([clubeId, id])
 }
@@ -1184,6 +1191,51 @@ model Material {
 
   @@unique([clubeId, arquivoId])
   @@index([clubeId, classeId, removidoEm])
+}
+
+// Biblioteca do clube: estante de PDFs com capa, em categorias que o Adm monta.
+model CategoriaBiblioteca {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  clubeId       String    @db.Uuid
+  nome          String
+  ordem         Int
+  criadaEm      DateTime  @default(now()) @db.Timestamptz
+  removidaEm    DateTime? @db.Timestamptz
+  removidaPorId String?   @db.Uuid
+
+  clube       Clube            @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  removidaPor Usuario?         @relation("CategoriaBibliotecaRemovidaPor", fields: [removidaPorId], references: [id], onDelete: Restrict)
+  itens       ItemBiblioteca[]
+
+  @@unique([clubeId, id])
+  @@index([clubeId, ordem])
+}
+
+model ItemBiblioteca {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  clubeId       String    @db.Uuid
+  categoriaId   String    @db.Uuid
+  nome          String
+  descricao     String?
+  ordem         Int
+  arquivoId     String    @unique @db.Uuid
+  capaId        String?   @unique @db.Uuid
+  enviadoPorId  String    @db.Uuid
+  criadoEm      DateTime  @default(now()) @db.Timestamptz
+  atualizadoEm  DateTime  @updatedAt @db.Timestamptz
+  removidoEm    DateTime? @db.Timestamptz
+  removidoPorId String?   @db.Uuid
+
+  clube       Clube               @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  categoria   CategoriaBiblioteca @relation(fields: [clubeId, categoriaId], references: [clubeId, id], onDelete: Restrict)
+  arquivo     Arquivo             @relation("PdfDoItem", fields: [clubeId, arquivoId], references: [clubeId, id], onDelete: Restrict)
+  capa        Arquivo?            @relation("CapaDoItem", fields: [clubeId, capaId], references: [clubeId, id], onDelete: Restrict)
+  enviadoPor  Usuario             @relation("ItemBibliotecaEnviadoPor", fields: [enviadoPorId], references: [id], onDelete: Restrict)
+  removidoPor Usuario?            @relation("ItemBibliotecaRemovidoPor", fields: [removidoPorId], references: [id], onDelete: Restrict)
+
+  @@unique([clubeId, arquivoId])
+  @@unique([clubeId, capaId])
+  @@index([clubeId, categoriaId, ordem])
 }
 
 // FASE 2-3 — sino.

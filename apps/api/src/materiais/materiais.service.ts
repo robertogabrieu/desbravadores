@@ -10,6 +10,7 @@ import {
 } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { ARMAZENAMENTO, type Armazenamento } from '../arquivos/armazenamento'
+import { gravarEConfirmar } from '../arquivos/gravar-e-confirmar'
 import { caminhoDoMaterial, ServicoArquivos } from '../arquivos/servico-arquivos'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { ErroApp } from '../comum/erros'
@@ -175,34 +176,34 @@ export class MateriaisService {
     await this.exigirEspaco(this.prisma, clubeId, arquivo.size)
 
     // A cópia de até 20 MB fica fora de qualquer transação: a trava do clube só cobre o que é rápido.
-    try {
-      await this.armazenamento.gravarDeArquivo(destino, arquivo.path)
-      const criado = await this.prisma.$transaction(async (tx) => {
-        // Serializa os envios do clube: quem chega depois confere a cota já com o material do primeiro.
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`materiais:${clubeId}`}, 0))`
-        await this.exigirEspaco(tx, clubeId, arquivo.size)
-        await tx.arquivo.create({
-          data: { id: arquivoId, clubeId, caminho: destino, mime: formato.mime, bytes: arquivo.size, criadoPorId: sessao.usuarioId },
-          select: { id: true },
-        })
-        return tx.material.create({
-          data: {
-            clubeId,
-            classeId: dados.classeId,
-            secaoId: dados.secaoId,
-            titulo: dados.titulo,
-            tipo: formato.tipo,
-            arquivoId,
-            enviadoPorId: sessao.usuarioId,
-          },
-          select: SELECAO,
-        })
-      }, { timeout: TEMPO_DA_TRANSACAO_MS })
-      return this.saida(sessao, criado)
-    } catch (erro) {
-      await this.apagarDoDisco(destino)
-      throw erro
-    }
+    const criado = await gravarEConfirmar(
+      this.armazenamento,
+      [{ caminho: destino, origem: arquivo.path }],
+      () =>
+        this.prisma.$transaction(async (tx) => {
+          // Serializa os envios do clube: quem chega depois confere a cota já com o material do primeiro.
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`materiais:${clubeId}`}, 0))`
+          await this.exigirEspaco(tx, clubeId, arquivo.size)
+          await tx.arquivo.create({
+            data: { id: arquivoId, clubeId, caminho: destino, mime: formato.mime, bytes: arquivo.size, criadoPorId: sessao.usuarioId },
+            select: { id: true },
+          })
+          return tx.material.create({
+            data: {
+              clubeId,
+              classeId: dados.classeId,
+              secaoId: dados.secaoId,
+              titulo: dados.titulo,
+              tipo: formato.tipo,
+              arquivoId,
+              enviadoPorId: sessao.usuarioId,
+            },
+            select: SELECAO,
+          })
+        }, { timeout: TEMPO_DA_TRANSACAO_MS }),
+      (caminho) => this.apagarDoDisco(caminho),
+    )
+    return this.saida(sessao, criado)
   }
 
   private async exigirEspaco(banco: Pick<PrismaService, 'arquivo'>, clubeId: string, bytes: number): Promise<void> {

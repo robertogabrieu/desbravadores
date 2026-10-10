@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto'
 import { Injectable } from '@nestjs/common'
 import { variavel } from '../comum/ambiente'
 
-export type VarianteArquivo = 'original' | 'miniatura'
+export type VarianteArquivo = 'original' | 'miniatura' | 'baixar'
 
 export const VALIDADE_URL_SEGUNDOS = 600
 
@@ -15,6 +15,11 @@ export function caminhoDaFoto(clubeId: string, arquivoId: string, ano: number, v
 /** Caminho de um material (documento), montado pelo servidor; `ext` vem da tabela de formatos, nunca do cliente. */
 export function caminhoDoMaterial(clubeId: string, arquivoId: string, ext: string, ano: number = new Date().getUTCFullYear()): string {
   return `clube/${clubeId}/materiais/${ano}/${arquivoId}.${ext}`
+}
+
+/** PDF ou capa de item da biblioteca; `ext` vem do servidor (`pdf` ou `jpg`), nunca do cliente. */
+export function caminhoDaBiblioteca(clubeId: string, arquivoId: string, ext: 'pdf' | 'jpg', miniatura = false): string {
+  return `clube/${clubeId}/biblioteca/${arquivoId}${miniatura ? '-min' : ''}.${ext}`
 }
 
 @Injectable()
