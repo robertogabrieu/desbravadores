@@ -82,22 +82,27 @@ export class ServicoEscopoGrupos {
       }
     }
     if (sessao.papel === 'INSTRUTOR') {
+      // Um corte serve a uma montagem inteira (o pacote corta encontro por encontro): filtro e respostas ficam guardados.
+      let filtro: Promise<Prisma.DesbravadorWhereInput> | undefined
+      const doInstrutor = () => (filtro ??= this.filtroDoInstrutor(sessao))
+      const conferidos = new Map<string, boolean>()
       return {
         itens: async (itens) => {
-          if (itens.length === 0) return []
-          const dbv = await this.filtroDoInstrutor(sessao)
-          const visiveis = await this.prisma.desbravador.findMany({
-            where: { clubeId, id: { in: [...new Set(itens.map((item) => item.dbvId))] }, ...dbv },
-            select: { id: true },
-          })
-          const ids = new Set(visiveis.map((v) => v.id))
-          return itens.filter((item) => ids.has(item.dbvId))
+          const faltam = [...new Set(itens.map((item) => item.dbvId))].filter((dbvId) => !conferidos.has(dbvId))
+          if (faltam.length > 0) {
+            const visiveis = await this.prisma.desbravador.findMany({
+              where: { clubeId, id: { in: faltam }, ...(await doInstrutor()) },
+              select: { id: true },
+            })
+            const ids = new Set(visiveis.map((v) => v.id))
+            for (const dbvId of faltam) conferidos.set(dbvId, ids.has(dbvId))
+          }
+          return itens.filter((item) => conferidos.get(item.dbvId) === true)
         },
         unidades: async (unidadeIds) => {
           if (unidadeIds.length === 0) return new Set()
-          const dbv = await this.filtroDoInstrutor(sessao)
           const membros = await this.prisma.membroUnidade.findMany({
-            where: { clubeId, unidadeId: { in: unidadeIds }, fim: null, dbv: { clubeId, ativo: true, ...dbv } },
+            where: { clubeId, unidadeId: { in: unidadeIds }, fim: null, dbv: { clubeId, ativo: true, ...(await doInstrutor()) } },
             select: { unidadeId: true },
           })
           return new Set(membros.map((membro) => membro.unidadeId))

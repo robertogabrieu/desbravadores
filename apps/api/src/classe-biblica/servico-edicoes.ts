@@ -263,7 +263,7 @@ export class ServicoEdicoes {
   }
 
   /**
-   * Grava os grupos como vieram (regras 3 e 14); o grupo que sumiu sai, se não tiver chamada, com os períodos dele.
+   * Grava os grupos como vieram (regras 3 e 14); o grupo que sumiu sai, se não tiver chamada.
    * Em rascunho as unidades são substituídas; em edição terminada, quem sai fecha o período e quem entra abre um (D32).
    */
   async salvarGrupos(sessao: SessaoLogada, id: string, entrada: z.infer<typeof GruposEntrada>): Promise<z.infer<typeof GruposSaida>> {
@@ -322,7 +322,13 @@ export class ServicoEdicoes {
 
         if (saindo.length > 0) {
           const saindoIds = saindo.map((grupo) => grupo.id)
-          await tx.grupoUnidadeClasseBiblica.deleteMany({ where: { clubeId, grupoId: { in: saindoIds } } })
+          if (edicao.terminadaEm) {
+            // O grupo removido guarda a história: o que já valeu fecha em hoje, o que ainda não começou some.
+            await tx.grupoUnidadeClasseBiblica.deleteMany({ where: { clubeId, grupoId: { in: saindoIds }, inicio: { gte: hoje } } })
+            await tx.grupoUnidadeClasseBiblica.updateMany({ where: { clubeId, grupoId: { in: saindoIds }, fim: null }, data: { fim: hoje } })
+          } else {
+            await tx.grupoUnidadeClasseBiblica.deleteMany({ where: { clubeId, grupoId: { in: saindoIds } } })
+          }
           await tx.grupoClasseBiblica.updateMany({ where: { clubeId, id: { in: saindoIds } }, data: { removidoEm: new Date() } })
         }
         const grupoDaUnidade = new Map<string, string>()

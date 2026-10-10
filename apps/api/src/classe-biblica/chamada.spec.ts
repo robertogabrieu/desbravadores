@@ -338,6 +338,18 @@ describe('classe bíblica: chamada (regras 8–12)', () => {
       ])
     })
 
+    it('quem só tem a chamada e não tem ninguém do escopo no grupo na data recebe a recusa na lista e no envio; nada é registrado', async () => {
+      const { clube, encontro, daniel, aguias } = await aguiasMudaDeGrupo()
+      const conselheiro = await criarAcesso({ clubeId: clube.id, papel: 'CONSELHEIRO', unidadeIds: [aguias.id] })
+      await ajustarPermissao(conselheiro.vinculo.id, 'classebiblica.chamada', true)
+      const mensagem = `Nenhum desbravador das suas unidades estava no Daniel em ${diaEMes(dia(0))}.`
+      const lista = await api.get(urlChamada(encontro.id, daniel.id), conselheiro.autorizacao).expect(422)
+      expect(corpo<Erro>(lista).mensagem).toBe(mensagem)
+      const envioRecusado = await api.put(urlEnvio(encontro.id, daniel.id), conselheiro.autorizacao, envio([])).expect(422)
+      expect(corpo<Erro>(envioRecusado).mensagem).toBe(mensagem)
+      expect(await prismaDeTeste().chamadaClasseBiblica.count({ where: { encontroId: encontro.id, grupoId: daniel.id } })).toBe(0)
+    })
+
     it('corrigir a do Daniel funciona e mantém grupo e unidade; enviar pelo Ester ignora quem já tem linha', async () => {
       const { adm, passado, daniel, ester, aguias, ana } = await aguiasMudaDeGrupo()
       const lista = corpo<Chamada>(await api.get(urlChamada(passado.id, daniel.id), adm.autorizacao).expect(200))

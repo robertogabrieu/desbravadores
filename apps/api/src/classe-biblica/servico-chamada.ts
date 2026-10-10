@@ -54,7 +54,7 @@ export class ServicoChamada {
       where: { clubeId, id: grupo.edicaoId },
       select: { nome: true, inicio: true },
     })
-    const membros = await membrosNaData(this.prisma, clubeId, grupo.id, encontro, acesso)
+    const membros = await membrosDoEscopo(sessao, grupo, encontro, acesso, await membrosNaData(this.prisma, clubeId, grupo.id, encontro))
     const [presencas, chamada] = await Promise.all([
       this.prisma.presencaClasseBiblica.findMany({
         where: { clubeId, encontroId: encontro.id, dbvId: { in: membros.map((m) => m.dbvId) } },
@@ -110,7 +110,7 @@ export class ServicoChamada {
     tx: Tx,
     sessao: SessaoLogada,
     encontroId: string,
-    grupo: { id: string; edicaoId: string },
+    grupo: { id: string; nome: string; edicaoId: string },
     acesso: AcessoAoPainel,
     envio: Envio,
     agora: Date,
@@ -128,7 +128,7 @@ export class ServicoChamada {
     exigirAberto(encontro, await hojeDoClube(tx, clubeId, agora))
 
     // Quem já tem linha em outro grupo neste encontro não está na lista e volta em ignorados: a linha não muda de grupo.
-    const membros = await membrosNaData(tx, clubeId, grupo.id, encontro, acesso)
+    const membros = await membrosDoEscopo(sessao, grupo, encontro, acesso, await membrosNaData(tx, clubeId, grupo.id, encontro))
     const daLista = new Map(membros.map((membro) => [membro.dbvId, membro]))
     const foraIds = envio.linhas.map((linha) => linha.dbvId).filter((dbvId) => !daLista.has(dbvId))
     const conhecidos = await tx.desbravador.findMany({ where: { clubeId, id: { in: foraIds } }, select: { id: true, nome: true } })
@@ -230,14 +230,28 @@ async function envioProcessado(tx: Tx, clubeId: string, envioId: string): Promis
   return tx.envioClasseBiblicaProcessado.findFirst({ where: { clubeId, envioId }, select: { encontroId: true, grupoId: true } })
 }
 
-/** A lista do grupo na composição da data do encontro (regras 8 e 14, ver `membrosDaChamada`), cortada pelo escopo (regra 9, D33). */
-async function membrosNaData(
-  db: Banco,
-  clubeId: string,
-  grupoId: string,
-  encontro: { id: string; data: Date },
+/**
+ * A lista do grupo cortada pelo escopo (regra 9, D33). Quem só tem a chamada e não tem ninguém do escopo num grupo
+ * que tem gente na data é recusado: registrar uma lista vazia daria o encontro por feito para o grupo inteiro.
+ */
+async function membrosDoEscopo(
+  sessao: SessaoLogada,
+  grupo: { nome: string },
+  encontro: { data: Date },
   acesso: AcessoAoPainel,
+  todos: MembroDaChamada[],
 ): Promise<MembroDaChamada[]> {
+  if (!acesso.corte) return todos
+  const doEscopo = await acesso.corte.itens(todos)
+  if (doEscopo.length === 0 && todos.length > 0) {
+    const de = sessao.papel === 'INSTRUTOR' ? 'das suas classes' : 'das suas unidades'
+    throw new ErroApp('REGRA', `Nenhum desbravador ${de} estava no ${grupo.nome} em ${diaEMes(paraDataCivil(encontro.data))}.`)
+  }
+  return doEscopo
+}
+
+/** A lista do grupo na composição da data do encontro (regras 8 e 14, ver `membrosDaChamada`). */
+async function membrosNaData(db: Banco, clubeId: string, grupoId: string, encontro: { id: string; data: Date }): Promise<MembroDaChamada[]> {
   const { data } = encontro
   const [ligacoes, linhas] = await Promise.all([
     db.grupoUnidadeClasseBiblica.findMany({
@@ -257,8 +271,7 @@ async function membrosNaData(
     },
     select: SELECAO_VINCULO,
   })
-  const membros = membrosDaChamada(grupoId, new Set(unidadeIds), data, linhas.map(linhaDoEncontro), vinculos.map(vinculo))
-  return acesso.corte ? acesso.corte.itens(membros) : membros
+  return membrosDaChamada(grupoId, new Set(unidadeIds), data, linhas.map(linhaDoEncontro), vinculos.map(vinculo))
 }
 
 async function montarSaida(

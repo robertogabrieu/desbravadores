@@ -380,7 +380,7 @@ describe('classe bíblica: edição', () => {
       expect(salvo.grupos.map((g) => [g.nome, g.temChamada])).toEqual([['Daniel', true]])
       const removido = await prismaDeTeste().grupoClasseBiblica.findUniqueOrThrow({ where: { id: semChamada.id } })
       expect(removido.removidoEm).not.toBeNull()
-      expect(await prismaDeTeste().grupoUnidadeClasseBiblica.count({ where: { grupoId: semChamada.id } })).toBe(0)
+      expect(await prismaDeTeste().grupoUnidadeClasseBiblica.count({ where: { grupoId: semChamada.id, fim: null } })).toBe(0)
     })
 
     it('grupo sem unidade é recusado, como no terminar', async () => {
@@ -463,6 +463,58 @@ describe('classe bíblica: edição', () => {
       await api.patch(`${BASE}/edicoes/${criada.id}`, adm.autorizacao, { inicio: '2027-03-14' }).expect(200)
       await api.post(`${BASE}/edicoes/${criada.id}/terminar`, adm.autorizacao, { datas: ['2027-03-14'] }).expect(201)
       expect(await periodos(criada.id, nomes)).toEqual([['Daniel', 'Leões', '2027-03-14', null]])
+    })
+
+    it('em edição terminada, remover o grupo fecha em hoje os períodos abertos, guarda os fechados e apaga os que não começaram', async () => {
+      const { clube, adm, aguias, leoes } = await cenario()
+      const gavioes = await criarUnidade({ clubeId: clube.id, nome: 'Gaviões' })
+      const tigres = await criarUnidade({ clubeId: clube.id, nome: 'Tigres' })
+      const edicao = await criarEdicaoCB({ clubeId: clube.id, terminada: true, inicio: '2026-08-16', fim: '2027-12-12' })
+      const daniel = await criarGrupoCB({ clubeId: clube.id, edicaoId: edicao.id, nome: 'Daniel', unidadeIds: [aguias.id] })
+      const ester = await criarGrupoCB({ clubeId: clube.id, edicaoId: edicao.id, nome: 'Ester', unidadeIds: [leoes.id] })
+      const hoje = await hojeDo(clube.id)
+      await criarGrupoCB({ clubeId: clube.id, edicaoId: edicao.id, nome: 'Rute', unidadeIds: [gavioes.id], fim: '2026-09-06' })
+      await prismaDeTeste().grupoUnidadeClasseBiblica.createMany({ data: [
+        { clubeId: clube.id, edicaoId: edicao.id, grupoId: ester.id, unidadeId: gavioes.id, inicio: new Date('2026-08-16T00:00:00Z'), fim: new Date('2026-09-06T00:00:00Z') },
+        { clubeId: clube.id, edicaoId: edicao.id, grupoId: ester.id, unidadeId: tigres.id, inicio: new Date(`${hoje}T00:00:00Z`) },
+      ] })
+      const rute = await prismaDeTeste().grupoClasseBiblica.findFirstOrThrow({ where: { edicaoId: edicao.id, nome: 'Rute' } })
+      await api.put(`${BASE}/edicoes/${edicao.id}/grupos`, adm.autorizacao, {
+        grupos: [{ id: daniel.id, nome: 'Daniel', unidadeIds: [aguias.id] }, { id: rute.id, nome: 'Rute', unidadeIds: [tigres.id] }],
+      }).expect(200)
+      const nomes = { [aguias.id]: 'Águias', [leoes.id]: 'Leões', [gavioes.id]: 'Gaviões', [tigres.id]: 'Tigres' }
+      expect((await periodos(edicao.id, nomes)).filter(([grupo]) => grupo === 'Ester')).toEqual([
+        ['Ester', 'Gaviões', '2026-08-16', '2026-09-06'],
+        ['Ester', 'Leões', '2026-08-16', hoje],
+      ])
+    })
+
+    it('tirar e repor a unidade no mesmo grupo no mesmo dia não deixa troca no painel', async () => {
+      const { clube, adm, aguias, leoes } = await cenario()
+      const edicao = await criarEdicaoCB({ clubeId: clube.id, terminada: true, inicio: '2026-08-16', fim: '2027-12-12' })
+      const daniel = await criarGrupoCB({ clubeId: clube.id, edicaoId: edicao.id, nome: 'Daniel', unidadeIds: [aguias.id, leoes.id] })
+      const salvar = (unidadeIds: string[]) =>
+        api.put(`${BASE}/edicoes/${edicao.id}/grupos`, adm.autorizacao, { grupos: [{ id: daniel.id, nome: 'Daniel', unidadeIds }] }).expect(200)
+      await salvar([leoes.id])
+      await salvar([aguias.id, leoes.id])
+      expect(await periodos(edicao.id, { [aguias.id]: 'Águias', [leoes.id]: 'Leões' })).toEqual([
+        ['Daniel', 'Águias', '2026-08-16', null],
+        ['Daniel', 'Leões', '2026-08-16', null],
+      ])
+      const painel = corpo<Painel>(await api.get(`${BASE}/edicoes/${edicao.id}`, adm.autorizacao).expect(200))
+      expect(painel.grupos[0]?.mudancas).toEqual([])
+    })
+
+    it('regra 3: unidade que chega a uma edição terminada conflita com outra terminada em que ela está daqui em diante', async () => {
+      const { clube, adm, aguias, leoes } = await cenario()
+      const outra = await criarEdicaoCB({ clubeId: clube.id, terminada: true, nome: 'CB Jovens', inicio: '2026-09-06', fim: '2027-06-27' })
+      await criarGrupoCB({ clubeId: clube.id, edicaoId: outra.id, unidadeIds: [leoes.id] })
+      const edicao = await criarEdicaoCB({ clubeId: clube.id, terminada: true, inicio: '2026-08-16', fim: '2027-12-12' })
+      const daniel = await criarGrupoCB({ clubeId: clube.id, edicaoId: edicao.id, nome: 'Daniel', unidadeIds: [aguias.id] })
+      const resposta = await api.put(`${BASE}/edicoes/${edicao.id}/grupos`, adm.autorizacao, {
+        grupos: [{ id: daniel.id, nome: 'Daniel', unidadeIds: [aguias.id, leoes.id] }],
+      }).expect(422)
+      expect(corpo<Erro>(resposta).mensagem).toBe('A unidade Leões já está na edição CB Jovens, de 06/09 a 27/06. Tire-a deste grupo para continuar.')
     })
 
     it('regra 3: unidade que saiu da outra edição terminada antes do início desta não conflita', async () => {

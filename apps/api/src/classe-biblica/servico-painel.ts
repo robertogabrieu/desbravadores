@@ -174,7 +174,7 @@ export class ServicoPainel {
         select: { encontroId: true, grupoId: true, dbvId: true, unidadeId: true, presente: true, participou: true },
       }),
       this.prisma.grupoUnidadeClasseBiblica.findMany({
-        where: { clubeId, edicaoId, grupo: { clubeId, removidoEm: null } },
+        where: { clubeId, edicaoId },
         select: { grupoId: true, unidadeId: true, inicio: true, fim: true, unidade: { select: { nome: true } }, grupo: { select: { nome: true } } },
       }),
     ])

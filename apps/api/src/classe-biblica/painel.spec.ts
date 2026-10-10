@@ -230,6 +230,20 @@ describe('classe bíblica: painel, frequência e material', () => {
       expect(doAguias.grupos[0]?.mudancas).toEqual([{ data: '2026-10-12', unidade: 'Águias', tipo: 'SAIU', outroGrupo: 'Grupo Ester' }])
       expect(doAguias.grupos[0]?.encontros[2]?.chamada).toMatchObject({ total: 1 })
     })
+
+    it('o Instrutor vê as unidades e as trocas só das unidades com desbravador CURSANDO numa classe dele', async () => {
+      const { clube, edicao, daniel } = await troca()
+      const caio = await prismaDeTeste().desbravador.findFirstOrThrow({ where: { clubeId: clube.id, nome: 'Caio Reis' } })
+      const classe = await criarClasseDoClube(clube.id)
+      await criarMatricula({ clubeId: clube.id, dbvId: caio.id, classeId: classe.id, anoClube: anoCorrente() })
+      const instrutor = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [classe.id] })
+      await ajustarPermissao(instrutor.vinculo.id, 'classebiblica.chamada', true)
+      const painel = corpo<Painel>(await api.get(`${BASE}/edicoes/${edicao.id}`, instrutor.autorizacao).expect(200))
+      expect(painel.grupos.map((g) => g.id)).toEqual([daniel.id])
+      expect(porData(painel.grupos[0])?.map(([, unidades]) => unidades)).toEqual([['Leões'], ['Leões'], ['Leões']])
+      expect(painel.grupos[0]?.mudancas).toEqual([])
+      expect(painel.grupos[0]?.encontros[2]?.chamada).toMatchObject({ total: 1 })
+    })
   })
 
   describe('frequência', () => {
