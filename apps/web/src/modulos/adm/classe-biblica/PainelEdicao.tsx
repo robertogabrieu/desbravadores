@@ -154,13 +154,13 @@ type ItemDaLinhaDoTempo = { tipo: 'encontro'; encontro: Encontro } | { tipo: 'mu
 
 /** Encontros e trocas numa linha do tempo só, data ↓. A troca vale a partir do dia dela: fica abaixo do encontro desse dia. */
 function linhaDoTempo(encontros: Encontro[], mudancas: Mudanca[]): ItemDaLinhaDoTempo[] {
-  const restantes = [...mudancas]
   const itens: ItemDaLinhaDoTempo[] = []
+  let i = 0
   for (const encontro of encontros) {
-    while (restantes.length > 0 && restantes[0].data > encontro.data) itens.push({ tipo: 'mudanca', mudanca: restantes.shift()! })
+    while (i < mudancas.length && mudancas[i].data > encontro.data) itens.push({ tipo: 'mudanca', mudanca: mudancas[i++] })
     itens.push({ tipo: 'encontro', encontro })
   }
-  return [...itens, ...restantes.map((mudanca): ItemDaLinhaDoTempo => ({ tipo: 'mudanca', mudanca }))]
+  return [...itens, ...mudancas.slice(i).map((mudanca): ItemDaLinhaDoTempo => ({ tipo: 'mudanca', mudanca }))]
 }
 
 function LinhaDoEncontro({ encontro, grupo, painel }: { encontro: Encontro; grupo: Grupo; painel: PainelDaEdicao }) {
@@ -234,15 +234,20 @@ function LinhaDoEncontro({ encontro, grupo, painel }: { encontro: Encontro; grup
 function EncontrosFeitos({ grupo, painel }: { grupo: Grupo; painel: PainelDaEdicao }) {
   // O encontro de hoje remarcado já está em "Próximo encontro": não se repete aqui.
   const encontros = grupo.encontros.filter((encontro) => encontro.id !== grupo.proximoEncontro?.id)
-  if (encontros.length === 0) {
-    return <p className="text-base text-texto-2">Nenhum encontro feito ainda. Cada chamada registrada aparece aqui.</p>
-  }
+  const itens = linhaDoTempo(encontros, grupo.mudancas)
   return (
-    <ul className="flex flex-col divide-y divide-borda-controle">
-      {linhaDoTempo(encontros, grupo.mudancas).map((item) => item.tipo === 'encontro'
-        ? <LinhaDoEncontro key={item.encontro.id} encontro={item.encontro} grupo={grupo} painel={painel} />
-        : <LinhaDaMudanca key={`${item.mudanca.data}-${item.mudanca.unidade}-${item.mudanca.tipo}`} mudanca={item.mudanca} />)}
-    </ul>
+    <>
+      {encontros.length === 0 && (
+        <p className="text-base text-texto-2">Nenhum encontro feito ainda. Cada chamada registrada aparece aqui.</p>
+      )}
+      {itens.length > 0 && (
+        <ul className="flex flex-col divide-y divide-borda-controle">
+          {itens.map((item) => item.tipo === 'encontro'
+            ? <LinhaDoEncontro key={item.encontro.id} encontro={item.encontro} grupo={grupo} painel={painel} />
+            : <LinhaDaMudanca key={`${item.mudanca.data}-${item.mudanca.unidade}-${item.mudanca.tipo}`} mudanca={item.mudanca} />)}
+        </ul>
+      )}
+    </>
   )
 }
 

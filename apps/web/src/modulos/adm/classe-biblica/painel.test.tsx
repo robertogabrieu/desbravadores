@@ -315,6 +315,15 @@ describe('Painel — unidade que troca de grupo (critério 49)', () => {
     ])
   })
 
+  it('grupo sem encontro feito mostra o vazio e, abaixo, a troca', async () => {
+    const painel = criarPainelComTroca()
+    const [daniel, ester] = painel.grupos
+    abrir({ painel: { ...painel, grupos: [{ ...daniel, encontros: [] }, ester] } })
+    await screen.findByRole('region', { name: 'Encontros feitos' })
+    expect(secao('Encontros feitos').getByText(/Nenhum encontro feito ainda/)).toBeInTheDocument()
+    expect(linhasDosEncontros()).toEqual(['12/10 · Águias saiu do grupo (foi para o Grupo Ester)'])
+  })
+
   it('sem trocas, a lista não ganha linha nenhuma', async () => {
     abrir()
     await screen.findByRole('region', { name: 'Encontros feitos' })
