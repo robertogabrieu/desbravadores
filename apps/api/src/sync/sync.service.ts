@@ -46,10 +46,15 @@ export class SyncService {
     ])
     const hoje = hojeNoFuso(configuracao.fuso, agora)
     const unidadeIds = sessao.papel === 'CONSELHEIRO' ? await this.escopo.unidadesDoConselheiro(sessao) : []
+    const { substituicao } = sessao
+    // Com o link: so a reuniao do dia dele, sem albuns, e a identidade local do aparelho e a substituicao.
+    const datasDasReunioes = substituicao
+      ? { equals: daDataCivil(substituicao.data) }
+      : { gte: daDataCivil(somarDias(hoje, -DIAS_DE_REUNIOES)) }
 
     const conteudo: PacoteSemVersao = {
-      usuarioId: sessao.usuarioId,
-      vinculoId: sessao.vinculoId,
+      usuarioId: substituicao?.id ?? sessao.usuarioId,
+      vinculoId: substituicao?.id ?? sessao.vinculoId,
       clube: {
         id: clube.id,
         nome: clube.nome,
@@ -65,10 +70,13 @@ export class SyncService {
         return criterio ? [{ gatilho, nome: criterio.nome, pontos: criterio.pontos, ativo: criterio.ativo }] : []
       }),
       unidades: await this.unidades(clubeId, unidadeIds, hoje, anoClube(hoje, configuracao.inicioAnoClube)),
-      reunioesRecentes: await this.reunioes(clubeId, unidadeIds, somarDias(hoje, -DIAS_DE_REUNIOES)),
-      albunsRecentes: await this.albuns(clubeId, unidadeIds, somarDias(hoje, -DIAS_DE_ALBUNS)),
+      reunioesRecentes: await this.reunioes(clubeId, unidadeIds, datasDasReunioes),
+      albunsRecentes: substituicao ? [] : await this.albuns(clubeId, unidadeIds, somarDias(hoje, -DIAS_DE_ALBUNS)),
       calendario: await this.calendario(clubeId, hoje),
-      instrutor: sessao.papel === 'INSTRUTOR' ? await this.instrutor.montar(sessao, configuracao, hoje) : null,
+      instrutor:
+        sessao.papel === 'INSTRUTOR'
+          ? await this.instrutor.montar(sessao, await this.escopo.classesDoInstrutor(sessao), configuracao, hoje)
+          : null,
     }
     const versao = createHash('sha256').update(JSON.stringify(conteudo)).digest('hex')
     return { versao, geradoEm: agora.toISOString(), ...conteudo }
@@ -147,10 +155,14 @@ export class SyncService {
     }))
   }
 
-  private async reunioes(clubeId: string, unidadeIds: string[], desde: string): Promise<Pacote['reunioesRecentes']> {
+  private async reunioes(
+    clubeId: string,
+    unidadeIds: string[],
+    datas: { gte: Date } | { equals: Date },
+  ): Promise<Pacote['reunioesRecentes']> {
     if (unidadeIds.length === 0) return []
     const reunioes = await this.prisma.reuniao.findMany({
-      where: { clubeId, unidadeId: { in: unidadeIds }, data: { gte: daDataCivil(desde) } },
+      where: { clubeId, unidadeId: { in: unidadeIds }, data: datas },
       orderBy: [{ data: 'asc' }, { unidadeId: 'asc' }],
       include: { chamadas: { where: { clubeId }, orderBy: { dbvId: 'asc' } } },
     })
