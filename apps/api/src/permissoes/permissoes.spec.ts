@@ -17,13 +17,13 @@ describe('GET /permissoes/catalogo', () => {
     await desconectarPrismaDeTeste()
   })
 
-  it('devolve as 22 chaves do catalogo com rotulo e padrao por papel', async () => {
+  it('devolve as 23 chaves do catalogo com rotulo e padrao por papel', async () => {
     const clube = await criarClube()
     const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
     const catalogo = corpo<{ chave: string; rotulo: string; padrao: object }[]>(
       await api.get('/api/permissoes/catalogo', adm.autorizacao).expect(200),
     )
-    expect(catalogo).toHaveLength(22)
+    expect(catalogo).toHaveLength(23)
     expect(catalogo.map((c) => c.chave)).toEqual(Object.keys(CATALOGO_PERMISSOES))
     expect(catalogo.find((c) => c.chave === 'dbv.editar')).toEqual({
       chave: 'dbv.editar',
