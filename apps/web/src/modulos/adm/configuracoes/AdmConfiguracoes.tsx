@@ -1,11 +1,14 @@
-import { ConfiguracaoClubeEntrada } from '@desbravadores/shared'
-import { useState } from 'react'
+import { ConfiguracaoClubeEntrada, PontosCBEntrada } from '@desbravadores/shared'
+import { useId, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
+import { usePontosCB, useSalvarPontosCB } from '../../../api/classe-biblica'
+import type { PontosCB } from '../../../api/classe-biblica'
 import { useConfiguracaoClube, useSalvarConfiguracao } from '../../../api/clube'
 import type { ConfiguracaoClube } from '../../../api/clube'
 import { useConexao } from '../../../offline'
 import { Botao } from '../../../ui/Botao'
 import { Campo } from '../../../ui/Campo'
+import { Interruptor } from '../../../ui/Interruptor'
 import { Selecao } from '../../../ui/Selecao'
 import { Esqueleto } from '../../../ui/Esqueleto'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/EstadosDeCarga'
@@ -29,6 +32,19 @@ const MENSAGENS_DE_CAMPO: Record<string, string> = {
   limiarProgressoAlerta: 'Informe um número de 0 a 100',
   metaFrequencia: 'Informe um número de 0 a 100',
 }
+
+type ItemDosPontos = PontosCB['itens'][number]
+/** O valor fica como texto enquanto se edita, igual aos outros números da tela. */
+type RascunhoDoPonto = Omit<ItemDosPontos, 'pontos'> & { pontos: string }
+
+const AJUDA_DO_PONTO: Record<ItemDosPontos['gatilho'], string> = {
+  CLASSE_BIBLICA_PRESENCA: 'Lançados a cada encontro em que o desbravador está presente.',
+  CLASSE_BIBLICA_PARTICIPACAO: 'Lançados quando a chamada marca que ele participou ativamente.',
+}
+
+const MENSAGEM_DO_PONTO = 'Informe um número de 0 a 1000'
+
+const chaveDoPonto = (gatilho: string): string => `pontos-${gatilho}`
 
 /** `MM-DD` → `DD/MM`. */
 const diaEMesDoAno = (mesEDia: string): string => mesEDia.split('-').reverse().join('/')
@@ -76,6 +92,14 @@ function FormularioConfiguracao({ atual }: { atual: ConfiguracaoClube }) {
   const [erroGeral, setErroGeral] = useState<string | null>(null)
   const [salvo, setSalvo] = useState(false)
   const salvar = useSalvarConfiguracao()
+  const pontos = usePontosCB()
+  const salvarPontos = useSalvarPontosCB()
+  const [rascunhoDosPontos, setRascunhoDosPontos] = useState<RascunhoDoPonto[] | null>(null)
+  const itensDosPontos = rascunhoDosPontos ?? pontos.data?.itens.map((item) => ({ ...item, pontos: String(item.pontos) })) ?? null
+
+  function mudarPonto(gatilho: string, mudanca: Partial<RascunhoDoPonto>) {
+    setRascunhoDosPontos((itensDosPontos ?? []).map((item) => (item.gatilho === gatilho ? { ...item, ...mudanca } : item)))
+  }
 
   async function enviar(evento: FormEvent) {
     evento.preventDefault()
@@ -91,19 +115,40 @@ function FormularioConfiguracao({ atual }: { atual: ConfiguracaoClube }) {
       limiarProgressoAlerta: limiarProgresso.trim() === '' ? Number.NaN : Number(limiarProgresso),
       metaFrequencia: meta.trim() === '' ? Number.NaN : Number(meta),
     }
+    // Sem os pontos lidos (falha ou ainda carregando), o resto da tela salva sozinho.
+    const entradaDosPontos = itensDosPontos && {
+      itens: itensDosPontos.map(({ gatilho, pontos: valor, ativo }) => ({
+        gatilho,
+        pontos: valor.trim() === '' ? Number.NaN : Number(valor),
+        ativo,
+      })),
+    }
+    const achados: Record<string, string> = {}
     const validacao = ConfiguracaoClubeEntrada.safeParse(entrada)
     if (!validacao.success) {
-      const achados: Record<string, string> = {}
       for (const problema of validacao.error.issues) {
         const campo = String(problema.path[0] ?? '')
         if (campo && !(campo in achados))
           achados[campo] = MENSAGENS_DE_CAMPO[campo] ?? 'Confira este campo'
       }
+    }
+    const validacaoDosPontos = entradaDosPontos && PontosCBEntrada.safeParse(entradaDosPontos)
+    if (validacaoDosPontos && !validacaoDosPontos.success) {
+      for (const problema of validacaoDosPontos.error.issues) {
+        const item = entradaDosPontos.itens[Number(problema.path[1])]
+        if (item) achados[chaveDoPonto(item.gatilho)] = MENSAGEM_DO_PONTO
+      }
+    }
+    if (Object.keys(achados).length > 0) {
       setErros(achados)
       return
     }
     try {
       await salvar.mutateAsync(entrada)
+      if (entradaDosPontos) {
+        const gravados = await salvarPontos.mutateAsync(entradaDosPontos)
+        setRascunhoDosPontos(gravados.itens.map((item) => ({ ...item, pontos: String(item.pontos) })))
+      }
       setSalvo(true)
     } catch (falha) {
       const { campos, geral } = lerErroDaApi(falha)
@@ -175,6 +220,29 @@ function FormularioConfiguracao({ atual }: { atual: ConfiguracaoClube }) {
             className="w-24"
           />
         </Secao>
+
+        <Secao id="secao-pontos-cb" titulo="Pontos da Classe Bíblica">
+          <p className="text-sm text-texto-2">
+            Valem para as próximas chamadas; o que já foi lançado não muda.
+          </p>
+          {itensDosPontos ? (
+            itensDosPontos.map((item) => (
+              <PontoDaClasseBiblica
+                key={item.gatilho}
+                item={item}
+                erro={erros[chaveDoPonto(item.gatilho)]}
+                aoMudar={(mudanca) => mudarPonto(item.gatilho, mudanca)}
+              />
+            ))
+          ) : pontos.isError ? (
+            <ErroDeCarga erro={pontos.error} aoTentarDeNovo={() => void pontos.refetch()} />
+          ) : (
+            <Carregando rotulo="Carregando os pontos da Classe Bíblica">
+              <Esqueleto className="h-14" />
+              <Esqueleto className="h-14" />
+            </Carregando>
+          )}
+        </Secao>
       </div>
 
       <p className="text-sm text-texto-2">
@@ -193,11 +261,49 @@ function FormularioConfiguracao({ atual }: { atual: ConfiguracaoClube }) {
             Configurações salvas.
           </p>
         )}
-        <Botao type="submit" carregando={salvar.isPending}>
+        <Botao type="submit" carregando={salvar.isPending || salvarPontos.isPending}>
           Salvar configurações
         </Botao>
       </div>
     </form>
+  )
+}
+
+interface PropriedadesDoPonto {
+  item: RascunhoDoPonto
+  erro: string | undefined
+  aoMudar: (mudanca: Partial<RascunhoDoPonto>) => void
+}
+
+/** Valor do critério e o "Contar" dele, lado a lado; o nome do critério completa o nome do interruptor. */
+function PontoDaClasseBiblica({ item, erro, aoMudar }: PropriedadesDoPonto) {
+  const idContar = useId()
+  const idNome = useId()
+  return (
+    <div className="flex flex-wrap items-start gap-4">
+      <div className="min-w-0 flex-1">
+        <Campo
+          rotulo={item.nome}
+          ajuda={AJUDA_DO_PONTO[item.gatilho]}
+          type="number"
+          inputMode="numeric"
+          sufixo="pontos"
+          value={item.pontos}
+          erro={erro}
+          onChange={(e) => aoMudar({ pontos: e.target.value })}
+          className="w-24"
+        />
+      </div>
+      <div className="flex items-center gap-2 pt-6">
+        <span id={idContar} className="text-sm font-semibold text-texto">
+          Contar
+        </span>
+        <span id={idNome} className="sr-only">
+          {item.nome}
+        </span>
+        <Interruptor ligado={item.ativo} aoAlternar={(ativo) => aoMudar({ ativo })} idRotulo={`${idContar} ${idNome}`} />
+      </div>
+    </div>
   )
 }
 

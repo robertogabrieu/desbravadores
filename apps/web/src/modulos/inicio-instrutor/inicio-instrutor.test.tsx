@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react'
 import { delay, http } from 'msw'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ModoConexao, PacoteGuardado } from '../../offline'
 import {
   CLASSE_AGRUPADAS,
@@ -12,6 +12,7 @@ import {
   handlerInicioInstrutor,
 } from '../../testes/handlers/instrutor'
 import { criarClasseInstrutor } from '../../testes/handlers/aulas'
+import { ENCONTRO_CB_ID, GRUPO_DANIEL_ID, criarPacoteClasseBiblica } from '../../testes/handlers/classe-biblica'
 import { criarPacote } from '../../testes/handlers/offline'
 import { criarVinculo, handlersSessao, uuid } from '../../testes/handlers/sessao'
 import { renderizarRotas } from '../../testes/renderizar'
@@ -242,5 +243,46 @@ describe('sinais do início do instrutor', () => {
     servidor.use(handlerInicioInstrutor())
     abrir([CLASSE_AMIGO])
     expect(await screen.findByRole('region', { name: 'Próxima classe de Amigo' })).toHaveClass('border-borda-controle')
+  })
+})
+
+describe('cartão da Classe Bíblica no início do instrutor', () => {
+  const linkDaniel = `/classe-biblica/encontros/${ENCONTRO_CB_ID}/grupos/${GRUPO_DANIEL_ID}/chamada`
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-11T15:00:00Z'))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  const abrirComPermissoes = (permissoes: string[]) => {
+    servidor.use(...handlersSessao([criarVinculo('INSTRUTOR', 1, { classes: [CLASSE_AMIGO] })], undefined, permissoes))
+    return renderizarRotas(rotas, '/inicio')
+  }
+
+  it('com a permissão: "Classe Bíblica · domingo 11/10" com o link da chamada do grupo', async () => {
+    servidor.use(handlerInicioInstrutor())
+    offline.pacote = criarPacote({ classeBiblica: criarPacoteClasseBiblica() })
+    abrirComPermissoes(['classebiblica.chamada'])
+    const cartao = await screen.findByRole('region', { name: 'Classe Bíblica · domingo 11/10' })
+    expect(within(cartao).getByRole('link', { name: 'Fazer a chamada do Grupo Daniel' })).toHaveAttribute('href', linkDaniel)
+  })
+
+  it('sem a permissão: nenhum cartão', async () => {
+    servidor.use(handlerInicioInstrutor())
+    offline.pacote = criarPacote({ classeBiblica: criarPacoteClasseBiblica() })
+    abrirComPermissoes([])
+    await screen.findByRole('region', { name: 'Próxima classe de Amigo' })
+    expect(screen.queryByText(/Fazer a chamada do Grupo/)).not.toBeInTheDocument()
+  })
+
+  it('sem conexão: o cartão vem do pacote guardado', async () => {
+    offline.modo = 'SEM_CONEXAO'
+    offline.pacote = criarPacote({ classeBiblica: criarPacoteClasseBiblica() })
+    abrirComPermissoes(['classebiblica.chamada'])
+    expect(await screen.findByRole('link', { name: 'Fazer a chamada do Grupo Daniel' })).toHaveAttribute('href', linkDaniel)
   })
 })

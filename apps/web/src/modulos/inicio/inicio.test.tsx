@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { hojeNoFuso } from '@desbravadores/shared'
@@ -11,6 +11,7 @@ import {
   handlerErroInicio,
   handlerInicioConselheiro,
 } from '../../testes/handlers/inicio'
+import { ENCONTRO_CB_ID, GRUPO_DANIEL_ID, GRUPO_ESTER_ID, criarPacoteClasseBiblica } from '../../testes/handlers/classe-biblica'
 import { criarPacote } from '../../testes/handlers/offline'
 import { criarVinculo, handlersSessao } from '../../testes/handlers/sessao'
 import { renderizarRotas } from '../../testes/renderizar'
@@ -441,5 +442,106 @@ describe('sinais do início do conselheiro', () => {
     expect(await screen.findByText('Disponível quando houver internet')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Galeria' })).toHaveAttribute('href', '/galeria')
     expect(screen.getByRole('link', { name: 'Unidade' })).toHaveAttribute('href', '/unidade')
+  })
+})
+
+describe('cartão da Classe Bíblica no início do conselheiro', () => {
+  const CHAMADA = 'classebiblica.chamada'
+  const linkDaniel = `/classe-biblica/encontros/${ENCONTRO_CB_ID}/grupos/${GRUPO_DANIEL_ID}/chamada`
+  const linkEster = `/classe-biblica/encontros/${ENCONTRO_CB_ID}/grupos/${GRUPO_ESTER_ID}/chamada`
+
+  /** Só o relógio de `Date` é falso: o msw e o userEvent seguem com os temporizadores reais. */
+  const fixarAgora = (instante: string) => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(instante))
+  }
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  const abrirComPacote = (permissoes: string[], classeBiblica = criarPacoteClasseBiblica()) => {
+    offline.pacote = criarPacote({ classeBiblica })
+    servidor.use(...handlersSessao([CONSELHEIRO], undefined, permissoes), handlerInicioConselheiro())
+    return renderizarRotas(rotasInicio, '/inicio')
+  }
+
+  it('no dia do encontro: "Classe Bíblica · domingo 11/10" e um link de chamada por grupo do pacote', async () => {
+    fixarAgora('2026-10-11T15:00:00Z')
+    abrirComPacote([CHAMADA])
+    const cartao = await screen.findByRole('region', { name: 'Classe Bíblica · domingo 11/10' })
+    expect(within(cartao).getByRole('link', { name: 'Fazer a chamada do Grupo Daniel' })).toHaveAttribute('href', linkDaniel)
+    expect(within(cartao).getByRole('link', { name: 'Fazer a chamada do Grupo Ester' })).toHaveAttribute('href', linkEster)
+  })
+
+  it('até 7 dias depois ainda aparece; no 8º dia e antes do dia, não', async () => {
+    fixarAgora('2026-10-18T15:00:00Z')
+    const { unmount } = abrirComPacote([CHAMADA])
+    expect(await screen.findByRole('link', { name: 'Fazer a chamada do Grupo Daniel' })).toBeInTheDocument()
+    unmount()
+
+    fixarAgora('2026-10-19T15:00:00Z')
+    const segunda = abrirComPacote([CHAMADA])
+    await screen.findByText('Domingo, 29 de setembro')
+    expect(screen.queryByText(/Fazer a chamada do Grupo/)).not.toBeInTheDocument()
+    segunda.unmount()
+
+    fixarAgora('2026-10-10T15:00:00Z')
+    abrirComPacote([CHAMADA])
+    await screen.findByText('Domingo, 29 de setembro')
+    expect(screen.queryByText(/Fazer a chamada do Grupo/)).not.toBeInTheDocument()
+  })
+
+  it('o dia é o do fuso do clube: 11/10 às 01h em Brasília (04h UTC) já é o dia do encontro', async () => {
+    fixarAgora('2026-10-11T04:00:00Z')
+    abrirComPacote([CHAMADA])
+    expect(await screen.findByRole('link', { name: 'Fazer a chamada do Grupo Daniel' })).toBeInTheDocument()
+  })
+
+  it('some o grupo com a chamada registrada; com todos registrados, some o cartão', async () => {
+    fixarAgora('2026-10-11T15:00:00Z')
+    const { unmount } = abrirComPacote([CHAMADA], criarPacoteClasseBiblica({ chamadasRegistradas: [{ encontroId: ENCONTRO_CB_ID, grupoId: GRUPO_DANIEL_ID }] }))
+    expect(await screen.findByRole('link', { name: 'Fazer a chamada do Grupo Ester' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Fazer a chamada do Grupo Daniel' })).not.toBeInTheDocument()
+    unmount()
+
+    abrirComPacote([CHAMADA], criarPacoteClasseBiblica({
+      chamadasRegistradas: [{ encontroId: ENCONTRO_CB_ID, grupoId: GRUPO_DANIEL_ID }, { encontroId: ENCONTRO_CB_ID, grupoId: GRUPO_ESTER_ID }],
+    }))
+    await screen.findByText('Domingo, 29 de setembro')
+    expect(screen.queryByRole('region', { name: /Classe Bíblica/ })).not.toBeInTheDocument()
+  })
+
+  it('grupo que o pacote não traz (fora do escopo) não aparece', async () => {
+    fixarAgora('2026-10-11T15:00:00Z')
+    const completo = criarPacoteClasseBiblica()
+    abrirComPacote([CHAMADA], { ...completo, grupos: completo.grupos.filter((grupo) => grupo.id === GRUPO_DANIEL_ID) })
+    expect(await screen.findByRole('link', { name: 'Fazer a chamada do Grupo Daniel' })).toBeInTheDocument()
+    expect(screen.queryByText('Fazer a chamada do Grupo Ester')).not.toBeInTheDocument()
+  })
+
+  it('sem a permissão: nenhum cartão, mesmo com o pacote trazendo o encontro', async () => {
+    fixarAgora('2026-10-11T15:00:00Z')
+    abrirComPacote([])
+    await screen.findByText('Domingo, 29 de setembro')
+    expect(screen.queryByText(/Fazer a chamada do Grupo/)).not.toBeInTheDocument()
+  })
+
+  it('pacote sem o campo da Classe Bíblica: nenhum cartão, sem quebrar', async () => {
+    fixarAgora('2026-10-11T15:00:00Z')
+    offline.pacote = criarPacote()
+    servidor.use(...handlersSessao([CONSELHEIRO], undefined, [CHAMADA]), handlerInicioConselheiro())
+    renderizarRotas(rotasInicio, '/inicio')
+    await screen.findByText('Domingo, 29 de setembro')
+    expect(screen.queryByText(/Fazer a chamada do Grupo/)).not.toBeInTheDocument()
+  })
+
+  it('sem conexão: o cartão vem do pacote guardado', async () => {
+    fixarAgora('2026-10-11T15:00:00Z')
+    offline.modo = 'SEM_CONEXAO'
+    offline.pacote = criarPacote({ classeBiblica: criarPacoteClasseBiblica() })
+    servidor.use(...handlersSessao([CONSELHEIRO], undefined, [CHAMADA]))
+    renderizarRotas(rotasInicio, '/inicio')
+    expect(await screen.findByRole('link', { name: 'Fazer a chamada do Grupo Daniel' })).toHaveAttribute('href', linkDaniel)
   })
 })
