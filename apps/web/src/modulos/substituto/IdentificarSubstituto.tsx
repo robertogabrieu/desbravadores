@@ -100,10 +100,17 @@ function PeloNome({ tipo, comecar, enviando, aoComecar }: { tipo: SobreOLink['ti
   const [nome, setNome] = useState('')
   const [erro, setErro] = useState<string | undefined>(undefined)
 
-  const conferir = (): string | null => {
-    const lido = NomeDoSubstituto.safeParse(nome)
+  const conferir = (valor = nome): string | null => {
+    const lido = NomeDoSubstituto.safeParse(valor)
     setErro(lido.success ? undefined : MENSAGEM_DO_NOME)
     return lido.success ? lido.data : null
+  }
+
+  // Com a mensagem já na tela, ela sai enquanto se digita: se saísse só no blur, a tela encolheria entre o
+  // toque e o clique, e o botão sairia de baixo do dedo.
+  const mudarNome = (valor: string) => {
+    setNome(valor)
+    if (erro) conferir(valor)
   }
 
   const enviar = (evento: FormEvent) => {
@@ -120,7 +127,7 @@ function PeloNome({ tipo, comecar, enviando, aoComecar }: { tipo: SobreOLink['ti
         placeholder="Seu nome e sobrenome"
         autoComplete="name"
         value={nome}
-        onChange={(evento) => setNome(evento.target.value)}
+        onChange={(evento) => mudarNome(evento.target.value)}
         onBlur={() => void conferir()}
         erro={erro}
       />

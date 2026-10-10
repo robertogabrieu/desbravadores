@@ -11,7 +11,9 @@ import { banco } from '../../offline/banco'
 import { registrarSubstituicaoLocal } from '../../offline/limpeza'
 import { configurarCliente, entrarNoModoSubstituicao, requisitar } from '../../api/cliente'
 import { reiniciarRelogio } from '../../substituicao/relogio'
+import { criarDetalheReuniao } from '../../testes/handlers/chamada'
 import { criarPacote, handlerPacote } from '../../testes/handlers/offline'
+import { criarResumo, handlerReunioes } from '../../testes/handlers/reunioes'
 import { uuid } from '../../testes/handlers/sessao'
 import {
   criarEntradaDoLink,
@@ -188,6 +190,25 @@ describe('critério 8: primeira abertura sem conta', () => {
     semAula()
   })
 
+  it('depois da mensagem, corrigir o nome já a tira antes de sair do campo, e um toque em "Começar a chamada" entra', async () => {
+    guardarPacote()
+    const registro = novoRegistroDoLink()
+    servidor.use(...handlersDoLink({ registro }))
+    montar()
+    const campo = await screen.findByLabelText('Qual é o seu nome?')
+    await userEvent.type(campo, 'Al')
+    await userEvent.tab()
+    expect(await screen.findByText('Escreva seu nome e sobrenome')).toBeInTheDocument()
+    await userEvent.clear(campo)
+    await userEvent.type(campo, 'Ana Souza')
+    // Sumir só no blur encolhe a tela entre o toque e o clique, e o botão sai de baixo do dedo.
+    expect(screen.queryByText('Escreva seu nome e sobrenome')).not.toBeInTheDocument()
+    expect(campo).toHaveFocus()
+    await userEvent.click(screen.getByRole('button', { name: 'Começar a chamada' }))
+    expect(await screen.findByText(/Substituindo na Unidade Águia/)).toBeInTheDocument()
+    expect(registro.entradas).toEqual([{ nome: 'Ana Souza' }])
+  })
+
   it('nome com mais de 80 caracteres também é recusado', async () => {
     servidor.use(...handlersDoLink())
     montar()
@@ -300,6 +321,36 @@ describe('critério 11: depois de salvar', () => {
     semAula()
     await userEvent.click(screen.getByRole('link', { name: 'Abrir a chamada de novo' }))
     await waitFor(() => expect(roteador.state.location.pathname).toBe(`${ENDERECO}/chamada/${REUNIAO}`))
+  })
+
+  it('com internet, "Abrir a chamada de novo" mostra o que o servidor gravou, não o que a tela leu antes de salvar', async () => {
+    estado.modo = 'ONLINE'
+    guardarPacote()
+    guardarAparelho()
+    let uniformeNoServidor = false
+    const linha = (n: number, nome: string) => ({
+      dbvId: uuid(300 + n), nome, nomePublico: nome, situacao: 'PRESENTE' as const, uniforme: n === 1 && uniformeNoServidor,
+      biblia: false, licao: false, versao: '2026-10-11T13:00:00.000Z', pontos: 0,
+    })
+    servidor.use(
+      ...handlersDoLink({ links: [criarLinkPublico({ identificado: true })], entrada: criarEntradaDoLink({}, { segredo: null }) }),
+      handlerReunioes({ '2026-10': [criarResumo({ id: REUNIAO, data: '2026-10-11' })] }),
+      http.get(`/api/reunioes/${REUNIAO}`, () =>
+        HttpResponse.json(
+          criarDetalheReuniao({ id: REUNIAO, unidade: { id: UNIDADE, nome: 'Águia' }, data: '2026-10-11', chamada: [linha(1, 'Bruno Alves'), linha(2, 'Carla Nunes')] }),
+        ),
+      ),
+    )
+    const { roteador } = montar()
+    const uniformeDoBruno = async () => within(await screen.findByRole('listitem', { name: 'Bruno Alves' })).getByRole('button', { name: 'Uniforme' })
+    await userEvent.click(await uniformeDoBruno())
+    await userEvent.click(screen.getByRole('button', { name: /^Salvar chamada/ }))
+    expect(await screen.findByRole('heading', { name: 'Chamada salva' })).toBeInTheDocument()
+    // A fila enviou e o servidor gravou enquanto S8 estava na tela.
+    uniformeNoServidor = true
+    await userEvent.click(screen.getByRole('link', { name: 'Abrir a chamada de novo' }))
+    await waitFor(() => expect(roteador.state.location.pathname).toBe(`${ENDERECO}/chamada/${REUNIAO}`))
+    await waitFor(async () => expect(await uniformeDoBruno()).toHaveAttribute('aria-pressed', 'true'))
   })
 
   it('com internet, S8 diz que a chamada já aparece para os conselheiros', async () => {

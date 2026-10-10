@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { Check } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useConexao, usePacote } from '../../offline'
@@ -13,6 +14,7 @@ export function DepoisDeSalvar() {
   const substituicao = useSubstituicao()
   const { modo } = useConexao()
   const { pacote } = usePacote()
+  const cliente = useQueryClient()
   if (!substituicao) return null
   const { token, identidade } = substituicao
   const base = `/substituto/${encodeURIComponent(token)}`
@@ -21,6 +23,13 @@ export function DepoisDeSalvar() {
 
   const reuniao = pacote?.reunioesRecentes.find((r) => r.unidadeId === identidade.alvoId && r.data === identidade.data)
   const reabrir = ehChamada ? (reuniao ? `${base}/chamada/${reuniao.id}` : `${base}/chamada`) : `${base}/classe`
+
+  // A tela de antes de salvar deixou a reunião no cache, e reabrir com ele mostra o estado anterior até
+  // recarregar: invalidar não basta, porque a tela reaberta usa o que já tem e não remonta quando a releitura chega.
+  const esquecerOQueFoiLido = () => {
+    if (!ehChamada) return
+    for (const raiz of ['reunioes', 'reuniao']) cliente.removeQueries({ queryKey: [raiz] })
+  }
 
   let situacao: string
   if (ehChamada) {
@@ -40,7 +49,7 @@ export function DepoisDeSalvar() {
         <p>
           Até <b>{hora(identidade.fimEm, identidade.fuso)}</b> você ainda pode corrigir.
         </p>
-        <Link to={reabrir} className={estiloDoBotao({ largura: 'total' })}>
+        <Link to={reabrir} onClick={esquecerOQueFoiLido} className={estiloDoBotao({ largura: 'total' })}>
           {ehChamada ? 'Abrir a chamada de novo' : 'Abrir o registro da classe de novo'}
         </Link>
       </EstadoDoLink>
