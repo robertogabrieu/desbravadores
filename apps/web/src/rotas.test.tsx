@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ModoConexao } from './offline'
 import { handlerBiblioteca } from './testes/handlers/biblioteca'
+import { handlersClasseBiblica } from './testes/handlers/classe-biblica'
 import { criarVinculo, handlersSessao } from './testes/handlers/sessao'
 import { renderizarRotas } from './testes/renderizar'
 import { servidor } from './testes/servidor'
@@ -94,5 +95,30 @@ describe('rotas da biblioteca', () => {
     const { roteador } = renderizarRotas(rotas, '/adm/biblioteca')
     await waitFor(() => expect(roteador.state.location.pathname).toBe('/inicio'))
     expect(screen.queryByRole('heading', { level: 1, name: 'Biblioteca' })).not.toBeInTheDocument()
+  })
+})
+
+describe('rotas da Classe Bíblica', () => {
+  it('o Adm abre a lista de edições pelo menu', async () => {
+    entrar('ADM')
+    servidor.use(...handlersClasseBiblica())
+    renderizarRotas(rotas, '/adm/classe-biblica')
+    expect(await screen.findByRole('heading', { name: 'Classe Bíblica', level: 1 })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Classe Bíblica' })).toHaveAttribute('href', '/adm/classe-biblica')
+  })
+
+  it('o Conselheiro abre a chamada do grupo', async () => {
+    entrar('CONSELHEIRO')
+    servidor.use(...handlersClasseBiblica())
+    renderizarRotas(rotas, '/classe-biblica/encontros/x/grupos/y/chamada')
+    expect(await screen.findByRole('heading', { name: 'Chamada da Classe Bíblica' })).toBeInTheDocument()
+  })
+
+  it('o Conselheiro não abre a lista de edições do Adm', async () => {
+    entrar('CONSELHEIRO')
+    servidor.use(...handlersClasseBiblica())
+    renderizarRotas(rotas, '/adm/classe-biblica')
+    await screen.findByRole('button', { name: /Ana Souza/ })
+    expect(screen.queryByRole('heading', { name: 'Classe Bíblica', level: 1 })).not.toBeInTheDocument()
   })
 })

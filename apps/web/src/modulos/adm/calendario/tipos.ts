@@ -1,4 +1,4 @@
-import { CalendarPlus, Sun } from 'lucide-react'
+import { BookOpen, CalendarPlus, Sun } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { z } from 'zod'
 import type { TipoEvento } from '@desbravadores/shared'
@@ -14,6 +14,7 @@ export const ROTULOS_DO_TIPO: Record<TipoDeEvento, string> = {
   EVENTO: 'Evento do clube',
   FERIADO: 'Feriado',
   SEM_REUNIAO: 'Sem reunião',
+  CLASSE_BIBLICA: 'Classe Bíblica',
 }
 
 export const COR_DA_REUNIAO = 'bg-[var(--cal-reuniao-bg)] text-[var(--cal-reuniao-fg)]'
@@ -26,11 +27,13 @@ export const CORES_DO_TIPO: Record<TipoDeEvento, string> = {
   ACAMPAMENTO: 'bg-[var(--cal-acamp-bg)] text-[var(--cal-acamp-fg)]',
   EVENTO: 'bg-[var(--cal-evento-bg)] text-[var(--cal-evento-fg)]',
   FERIADO: 'bg-[var(--cal-feriado-bg)] text-[var(--cal-feriado-fg)]',
+  CLASSE_BIBLICA: 'bg-[var(--cal-evento-bg)] text-[var(--cal-evento-fg)]',
 }
 
 export const ICONE_DO_TIPO: Partial<Record<TipoDeEvento, LucideIcon>> = {
   REUNIAO_EXTRA: CalendarPlus,
   FERIAS: Sun,
+  CLASSE_BIBLICA: BookOpen,
 }
 
 /** Texto de apoio sob o seletor de Tipo; `diaReuniao` ausente (configuração não carregada) cai em "dias de reunião". */
@@ -50,4 +53,8 @@ export const PONTO_DO_TIPO: Record<TipoDeEvento, string> = {
   ACAMPAMENTO: 'bg-[var(--cal-acamp-fg)]',
   EVENTO: 'bg-[var(--cal-evento-fg)]',
   FERIADO: 'bg-[var(--cal-feriado-fg)]',
+  CLASSE_BIBLICA: 'bg-[var(--cal-evento-fg)]',
 }
+
+/** O encontro cancelado da Classe Bíblica, no cartão e na ficha. */
+export const textoDoCancelamento = (motivo: string | null): string => (motivo ? `Cancelado: ${motivo}` : 'Cancelado')

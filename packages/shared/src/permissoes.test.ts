@@ -2,9 +2,21 @@ import { describe, expect, it } from 'vitest'
 import { CHAVES_PERMISSAO, permissaoSeAplica, permissoesEfetivas } from './permissoes'
 
 describe('permissoesEfetivas', () => {
-  it('o catálogo tem 23 chaves e o ADM tem todas', () => {
-    expect(CHAVES_PERMISSAO).toHaveLength(23)
-    expect(permissoesEfetivas('ADM', [])).toHaveLength(23)
+  it('o catálogo tem 25 chaves e o ADM tem todas', () => {
+    expect(CHAVES_PERMISSAO).toHaveLength(25)
+    expect(permissoesEfetivas('ADM', [])).toHaveLength(25)
+  })
+
+  it('CONSELHEIRO recebe classebiblica.chamada por ajuste; classebiblica.gerenciar não se aplica a ele', () => {
+    expect(permissoesEfetivas('CONSELHEIRO', [])).not.toContain('classebiblica.chamada')
+    const ajustes = [
+      { permissao: 'classebiblica.chamada', concedida: true },
+      { permissao: 'classebiblica.gerenciar', concedida: true },
+    ]
+    const efetivas = permissoesEfetivas('CONSELHEIRO', ajustes)
+    expect(efetivas).toContain('classebiblica.chamada')
+    expect(efetivas).not.toContain('classebiblica.gerenciar')
+    expect(permissaoSeAplica('CONSELHEIRO', 'classebiblica.gerenciar')).toBe(false)
   })
 
   it('ADM ignora ajuste que tentaria desligar uma permissão', () => {

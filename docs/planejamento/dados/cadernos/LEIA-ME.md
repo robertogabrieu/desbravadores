@@ -12,7 +12,8 @@ ilustrações e o conteúdo detalhado das especialidades ficaram de fora.
 Um JSON por caderno: `fonte`, `classes[]` (nome, idade, tipo, `secoes[]` com `requisitos[]`) e
 `avisos[]` — tudo que o extrator teve dúvida. Cada classe tem `tipo` (REGULAR ou AVANCADA) e
 `trilha` (INDIVIDUAL ou AGRUPADAS); a avançada aponta para a sua regular em `classeBase`. Cada requisito tem `codigo`, `texto`, `campo` e
-`pagina` (página do PDF, para conferir).
+`pagina` (página do PDF, para conferir) e, só no "participar ativamente da classe bíblica", `classeBiblica: true`
+(a carga grava a marca; a ficha do desbravador mostra a frequência da Classe Bíblica sob esse requisito).
 
 Seções: G Gerais · DE Descoberta espiritual · SO Servindo aos outros · DA Desenvolvendo amizade ·
 SA Saúde e aptidão física · OL Organização e liderança · EN Estudo da natureza · AC Arte de

@@ -19,6 +19,10 @@ export const EventoSaida = z.object({
   id: Uuid, nome: z.string(), tipo: TipoEvento, inicio: DataCivil, fim: DataCivil,
   horario: Horario.nullable(), local: z.string().nullable(),
   temReuniao: z.boolean(), temClasse: z.boolean(), bomParaCampo: z.boolean(),
+  /** Só em evento CLASSE_BIBLICA: o calendário leva à edição em vez de editar. */
+  classeBiblica: z.object({
+    edicaoId: Uuid, grupos: z.array(z.string()), cancelado: z.boolean(), motivo: z.string().nullable(),
+  }).nullable().optional(),
 })
 export const CalendarioFiltro = z.object({ ano: z.coerce.number().int().min(2000).max(2100) })
 export const CalendarioSaida = z.object({

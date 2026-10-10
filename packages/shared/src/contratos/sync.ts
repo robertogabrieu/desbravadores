@@ -6,6 +6,7 @@ import { MarcacaoChamadaServidor } from './reunioes'
 import { RequisitoResumo } from './cronograma'
 import { ItemTarefa } from './aulas'
 import { EventoSaida } from './calendario'
+import { PacoteClasseBiblica } from './classe-biblica'
 
 export const MembroPacote = z.object({
   dbvId: Uuid,
@@ -84,5 +85,7 @@ export const PacoteSaida = z.object({
   calendario: z.array(EventoDoPacote).default([]),
   /** Preenchido só para INSTRUTOR. O default mantém válidos pacotes e mocks que ainda não têm o campo. */
   instrutor: PacoteInstrutor.nullable().default(null),
+  /** Só para quem tem classebiblica.chamada. Ausente = pacote de antes desta mudança: sem Classe Bíblica. */
+  classeBiblica: PacoteClasseBiblica.nullable().optional(),
 })
 // GET /api/sync/pacote → PacoteSaida (CONSELHEIRO; ADM e INSTRUTOR recebem unidades: [] nesta fase)

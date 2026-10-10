@@ -171,7 +171,7 @@ describe('LayoutAdm', () => {
     expect(itemDoMenu('Relatórios')).toHaveAttribute('aria-disabled', 'true')
   })
 
-  it('"Biblioteca" fica entre "Cronogramas" e "Configurações do clube"', async () => {
+  it('"Biblioteca" vem logo depois de "Cronogramas"', async () => {
     servidor.use(...handlersSessao([criarVinculo('ADM')]))
     renderizarRotas(rotasAdm, '/adm/desbravadores')
     await screen.findByText('lista')
@@ -181,7 +181,7 @@ describe('LayoutAdm', () => {
       .map((link) => link.textContent)
     const posicaoDeCronogramas = rotulos.indexOf('Cronogramas')
     expect(posicaoDeCronogramas).toBeGreaterThanOrEqual(0)
-    expect(rotulos.slice(posicaoDeCronogramas, posicaoDeCronogramas + 3)).toEqual(['Cronogramas', 'Biblioteca', 'Configurações do clube'])
+    expect(rotulos.slice(posicaoDeCronogramas, posicaoDeCronogramas + 2)).toEqual(['Cronogramas', 'Biblioteca'])
   })
 
   it('só o item da tela aberta fica marcado: Visão geral não acende nas outras telas do Adm', async () => {

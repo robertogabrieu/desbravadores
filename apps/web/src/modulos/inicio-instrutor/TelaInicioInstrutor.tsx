@@ -14,6 +14,7 @@ import { FaixaAviso } from '../../ui/FaixaAviso'
 import { LinhaQueNavega } from '../../ui/LinhaQueNavega'
 import { ClassesSemConexao } from '../aulas/RegistroSemConexao'
 import { corDaClasse } from '../classes/cores'
+import { CartaoClasseBiblica } from '../inicio/CartaoClasseBiblica'
 import { dataCurta } from '../aulas/datas'
 import { TRACO, formatarHorario } from '../cronograma/formatos'
 
@@ -229,6 +230,7 @@ export function TelaInicioInstrutor() {
         <h1 className="font-titulo text-2xl font-bold text-texto">Olá, {eu.usuario.nome.split(' ')[0]}</h1>
         <h2 className="sr-only">Início do instrutor</h2>
       </header>
+      <CartaoClasseBiblica />
       {corpo}
     </div>
   )
