@@ -68,7 +68,7 @@ function DialogoDeCategoria({ categoria, aoFechar }: { categoria?: CategoriaBibl
   const nomeLimpo = nome.trim()
 
   const mudarNome = (evento: ChangeEvent<HTMLInputElement>) => {
-    gravando.reset()
+    if (gravando.isError) gravando.reset()
     definirNome(evento.target.value)
   }
 
@@ -358,8 +358,8 @@ function DialogoEditar({ item, categorias, aoFechar }: { item: ItemBiblioteca; c
   const falha = editar.error ?? tirarCapa.error
 
   const limparFalhas = () => {
-    editar.reset()
-    tirarCapa.reset()
+    if (editar.isError) editar.reset()
+    if (tirarCapa.isError) tirarCapa.reset()
   }
 
   const mudarNome = (evento: ChangeEvent<HTMLInputElement>) => {

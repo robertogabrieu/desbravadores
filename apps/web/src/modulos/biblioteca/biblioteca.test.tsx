@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
+import type { JsonBodyType } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ModoConexao } from '../../offline'
 import { GuardaRota } from '../../sessao/GuardaRota'
@@ -150,6 +151,23 @@ async function abrirAdicionar(usuario: Usuario) {
 }
 
 const secao = (nome: string) => within(screen.getByRole('region', { name: nome }))
+
+/** Segura a resposta da API até o teste liberar: dá tempo de mexer na tela com o pedido em voo. */
+function segurarResposta(metodo: 'post' | 'patch' | 'delete', caminhoDaRota: string, corpo: JsonBodyType) {
+  let liberar = () => {}
+  const liberada = new Promise<void>((resolver) => {
+    liberar = resolver
+  })
+  const pedidos: string[] = []
+  servidor.use(
+    http[metodo](caminhoDaRota, async ({ request }) => {
+      pedidos.push(request.method)
+      await liberada
+      return HttpResponse.json(corpo)
+    }),
+  )
+  return { pedidos, liberar: () => liberar() }
+}
 
 describe('Biblioteca — quem só lê', () => {
   beforeEach(() => comoLeitor())
@@ -711,6 +729,48 @@ describe('Biblioteca — editar', () => {
     expect(await dialogo.findByRole('alert')).toHaveTextContent('Categoria não encontrada.')
   })
 
+  describe('com o "Salvar" em voo', () => {
+    type DialogoDoItem = Awaited<ReturnType<typeof abrirEditar>>
+    const mexerNaTela = [
+      { mexida: 'digitar no nome', mexer: (usuario: Usuario, dialogo: DialogoDoItem) => usuario.type(dialogo.getByLabelText('Nome'), '!') },
+      { mexida: 'digitar na descrição', mexer: (usuario: Usuario, dialogo: DialogoDoItem) => usuario.type(dialogo.getByLabelText('Descrição'), '!') },
+      { mexida: 'mudar a categoria', mexer: (usuario: Usuario, dialogo: DialogoDoItem) => usuario.selectOptions(dialogo.getByLabelText('Categoria'), cadernos.id) },
+      { mexida: 'tirar a capa', mexer: (usuario: Usuario, dialogo: DialogoDoItem) => usuario.click(dialogo.getByRole('button', { name: 'Tirar capa' })) },
+      { mexida: 'trocar a capa', mexer: (usuario: Usuario, dialogo: DialogoDoItem) => usuario.upload(dialogo.getByLabelText('Nova capa'), capaDe('nova.png')) },
+    ]
+
+    it.each(mexerNaTela)('$mexida não impede o diálogo de fechar quando a API responde, e o pedido não se repete', async ({ mexer }) => {
+      const gravacao = segurarResposta('patch', '/api/biblioteca/itens/:id', criarItemBiblioteca(3, { id: caminho.id }))
+      simularEnvios([{ status: 200, corpo: caminho }])
+      const usuario = userEvent.setup()
+      abrir()
+      const dialogo = await abrirEditar(usuario, 'Caminho a Cristo')
+      await usuario.type(dialogo.getByLabelText('Nome'), ' 2')
+      await usuario.click(dialogo.getByRole('button', { name: 'Salvar' }))
+      await waitFor(() => expect(gravacao.pedidos).toHaveLength(1))
+      await mexer(usuario, dialogo)
+      expect(dialogo.getByRole('button', { name: 'Salvar' })).toBeDisabled()
+      gravacao.liberar()
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(gravacao.pedidos).toHaveLength(1)
+    })
+  })
+
+  it('"Tirar capa" não manda um segundo DELETE enquanto o primeiro corre, mesmo que a pessoa mexa num campo', async () => {
+    const retirada = segurarResposta('delete', '/api/biblioteca/itens/:id/capa', criarItemBiblioteca(3, { id: caminho.id, capaUrl: null }))
+    const usuario = userEvent.setup()
+    abrir()
+    const dialogo = await abrirEditar(usuario, 'Caminho a Cristo')
+    await usuario.click(dialogo.getByRole('button', { name: 'Tirar capa' }))
+    await waitFor(() => expect(retirada.pedidos).toHaveLength(1))
+    await usuario.type(dialogo.getByLabelText('Nome'), '!')
+    expect(dialogo.getByRole('button', { name: 'Tirar capa' })).toBeDisabled()
+    await usuario.click(dialogo.getByRole('button', { name: 'Tirar capa' }))
+    retirada.liberar()
+    await waitFor(() => expect(dialogo.getByRole('button', { name: 'Tirar capa' })).toBeEnabled())
+    expect(retirada.pedidos).toHaveLength(1)
+  })
+
   describe('o erro vindo da API', () => {
     const MENSAGEM = 'Categoria não encontrada.'
 
@@ -883,6 +943,39 @@ describe('Biblioteca — categorias', () => {
     expect(await dialogo.findByRole('alert')).toHaveTextContent('Já existe uma categoria com esse nome.')
     await usuario.type(dialogo.getByLabelText('Nome da categoria'), '!')
     expect(dialogo.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('"Nova categoria": digitar com o pedido em voo não impede o diálogo de fechar, e o pedido não se repete', async () => {
+    const gravacao = segurarResposta('post', '/api/biblioteca/categorias', criarCategoriaBiblioteca(9, [], { nome: 'Comunicados' }))
+    const usuario = userEvent.setup()
+    abrir()
+    await usuario.click(await screen.findByRole('button', { name: 'Nova categoria' }))
+    const dialogo = within(await screen.findByRole('dialog', { name: 'Nova categoria' }))
+    await usuario.type(dialogo.getByLabelText('Nome da categoria'), 'Comunicados')
+    await usuario.click(dialogo.getByRole('button', { name: 'Criar' }))
+    await waitFor(() => expect(gravacao.pedidos).toHaveLength(1))
+    await usuario.type(dialogo.getByLabelText('Nome da categoria'), '!')
+    expect(dialogo.getByRole('button', { name: 'Criar' })).toBeDisabled()
+    gravacao.liberar()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(gravacao.pedidos).toHaveLength(1)
+  })
+
+  it('"Renomear": digitar com o pedido em voo não impede o diálogo de fechar, e o pedido não se repete', async () => {
+    const gravacao = segurarResposta('patch', '/api/biblioteca/categorias/:id', criarCategoriaBiblioteca(2, [], { nome: 'Leituras' }))
+    const usuario = userEvent.setup()
+    abrir()
+    const menu = await abrirMenu(usuario, 'Opções da categoria Livros')
+    await usuario.click(menu.getByRole('menuitem', { name: 'Renomear' }))
+    const dialogo = within(await screen.findByRole('dialog', { name: 'Renomear categoria' }))
+    await usuario.type(dialogo.getByLabelText('Nome da categoria'), ' 2')
+    await usuario.click(dialogo.getByRole('button', { name: 'Salvar' }))
+    await waitFor(() => expect(gravacao.pedidos).toHaveLength(1))
+    await usuario.type(dialogo.getByLabelText('Nome da categoria'), '!')
+    expect(dialogo.getByRole('button', { name: 'Salvar' })).toBeDisabled()
+    gravacao.liberar()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(gravacao.pedidos).toHaveLength(1)
   })
 
   it('"Nova categoria" grava o nome e fecha', async () => {
