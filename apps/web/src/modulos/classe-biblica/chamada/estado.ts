@@ -29,24 +29,28 @@ export function chamadaDoPacote(pacote: PacoteCB, encontroId: string, grupoId: s
   const gravadas = new Map(pacote.presencas.filter((p) => p.encontroId === encontroId).map((p) => [p.dbvId, p]))
   const naData = (membro: { inicio: string; fim: string | null }) =>
     membro.inicio <= encontro.data && (membro.fim === null || membro.fim > encontro.data)
+  const unidades = grupo.unidades.map((unidade) => ({
+    id: unidade.id,
+    nome: unidade.nome,
+    desbravadores: unidade.membros.filter(naData).map((membro) => {
+      const gravada = gravadas.get(membro.dbvId)
+      return {
+        dbvId: membro.dbvId,
+        nome: membro.nome,
+        entrouEm: null,
+        presente: gravada?.presente ?? true,
+        participou: gravada?.participou ?? false,
+        versao: gravada?.versao ?? null,
+      }
+    }),
+  }))
+  // Unidade sem ninguém na data (os membros dela valem em outro encontro) sai da lista; se todas ficam vazias,
+  // continuam todas, para o aviso de grupo vazio dizer quais eram.
+  const comAlguem = unidades.filter((unidade) => unidade.desbravadores.length > 0)
   return {
     encontro,
     grupo: { id: grupo.id, nome: grupo.nome },
-    unidades: grupo.unidades.map((unidade) => ({
-      id: unidade.id,
-      nome: unidade.nome,
-      desbravadores: unidade.membros.filter(naData).map((membro) => {
-        const gravada = gravadas.get(membro.dbvId)
-        return {
-          dbvId: membro.dbvId,
-          nome: membro.nome,
-          entrouEm: null,
-          presente: gravada?.presente ?? true,
-          participou: gravada?.participou ?? false,
-          versao: gravada?.versao ?? null,
-        }
-      }),
-    })),
+    unidades: comAlguem.length > 0 ? comAlguem : unidades,
     registrada: pacote.chamadasRegistradas.some((c) => c.encontroId === encontroId && c.grupoId === grupoId),
   }
 }

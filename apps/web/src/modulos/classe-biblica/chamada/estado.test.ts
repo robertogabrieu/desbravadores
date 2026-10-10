@@ -58,6 +58,24 @@ describe('chamada a partir do pacote', () => {
     expect(chamadaDoPacote(pacote, ENCONTRO_CB_ID, GRUPO_ESTER_ID)?.registrada).toBe(false)
   })
 
+  it('esconde a unidade cujos membros só valem em outro encontro', () => {
+    const pacote = criarPacoteClasseBiblica()
+    const daniel = pacote.grupos.find((g) => g.id === GRUPO_DANIEL_ID)
+    const leoes = daniel?.unidades[1]
+    if (leoes) leoes.membros = leoes.membros.map((m) => ({ ...m, inicio: '2026-10-18', fim: '2026-10-19' }))
+    const chamada = chamadaDoPacote(pacote, ENCONTRO_CB_ID, GRUPO_DANIEL_ID)
+    expect(chamada?.unidades.map((u) => u.nome)).toEqual(['Águias', 'Gaviões'])
+  })
+
+  it('grupo sem ninguém na data fica vazio, com as unidades para o aviso dizer quais eram', () => {
+    const pacote = criarPacoteClasseBiblica()
+    const ester = pacote.grupos.find((g) => g.id === GRUPO_ESTER_ID)
+    if (ester) ester.unidades = ester.unidades.map((u) => ({ ...u, membros: u.membros.map((m) => ({ ...m, inicio: '2026-10-18', fim: '2026-10-19' })) }))
+    const chamada = chamadaDoPacote(pacote, ENCONTRO_CB_ID, GRUPO_ESTER_ID)
+    expect(chamada?.unidades.length).toBeGreaterThan(0)
+    expect(chamada?.unidades.every((u) => u.desbravadores.length === 0)).toBe(true)
+  })
+
   it('encontro ou grupo fora do pacote não tem chamada no aparelho', () => {
     const pacote = criarPacoteClasseBiblica()
     expect(chamadaDoPacote(pacote, uuid(1), GRUPO_DANIEL_ID)).toBeNull()
