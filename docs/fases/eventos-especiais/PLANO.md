@@ -22,8 +22,9 @@ Vitest + MSW 2), Zod 4 em `packages/shared`, Playwright (e2e, headless, só no C
 **Spec:** [SPEC.md](SPEC.md) e o modelo em [modelo/](modelo/) — também no quadro
 https://claude.ai/artifact/EtDbsBDcYzULoSKxJReR12. **O modelo vence a SPEC no empate.**
 **Branch:** `feature/eventos-especiais` · **Worktree:** `/home/robertogabrieu/desbravadores/.claude/worktrees/spec-eventos-festivos`
-· **Base:** `origin/main` em `c55ea66` · **PR:** a abrir em rascunho pelo `gestor-pr` (a PR da entrega é esta mesma,
-a implementação empilha commits nela). **Não há issue ligada**: o corpo da PR não leva `Closes #N`.
+· **Base:** `origin/main` em `c55ea66` · **PR:** [#35](https://github.com/robertogabrieu/desbravadores/pull/35), em
+rascunho (a PR da entrega é esta mesma, a implementação empilha commits nela). **Não há issue ligada**: o corpo da PR
+não leva `Closes #N`.
 
 ## Global Constraints
 
