@@ -107,6 +107,13 @@ describe('guarda de clube: modelos de clube', () => {
         'ConviteAcesso',
         'TarefaCasa',
         'TarefaItem',
+        'EdicaoClasseBiblica',
+        'GrupoClasseBiblica',
+        'GrupoUnidadeClasseBiblica',
+        'EncontroClasseBiblica',
+        'ChamadaClasseBiblica',
+        'PresencaClasseBiblica',
+        'EnvioClasseBiblicaProcessado',
       ].sort(),
     )
     expect([...MODELOS_MISTOS].sort()).toEqual(['Classe', 'Especialidade'])

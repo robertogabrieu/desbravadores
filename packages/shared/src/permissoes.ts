@@ -31,6 +31,11 @@ export const CATALOGO_PERMISSOES = {
   'ranking.configurar': { rotulo: 'Configurar o ranking', padrao: { ADM: true } },
   'relatorio.geral': { rotulo: 'Ver relatórios gerais', padrao: { ADM: true } },
   'clube.configurar': { rotulo: 'Configurar o clube', padrao: { ADM: true } },
+  'classebiblica.chamada': {
+    rotulo: 'Registrar a chamada da Classe Bíblica',
+    padrao: { ADM: true, CONSELHEIRO: false, INSTRUTOR: false },
+  },
+  'classebiblica.gerenciar': { rotulo: 'Gerenciar a Classe Bíblica', padrao: { ADM: true } },
 } as const satisfies Record<string, ItemCatalogo>
 
 export type ChavePermissao = keyof typeof CATALOGO_PERMISSOES
