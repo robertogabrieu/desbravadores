@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { CHAVES_PERMISSAO, permissaoSeAplica, permissoesEfetivas } from './permissoes'
 
 describe('permissoesEfetivas', () => {
-  it('o catálogo tem 22 chaves e o ADM tem todas', () => {
-    expect(CHAVES_PERMISSAO).toHaveLength(22)
-    expect(permissoesEfetivas('ADM', [])).toHaveLength(22)
+  it('o catálogo tem 23 chaves e o ADM tem todas', () => {
+    expect(CHAVES_PERMISSAO).toHaveLength(23)
+    expect(permissoesEfetivas('ADM', [])).toHaveLength(23)
   })
 
   it('ADM ignora ajuste que tentaria desligar uma permissão', () => {

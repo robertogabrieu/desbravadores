@@ -11,6 +11,7 @@ import { rotasAdmUnidades } from './modulos/adm/unidades/rotas'
 import { rotasAdmUsuarios } from './modulos/adm/usuarios/rotas'
 import { rotasAdmVisaoGeral } from './modulos/adm/visao-geral/rotas'
 import { rotasAdmCronogramas, rotasCronogramaMontagem } from './modulos/cronograma-montagem/rotas'
+import { rotasAdmBiblioteca, rotasBiblioteca } from './modulos/biblioteca/rotas'
 import { TelaConectar } from './modulos/conectar/TelaConectar'
 import { PaginaNaoEncontrada } from './modulos/erro/PaginaNaoEncontrada'
 import { PaginaFila } from './modulos/fila/PaginaFila'
@@ -71,6 +72,7 @@ export const rotas: RouteObject[] = [
         children: [
           { path: '/inicio', element: <InicioDoPapel /> },
           { path: '/fila', element: <PaginaFila /> },
+          ...rotasBiblioteca,
           {
             element: <GuardaRota papeis={['CONSELHEIRO']} />,
             children: [...rotasUnidade, ...rotasReunioes, ...rotasGaleria],
@@ -94,6 +96,7 @@ export const rotas: RouteObject[] = [
           ...rotasAdmCalendario,
           ...rotasAdmReunioes,
           ...rotasAdmCronogramas,
+          ...rotasAdmBiblioteca,
           ...rotasAdmConfiguracoes,
         ],
       },

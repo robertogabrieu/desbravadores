@@ -38,6 +38,8 @@ export const MODELOS_DE_CLUBE = [
   'TarefaCasa',
   'TarefaItem',
   'Substituicao',
+  'CategoriaBiblioteca',
+  'ItemBiblioteca',
 ] as const
 
 /** Modelos que podem ser oficiais (`clubeId` nulo) ou de um clube. */
