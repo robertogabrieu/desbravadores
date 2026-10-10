@@ -6,7 +6,7 @@ import { ErroDaApi } from '../../../api/cliente'
 import { useChamadaCB } from '../../../api/classe-biblica'
 import type { ChamadaCB } from '../../../api/classe-biblica'
 import { enfileirar, useConexao, usePacote } from '../../../offline'
-import { chamadaCBNaFila, chaveDaChamadaCB } from '../../../offline/tipos/classe-biblica'
+import { chamadaCBNaFila, chaveDaChamadaCB, ouvirEnvioDaChamadaCB } from '../../../offline/tipos/classe-biblica'
 import type { PayloadChamadaCB } from '../../../offline/tipos/classe-biblica'
 import { useSessao } from '../../../sessao/useSessao'
 import { Botao } from '../../../ui/Botao'
@@ -69,8 +69,13 @@ export function TelaChamadaCB() {
 
   let chamada: ChamadaCB | null = null
   let conteudo
+  let aviso: string | null = null
   if (fresca) chamada = fresca
-  else if (recusa) conteudo = <SemChamada erro={recusa.erro.mensagem} aoTentar={() => void consulta.refetch()} />
+  // Com a chamada já na tela, a recusa vira aviso: trocar a lista pela tela de erro apagaria os toques.
+  else if (recusa && naTela.current && doPacote) {
+    chamada = doPacote
+    aviso = recusa.erro.mensagem
+  } else if (recusa) conteudo = <SemChamada erro={recusa.erro.mensagem} aoTentar={() => void consulta.refetch()} />
   // A conexão voltou com a chamada do pacote aberta: ela fica na tela enquanto o servidor responde.
   else if (naTela.current && doPacote) chamada = doPacote
   else if (online && consulta.isFetching) conteudo = <SemChamada carregando />
@@ -87,6 +92,7 @@ export function TelaChamadaCB() {
   return (
     <main className="flex flex-col gap-4 p-4">
       {!online && <FaixaAviso>{SEM_CONEXAO}</FaixaAviso>}
+      {aviso && <FaixaAviso>{aviso}</FaixaAviso>}
       {conteudo}
     </main>
   )
@@ -159,6 +165,18 @@ function ChamadaComFila({ chamada }: { chamada: ChamadaCB }) {
   return <Chamada chamada={inicio.chamada} inicio={inicio} />
 }
 
+/** A chamada com as versões que os envios desta tela já gravaram: a correção seguinte não conflita com o próprio envio. */
+function comVersoes(chamada: ChamadaCB, versoes: Map<string, string>): ChamadaCB {
+  if (versoes.size === 0) return chamada
+  return {
+    ...chamada,
+    unidades: chamada.unidades.map((unidade) => ({
+      ...unidade,
+      desbravadores: unidade.desbravadores.map((dbv) => ({ ...dbv, versao: versoes.get(dbv.dbvId) ?? dbv.versao })),
+    })),
+  }
+}
+
 function Chamada({ chamada, inicio }: { chamada: ChamadaCB; inicio: Inicio }) {
   const { modo } = useConexao()
   const navegar = useNavigate()
@@ -168,7 +186,12 @@ function Chamada({ chamada, inicio }: { chamada: ChamadaCB; inicio: Inicio }) {
   const [guardada, setGuardada] = useState<Totais | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [guardadoEm, setGuardadoEm] = useState(inicio.guardadoEm)
+  const [versoes, setVersoes] = useState<Map<string, string>>(() => new Map())
   const { encontro, grupo } = chamada
+  useEffect(
+    () => ouvirEnvioDaChamadaCB(encontro.id, grupo.id, (gravadas) => setVersoes((atual) => new Map([...atual, ...gravadas]))),
+    [encontro.id, grupo.id],
+  )
   const data = diaMes(encontro.data)
   const contagem = totais(marcas)
   const vazia = chamada.unidades.every((unidade) => unidade.desbravadores.length === 0)
@@ -179,7 +202,7 @@ function Chamada({ chamada, inicio }: { chamada: ChamadaCB; inicio: Inicio }) {
       grupoId: grupo.id,
       grupoNome: grupo.nome,
       data: encontro.data,
-      corpo: montarEnvio(chamada, marcas, crypto.randomUUID()),
+      corpo: montarEnvio(comVersoes(chamada, versoes), marcas, crypto.randomUUID()),
     }
     setSalvando(true)
     try {

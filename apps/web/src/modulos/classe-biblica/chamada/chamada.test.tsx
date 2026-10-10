@@ -8,6 +8,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { chavesClasseBiblica } from '../../../api/classe-biblica'
 import type { ItemFila, ModoConexao, PacoteGuardado } from '../../../offline'
+import { aoEnviar } from '../../../offline/tipos/classe-biblica'
 import type { PayloadChamadaCB } from '../../../offline/tipos/classe-biblica'
 import { ContextoDaSessao } from '../../../sessao/useSessao'
 import type { ContextoSessao } from '../../../sessao/useSessao'
@@ -283,6 +284,54 @@ describe('Sem conexão', () => {
     })
     expect(linha('Pedro Henrique Lima').getByText('Faltou')).toBeInTheDocument()
     expect(rodape().getByText('30 presentes · 1 falta · 0 participaram ativamente')).toBeInTheDocument()
+  })
+
+  it('a conexão volta e o servidor recusa: o aviso vem por cima da chamada, com os toques', async () => {
+    servidor.use(
+      http.get('/api/classe-biblica/encontros/:id/grupos/:grupoId/chamada', () =>
+        HttpResponse.json({ codigo: 'NAO_ENCONTRADO', mensagem: 'Chamada não encontrada.' }, { status: 404 }),
+      ),
+    )
+    montar()
+    await screen.findByText('Pedro Henrique Lima')
+    await tocarNome('Pedro Henrique Lima')
+    estado.modo = 'ONLINE'
+    act(() => estado.ouvintes.forEach((ouvinte) => ouvinte()))
+    expect(await screen.findByText('Chamada não encontrada.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Tentar de novo' })).not.toBeInTheDocument()
+    expect(linha('Pedro Henrique Lima').getByText('Faltou')).toBeInTheDocument()
+    expect(rodape().getByText('30 presentes · 1 falta · 0 participaram ativamente')).toBeInTheDocument()
+  })
+
+  it('depois que a fila envia, a correção seguinte parte das versões gravadas pelo próprio envio', async () => {
+    montar()
+    await screen.findByText('Enzo Barros')
+    await tocarNome('Enzo Barros')
+    await userEvent.click(rodape().getByRole('button', { name: 'Salvar chamada' }))
+    await screen.findByRole('heading', { name: 'Chamada guardada no aparelho' })
+    const enviado = ultimoPayload().payload
+    const versao = '2026-10-11T15:10:00.000Z'
+    const saida = {
+      linhas: enviado.corpo.linhas.map(({ dbvId, presente, participou }) => ({ dbvId, presente, participou, versao })),
+      conflitos: [],
+      ignorados: [],
+      presentes: 30,
+      participaram: 0,
+    }
+    const ctx = {
+      item: { payload: enviado } as ItemFila<PayloadChamadaCB>,
+      queryClient: new QueryClient(),
+      seguintesDaChave: () => Promise.resolve([]),
+      atualizarPayload: () => Promise.resolve(),
+      baixarPacote: () => Promise.resolve(),
+    }
+    await act(() => aoEnviar(saida, ctx))
+    await tocarNome('Pedro Henrique Lima')
+    await userEvent.click(rodape().getByRole('button', { name: 'Salvar chamada' }))
+    await waitFor(() => expect(estado.enfileirar).toHaveBeenCalledTimes(2))
+    const { linhas } = ultimoPayload().payload.corpo
+    expect(linhas.every((l) => l.versaoVista === versao)).toBe(true)
+    expect(linhas.filter((l) => !l.presente)).toHaveLength(2)
   })
 
   it('sem a chamada no pacote: "Esta chamada ainda não está no aparelho"', async () => {

@@ -12,7 +12,7 @@ import { enfileirar, registrarTipo } from '../index'
 import type { ContextoAposEnvio, ContextoEnvio, ItemFila } from '../index'
 import { iniciarMotor, pararMotor } from '../motor'
 import { obterTipo } from '../registro'
-import { aoEnviar, chaveDaChamadaCB, fundir, pendentesDaChamadaCB } from './classe-biblica'
+import { aoEnviar, chaveDaChamadaCB, fundir, ouvirEnvioDaChamadaCB, pendentesDaChamadaCB } from './classe-biblica'
 import type { PayloadChamadaCB } from './classe-biblica'
 
 const avisos = vi.hoisted(() => ({ warning: vi.fn<(texto: string) => void>(), success: vi.fn() }))
@@ -72,6 +72,18 @@ describe('aoEnviar', () => {
     }
     return { ctx, invalidar, atualizarPayload, baixarPacote }
   }
+
+
+  it('conta à tela aberta as versões que o envio gravou', async () => {
+    const { ctx } = contexto()
+    const ouvinte = vi.fn()
+    const parar = ouvirEnvioDaChamadaCB(ctx.item.payload.encontroId, ctx.item.payload.grupoId, ouvinte)
+    await aoEnviar(criarEnvioCBSaida({ linhas: [{ dbvId: uuid(1), presente: true, participou: false, versao: '2026-10-11T14:31:00.000-03:00' }] }), ctx)
+    parar()
+    await aoEnviar(criarEnvioCBSaida(), ctx)
+    expect(ouvinte).toHaveBeenCalledOnce()
+    expect(ouvinte).toHaveBeenCalledWith(new Map([[uuid(1), '2026-10-11T14:31:00.000-03:00']]))
+  })
 
   it('passa as versões gravadas aos itens seguintes, invalida as consultas e baixa o pacote', async () => {
     const seguinte = { id: 'seg', payload: payload([linha(1, false, false, null), linha(4, true, false, 'antiga')]) } as ItemFila<PayloadChamadaCB>

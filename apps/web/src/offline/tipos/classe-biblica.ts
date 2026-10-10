@@ -86,8 +86,30 @@ async function atualizarSeguintes(saida: Saida, ctx: ContextoAposEnvio<PayloadCh
   }
 }
 
+/** Versão gravada por desbravador (`dbvId` → `versao`). */
+type OuvinteDoEnvio = (versoes: Map<string, string>) => void
+const ouvintesDoEnvio = new Map<string, Set<OuvinteDoEnvio>>()
+
+/** A tela aberta desta chamada ouve os envios dela, para a correção seguinte partir das versões gravadas. */
+export function ouvirEnvioDaChamadaCB(encontroId: string, grupoId: string, ouvinte: OuvinteDoEnvio): () => void {
+  const chave = chaveDaChamadaCB(encontroId, grupoId)
+  const ouvintes = ouvintesDoEnvio.get(chave) ?? new Set()
+  ouvintes.add(ouvinte)
+  ouvintesDoEnvio.set(chave, ouvintes)
+  return () => {
+    ouvintes.delete(ouvinte)
+    if (ouvintes.size === 0) ouvintesDoEnvio.delete(chave)
+  }
+}
+
+function contarATela(saida: Saida, payload: PayloadChamadaCB): void {
+  const versoes = new Map(saida.linhas.map((linha) => [linha.dbvId, linha.versao]))
+  ouvintesDoEnvio.get(chaveDaChamadaCB(payload.encontroId, payload.grupoId))?.forEach((ouvinte) => ouvinte(versoes))
+}
+
 export async function aoEnviar(saida: Saida, ctx: ContextoAposEnvio<PayloadChamadaCB>): Promise<void> {
   await atualizarSeguintes(saida, ctx)
+  contarATela(saida, ctx.item.payload)
   await Promise.all(RAIZES_INVALIDADAS.map((raiz) => ctx.queryClient.invalidateQueries({ queryKey: [raiz] })))
   await ctx.baixarPacote()
   avisar(saida)
