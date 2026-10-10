@@ -16,8 +16,9 @@ describe('nginx-host.conf: site no Nginx do servidor', () => {
     expect(conteudo).toContain('proxy_pass http://127.0.0.1:__PORTA__;')
   })
 
-  it('aceita os materiais de até 20 MB', () => {
-    expect(conteudo).toMatch(/client_max_body_size 21m;/)
+  it('aceita os PDFs da biblioteca de até 50 MB (e, com folga, os materiais de até 20 MB)', () => {
+    expect(conteudo).toMatch(/client_max_body_size 51m;/)
+    expect(conteudo).not.toMatch(/client_max_body_size 21m;/)
   })
 
   it('repassa o IP e o protocolo que a API usa (TRUST_PROXY=2 e cookie Secure)', () => {

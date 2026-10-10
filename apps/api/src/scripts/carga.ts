@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { z } from 'zod'
+import { CATEGORIAS_INICIAIS, travarBiblioteca } from '../biblioteca/constantes'
 import { PrismaSistema } from '../comum/prisma/prisma-sistema'
 import type { Prisma } from '../generated/prisma/client.js'
 
@@ -56,6 +57,7 @@ export interface ResumoDaCarga {
   especialidades: Contagem
   mestrados: Contagem
   classesClube: Contagem
+  categoriasBiblioteca: { criados: number }
 }
 
 export interface OpcoesDaCarga {
@@ -356,6 +358,18 @@ async function completarClassesDosClubes(tx: Prisma.TransactionClient, resumo: R
   }
 }
 
+/** Clube sem nenhuma categoria da biblioteca (nem removida) recebe as três iniciais; quem já mexeu nas dele não é tocado. */
+async function completarBibliotecaDosClubes(tx: Prisma.TransactionClient, resumo: ResumoDaCarga): Promise<void> {
+  for (const clube of await tx.clube.findMany({ select: { id: true } })) {
+    await travarBiblioteca(tx, clube.id)
+    if ((await tx.categoriaBiblioteca.count({ where: { clubeId: clube.id } })) > 0) continue
+    await tx.categoriaBiblioteca.createMany({
+      data: CATEGORIAS_INICIAIS.map((nome, indice) => ({ clubeId: clube.id, nome, ordem: indice + 1 })),
+    })
+    resumo.categoriasBiblioteca.criados += CATEGORIAS_INICIAIS.length
+  }
+}
+
 /** Carga oficial idempotente (SPEC 5.3), numa transacao: arquivo ausente ou freio acionado nao gravam nada. */
 export async function executarCarga(prisma: PrismaSistema, opcoes: OpcoesDaCarga): Promise<ResumoDaCarga> {
   const classes = lerCadernos(opcoes.dir)
@@ -369,6 +383,7 @@ export async function executarCarga(prisma: PrismaSistema, opcoes: OpcoesDaCarga
     especialidades: contagemZerada(),
     mestrados: contagemZerada(),
     classesClube: contagemZerada(),
+    categoriasBiblioteca: { criados: 0 },
   }
 
   await prisma.$transaction(
@@ -379,6 +394,7 @@ export async function executarCarga(prisma: PrismaSistema, opcoes: OpcoesDaCarga
       await sincronizarEspecialidades(tx, especialidades, resumo)
       await sincronizarMestrados(tx, especialidades, resumo)
       await completarClassesDosClubes(tx, resumo)
+      await completarBibliotecaDosClubes(tx, resumo)
     },
     { timeout: 300_000, maxWait: 30_000 },
   )

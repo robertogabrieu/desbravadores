@@ -256,7 +256,7 @@ carregar_env
 echo
 echo "Instalado. Endereco: $APP_URL (porta do host $porta)."
 if [ -z "$dominio" ]; then
-  echo "Sem --nginx: configure o proxy HTTPS do servidor para 127.0.0.1:$porta, com client_max_body_size 21m"
+  echo "Sem --nginx: configure o proxy HTTPS do servidor para 127.0.0.1:$porta, com client_max_body_size 51m"
   echo "(modelo em scripts/nginx-host.conf), ou rode de novo com --nginx <dominio>."
 fi
 grep -q '^SMTP_HOST=smtp.exemplo.org' "$ENV_ARQUIVO" && echo "Falta: preencher SMTP_* no .env (convites e senhas) e rodar scripts/atualizar.sh."

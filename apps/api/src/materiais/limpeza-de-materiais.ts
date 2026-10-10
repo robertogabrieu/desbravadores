@@ -6,8 +6,8 @@ const TAMANHO_DO_LOTE = 100
 
 /**
  * Garante a remoção de verdade (SPEC Fase 2, F9): se a API caiu ou o disco falhou depois de
- * marcar o material como removido, na subida os arquivos que sobraram são apagados. Remover o
- * que já não existe é inofensivo, então não há o que conferir antes.
+ * marcar o material, ou o item da biblioteca, como removido, na subida os arquivos que sobraram
+ * são apagados. Remover o que já não existe é inofensivo, então não há o que conferir antes.
  */
 @Injectable()
 export class LimpezaDeMateriais implements OnApplicationBootstrap {
@@ -28,10 +28,13 @@ export class LimpezaDeMateriais implements OnApplicationBootstrap {
 
   async limpar(): Promise<void> {
     const clubes = await this.prisma.clube.findMany({ select: { id: true } })
-    for (const { id: clubeId } of clubes) await this.limparClube(clubeId)
+    for (const { id: clubeId } of clubes) {
+      await this.limparMateriais(clubeId)
+      await this.limparBiblioteca(clubeId)
+    }
   }
 
-  private async limparClube(clubeId: string): Promise<void> {
+  private async limparMateriais(clubeId: string): Promise<void> {
     let ultimoId: string | undefined
     for (;;) {
       const lote = await this.prisma.material.findMany({
@@ -43,6 +46,30 @@ export class LimpezaDeMateriais implements OnApplicationBootstrap {
       })
       for (const material of lote) {
         if (material.arquivo) await this.apagar(material.arquivo.caminho)
+      }
+      if (lote.length < TAMANHO_DO_LOTE) return
+      ultimoId = lote[lote.length - 1]?.id
+    }
+  }
+
+  private async limparBiblioteca(clubeId: string): Promise<void> {
+    let ultimoId: string | undefined
+    for (;;) {
+      const lote = await this.prisma.itemBiblioteca.findMany({
+        where: { clubeId, removidoEm: { not: null } },
+        orderBy: { id: 'asc' },
+        take: TAMANHO_DO_LOTE,
+        ...(ultimoId ? { cursor: { id: ultimoId }, skip: 1 } : {}),
+        select: {
+          id: true,
+          arquivo: { select: { caminho: true } },
+          capa: { select: { caminho: true, miniaturaCaminho: true } },
+        },
+      })
+      for (const item of lote) {
+        await this.apagar(item.arquivo.caminho)
+        if (item.capa) await this.apagar(item.capa.caminho)
+        if (item.capa?.miniaturaCaminho) await this.apagar(item.capa.miniaturaCaminho)
       }
       if (lote.length < TAMANHO_DO_LOTE) return
       ultimoId = lote[lote.length - 1]?.id
