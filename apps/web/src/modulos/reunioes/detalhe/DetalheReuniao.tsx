@@ -1,5 +1,7 @@
 import { Pencil } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
+import type { SubstituicaoNoRegistro } from '@desbravadores/shared'
+import type { z } from 'zod'
 import { useReuniao } from '../../../api/reunioes'
 import { usePacote } from '../../../offline'
 import { Esqueleto } from '../../../ui/Esqueleto'
@@ -48,6 +50,7 @@ export function DetalheReuniao() {
       </header>
 
       <section className="flex flex-col gap-3 rounded-cartao border border-borda-controle bg-superficie p-4">
+        {dados.substituicao && <AvisoDeSubstituicao substituicao={dados.substituicao} />}
         <p className="text-sm text-texto-2">{`Registrada por ${dados.registradaPor.nome} às ${horaNoFuso(dados.registradaEm, fuso)}`}</p>
         {dados.alterada && <p className="text-sm text-texto-2">{`Alterada por ${dados.alterada.por} às ${horaNoFuso(dados.alterada.em, fuso)}`}</p>}
         {dados.alterada?.conflito && <p className="text-sm font-semibold text-alerta">Houve conflito entre aparelhos</p>}
@@ -66,5 +69,17 @@ export function DetalheReuniao() {
       <FotosDaReuniao dados={dados} links={LINKS} />
       <p className="text-sm text-texto-2">Alterações na chamada recalculam os pontos do ranking e ficam registradas no histórico.</p>
     </main>
+  )
+}
+
+/** R1: a chamada veio pelo link de substituição; quem lançou ou alterou e o Adm que gerou o link. */
+export function AvisoDeSubstituicao({ substituicao }: { substituicao: z.infer<typeof SubstituicaoNoRegistro> }) {
+  const { autor, semConta, geradoPor, lancou } = substituicao
+  return (
+    <p data-r1="substituicao" className="text-base text-texto">
+      <b>Substituição.</b> {`Chamada ${lancou ? 'lançada' : 'alterada'} por `}
+      <b>{autor}</b>
+      {`${semConta ? ' (sem conta no app)' : ''}, pelo link que ${geradoPor} (Adm) gerou.`}
+    </p>
   )
 }
