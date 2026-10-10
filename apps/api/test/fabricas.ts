@@ -246,6 +246,7 @@ export async function criarSubstituicao(dados: {
   cancelada?: boolean
 }): Promise<Substituicao> {
   const agora = Date.now()
+  // Sem início dado, o link é de hoje (no fuso do clube), mesmo quando a hora anterior caiu ontem: o dia vem de agora.
   const inicioEm = dados.inicioEm ?? new Date(agora - 60 * 60 * 1000)
   const fimEm = dados.fimEm ?? new Date(inicioEm.getTime() + 3 * 60 * 60 * 1000)
   const fimEnvioEm = dados.fimEnvioEm ?? new Date(fimEm.getTime() + 12 * 60 * 60 * 1000)
@@ -258,7 +259,7 @@ export async function criarSubstituicao(dados: {
       tipo: dados.tipo,
       unidadeId: dados.unidadeId ?? null,
       classeId: dados.classeId ?? null,
-      data: dataCivil(dados.data ?? hojeNoFuso('America/Sao_Paulo', inicioEm)),
+      data: dataCivil(dados.data ?? hojeNoFuso('America/Sao_Paulo', dados.inicioEm ?? new Date(agora))),
       inicioEm,
       fimEm,
       fimEnvioEm,
