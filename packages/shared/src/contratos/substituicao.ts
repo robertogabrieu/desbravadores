@@ -38,7 +38,8 @@ export const SubstituicaoGerada = z.object({
 export const ESTADOS_DO_LINK = ['INEXISTENTE', 'CANCELADO', 'ENCERRADO', 'ANTES', 'EM_OUTRO_APARELHO', 'ABERTO'] as const
 export const EstadoDoLink = z.enum(ESTADOS_DO_LINK)
 
-// GET /api/auth/substituicao/:token (segredo do aparelho, se houver, num cabeçalho) → LinkPublico
+// GET /api/auth/substituicao/:token (segredo do aparelho, se houver, no cabeçalho abaixo) → LinkPublico
+export const CABECALHO_DO_SEGREDO_DO_APARELHO = 'X-Segredo-Aparelho'
 export const LinkPublico = z.object({
   estado: EstadoDoLink,
   /** Nulos só em INEXISTENTE. */

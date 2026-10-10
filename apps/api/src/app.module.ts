@@ -31,6 +31,7 @@ import { RankingModule } from './ranking/ranking.module'
 import { ReunioesModule } from './reunioes/reunioes.module'
 import { SaudeModule } from './saude/saude.module'
 import { SessaoModule } from './sessao/sessao.module'
+import { SubstituicoesModule } from './substituicoes/substituicoes.module'
 import { SyncModule } from './sync/sync.module'
 import { TarefasModule } from './tarefas/tarefas.module'
 import { UnidadesModule } from './unidades/unidades.module'
@@ -77,6 +78,7 @@ import { VisaoGeralModule } from './visao-geral/visao-geral.module'
     MateriaisModule,
     InstrutorModule,
     TarefasModule,
+    SubstituicoesModule,
   ],
 })
 export class AppModule {}

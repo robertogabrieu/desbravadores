@@ -20,6 +20,7 @@ const MENSAGEM_OUTRA_FICHA = 'Este e-mail já está ligado a outro desbravador d
 const MENSAGEM_CONTA_PENDENTE =
   'Este e-mail já recebeu um convite por e-mail e ainda não criou a senha. Use o link desse e-mail ou peça ao Adm para reenviá-lo.'
 const MENSAGEM_CONTA_INATIVA = 'Esta conta está desativada. Fale com o Adm do clube.'
+const MENSAGEM_EMAIL_DE_SUBSTITUTO = 'Este e-mail não pode receber acesso ao app. Use outro e-mail.'
 const MENSAGEM_RELACAO_SUMIU =
   'A unidade ou a classe deste convite não está mais disponível. Peça um novo convite ao Adm do clube.'
 
@@ -62,6 +63,7 @@ export class ConviteAcessoPublicoService {
       // Conta sem senha ou desativada nao tem senha a conferir aqui, e este link nunca define senha.
       if (existente.status === 'CONVIDADO') throw new ErroApp('CONTA_PENDENTE', MENSAGEM_CONTA_PENDENTE)
       if (existente.status === 'INATIVO') throw new ErroApp('CONTA_INATIVA', MENSAGEM_CONTA_INATIVA)
+      if (existente.status === 'SUBSTITUTO') throw new ErroApp('REGRA', MENSAGEM_EMAIL_DE_SUBSTITUTO)
       if (!(await senhaConfere(existente.senhaHash, entrada.senha))) {
         throw new ErroApp('CONTA_EXISTENTE', MENSAGEM_CONTA_EXISTENTE)
       }
