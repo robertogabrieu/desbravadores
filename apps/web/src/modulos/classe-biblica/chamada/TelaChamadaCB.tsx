@@ -1,12 +1,12 @@
 import { Check, ChevronDown } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ErroDaApi } from '../../../api/cliente'
 import { useChamadaCB } from '../../../api/classe-biblica'
 import type { ChamadaCB } from '../../../api/classe-biblica'
 import { enfileirar, useConexao, usePacote } from '../../../offline'
-import { chaveDaChamadaCB } from '../../../offline/tipos/classe-biblica'
+import { chamadaCBNaFila, chaveDaChamadaCB } from '../../../offline/tipos/classe-biblica'
 import type { PayloadChamadaCB } from '../../../offline/tipos/classe-biblica'
 import { useSessao } from '../../../sessao/useSessao'
 import { Botao } from '../../../ui/Botao'
@@ -18,7 +18,7 @@ import { Carregando } from '../../../ui/EstadosDeCarga'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { FaixaAviso } from '../../../ui/FaixaAviso'
 import { cn } from '../../../ui/cn'
-import { alternarParticipacao, alternarPresenca, chamadaDoPacote, fraseDosTotais, marcasIniciais, montarEnvio, textoDosTotais, totais } from './estado'
+import { alternarParticipacao, alternarPresenca, aplicarFila, chamadaDoPacote, fraseDosTotais, marcasIniciais, montarEnvio, textoDosTotais, totais } from './estado'
 import type { Marcas, Totais } from './estado'
 
 const TITULO = 'Chamada da Classe Bíblica'
@@ -71,12 +71,12 @@ export function TelaChamadaCB() {
   const recusa = consulta.error instanceof ErroDaApi && consulta.error.classe === 'RECUSA' ? consulta.error : null
 
   let conteudo
-  if (consulta.data) conteudo = <Chamada key={`${id}:${grupoId}`} chamada={consulta.data} />
+  if (consulta.data) conteudo = <ChamadaComFila key={`${id}:${grupoId}`} chamada={consulta.data} />
   else if (online && consulta.isPending) conteudo = <SemChamada carregando />
   else if (recusa) conteudo = <SemChamada erro={recusa.erro.mensagem} aoTentar={() => void consulta.refetch()} />
   else if (guardado.carregando) conteudo = <SemChamada carregando />
   // Sem resposta do servidor, vale o que o aparelho guardou.
-  else if (doPacote) conteudo = <Chamada key={`${id}:${grupoId}`} chamada={doPacote} />
+  else if (doPacote) conteudo = <ChamadaComFila key={`${id}:${grupoId}`} chamada={doPacote} />
   else if (online) conteudo = <SemChamada erro={ERRO_GENERICO} aoTentar={() => void consulta.refetch()} />
   else conteudo = <SemChamada foraDoAparelho />
 
@@ -119,14 +119,45 @@ function SemChamada({ carregando, erro, aoTentar, foraDoAparelho }: Propriedades
   )
 }
 
-function Chamada({ chamada }: { chamada: ChamadaCB }) {
+const horaMinuto = (instante: number): string =>
+  new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false }).format(instante)
+
+interface Inicio {
+  marcas: Marcas
+  /** Quando o aparelho guardou o último item ainda não enviado; nulo sem item na fila. */
+  guardadoEm: number | null
+}
+
+/** Lê a fila da chave uma vez, ao abrir: o que ainda não foi enviado entra por cima do servidor ou do pacote. */
+function ChamadaComFila({ chamada }: { chamada: ChamadaCB }) {
+  const [inicio, setInicio] = useState<Inicio | null>(null)
+  useEffect(() => {
+    let cancelado = false
+    void chamadaCBNaFila(chamada.encontro.id, chamada.grupo.id).then((itens) => {
+      if (cancelado) return
+      setInicio({
+        marcas: aplicarFila(marcasIniciais(chamada), itens.map((item) => item.payload.corpo.linhas)),
+        guardadoEm: itens.at(-1)?.atualizadoEm ?? null,
+      })
+    })
+    return () => {
+      cancelado = true
+    }
+    // Só ao abrir: uma releitura do servidor não apaga os toques.
+  }, [chamada.encontro.id, chamada.grupo.id])
+  if (!inicio) return <SemChamada carregando />
+  return <Chamada chamada={chamada} inicio={inicio} />
+}
+
+function Chamada({ chamada, inicio }: { chamada: ChamadaCB; inicio: Inicio }) {
   const { modo } = useConexao()
   const navegar = useNavigate()
   const destinos = useDestinos(chamada)
-  const [marcas, setMarcas] = useState<Marcas>(() => marcasIniciais(chamada))
+  const [marcas, setMarcas] = useState<Marcas>(inicio.marcas)
   const [abertas, setAbertas] = useState<Set<string>>(() => new Set(chamada.unidades.slice(0, 1).map((u) => u.id)))
   const [guardada, setGuardada] = useState<Totais | null>(null)
   const [salvando, setSalvando] = useState(false)
+  const [guardadoEm, setGuardadoEm] = useState(inicio.guardadoEm)
   const { encontro, grupo } = chamada
   const data = diaMes(encontro.data)
   const contagem = totais(marcas)
@@ -149,6 +180,7 @@ function Chamada({ chamada }: { chamada: ChamadaCB }) {
     } finally {
       setSalvando(false)
     }
+    setGuardadoEm(Date.now())
     if (modo === 'SEM_CONEXAO') {
       setGuardada(contagem)
       return
@@ -232,7 +264,13 @@ function Chamada({ chamada }: { chamada: ChamadaCB }) {
             )
           })}
           <div role="region" aria-label="Salvar a chamada" className="flex flex-col gap-3 border-t border-borda pt-4">
-            <p role="status" aria-live="polite" className="text-base font-semibold">
+            {guardadoEm !== null && (
+              <p role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-texto-2">
+                <Check aria-hidden className="size-4 shrink-0" />
+                {`Guardado no aparelho às ${horaMinuto(guardadoEm)}.`}
+              </p>
+            )}
+            <p aria-live="polite" className="text-base font-semibold">
               {textoDosTotais(contagem)}
             </p>
             <Botao largura="total" carregando={salvando} onClick={() => void salvar()}>

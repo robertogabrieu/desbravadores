@@ -12,7 +12,7 @@ import { enfileirar, registrarTipo } from '../index'
 import type { ContextoAposEnvio, ContextoEnvio, ItemFila } from '../index'
 import { iniciarMotor, pararMotor } from '../motor'
 import { obterTipo } from '../registro'
-import { aoEnviar, chaveDaChamadaCB, fundir } from './classe-biblica'
+import { aoEnviar, chaveDaChamadaCB, fundir, pendentesDaChamadaCB } from './classe-biblica'
 import type { PayloadChamadaCB } from './classe-biblica'
 
 const avisos = vi.hoisted(() => ({ warning: vi.fn<(texto: string) => void>(), success: vi.fn() }))
@@ -131,5 +131,23 @@ describe('envio pela fila', () => {
     const id = await enfileirar({ tipo: 'CLASSE_BIBLICA', chave: chaveDaChamadaCB(ENCONTRO, GRUPO), payload: payload() })
     await waitFor(async () => expect((await banco.fila.get(id))?.estado).toBe('ENVIADO'))
     expect(gravados).toEqual([payload().corpo])
+  })
+})
+
+describe('pendentesDaChamadaCB', () => {
+  const item = (estado: ItemFila['estado'], criadoEm: number, carga: unknown = payload(), tipo = 'CLASSE_BIBLICA') =>
+    ({ id: `${estado}-${criadoEm}`, tipo, estado, criadoEm, payload: carga }) as ItemFila
+
+  it('só os não enviados, do tipo, com payload válido, na ordem de criação', () => {
+    const lista = pendentesDaChamadaCB([
+      item('ERRO', 3),
+      item('ENVIADO', 1),
+      item('NA_FILA', 2),
+      item('ENVIANDO', 4),
+      item('NA_FILA', 5, { qualquer: true }),
+      item('NA_FILA', 6, payload(), 'REUNIAO'),
+    ])
+    expect(lista.map((i) => i.id)).toEqual(['NA_FILA-2', 'ERRO-3', 'ENVIANDO-4'])
+    expect(lista[0]?.payload.grupoNome).toBe('Grupo Daniel')
   })
 })

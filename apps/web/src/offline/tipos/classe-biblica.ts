@@ -1,8 +1,7 @@
-import { ChamadaCBEnvioSaida } from '@desbravadores/shared'
-import type { ChamadaCBEnvio } from '@desbravadores/shared'
+import { ChamadaCBEnvio, ChamadaCBEnvioSaida } from '@desbravadores/shared'
 import { toast } from 'sonner'
-import type { z } from 'zod'
-import { registrarTipo } from '../index'
+import { z } from 'zod'
+import { itensDaChave, registrarTipo } from '../index'
 import type { ContextoAposEnvio, ContextoEnvio, ItemFila } from '../tipos'
 
 /** Item CLASSE_BIBLICA (chave `classe-biblica:<encontroId>:<grupoId>`): o corpo do contrato mais o que o rótulo mostra. */
@@ -16,9 +15,33 @@ export interface PayloadChamadaCB {
 
 type Saida = z.infer<typeof ChamadaCBEnvioSaida>
 
+const PayloadDaFila = z.object({
+  encontroId: z.string(),
+  grupoId: z.string(),
+  grupoNome: z.string(),
+  data: z.string(),
+  corpo: ChamadaCBEnvio,
+})
+
 const RAIZES_INVALIDADAS = ['classe-biblica', 'inicio', 'ranking', 'progresso']
 
 export const chaveDaChamadaCB = (encontroId: string, grupoId: string): string => `classe-biblica:${encontroId}:${grupoId}`
+
+/** Itens CLASSE_BIBLICA ainda não enviados (na fila, enviando ou com erro), na ordem de criação; payload ilegível fica fora. */
+export function pendentesDaChamadaCB(itens: ItemFila[]): ItemFila<PayloadChamadaCB>[] {
+  return itens
+    .filter((item) => item.tipo === 'CLASSE_BIBLICA' && item.estado !== 'ENVIADO')
+    .sort((a, b) => a.criadoEm - b.criadoEm)
+    .flatMap((item) => {
+      const lido = PayloadDaFila.safeParse(item.payload)
+      return lido.success ? [{ ...item, payload: lido.data }] : []
+    })
+}
+
+/** O que o aparelho ainda guarda da chamada deste encontro e grupo; vazio = nada pendente. */
+export async function chamadaCBNaFila(encontroId: string, grupoId: string): Promise<ItemFila<PayloadChamadaCB>[]> {
+  return pendentesDaChamadaCB(await itensDaChave(chaveDaChamadaCB(encontroId, grupoId)))
+}
 
 function diaMes(data: string): string {
   const [, mes, dia] = data.split('-')

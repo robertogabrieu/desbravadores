@@ -60,6 +60,17 @@ export function marcasIniciais(chamada: ChamadaCB): Marcas {
   return marcas
 }
 
+/** As linhas guardadas na fila, da mais antiga para a mais nova, por cima da base; quem não está na lista fica fora. */
+export function aplicarFila(base: Marcas, filas: EnvioCB['linhas'][]): Marcas {
+  const marcas = { ...base }
+  for (const linhas of filas) {
+    for (const linha of linhas) {
+      if (linha.dbvId in marcas) marcas[linha.dbvId] = { presente: linha.presente, participou: linha.presente && linha.participou }
+    }
+  }
+  return marcas
+}
+
 /** Quem passa a faltar perde a participação: ela só vale para presente. */
 export function alternarPresenca(marcas: Marcas, dbvId: string): Marcas {
   const atual = marcas[dbvId]

@@ -11,6 +11,7 @@ import { uuid } from '../../../testes/handlers/sessao'
 import {
   alternarParticipacao,
   alternarPresenca,
+  aplicarFila,
   chamadaDoPacote,
   fraseDosTotais,
   marcasIniciais,
@@ -113,5 +114,19 @@ describe('envio', () => {
 
   it('grupo sem ninguém envia sem linhas', () => {
     expect(montarEnvio(criarChamadaCB({ unidades: [] }), {}, uuid(78)).linhas).toEqual([])
+  })
+})
+
+describe('fila por cima', () => {
+  it('as linhas da fila, na ordem, vencem as da base; quem não está na lista é ignorado', () => {
+    const base = marcasIniciais(criarChamadaCB())
+    const marcas = aplicarFila(base, [
+      [{ dbvId: ENZO, presente: false, participou: false, versaoVista: null }, { dbvId: ANA, presente: true, participou: true, versaoVista: null }],
+      [{ dbvId: ANA, presente: false, participou: true, versaoVista: null }, { dbvId: uuid(9999), presente: false, participou: false, versaoVista: null }],
+    ])
+    expect(marcas[ENZO]).toEqual({ presente: false, participou: false })
+    expect(marcas[ANA]).toEqual({ presente: false, participou: false })
+    expect(marcas[uuid(9999)]).toBeUndefined()
+    expect(Object.keys(marcas)).toHaveLength(31)
   })
 })

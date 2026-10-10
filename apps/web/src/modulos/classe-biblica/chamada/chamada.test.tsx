@@ -6,7 +6,7 @@ import type { ReactNode } from 'react'
 import { HttpResponse, http } from 'msw'
 import { RouterProvider, createMemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ModoConexao, PacoteGuardado } from '../../../offline'
+import type { ItemFila, ModoConexao, PacoteGuardado } from '../../../offline'
 import type { PayloadChamadaCB } from '../../../offline/tipos/classe-biblica'
 import { ContextoDaSessao } from '../../../sessao/useSessao'
 import type { ContextoSessao } from '../../../sessao/useSessao'
@@ -27,6 +27,7 @@ import { TelaChamadaCB } from './TelaChamadaCB'
 const estado = vi.hoisted(() => ({
   modo: 'ONLINE' as ModoConexao,
   pacote: { pacote: null, carregando: false, baixadoEm: null } as PacoteGuardado,
+  itens: [] as ItemFila[],
   ouvintes: new Set<() => void>(),
   enfileirar: vi.fn<(entrada: { tipo: string; chave: string; payload: unknown }) => Promise<string>>(() => Promise.resolve('id')),
   aviso: { success: vi.fn(), warning: vi.fn() },
@@ -45,6 +46,7 @@ vi.mock('../../../offline', () => ({
   }),
   usePacote: () => estado.pacote,
   enfileirar: estado.enfileirar,
+  itensDaChave: () => Promise.resolve(estado.itens),
   registrarTipo: vi.fn(),
 }))
 
@@ -83,6 +85,7 @@ const ultimoPayload = () => estado.enfileirar.mock.calls.at(-1)?.[0] as { tipo: 
 
 beforeEach(() => {
   estado.modo = 'ONLINE'
+  estado.itens = []
   estado.enfileirar.mockClear()
   estado.aviso.success.mockClear()
   guardar()
@@ -271,5 +274,48 @@ describe('Grupo vazio', () => {
     montar(`/classe-biblica/encontros/${ENCONTRO_CB_ID}/grupos/${GRUPO_ESTER_ID}/chamada`, ['classebiblica.chamada'])
     expect(await screen.findByText('Nenhum desbravador no Grupo Ester em 11/10')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Voltar ao início' })).toHaveAttribute('href', '/inicio')
+  })
+})
+
+describe('Chamada que ainda está na fila', () => {
+  const ENZO = criarChamadaCB().unidades[0]?.desbravadores[2]?.dbvId ?? ''
+  const ANA = criarChamadaCB().unidades[0]?.desbravadores[0]?.dbvId ?? ''
+  const guardadoEm = new Date(2026, 9, 11, 14, 31).getTime()
+
+  function naFila(estadoDoItem: ItemFila['estado'], linhas: PayloadChamadaCB['corpo']['linhas']): ItemFila {
+    const payload: PayloadChamadaCB = { encontroId: ENCONTRO_CB_ID, grupoId: GRUPO_DANIEL_ID, grupoNome: 'Grupo Daniel', data: '2026-10-11', corpo: { envioId: crypto.randomUUID(), linhas } }
+    return { id: crypto.randomUUID(), tipo: 'CLASSE_BIBLICA', chave: `classe-biblica:${ENCONTRO_CB_ID}:${GRUPO_DANIEL_ID}`, estado: estadoDoItem, payload, criadoEm: guardadoEm, atualizadoEm: guardadoEm } as ItemFila
+  }
+
+  it('parte do que foi guardado no aparelho e mostra a hora', async () => {
+    estado.itens = [naFila('NA_FILA', [
+      { dbvId: ENZO, presente: false, participou: false, versaoVista: null },
+      { dbvId: ANA, presente: true, participou: true, versaoVista: null },
+    ])]
+    montar()
+    expect(await screen.findByText('Guardado no aparelho às 14:31.')).toBeInTheDocument()
+    expect(linha('Enzo Barros').getByText('Faltou')).toBeInTheDocument()
+    expect(participou('Ana Clara Souza')).toHaveAttribute('aria-pressed', 'true')
+    expect(rodape().getByText('30 presentes · 1 falta · 1 participou ativamente')).toBeInTheDocument()
+  })
+
+  it('item com erro também vale; item já enviado não', async () => {
+    estado.itens = [
+      naFila('ENVIADO', [{ dbvId: ANA, presente: false, participou: false, versaoVista: null }]),
+      naFila('ERRO', [{ dbvId: ENZO, presente: false, participou: false, versaoVista: null }]),
+    ]
+    montar()
+    expect(await screen.findByText('Guardado no aparelho às 14:31.')).toBeInTheDocument()
+    expect(linha('Enzo Barros').getByText('Faltou')).toBeInTheDocument()
+    expect(linha('Ana Clara Souza').getByText('Presente')).toBeInTheDocument()
+  })
+
+  it('sem item na fila não mostra a hora; salvar sem conexão passa a mostrar', async () => {
+    estado.modo = 'SEM_CONEXAO'
+    montar()
+    await screen.findByText('Enzo Barros')
+    expect(screen.queryByText(/Guardado no aparelho às/)).not.toBeInTheDocument()
+    await userEvent.click(rodape().getByRole('button', { name: 'Salvar chamada' }))
+    expect(await rodape().findByText(/^Guardado no aparelho às \d{2}:\d{2}\.$/)).toBeInTheDocument()
   })
 })
