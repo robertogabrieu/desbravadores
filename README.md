@@ -55,6 +55,7 @@ Telas do conselheiro, em `apps/web/src/modulos`:
 | `/galeria`, `/galeria/:albumId`, `/galeria/enviar` | Álbuns, fotos do álbum e envio de fotos (`GET /api/albuns`, `/api/albuns/:id`, `DELETE /api/fotos/:id`) |
 | `/dbv/:id` | Perfil do desbravador, visível também ao Adm e ao instrutor (`GET /api/desbravadores/:id/perfil`); a seção de progresso da classe vem de `GET /api/desbravadores/:id/progresso` e, com `requisito.marcar`, permite marcar e desmarcar requisitos |
 | `/ranking` | Ranking do mês, também para Adm e instrutor (`GET /api/ranking?mes=AAAA-MM`; sem `mes`, o mês corrente; `GET /api/ranking/unidades`) |
+| `/biblioteca` | Biblioteca do clube, também para o instrutor (o Adm usa `/adm/biblioteca`): uma seção por categoria, e em cada cartão "Ler" (abre o PDF no navegador, em aba nova) e "Baixar" (`GET /api/biblioteca`). Entra pelo atalho "Biblioteca" do Início; o instrutor sem classe vê só esse atalho. Categoria sem item some para quem não gerencia; sem conexão, a tela avisa que só abre com internet |
 
 Permissões: registrar chamada e avisar o Adm exigem `reuniao.registrar`; ver reuniões e frequência, `reuniao.ver`; enviar foto, `foto.enviar`; ver álbuns e remover foto, `foto.ver`; perfil e membros, `dbv.ver`.
 
@@ -76,10 +77,11 @@ Telas do Adm, sob `LayoutAdm` (menu lateral) e guardadas só para ADM, em `apps/
 | `/adm/calendario` | Calendário do clube por mês (`mes` no endereço): ficha do evento em `/adm/calendario/eventos/:id`, criação em `/adm/calendario/eventos/novo` e edição em `/adm/calendario/eventos/:id/editar` (`GET /api/calendario?ano=`) |
 | `/adm/reunioes/:id` | Ficha da reunião, só de leitura. `/adm/reunioes/:id/chamada` é a correção da chamada pelo Adm: envia direto, `PUT /api/sync/reunioes/:uuid`, sem passar pela fila, e por isso só com internet (sem conexão a tela avisa, nada é enviado e as marcas ficam). Só abre para quem a ficha marca com `podeEditar` |
 | `/adm/cronogramas` | Montagem do cronograma de uma classe no computador, com escolha de classe e ano do clube |
+| `/adm/biblioteca` | Biblioteca do clube, a mesma tela de `/biblioteca` com os botões de alteração (`biblioteca.gerenciar`): "Adicionar à biblioteca", "Nova categoria" e o menu de cada categoria e de cada item (editar, mover, remover). Sem nenhuma categoria, a tela só oferece "Nova categoria" |
 | `/adm/configuracoes` | Dia, hora e local padrão da reunião, alertas de frequência e de progresso, meta de frequência; fuso e início do ano do clube aparecem só para leitura |
 | `/cronograma/montar` | Um endereço, a tela do papel: ADM cai na montagem do computador, instrutor na montagem do celular (só das classes que ele monta). Abre também para instrutor; substituiu a página "Em breve" |
 
-O menu do Adm agora tem link em Visão geral, Classes e especialidades, Calendário do clube, Cronogramas e Configurações do clube; só Relatórios segue "em breve". As telas de ficha e edição abertas a partir de uma lista guardam o endereço (com filtros) de onde vieram, e o "Voltar" do cabeçalho leva de volta a ele; esse helper e os filtros no endereço vivem em `apps/web/src/modulos/adm/navegacao.ts`.
+O menu do Adm agora tem link em Visão geral, Classes e especialidades, Calendário do clube, Cronogramas, Biblioteca e Configurações do clube; só Relatórios segue "em breve". As telas de ficha e edição abertas a partir de uma lista guardam o endereço (com filtros) de onde vieram, e o "Voltar" do cabeçalho leva de volta a ele; esse helper e os filtros no endereço vivem em `apps/web/src/modulos/adm/navegacao.ts`.
 
 **Componentes de ficha e edição** (`apps/web/src/ui/`): `CabecalhoDaPagina` (voltar, sobretítulo, título, ações), `ListaDePares` (rótulo e valor das fichas), `RodapeDoFormulario` (ações ao fim do formulário de edição) e `EstadoNaoEncontrado` (registro inexistente ou de outro clube, com saída para a lista). Ficha e edição novas do Adm usam esses quatro.
 
@@ -111,6 +113,9 @@ O menu do Adm agora tem link em Visão geral, Classes e especialidades, Calendá
 | `POST /api/cronogramas/:id/publicar` | Publica; só o Adm, e recusa se já publicado. Notifica os instrutores |
 
 Enviar e publicar recebem `atualizadoEmVisto`; se o cronograma mudou depois da versão vista, a API responde conflito em vez de sobrescrever. Enviar e publicar também entram na atividade recente da visão geral. A montagem exige internet: sem conexão as telas mostram "Disponível quando houver internet" e não passam pela fila de envio.
+
+**Biblioteca.** Estante de PDFs do clube, em categorias, que o Adm monta e toda a liderança lê. `GET /api/biblioteca` exige só login e devolve as categorias ativas na ordem, cada uma com seus itens ativos na ordem; `urlLer`, `urlBaixar` e `capaUrl` são URLs assinadas de 10 minutos (a tela relê a lista antes de vencerem). O resto exige `biblioteca.gerenciar`, que é só do Adm e não aparece nos ajustes de conselheiro e instrutor: `POST /api/biblioteca/categorias`, `PATCH` e `DELETE /api/biblioteca/categorias/:id`, `POST /api/biblioteca/categorias/:id/mover` e `POST /api/biblioteca/itens/:id/mover` (corpo `{ direcao }`, `acima` ou `abaixo`), `POST /api/biblioteca/itens` (multipart: `dados` em JSON com `nome`, `descricao` e `categoriaId`, e `arquivo`), `PATCH` e `DELETE /api/biblioteca/itens/:id`, e `PUT` e `DELETE /api/biblioteca/itens/:id/capa` (multipart: `capa`). Item é um PDF, conferido pelo conteúdo: até 50 MB (acima disso, 422 "O PDF pode ter até 50 MB."); nome de 1 a 120 caracteres e descrição opcional de até 120; caracteres de controle, de direção de texto e de largura zero são removidos de ambos (o nome vira nome de arquivo ao baixar). A capa é opcional, JPG, PNG ou WebP de até 5 MB, e vai em chamada à parte depois que o item existe; se ela falhar, o item fica criado sem capa. Cota de 2 GB por clube, somando PDFs e capas dos itens ativos e separada da cota dos materiais ("O espaço da biblioteca do clube acabou."). Categoria: nome de 1 a 60 caracteres, único entre as ativas sem distinguir maiúsculas, e só se exclui sem item ativo ("Tire os itens da categoria antes de excluí-la."). Categoria ou item de outro clube, ou já removido, responde 404. Remover não apaga a linha; o PDF e a capa do item saem do disco, e se a API cair no meio a limpeza roda na próxima subida. Não há como trocar o PDF de um item: remove e adiciona de novo. Todo clube criado já tem as categorias Cadernos de Classes, Livros e Manuais & Documentos; nos clubes que existiam antes, elas só aparecem quando `scripts/carga.sh` roda.
+
 ## Substituição por link
 
 Na ficha da unidade e na da classe, o Adm gera um link para um dia com reunião (unidade) ou com classe, até 28 dias à frente (`GET /api/substituicoes/datas`, `POST /api/unidades/:id/substituicao`, `POST /api/classes/:id/substituicao`). Só um link aberto por alvo: gerar outro cancela o anterior, e `DELETE` cancela sem apagar. O endereço do link (`<URL do app>/substituto/<token>`) só aparece na resposta que o gerou.
@@ -144,7 +149,7 @@ Só o registro de aula funciona sem conexão. As demais telas dependem da API e,
 
 **Pedir liberação do cronograma.** `POST /api/classes/:id/pedir-liberacao` (204) avisa os Adm do clube por notificação. Um segundo pedido da mesma classe em menos de 24 h não gera aviso novo; classe que o instrutor já pode montar responde erro de regra.
 
-**Operação: limite de upload no nginx.** O `nginx.conf` do container web já aceita 21 MB em `/api/materiais/arquivo` (3 MB no resto). O nginx do host, que termina o HTTPS e fica fora do repositório, precisa de `client_max_body_size 21m;` para essa rota; sem isso, arquivos entre o limite dele (1 MB por padrão do nginx) e 20 MB são recusados antes de chegar à API.
+**Operação: limite de upload no nginx.** O `nginx.conf` do container web já aceita 21 MB em `/api/materiais/arquivo`, 51 MB em `/api/biblioteca/` (o PDF da biblioteca vai sozinho no corpo; a capa tem rota própria, dentro do mesmo bloco) e 3 MB no resto. O nginx do servidor, que termina o HTTPS, tem o modelo em `scripts/nginx-host.conf` e precisa de `client_max_body_size 51m;`; sem isso, arquivos entre o limite dele (1 MB por padrão do nginx) e 50 MB são recusados antes de chegar à API. Servidor já instalado não recebe o limite novo sozinho: com o site já certificado, `scripts/instalar.sh --nginx` só atualiza a porta do `proxy_pass`. Nele, rode `sudo sed -i 's/client_max_body_size 21m;/client_max_body_size 51m;/' /etc/nginx/sites-available/<dominio> && sudo nginx -t && sudo systemctl reload nginx`; sem isso, PDF da biblioteca acima de 21 MB volta 413.
 
 ## Testar
 
@@ -161,7 +166,7 @@ Jest e Playwright leem `.env.teste` (ignorado pelo git; o `.env.exemplo` é o mo
 
 ## Carga oficial
 
-Carrega classes, requisitos e especialidades:
+Carrega classes, requisitos e especialidades e dá as três categorias iniciais da biblioteca aos clubes que não têm nenhuma (nem removida):
 
 ```bash
 npm run carga -w api
@@ -180,7 +185,7 @@ Classe oficial que some dos arquivos não é apagada: fica desativada, deixa de 
 npm run clube:criar -w api -- --nome "Clube Exemplo" --slug clube-exemplo --adm-nome "Fulano" --adm-email fulano@exemplo.org
 ```
 
-`--slug` aceita só minúsculas, números e hífens. Se o e-mail do administrador ainda não tem conta, o convite é enviado por e-mail e o link também sai no terminal; se já tem, ele só recebe o aviso de que foi acrescentado ao clube.
+`--slug` aceita só minúsculas, números e hífens. Se o e-mail do administrador ainda não tem conta, o convite é enviado por e-mail e o link também sai no terminal; se já tem, ele só recebe o aviso de que foi acrescentado ao clube. O clube já nasce com as três categorias da biblioteca.
 
 ## Produção
 
@@ -199,7 +204,7 @@ compartilhada; outro processo ou container na porta é pulado) e a grava em `WEB
 `.env` com segredos novos (ou mantém o existente); sobe a stack e espera a API; roda a carga oficial
 até ela dar certo uma vez (marcada com `CARGA_OFICIAL_FEITA=1` no `.env`), ou de novo com `--carga`; cria o clube e o Adm se os quatro dados vierem (clube com o mesmo slug já criado é pulado); e, com
 `--nginx`, grava o site no Nginx do servidor a partir de `scripts/nginx-host.conf` (upload até
-21 MB, log sem a query dos links assinados no formato de `scripts/nginx-host-log.conf`, instalado em
+51 MB, log sem a query dos links assinados no formato de `scripts/nginx-host-log.conf`, instalado em
 `conf.d`, rotação de 30 dias em `scripts/nginx-host-logrotate`), avisa se outro site já aponta para
 a mesma porta (domínio antigo),
 confere com `nginx -t` (desfaz se falhar), recarrega e pede o certificado ao certbot com
@@ -208,7 +213,7 @@ redirecionamento para HTTPS. Sem `--email-certbot`, o certbot pergunta o e-mail.
 Rodar de novo é seguro: mantém o `.env`, a porta e o certificado (num site já certificado, só a
 porta do `proxy_pass` é atualizada, se mudou). O container `web` publica a porta só em `127.0.0.1`:
 de fora, o app só é alcançado pelo Nginx do servidor, com HTTPS. Sem `--nginx`, o proxy HTTPS do
-servidor fica por sua conta, apontando para `127.0.0.1:<WEB_PORTA>` com `client_max_body_size 21m`; o login só se mantém
+servidor fica por sua conta, apontando para `127.0.0.1:<WEB_PORTA>` com `client_max_body_size 51m`; o login só se mantém
 em HTTPS (`COOKIE_SECURE=true`).
 
 | Comando | O que faz |

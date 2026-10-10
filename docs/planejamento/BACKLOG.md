@@ -251,6 +251,16 @@ Como instrutor, quero marcar quem foi e quem cumpriu cada requisito para acompan
 - "Enviar arquivo" (PDF, PPTX, ODP, DOCX ou ODT até 20 MB; sem vídeo e sem os formatos antigos .doc/.ppt; 1 GB por clube) e "Adicionar link" (título + URL `https`).
 - Menu do item: abrir, renomear, mover de seção, apagar (autor ou Adm).
 
+### I11 · Biblioteca do clube — `Biblioteca-Celular.dc.html` e `Biblioteca-Adm.dc.html` (em `docs/fases/biblioteca/modelo/`) · fora das fases do ROADMAP
+Como líder, quero consultar os cadernos, livros e manuais do clube sem pedir ao Adm.
+- Uma seção por categoria, na ordem que o Adm definiu; o cartão tem capa, nome, descrição curta (se houver), "Ler" (abre o PDF no navegador, em aba nova) e "Baixar" (salva com o nome do item). Sem capa, o nome aparece sobre um fundo liso.
+- Adm: item "Biblioteca" no menu lateral. Conselheiro e instrutor: atalho "Biblioteca" no Início; o instrutor sem classe vê só esse atalho.
+- Todos leem; botões de alteração só para quem tem `biblioteca.gerenciar` (o Adm). Quem só lê não vê categoria vazia; biblioteca sem item mostra que o Adm é quem adiciona.
+- Adm adiciona: PDF de até 50 MB, nome (vem preenchido com o do arquivo, sem a extensão), descrição curta opcional, categoria e capa opcional (JPG, PNG ou WebP até 5 MB). Barra de andamento no envio; se só a capa falhar, o item fica criado e o diálogo oferece outra imagem.
+- Adm edita (nome, descrição, categoria, trocar ou tirar a capa; para trocar o PDF, remove e adiciona de novo), move para cima ou para baixo e remove (o arquivo é apagado e não dá para desfazer).
+- Categorias do Adm: todo clube começa com Cadernos de Classes, Livros e Manuais & Documentos; nova, renomear, mover e excluir (só vazia). Clube sem categoria: "Crie uma categoria para começar a montar a biblioteca."
+- Cota de 2 GB por clube, à parte da dos materiais. Só com internet.
+
 ---
 
 ## Adm
