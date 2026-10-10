@@ -18,10 +18,10 @@ import { FaixaAviso } from '../../../ui/FaixaAviso'
 import { ListaDePares } from '../../../ui/ListaDePares'
 import type { Par } from '../../../ui/ListaDePares'
 import { lerErroDaApi } from '../desbravadores/erros'
-import { horaCurta, periodoPorExtenso } from '../formatos'
+import { horaCurta, juntarNomes, periodoPorExtenso } from '../formatos'
 import { useAvisosDaFicha, useVoltarPara } from '../navegacao'
 import { datasDoDiaDaSemana, diaDaSemana, diaPorExtenso, dosDiasDeReuniao, textoDosDias } from './datas'
-import { ROTULOS_DO_TIPO } from './tipos'
+import { ROTULOS_DO_TIPO, textoDoCancelamento } from './tipos'
 
 const CALENDARIO = '/adm/calendario'
 const TRACO = '—'
@@ -63,6 +63,7 @@ function paresDoQueMuda(evento: EventoCalendario, diaReuniao: number | undefined
 }
 
 function Conteudo({ evento }: { evento: EventoCalendario }) {
+  const encontro = evento.classeBiblica
   const mes = `${CALENDARIO}?mes=${evento.inicio.slice(0, 7)}`
   const voltarPara = useVoltarPara(mes)
   const { avisos, dispensar } = useAvisosDaFicha()
@@ -90,16 +91,24 @@ function Conteudo({ evento }: { evento: EventoCalendario }) {
         sobretitulo={ROTULOS_DO_TIPO[evento.tipo]}
         titulo={evento.nome}
         acoes={
-          <>
-            <Botao variante="secundario" className="text-perigo" carregando={excluir.isPending} onClick={() => setConfirmando(true)}>
-              Excluir
-            </Botao>
-            <Link to={`${CALENDARIO}/eventos/${evento.id}/editar`} state={{ voltarPara }} className={estiloDoBotao()}>
-              Editar
+          encontro ? (
+            <Link to={`/adm/classe-biblica/${encontro.edicaoId}`} className={estiloDoBotao()}>
+              Abrir a edição
             </Link>
-          </>
+          ) : (
+            <>
+              <Botao variante="secundario" className="text-perigo" carregando={excluir.isPending} onClick={() => setConfirmando(true)}>
+                Excluir
+              </Botao>
+              <Link to={`${CALENDARIO}/eventos/${evento.id}/editar`} state={{ voltarPara }} className={estiloDoBotao()}>
+                Editar
+              </Link>
+            </>
+          )
         }
       />
+
+      {encontro && <p className="text-base text-texto-2">Para remarcar ou cancelar, abra a edição: o encontro é dela, não do calendário.</p>}
 
       {avisos.length > 0 && (
         <section aria-label="Classes afetadas" className="flex flex-col gap-2">
@@ -127,6 +136,12 @@ function Conteudo({ evento }: { evento: EventoCalendario }) {
               { rotulo: evento.tipo === 'REUNIAO_EXTRA' ? 'Data' : 'Datas', valor: periodoPorExtenso(evento.inicio, evento.fim) },
               { rotulo: 'Horário', valor: evento.horario ? horaCurta(evento.horario) : TRACO },
               { rotulo: 'Local', valor: evento.local ?? TRACO },
+              ...(encontro
+                ? [
+                    { rotulo: 'Grupos', valor: encontro.grupos.length > 0 ? juntarNomes(encontro.grupos) : TRACO },
+                    ...(encontro.cancelado ? [{ rotulo: 'Situação', valor: textoDoCancelamento(encontro.motivo) }] : []),
+                  ]
+                : []),
             ]}
           />
         </Cartao>
@@ -135,7 +150,9 @@ function Conteudo({ evento }: { evento: EventoCalendario }) {
       <section aria-label="O que muda no calendário">
         <Cartao className="flex flex-col gap-4">
           <h2 className="font-titulo text-lg font-bold text-texto">O que muda no calendário</h2>
-          {evento.tipo === 'FERIAS' ? (
+          {encontro ? (
+            <p className="text-base text-texto">A reunião e a classe do dia continuam como estão.</p>
+          ) : evento.tipo === 'FERIAS' ? (
             <p className="flex items-center gap-2 text-base text-texto">
               <Sun aria-hidden className="size-5 shrink-0 text-[var(--cal-ferias-fg)]" />
               {`Sem reunião e sem classe ${dosDiasDeReuniao(configuracao.data?.diaReuniao).nos} do período; acampamentos continuam valendo.`}

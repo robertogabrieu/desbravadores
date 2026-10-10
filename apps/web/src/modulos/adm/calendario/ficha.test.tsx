@@ -157,6 +157,43 @@ describe('ficha do evento', () => {
     await waitFor(() => expect(roteador.state.location.pathname).toBe(`/adm/calendario/eventos/${uuid(899)}`))
   })
 
+  describe('encontro da Classe Bíblica', () => {
+    const encontro = (cancelado = false) =>
+      caixa(
+        criarEvento(3, {
+          nome: 'Classe Bíblica 2026 · 2º semestre', tipo: 'CLASSE_BIBLICA', inicio: '2026-10-11', fim: '2026-10-11', horario: '14:00', local: 'Sala 3 da igreja',
+          temReuniao: true, temClasse: true, bomParaCampo: false,
+          classeBiblica: { edicaoId: uuid(950), grupos: ['Grupo Daniel', 'Grupo Ester'], cancelado, motivo: cancelado ? 'chuva forte' : null },
+        }),
+      )
+
+    it('leva à edição no lugar de Editar e Excluir, e diz que não muda a reunião do dia', async () => {
+      abrir(`/adm/calendario/eventos/${uuid(803)}`, encontro())
+      await screen.findByRole('heading', { level: 1, name: 'Classe Bíblica 2026 · 2º semestre' })
+      expect(screen.getByRole('link', { name: 'Abrir a edição' })).toHaveAttribute('href', `/adm/classe-biblica/${uuid(950)}`)
+      expect(screen.getByText('Para remarcar ou cancelar, abra a edição: o encontro é dela, não do calendário.')).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Editar' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Excluir' })).not.toBeInTheDocument()
+      expect(screen.getByText('Grupo Daniel e Grupo Ester')).toBeInTheDocument()
+      const muda = within(screen.getByRole('region', { name: 'O que muda no calendário' }))
+      expect(muda.getByText('A reunião e a classe do dia continuam como estão.')).toBeInTheDocument()
+      expect(muda.queryByText('Terá reunião')).not.toBeInTheDocument()
+    })
+
+    it('cancelado mostra o motivo', async () => {
+      abrir(`/adm/calendario/eventos/${uuid(803)}`, encontro(true))
+      expect(await screen.findByText('Cancelado: chuva forte')).toBeInTheDocument()
+    })
+  })
+
+  it('o seletor de tipo do formulário não oferece Classe Bíblica', async () => {
+    abrir('/adm/calendario/eventos/novo')
+    const tipo = await screen.findByLabelText('Tipo')
+    const opcoes = within(tipo).getAllByRole('option').map((opcao) => opcao.textContent)
+    expect(opcoes).toContain('Evento do clube')
+    expect(opcoes).not.toContain('Classe Bíblica')
+  })
+
   it('Excluir pede confirmação e volta ao mês do evento', async () => {
     const excluidos: string[] = []
     servidor.use(handlerExcluirEvento((id) => excluidos.push(id)))
