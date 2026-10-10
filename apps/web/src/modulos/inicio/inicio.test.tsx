@@ -512,6 +512,37 @@ describe('cartão da Classe Bíblica no início do conselheiro', () => {
     expect(screen.queryByRole('region', { name: /Classe Bíblica/ })).not.toBeInTheDocument()
   })
 
+  const chamadaNaFila = (grupoId: string, estado: ItemFilaNaTela['estado']): ItemFilaNaTela => ({
+    ...itemDaFila(`classe-biblica:${ENCONTRO_CB_ID}:${grupoId}`),
+    tipo: 'CLASSE_BIBLICA',
+    estado,
+    payload: {
+      encontroId: ENCONTRO_CB_ID, grupoId, grupoNome: 'Grupo Daniel', data: '2026-10-11',
+      corpo: { envioId: '00000000-0000-4000-8000-000000009001', linhas: [] },
+    },
+  })
+
+  it('chamada guardada na fila (esperando envio ou recusada): sem o link daquele grupo', async () => {
+    fixarAgora('2026-10-11T15:00:00Z')
+    offline.fila = [chamadaNaFila(GRUPO_DANIEL_ID, 'NA_FILA')]
+    const { unmount } = abrirComPacote([CHAMADA])
+    expect(await screen.findByRole('link', { name: 'Fazer a chamada do Grupo Ester' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Fazer a chamada do Grupo Daniel' })).not.toBeInTheDocument()
+    unmount()
+
+    offline.fila = [chamadaNaFila(GRUPO_DANIEL_ID, 'ERRO')]
+    abrirComPacote([CHAMADA])
+    expect(await screen.findByRole('link', { name: 'Fazer a chamada do Grupo Ester' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Fazer a chamada do Grupo Daniel' })).not.toBeInTheDocument()
+  })
+
+  it('item da fila já enviado não esconde o link (quem manda é o pacote)', async () => {
+    fixarAgora('2026-10-11T15:00:00Z')
+    offline.fila = [chamadaNaFila(GRUPO_DANIEL_ID, 'ENVIADO')]
+    abrirComPacote([CHAMADA])
+    expect(await screen.findByRole('link', { name: 'Fazer a chamada do Grupo Daniel' })).toBeInTheDocument()
+  })
+
   it('grupo que o pacote não traz (fora do escopo) não aparece', async () => {
     fixarAgora('2026-10-11T15:00:00Z')
     const completo = criarPacoteClasseBiblica()

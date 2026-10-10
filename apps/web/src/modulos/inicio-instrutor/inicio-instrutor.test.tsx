@@ -1,7 +1,7 @@
 import { screen, within } from '@testing-library/react'
 import { delay, http } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ModoConexao, PacoteGuardado } from '../../offline'
+import type { ItemFilaNaTela, ModoConexao, PacoteGuardado } from '../../offline'
 import {
   CLASSE_AGRUPADAS,
   CLASSE_AMIGO,
@@ -19,17 +19,19 @@ import { renderizarRotas } from '../../testes/renderizar'
 import { servidor } from '../../testes/servidor'
 import { TelaInicioInstrutor } from './TelaInicioInstrutor'
 
-const offline = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao, pacote: null as PacoteGuardado['pacote'] }))
+const offline = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao, pacote: null as PacoteGuardado['pacote'], fila: [] as ItemFilaNaTela[] }))
 
 vi.mock('../../offline', async (importarOriginal) => ({
   ...(await importarOriginal<typeof import('../../offline')>()),
   useConexao: () => ({ modo: offline.modo }),
   usePacote: () => ({ pacote: offline.pacote, carregando: false, baixadoEm: null }),
+  useFila: () => ({ itens: offline.fila }),
 }))
 
 beforeEach(() => {
   offline.modo = 'ONLINE'
   offline.pacote = null
+  offline.fila = []
 })
 
 const guardarPacote = () => {
@@ -277,6 +279,23 @@ describe('cartão da Classe Bíblica no início do instrutor', () => {
     abrirComPermissoes([])
     await screen.findByRole('region', { name: 'Próxima classe de Amigo' })
     expect(screen.queryByText(/Fazer a chamada do Grupo/)).not.toBeInTheDocument()
+  })
+
+  it('chamada guardada na fila: sem o link daquele grupo', async () => {
+    offline.modo = 'SEM_CONEXAO'
+    offline.pacote = criarPacote({ classeBiblica: criarPacoteClasseBiblica() })
+    offline.fila = [{
+      id: 'item-cb', versaoPayload: 1, usuarioId: 'u', vinculoId: 'v', tipo: 'CLASSE_BIBLICA',
+      chave: `classe-biblica:${ENCONTRO_CB_ID}:${GRUPO_DANIEL_ID}`, rotulo: 'Chamada', detalhe: '',
+      payload: {
+        encontroId: ENCONTRO_CB_ID, grupoId: GRUPO_DANIEL_ID, grupoNome: 'Grupo Daniel', data: '2026-10-11',
+        corpo: { envioId: '00000000-0000-4000-8000-000000009001', linhas: [] },
+      },
+      estado: 'NA_FILA', progresso: 0, tentativas: 0, proximaTentativaEm: null, criadoEm: 0, atualizadoEm: 0, esperandoDependencia: false,
+    }]
+    abrirComPermissoes(['classebiblica.chamada'])
+    expect(await screen.findByRole('link', { name: 'Fazer a chamada do Grupo Ester' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Fazer a chamada do Grupo Daniel' })).not.toBeInTheDocument()
   })
 
   it('sem conexão: o cartão vem do pacote guardado', async () => {

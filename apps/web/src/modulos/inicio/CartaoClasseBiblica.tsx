@@ -2,8 +2,9 @@ import { hojeNoFuso } from '@desbravadores/shared'
 import { BookOpen, ClipboardCheck } from 'lucide-react'
 import { useId } from 'react'
 import { Link } from 'react-router-dom'
-import { usePacote } from '../../offline'
+import { useFila, usePacote } from '../../offline'
 import type { PacoteGuardado } from '../../offline'
+import { pendentesDaChamadaCB } from '../../offline/tipos/classe-biblica'
 import { useSessao } from '../../sessao/useSessao'
 import { Cartao } from '../../ui/Cartao'
 
@@ -31,11 +32,14 @@ function diaDoEncontro(data: string): string {
 }
 
 /**
- * Encontros do dia até 7 dias depois, cada um com os grupos ainda sem chamada registrada.
- * O pacote já vem cortado pelo escopo: grupo que não está nele não é de quem abriu.
+ * Encontros do dia até 7 dias depois, cada um com os grupos ainda sem chamada registrada nem guardada na fila
+ * (`naFila`, chaves `<encontroId>:<grupoId>`). O pacote já vem cortado pelo escopo: grupo que não está nele não é de quem abriu.
  */
-export function chamadasPendentesCB(classeBiblica: ClasseBiblicaDoPacote, hoje: string): ChamadaPendente[] {
-  const registradas = new Set(classeBiblica.chamadasRegistradas.map(({ encontroId, grupoId }) => `${encontroId}:${grupoId}`))
+export function chamadasPendentesCB(classeBiblica: ClasseBiblicaDoPacote, hoje: string, naFila: Set<string> = new Set()): ChamadaPendente[] {
+  const registradas = new Set([
+    ...classeBiblica.chamadasRegistradas.map(({ encontroId, grupoId }) => `${encontroId}:${grupoId}`),
+    ...naFila,
+  ])
   return classeBiblica.encontros
     .filter((encontro) => encontro.data <= hoje && hoje <= somarDias(encontro.data, DIAS_PARA_FAZER))
     .sort((a, b) => a.data.localeCompare(b.data))
@@ -74,12 +78,15 @@ function CartaoDoEncontro({ encontro, grupos }: ChamadaPendente) {
 export function CartaoClasseBiblica() {
   const { pode } = useSessao()
   const { pacote } = usePacote()
+  const { itens } = useFila()
   if (!pode('classebiblica.chamada') || !pacote?.classeBiblica) return null
 
   const hoje = hojeNoFuso(pacote.clube.fuso, new Date())
+  // Guardada no aparelho, esperando envio ou recusada: quem a corrige é a página da fila, não uma chamada nova.
+  const naFila = new Set(pendentesDaChamadaCB(itens).map(({ payload }) => `${payload.encontroId}:${payload.grupoId}`))
   return (
     <>
-      {chamadasPendentesCB(pacote.classeBiblica, hoje).map((pendente) => (
+      {chamadasPendentesCB(pacote.classeBiblica, hoje, naFila).map((pendente) => (
         <CartaoDoEncontro key={pendente.encontro.id} {...pendente} />
       ))}
     </>
