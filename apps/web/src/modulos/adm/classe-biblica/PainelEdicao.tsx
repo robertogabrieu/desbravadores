@@ -1,3 +1,4 @@
+import { hojeNoFuso } from '@desbravadores/shared'
 import { useId, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
@@ -9,10 +10,10 @@ import { estiloDoBotao } from '../../../ui/Botao'
 import { CabecalhoDaPagina } from '../../../ui/CabecalhoDaPagina'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/EstadosDeCarga'
-import { horaCurta, juntarNomes } from '../formatos'
+import { FUSO_PADRAO_DO_CLUBE, horaCurta, juntarNomes } from '../formatos'
 import { FrequenciaDoGrupo } from './FrequenciaDoGrupo'
 import { MaterialDoGrupo } from './MaterialDoGrupo'
-import { DIAS_DA_SEMANA, dataCurta, diaMes, diasNoPlural } from './useRascunhoDaEdicao'
+import { DIAS_DA_SEMANA, dataCurta, diaMes, diasNoPlural, nomeCurtoDaEdicao } from './useRascunhoDaEdicao'
 
 type Grupo = PainelDaEdicao['grupos'][number]
 type Encontro = Grupo['encontros'][number]
@@ -23,6 +24,9 @@ const capitalizar = (texto: string): string => texto.charAt(0).toUpperCase() + t
 
 const caminhoDaChamada = (encontroId: string, grupoId: string) => `/adm/classe-biblica/encontros/${encontroId}/grupos/${grupoId}/chamada`
 const caminhoDoRemarcar = (encontroId: string) => `/adm/classe-biblica/encontros/${encontroId}/remarcar`
+
+/** A API só abre a chamada a partir do dia do encontro, no fuso do clube; atrasada continua valendo (regra 8). */
+const chamadaAberta = (encontro: Encontro): boolean => encontro.data <= hojeNoFuso(FUSO_PADRAO_DO_CLUBE, new Date())
 
 function resumoDaEdicao({ edicao }: PainelDaEdicao): string {
   const quando = `${capitalizar(diasNoPlural(edicao.diaSemana))}${edicao.horario ? ` às ${horaCurta(edicao.horario)}` : ''}`
@@ -55,11 +59,13 @@ function ProximoEncontro({ grupo, painel }: { grupo: Grupo; painel: PainelDaEdic
       </div>
       {(painel.podeFazerChamada || painel.podeGerenciar) && (
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-          {painel.podeFazerChamada && (
+          {painel.podeFazerChamada && (chamadaAberta(encontro) ? (
             <Link to={caminhoDaChamada(encontro.id, grupo.id)} className={estiloDoBotao()}>
               {`Fazer a chamada do ${grupo.nome}`}
             </Link>
-          )}
+          ) : (
+            <p className="text-base text-texto-2">A chamada abre no dia do encontro.</p>
+          ))}
           {painel.podeGerenciar && (
             <Link to={caminhoDoRemarcar(encontro.id)} className={estiloDoBotao({ variante: 'secundario' })}>
               Remarcar ou cancelar este encontro
@@ -138,15 +144,34 @@ function LinhaDoEncontro({ encontro, grupo, painel }: { encontro: Encontro; grup
     )
   }
 
-  if (!encontro.chamada) return <li className="py-2">{remarcado}</li>
+  if (!encontro.chamada) {
+    if (!chamadaAberta(encontro)) return <li className="py-2">{remarcado}</li>
+    return (
+      <li className="flex flex-col gap-1 py-2">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="flex flex-col">
+            <span className="text-base font-semibold text-texto">{rotuloDaData(encontro.data, painel.edicao.diaSemana)}</span>
+            <span className="text-sm text-texto-2">Sem chamada</span>
+          </span>
+          {painel.podeFazerChamada && (
+            <Link to={caminhoDaChamada(encontro.id, grupo.id)} className={estiloDoBotao({ variante: 'texto', className: 'px-3' })}>
+              {`Fazer a chamada do ${grupo.nome}`}
+            </Link>
+          )}
+        </div>
+        {remarcado}
+      </li>
+    )
+  }
 
   const { presentes, total, participaram } = encontro.chamada
+  const ativos = participaram === 1 ? '1 participou ativamente' : `${participaram} participaram ativamente`
   return (
     <li className="flex flex-col gap-1 py-2">
       <div className="flex items-center justify-between gap-3">
         <span className="flex flex-col">
           <span className="text-base font-semibold text-texto">{rotuloDaData(encontro.data, painel.edicao.diaSemana)}</span>
-          <span className="text-sm text-texto-2">{`${presentes} de ${total} presentes · ${participaram} participaram ativamente`}</span>
+          <span className="text-sm text-texto-2">{`${presentes} de ${total} presentes · ${ativos}`}</span>
         </span>
         <Link
           to={caminhoDaChamada(encontro.id, grupo.id)}
@@ -183,7 +208,8 @@ function Conteudo({ painel }: { painel: PainelDaEdicao }) {
   const cabecalho = (
     <CabecalhoDaPagina
       voltar={{ para: '/adm/classe-biblica', rotulo: 'Classe Bíblica' }}
-      titulo={edicao.nome ?? 'Edição sem nome'}
+      sobretitulo="Classe Bíblica"
+      titulo={edicao.nome ? nomeCurtoDaEdicao(edicao.nome) : 'Edição sem nome'}
       apoio={<span>{resumoDaEdicao(painel)}</span>}
       acoes={podeGerenciar && (
         <Link to={`/adm/classe-biblica/${edicao.id}/etapa/1`} className={estiloDoBotao({ variante: 'secundario' })}>

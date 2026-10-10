@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RouteObject } from 'react-router-dom'
 import type { ModoConexao } from '../../../offline'
 import {
+  EDICAO_CB_ID,
   ENCONTRO_CB_ID,
   criarEncontroCB,
   criarEncontroDetalhe,
@@ -61,6 +62,8 @@ describe('Remarcar o encontro', () => {
     const usuario = userEvent.setup()
     const { gravacoes } = abrir()
     expect(await screen.findByRole('heading', { level: 1, name: 'Encontro de domingo, 18/10' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Voltar para 2026 · 2º semestre' })).toHaveAttribute('href', `/adm/classe-biblica/${EDICAO_CB_ID}`)
+    expect(screen.getByText('Classe Bíblica 2026 · 2º semestre')).toBeInTheDocument()
     expect(screen.getByText('Vale para os dois grupos. O calendário do clube muda junto.')).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Remarcar para outra data' })).toBeChecked()
 

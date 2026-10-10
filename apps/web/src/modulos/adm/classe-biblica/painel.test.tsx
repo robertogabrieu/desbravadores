@@ -30,7 +30,7 @@ vi.mock('../../../offline', async (importarOriginal) => ({
 
 beforeEach(() => {
   conexao.modo = 'ONLINE'
-  vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-10-10T15:00:00.000Z') })
+  vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-10-11T15:00:00.000Z') })
 })
 
 afterEach(() => {
@@ -91,7 +91,8 @@ const secao = (nome: string) => within(screen.getByRole('region', { name: nome }
 describe('Painel da edição', () => {
   it('mostra os números do modelo no Grupo Daniel', async () => {
     abrir()
-    expect(await screen.findByRole('heading', { level: 1, name: 'Classe Bíblica 2026 · 2º semestre' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: '2026 · 2º semestre' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Voltar para Classe Bíblica' })).toHaveAttribute('href', '/adm/classe-biblica')
     expect(screen.getByText('Domingos às 14h · Sala 3 da igreja · 16/08 a 13/12')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Editar edição' })).toHaveAttribute('href', `${PAINEL}/etapa/1`)
 
@@ -171,6 +172,55 @@ describe('Painel da edição', () => {
     expect(feitos.getByText('domingo 13/09')).toBeInTheDocument()
     expect(feitos.getByText('Cancelado: chuva forte')).toBeInTheDocument()
     expect(feitos.queryByRole('link', { name: /^Ver a chamada/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('Painel — chamada no dia e chamada atrasada', () => {
+  it('antes do dia do encontro, a chamada ainda não abre', async () => {
+    vi.setSystemTime(new Date('2026-10-10T15:00:00.000Z'))
+    abrir()
+    const proximo = await waitFor(() => secao('Próximo encontro'))
+    expect(await proximo.findByText('A chamada abre no dia do encontro.')).toBeInTheDocument()
+    expect(proximo.queryByRole('link', { name: /Fazer a chamada/ })).not.toBeInTheDocument()
+    expect(proximo.getByRole('link', { name: 'Remarcar ou cancelar este encontro' })).toBeInTheDocument()
+  })
+
+  it('no fuso do clube: 23h de sábado em São Paulo ainda não é o domingo do encontro', async () => {
+    vi.setSystemTime(new Date('2026-10-11T02:30:00.000Z'))
+    abrir()
+    const proximo = await waitFor(() => secao('Próximo encontro'))
+    expect(await proximo.findByText('A chamada abre no dia do encontro.')).toBeInTheDocument()
+  })
+
+  it('encontro passado sem chamada mostra "Sem chamada" e o caminho para fazê-la', async () => {
+    const painel = criarPainel()
+    const daniel = painel.grupos[0]
+    const semChamada = { ...daniel.encontros[0], temChamada: false, chamada: null }
+    abrir({ painel: { ...painel, grupos: [{ ...daniel, encontros: [semChamada, ...daniel.encontros.slice(1)] }, painel.grupos[1]] } })
+    const feitos = await waitFor(() => secao('Encontros feitos'))
+    expect(await feitos.findByText('Sem chamada')).toBeInTheDocument()
+    expect(feitos.getByText('04/10')).toBeInTheDocument()
+    expect(feitos.getByRole('link', { name: 'Fazer a chamada do Grupo Daniel' }))
+      .toHaveAttribute('href', `/adm/classe-biblica/encontros/${semChamada.id}/grupos/${GRUPO_DANIEL_ID}/chamada`)
+  })
+
+  it('sem a permissão de chamada, o encontro passado sem chamada só diz "Sem chamada"', async () => {
+    const painel = criarPainel({ podeFazerChamada: false })
+    const daniel = painel.grupos[0]
+    const semChamada = { ...daniel.encontros[0], temChamada: false, chamada: null }
+    abrir({ painel: { ...painel, grupos: [{ ...daniel, encontros: [semChamada] }, painel.grupos[1]] } })
+    const feitos = await waitFor(() => secao('Encontros feitos'))
+    expect(await feitos.findByText('Sem chamada')).toBeInTheDocument()
+    expect(feitos.queryByRole('link', { name: /Fazer a chamada/ })).not.toBeInTheDocument()
+  })
+
+  it('"1 participou ativamente" no singular', async () => {
+    const painel = criarPainel()
+    const daniel = painel.grupos[0]
+    const umSo = { ...daniel.encontros[0], chamada: { presentes: 26, total: 31, participaram: 1 } }
+    abrir({ painel: { ...painel, grupos: [{ ...daniel, encontros: [umSo] }, painel.grupos[1]] } })
+    const feitos = await waitFor(() => secao('Encontros feitos'))
+    expect(await feitos.findByText('26 de 31 presentes · 1 participou ativamente')).toBeInTheDocument()
   })
 })
 
@@ -255,7 +305,7 @@ describe('Painel — quatro estados', () => {
   it('carregando', async () => {
     abrir()
     expect(screen.getByRole('status', { name: 'Carregando a edição' })).toBeInTheDocument()
-    await screen.findByRole('heading', { level: 1, name: 'Classe Bíblica 2026 · 2º semestre' })
+    await screen.findByRole('heading', { level: 1, name: '2026 · 2º semestre' })
   })
 
   it('vazio: nenhum grupo do escopo', async () => {

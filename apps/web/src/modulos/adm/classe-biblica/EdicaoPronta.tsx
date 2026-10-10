@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router-dom'
-import { usePainelDaEdicao } from '../../../api/classe-biblica'
+import { useEdicoesCB, usePainelDaEdicao } from '../../../api/classe-biblica'
 import type { PainelDaEdicao } from '../../../api/classe-biblica'
 import { useConexao } from '../../../offline'
 import { estiloDoBotao } from '../../../ui/Botao'
@@ -7,12 +7,13 @@ import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/Esta
 import { horaCurta, juntarNomes } from '../formatos'
 import { diaDaSemanaDaData, diaMes, diasNoPlural } from './useRascunhoDaEdicao'
 
-function oQueFoiFeito({ edicao, grupos }: PainelDaEdicao): string {
-  const encontros = Math.max(0, ...grupos.map((g) => g.encontrosFeitos + g.encontrosPorVir))
-  const noCalendario = encontros === 1 ? '1 encontro está no calendário do clube' : `${encontros} encontros estão no calendário do clube`
+/** `encontros` é o total de não cancelados, da lista; nulo quando a edição não veio nela. */
+function oQueFoiFeito({ edicao }: PainelDaEdicao, encontros: number | null): string {
+  const noCalendario = encontros === null
+    ? 'Os encontros estão no calendário do clube'
+    : encontros === 1 ? '1 encontro está no calendário do clube' : `${encontros} encontros estão no calendário do clube`
   const quando = `aos ${diasNoPlural(edicao.diaSemana)}${edicao.horario ? ` às ${horaCurta(edicao.horario)}` : ''}`
-  const onde = edicao.local ? ` Local: ${edicao.local}.` : ''
-  return `${noCalendario}, ${quando}.${onde}`
+  return edicao.local ? `${noCalendario}, ${quando}, na ${edicao.local}.` : `${noCalendario}, ${quando}.`
 }
 
 function primeiroEncontro(painel: PainelDaEdicao): string | null {
@@ -20,14 +21,14 @@ function primeiroEncontro(painel: PainelDaEdicao): string | null {
   return datas[0] ?? null
 }
 
-function Conteudo({ painel }: { painel: PainelDaEdicao }) {
+function Conteudo({ painel, encontros }: { painel: PainelDaEdicao; encontros: number | null }) {
   const { edicao, grupos } = painel
   const semMaterial = grupos.filter((g) => g.material === null)
   const primeiro = primeiroEncontro(painel)
   return (
     <div className="flex flex-col gap-5">
       <h1 className="font-titulo text-2xl font-bold text-texto">{`${edicao.nome ?? 'Edição'} criada`}</h1>
-      <p className="text-base text-texto">{oQueFoiFeito(painel)}</p>
+      <p className="text-base text-texto">{oQueFoiFeito(painel, encontros)}</p>
       <ul className="flex flex-col gap-2">
         {grupos.map((grupo) => (
           <li key={grupo.id} className="text-base text-texto">
@@ -54,12 +55,17 @@ function Conteudo({ painel }: { painel: PainelDaEdicao }) {
 export function EdicaoPronta() {
   const { id = '' } = useParams()
   const painel = usePainelDaEdicao(id)
+  const lista = useEdicoesCB()
   const { modo } = useConexao()
+  const pendente = painel.isPending || lista.isPending
+  // A lista em cache pode ser de antes de terminar: enquanto ela diz "não terminada", o total ainda não vale.
+  const daLista = lista.data?.edicoes.find((edicao) => edicao.id === id)
+  const encontros = daLista && daLista.situacao !== 'NAO_TERMINADA' ? daLista.encontros : null
   return (
     <div className="flex flex-col gap-5 py-4">
       {painel.isError && <ErroDeCarga erro={painel.error} aoTentarDeNovo={() => void painel.refetch()} />}
-      {painel.isPending && (modo === 'SEM_CONEXAO' ? <DisponivelComInternet /> : <Carregando rotulo="Carregando a edição" />)}
-      {painel.data && <Conteudo painel={painel.data} />}
+      {pendente && !painel.isError && (modo === 'SEM_CONEXAO' ? <DisponivelComInternet /> : <Carregando rotulo="Carregando a edição" />)}
+      {painel.data && !lista.isPending && <Conteudo painel={painel.data} encontros={encontros} />}
     </div>
   )
 }

@@ -5,6 +5,7 @@ import type { EdicaoResumoCB } from '../../../api/classe-biblica'
 import { useConexao } from '../../../offline'
 import { useSessao } from '../../../sessao/useSessao'
 import { estiloDoBotao } from '../../../ui/Botao'
+import { CabecalhoDaPagina } from '../../../ui/CabecalhoDaPagina'
 import { Cartao } from '../../../ui/Cartao'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/EstadosDeCarga'
@@ -103,15 +104,16 @@ export function ListaEdicoes() {
 
   return (
     <div className="flex flex-col gap-5 py-4">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-titulo text-2xl font-bold text-texto">Classe Bíblica</h1>
-        {podeCriar && (
+      <CabecalhoDaPagina
+        voltar={{ para: '/inicio', rotulo: 'Início' }}
+        titulo="Classe Bíblica"
+        acoes={podeCriar && (
           <Link to="/adm/classe-biblica/nova" className={estiloDoBotao({ variante: temNaoTerminada ? 'secundario' : 'primario' })}>
             <Plus aria-hidden className="size-5" />
             Nova edição
           </Link>
         )}
-      </header>
+      />
 
       {consulta.isPending && (modo === 'SEM_CONEXAO' ? <DisponivelComInternet /> : <Carregando rotulo="Carregando as edições" />)}
       {consulta.isError && <ErroDeCarga erro={consulta.error} aoTentarDeNovo={() => void consulta.refetch()} />}

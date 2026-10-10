@@ -20,6 +20,7 @@ import {
   ETAPAS_DA_EDICAO,
   diasNoPlural,
   ocorrenciasDoDia,
+  sobretituloDaEtapa,
   useRascunhoDaEdicao,
 } from './useRascunhoDaEdicao'
 
@@ -192,10 +193,10 @@ function Formulario({ edicao, padroes }: { edicao: EdicaoCB | null; padroes: { d
   )
 }
 
-function Pagina({ children }: { children: ReactNode }) {
+function Pagina({ sobretitulo, children }: { sobretitulo: string | undefined; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-5 py-4">
-      <CabecalhoDaPagina voltar={VOLTAR} sobretitulo="Nova edição da Classe Bíblica" titulo="Dados da edição" />
+      <CabecalhoDaPagina voltar={VOLTAR} sobretitulo={sobretitulo} titulo="Dados da edição" />
       <IndicadorDeEtapas etapas={ETAPAS_DA_EDICAO} atual={1} />
       <p className="text-base text-texto-2">
         Leva uns 5 minutos. O material de estudo de cada grupo (um PDF ou um link) pode ir agora ou depois. O que você preencher fica salvo.
@@ -208,22 +209,25 @@ function Pagina({ children }: { children: ReactNode }) {
 function EdicaoNova() {
   const lista = useEdicoesCB()
   const { modo } = useConexao()
-  if (lista.isPending) return modo === 'SEM_CONEXAO' ? <DisponivelComInternet /> : <Carregando rotulo="Carregando a edição" />
-  if (lista.isError) return <ErroDeCarga erro={lista.error} aoTentarDeNovo={() => void lista.refetch()} />
-  return <Formulario edicao={null} padroes={lista.data.padroes} />
+  let conteudo
+  if (lista.isPending) conteudo = modo === 'SEM_CONEXAO' ? <DisponivelComInternet /> : <Carregando rotulo="Carregando a edição" />
+  else if (lista.isError) conteudo = <ErroDeCarga erro={lista.error} aoTentarDeNovo={() => void lista.refetch()} />
+  else conteudo = <Formulario edicao={null} padroes={lista.data.padroes} />
+  return <Pagina sobretitulo={sobretituloDaEtapa(null)}>{conteudo}</Pagina>
 }
 
 function EdicaoExistente({ id }: { id: string }) {
   const painel = usePainelDaEdicao(id)
   const { modo } = useConexao()
-  if (painel.isPending) return modo === 'SEM_CONEXAO' ? <DisponivelComInternet /> : <Carregando rotulo="Carregando a edição" />
-  if (painel.isError) return <ErroDeCarga erro={painel.error} aoTentarDeNovo={() => void painel.refetch()} />
-  const { edicao } = painel.data
-  return <Formulario edicao={edicao} padroes={{ diaSemana: edicao.diaSemana, local: edicao.local }} />
+  let conteudo
+  if (painel.isPending) conteudo = modo === 'SEM_CONEXAO' ? <DisponivelComInternet /> : <Carregando rotulo="Carregando a edição" />
+  else if (painel.isError) conteudo = <ErroDeCarga erro={painel.error} aoTentarDeNovo={() => void painel.refetch()} />
+  else conteudo = <Formulario edicao={painel.data.edicao} padroes={{ diaSemana: painel.data.edicao.diaSemana, local: painel.data.edicao.local }} />
+  return <Pagina sobretitulo={sobretituloDaEtapa(painel.data?.edicao)}>{conteudo}</Pagina>
 }
 
 /** Etapa 1: `/adm/classe-biblica/nova` (sem id) ou `/adm/classe-biblica/:id/etapa/1`. */
 export function EtapaDados() {
   const { id } = useParams()
-  return <Pagina>{id ? <EdicaoExistente id={id} /> : <EdicaoNova />}</Pagina>
+  return id ? <EdicaoExistente id={id} /> : <EdicaoNova />
 }

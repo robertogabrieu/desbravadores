@@ -7,15 +7,18 @@ import type { RouteObject } from 'react-router-dom'
 import type { ModoConexao } from '../../../offline'
 import {
   EDICAO_CB_ID,
+  GRUPO_DANIEL_ID,
+  GRUPO_ESTER_ID,
   UNIDADES_CB,
   criarEdicaoCB,
+  criarEdicaoResumo,
   criarEdicoes,
   criarGrupos,
   criarPainel,
   handlersClasseBiblica,
 } from '../../../testes/handlers/classe-biblica'
 import type { DadosClasseBiblica } from '../../../testes/handlers/classe-biblica'
-import { criarVinculo, handlersSessao } from '../../../testes/handlers/sessao'
+import { criarVinculo, handlersSessao, uuid } from '../../../testes/handlers/sessao'
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
 import { EdicaoPronta } from './EdicaoPronta'
@@ -90,6 +93,12 @@ describe('Lista de edições', () => {
     expect(emAndamento.getByText('8 de 17 encontros feitos · próximo: domingo 11/10, 14h')).toBeInTheDocument()
     expect(screen.getByText('16 encontros · 78% de presença')).toBeInTheDocument()
     expect(await screen.findByRole('link', { name: 'Nova edição' })).toHaveAttribute('href', '/adm/classe-biblica/nova')
+  })
+
+  it('o voltar leva ao Início, como no modelo', async () => {
+    abrir('/adm/classe-biblica')
+    expect(await screen.findByRole('link', { name: 'Voltar para Início' })).toHaveAttribute('href', '/inicio')
+    expect(screen.getByRole('heading', { level: 1, name: 'Classe Bíblica' })).toBeInTheDocument()
   })
 
   it('carregando', async () => {
@@ -332,15 +341,119 @@ describe('Etapa 3 — datas e terminar', () => {
   })
 })
 
+const EDICOES_COM_A_NOVA = criarEdicoes({ edicoes: [criarEdicaoResumo(1, { nome: RASCUNHO.nome ?? '', encontros: 15, encontrosFeitos: 0 })] })
+
 describe('Edição pronta', () => {
   it('10 · diz o que foi feito, os grupos com e sem material e um único botão', async () => {
-    abrir(`/adm/classe-biblica/${EDICAO_CB_ID}/pronta`, { painel: criarPainel({ edicao: { ...RASCUNHO, situacao: 'EM_ANDAMENTO', etapa: 3 } }) })
+    abrir(`/adm/classe-biblica/${EDICAO_CB_ID}/pronta`, { painel: criarPainel({ edicao: { ...RASCUNHO, situacao: 'EM_ANDAMENTO', etapa: 3 } }), edicoes: EDICOES_COM_A_NOVA })
     expect(await screen.findByRole('heading', { name: 'Classe Bíblica 2027 · 1º semestre criada' })).toBeInTheDocument()
-    expect(screen.getByText('17 encontros estão no calendário do clube, aos domingos às 14h. Local: Sala 3 da igreja.')).toBeInTheDocument()
+    expect(screen.getByText('15 encontros estão no calendário do clube, aos domingos às 14h, na Sala 3 da igreja.')).toBeInTheDocument()
     expect(screen.getByText('Grupo Daniel: Águias, Leões e Gaviões · material enviado')).toBeInTheDocument()
     expect(screen.getByText('Grupo Ester: Falcões e Panteras · ainda sem material')).toBeInTheDocument()
     expect(screen.getByText(/A edição já está valendo sem ele./)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Ver a edição' })).toHaveAttribute('href', `/adm/classe-biblica/${EDICAO_CB_ID}`)
     expect(screen.queryAllByRole('button')).toHaveLength(0)
+  })
+})
+
+describe('Edição pronta — o texto do modelo', () => {
+  it('conta todos os encontros criados, não os do painel; sem local, a frase termina no horário', async () => {
+    const painel = criarPainel({ edicao: { ...RASCUNHO, local: null, situacao: 'EM_ANDAMENTO', etapa: 3 } })
+    abrir(`/adm/classe-biblica/${EDICAO_CB_ID}/pronta`, { painel, edicoes: EDICOES_COM_A_NOVA })
+    expect(await screen.findByText('15 encontros estão no calendário do clube, aos domingos às 14h.')).toBeInTheDocument()
+  })
+})
+
+const NOVO_GRUPO_ID = uuid(5099)
+
+type CorpoDosGrupos = { grupos: { id?: string; nome: string; unidadeIds: string[] }[] }
+
+/** PUT dos grupos que devolve o que recebeu, com id para o novo; a primeira resposta espera `soltar()`. */
+function putQueEspera() {
+  const corpos: CorpoDosGrupos[] = []
+  let soltar = () => {}
+  const segurada = new Promise<void>((resolver) => { soltar = resolver })
+  const handler = http.put('/api/classe-biblica/edicoes/:id/grupos', async ({ request }) => {
+    const corpo = (await request.json()) as CorpoDosGrupos
+    corpos.push(corpo)
+    if (corpos.length === 1) await segurada
+    return HttpResponse.json({
+      ...criarGrupos(),
+      grupos: corpo.grupos.map((g, ordem) => ({ id: g.id ?? NOVO_GRUPO_ID, nome: g.nome, ordem, unidadeIds: g.unidadeIds, temChamada: false, material: null })),
+    })
+  })
+  return { corpos, handler, soltar: () => soltar() }
+}
+
+describe('Etapa 2 — gravação dos grupos', () => {
+  it('"Continuar para as datas" para quando a gravação dos grupos foi recusada, com o erro à vista', async () => {
+    const usuario = userEvent.setup()
+    const mensagem = 'A unidade Tigres já está na edição Classe Bíblica 2027 · Turma A, de 07/03 a 27/06. Tire-a deste grupo para continuar.'
+    const { gravacoes } = abrir(
+      `/adm/classe-biblica/${EDICAO_CB_ID}/etapa/2`, {},
+      http.put('/api/classe-biblica/edicoes/:id/grupos', () => HttpResponse.json({ codigo: 'CONFLITO', mensagem }, { status: 409 })),
+    )
+    await usuario.click(await waitFor(() => grupo('Grupo 2').getByRole('checkbox', { name: /^Tigres/ })))
+    await usuario.click(screen.getByRole('button', { name: 'Continuar para as datas' }))
+    expect(await screen.findByText(mensagem)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Grupos' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Datas dos encontros' })).not.toBeInTheDocument()
+    expect(gravacoes.some((g) => g.metodo === 'PATCH')).toBe(false)
+  })
+
+  it('grupo novo só grava com nome, e ganha o id dele mesmo se outro grupo sair no meio do envio', async () => {
+    const usuario = userEvent.setup()
+    const put = putQueEspera()
+    abrir(`/adm/classe-biblica/${EDICAO_CB_ID}/etapa/2`, {}, put.handler)
+    await usuario.click(await screen.findByRole('button', { name: 'Adicionar outro grupo' }))
+    await usuario.type(grupo('Grupo 3').getByLabelText('Nome do grupo'), 'Grupo Rute')
+    await usuario.tab()
+    await waitFor(() => expect(put.corpos).toHaveLength(1))
+    expect(put.corpos[0].grupos.map((g) => g.nome)).toEqual(['Grupo Daniel', 'Grupo Ester', 'Grupo Rute'])
+
+    await usuario.click(grupo('Grupo 2').getByRole('button', { name: 'Tirar este grupo' }))
+    put.soltar()
+    await waitFor(() => expect(put.corpos).toHaveLength(2))
+    expect(put.corpos[1].grupos).toEqual([
+      { id: GRUPO_DANIEL_ID, nome: 'Grupo Daniel', unidadeIds: expect.any(Array) as unknown },
+      { id: NOVO_GRUPO_ID, nome: 'Grupo Rute', unidadeIds: [] },
+    ])
+    expect(put.corpos[1].grupos.some((g) => g.id === GRUPO_ESTER_ID)).toBe(false)
+  })
+
+  it('o título de cada grupo leva o total de DBVs das unidades marcadas', async () => {
+    abrir(`/adm/classe-biblica/${EDICAO_CB_ID}/etapa/2`)
+    expect(await waitFor(() => grupo('Grupo 1').getByText('31 DBVs'))).toBeInTheDocument()
+    expect(grupo('Grupo 2').getByText('19 DBVs')).toBeInTheDocument()
+  })
+
+  it('sem conexão, o material do grupo fica desabilitado com o aviso', async () => {
+    conexao.modo = 'SEM_CONEXAO'
+    abrir(`/adm/classe-biblica/${EDICAO_CB_ID}/etapa/2`)
+    const colar = await waitFor(() => grupo('Grupo 2').getByRole('button', { name: 'Colar um link' }))
+    expect(colar).toBeDisabled()
+    expect(grupo('Grupo 2').getByLabelText('Enviar PDF')).toBeDisabled()
+    expect(grupo('Grupo 2').getByText('Sem internet: o material só vai com conexão.')).toBeInTheDocument()
+  })
+})
+
+describe('Editar uma edição terminada (D14)', () => {
+  it('a etapa 1 diz "Editar a edição"; o rascunho continua "Nova edição"', async () => {
+    const { unmount } = abrir(`/adm/classe-biblica/${EDICAO_CB_ID}/etapa/1`, { edicao: criarEdicaoCB() })
+    expect(await screen.findByText('Editar a edição')).toBeInTheDocument()
+    expect(screen.queryByText('Nova edição da Classe Bíblica')).not.toBeInTheDocument()
+    unmount()
+    abrir(`/adm/classe-biblica/${EDICAO_CB_ID}/etapa/1`)
+    expect(await screen.findByText('Nova edição da Classe Bíblica')).toBeInTheDocument()
+  })
+
+  it('da etapa 2 o botão salva e volta ao painel, sem passar pelas datas', async () => {
+    const usuario = userEvent.setup()
+    const { gravacoes } = abrir(`/adm/classe-biblica/${EDICAO_CB_ID}/etapa/2`, { edicao: criarEdicaoCB() })
+    expect(await screen.findByText('Editar a edição')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Continuar para as datas' })).not.toBeInTheDocument()
+    await usuario.click(await screen.findByRole('button', { name: 'Salvar e voltar à edição' }))
+    expect(await screen.findByRole('heading', { name: 'Painel da edição' })).toBeInTheDocument()
+    expect(gravacoes.some((g) => g.metodo === 'PATCH')).toBe(false)
   })
 })

@@ -14,7 +14,7 @@ import { Confirmacao } from '../../../ui/Confirmacao'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/EstadosDeCarga'
 import { FaixaAviso } from '../../../ui/FaixaAviso'
 import { FUSO_PADRAO_DO_CLUBE } from '../formatos'
-import { DIAS_DA_SEMANA, diaDaSemanaDaData, diaMes } from './useRascunhoDaEdicao'
+import { DIAS_DA_SEMANA, diaDaSemanaDaData, diaMes, nomeCurtoDaEdicao } from './useRascunhoDaEdicao'
 
 type Opcao = 'remarcar' | 'cancelar'
 
@@ -202,7 +202,7 @@ function Conteudo({ detalhe }: { detalhe: DetalheDoEncontro }) {
   return (
     <div className="flex flex-col gap-5">
       <CabecalhoDaPagina
-        voltar={{ para: `/adm/classe-biblica/${edicao.id}`, rotulo: edicao.nome }}
+        voltar={{ para: `/adm/classe-biblica/${edicao.id}`, rotulo: nomeCurtoDaEdicao(edicao.nome) }}
         sobretitulo={edicao.nome}
         titulo={`Encontro de ${diaDaSemanaDaData(encontro.data)}, ${diaMes(encontro.data)}`}
         apoio={encontro.temChamada ? undefined : <span>{`${valeParaOsGrupos(grupos)} O calendário do clube muda junto.`}</span>}

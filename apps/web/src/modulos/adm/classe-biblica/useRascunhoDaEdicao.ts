@@ -7,6 +7,15 @@ import { FUSO_PADRAO_DO_CLUBE } from '../formatos'
 
 export const ETAPAS_DA_EDICAO = ['Dados da edição', 'Grupos', 'Datas']
 
+/** "Classe Bíblica 2026 · 2º semestre" → "2026 · 2º semestre"; outro nome fica como está. */
+export const nomeCurtoDaEdicao = (nome: string): string => nome.replace(/^Classe Bíblica\s*/, '') || nome
+
+/** O sobretítulo das etapas 1 e 2: a edição terminada reabre para edição, não para criação (D14). */
+export const sobretituloDaEtapa = (edicao: EdicaoCB | null | undefined): string | undefined => {
+  if (edicao === undefined) return undefined
+  return edicao !== null && edicao.situacao !== 'NAO_TERMINADA' ? 'Editar a edição' : 'Nova edição da Classe Bíblica'
+}
+
 export const AVISO_SEM_INTERNET = 'Sem internet: o que você preencher agora não fica salvo.'
 
 const horaMinuto = new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO_PADRAO_DO_CLUBE, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })

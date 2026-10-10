@@ -24,7 +24,7 @@ import { ResumoDosErros, useErrosAVista } from '../../../ui/ErrosDoFormulario'
 import { IndicadorDeEtapas } from '../../../ui/IndicadorDeEtapas'
 import { horaCurta, juntarNomes } from '../formatos'
 import { LinhaDoSalvo, textoDoSalvo } from './EtapaDados'
-import { ETAPAS_DA_EDICAO, diaMes, diasNoPlural, useRascunhoDaEdicao } from './useRascunhoDaEdicao'
+import { ETAPAS_DA_EDICAO, diaMes, diasNoPlural, sobretituloDaEtapa, useRascunhoDaEdicao } from './useRascunhoDaEdicao'
 
 type Material = GrupoDaEdicao['material']
 type Unidade = GruposDaEdicao['unidades'][number]
@@ -69,6 +69,8 @@ function MaterialDoGrupo({ grupo, aoMudar }: { grupo: GrupoLocal; aoMudar: (mate
   const enviar = useEnviarMaterialCB()
   const anexar = useAnexarLinkCB()
   const idEntrada = useId()
+  const { modo } = useConexao()
+  const semConexao = modo === 'SEM_CONEXAO'
 
   const concluir = (salvo: GrupoDaEdicao) => {
     aoMudar(salvo.material)
@@ -126,6 +128,7 @@ function MaterialDoGrupo({ grupo, aoMudar }: { grupo: GrupoLocal; aoMudar: (mate
       )}
       {(semMaterial || trocando) && (
         <div className="flex flex-col gap-3">
+          {semConexao && <p className="text-sm font-medium text-alerta">Sem internet: o material só vai com conexão.</p>}
           <div className="flex flex-wrap gap-2">
             <label htmlFor={idEntrada} className={estiloDoBotao({ variante: 'secundario', className: 'cursor-pointer' })}>
               <Upload aria-hidden className="size-5" />
@@ -135,11 +138,11 @@ function MaterialDoGrupo({ grupo, aoMudar }: { grupo: GrupoLocal; aoMudar: (mate
                 type="file"
                 accept="application/pdf,.pdf"
                 className="sr-only"
-                disabled={!grupo.id || enviar.isPending}
+                disabled={!grupo.id || enviar.isPending || semConexao}
                 onChange={escolherArquivo}
               />
             </label>
-            <Botao variante="secundario" disabled={!grupo.id} onClick={() => setColando(true)}>
+            <Botao variante="secundario" disabled={!grupo.id || semConexao} onClick={() => setColando(true)}>
               <Link2 aria-hidden className="size-5" />
               Colar um link
             </Botao>
@@ -149,7 +152,7 @@ function MaterialDoGrupo({ grupo, aoMudar }: { grupo: GrupoLocal; aoMudar: (mate
             <div className="flex flex-col gap-3">
               <Campo rotulo="Nome do material" value={titulo} maxLength={120} onChange={(e) => setTitulo(e.target.value)} />
               <Campo rotulo="Link" ajuda="Ex.: https://www.exemplo.org/licoes" inputMode="url" value={url} erro={erroDoLink} onChange={(e) => setUrl(e.target.value)} />
-              <Botao variante="secundario" className="w-fit" carregando={anexar.isPending} onClick={anexarLink}>Anexar o link</Botao>
+              <Botao variante="secundario" className="w-fit" carregando={anexar.isPending} disabled={semConexao} onClick={anexarLink}>Anexar o link</Botao>
             </div>
           )}
         </div>
@@ -181,11 +184,15 @@ function CartaoDoGrupo({ grupo, indice, grupos, unidades, erros, aoMudarNome, ao
     if (unidade.ocupadaPor?.tipo === 'EDICAO') return { texto: `${unidade.nome} · na ${unidade.ocupadaPor.nome}`, desabilitada: !marcada }
     return { texto: `${unidade.nome} · ${unidade.dbvs} DBVs`, desabilitada: false }
   }
+  const dbvs = unidades.filter((unidade) => grupo.unidadeIds.includes(unidade.id)).reduce((soma, unidade) => soma + unidade.dbvs, 0)
   return (
     <Cartao>
       <section aria-labelledby={idTitulo} className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-2">
-          <h2 id={idTitulo} className="font-titulo text-lg font-bold text-texto">{`Grupo ${indice + 1}`}</h2>
+          <div className="flex items-baseline gap-3">
+            <h2 id={idTitulo} className="font-titulo text-lg font-bold text-texto">{`Grupo ${indice + 1}`}</h2>
+            <span className="text-sm text-texto-2">{`${dbvs} DBVs`}</span>
+          </div>
           {aoTirar && <Botao variante="texto" onClick={aoTirar}>Tirar este grupo</Botao>}
         </div>
         <Campo
@@ -243,6 +250,7 @@ function Formulario({ edicao, inicial }: { edicao: EdicaoCB; inicial: GruposDaEd
   const fila = useRef<Promise<unknown>>(Promise.resolve())
   const ultimoEnviado = useRef(JSON.stringify(inicial.grupos.map(({ id, nome, unidadeIds }) => ({ id, nome, unidadeIds }))))
   const { formulario, pendencias } = useErrosAVista(errosDoEnvio)
+  const terminada = edicao.situacao !== 'NAO_TERMINADA'
 
   const aplicar = (novos: GrupoLocal[]) => {
     atuais.current = novos
@@ -250,24 +258,32 @@ function Formulario({ edicao, inicial }: { edicao: EdicaoCB; inicial: GruposDaEd
   }
 
   const gravar = async () => {
-    const corpo = { grupos: atuais.current.map(({ id, nome, unidadeIds }) => (id ? { id, nome: nome.trim(), unidadeIds } : { nome: nome.trim(), unidadeIds })) }
+    // Grupo novo sem nome não vai: em edição terminada o servidor recusa, e ele grava ao ganhar o nome.
+    const enviados = atuais.current.filter((grupo) => grupo.id || grupo.nome.trim())
+    const corpo = { grupos: enviados.map(({ id, nome, unidadeIds }) => (id ? { id, nome: nome.trim(), unidadeIds } : { nome: nome.trim(), unidadeIds })) }
     const assinatura = JSON.stringify(corpo.grupos)
     if (assinatura === ultimoEnviado.current) return
     const salvos = await gravarGrupos.mutateAsync(corpo)
     ultimoEnviado.current = JSON.stringify(salvos.grupos.map(({ id, nome, unidadeIds }) => ({ id, nome, unidadeIds })))
-    // O grupo novo ganha o id do servidor pela posição; o que a pessoa mudou nesse meio-tempo fica.
-    aplicar(atuais.current.map((grupo, indice) => {
-      const salvo = salvos.grupos[indice]
-      return salvo && !grupo.id ? { ...grupo, id: salvo.id } : grupo
+    // A resposta vem na ordem do envio: o grupo novo acha o seu id pela chave local, mesmo que outro tenha saído no meio-tempo.
+    const idPelaChave = new Map(enviados.map((grupo, indice) => [grupo.chave, salvos.grupos[indice]?.id]))
+    aplicar(atuais.current.map((grupo) => {
+      const id = idPelaChave.get(grupo.chave)
+      return id && !grupo.id ? { ...grupo, id } : grupo
     }))
     rascunho.marcarSalvo(salvos.atualizadaEm)
     setErroDaGravacao(null)
   }
 
-  const agendar = (): Promise<unknown> => {
-    if (rascunho.semConexao) return Promise.resolve()
-    fila.current = fila.current.then(gravar).catch((falha: unknown) => setErroDaGravacao(mensagemDe(falha)))
-    return fila.current
+  /** Grava na fila; devolve se deu certo, para o "Continuar" não seguir com o envio recusado. */
+  const agendar = (): Promise<boolean> => {
+    if (rascunho.semConexao) return Promise.resolve(false)
+    const proxima = fila.current.then(gravar).then(() => true, (falha: unknown) => {
+      setErroDaGravacao(mensagemDe(falha))
+      return false
+    })
+    fila.current = proxima
+    return proxima
   }
 
   const mudarGrupo = (indice: number, parcial: Partial<GrupoLocal>) => {
@@ -290,7 +306,10 @@ function Formulario({ edicao, inicial }: { edicao: EdicaoCB; inicial: GruposDaEd
     setErrosDoEnvio(Object.fromEntries(Object.entries(encontrados).map(([chave, doGrupo]) => [chave, [doGrupo.nome, doGrupo.unidades].filter(Boolean).join(' ')])))
     if (Object.keys(encontrados).length > 0 || rascunho.semConexao) return
     setSeguindo(true)
-    await agendar()
+    const gravou = await agendar()
+    if (!gravou) return setSeguindo(false)
+    // D14: terminada, a edição reabre só as etapas 1 e 2; as datas já viraram encontros.
+    if (terminada) return void navegar(`/adm/classe-biblica/${edicao.id}`)
     const salva = await rascunho.salvar({ etapa: Math.max(3, edicao.etapa) })
     setSeguindo(false)
     if (salva) void navegar(`/adm/classe-biblica/${edicao.id}/etapa/3`)
@@ -331,16 +350,15 @@ function Formulario({ edicao, inicial }: { edicao: EdicaoCB; inicial: GruposDaEd
           } : undefined}
         />
       ))}
-      <Botao variante="secundario" className="w-fit" onClick={() => {
-        aplicar([...atuais.current, grupoNovo()])
-        void agendar()
-      }}>
+      <Botao variante="secundario" className="w-fit" onClick={() => aplicar([...atuais.current, grupoNovo()])}>
         Adicionar outro grupo
       </Botao>
       <LinhaDoSalvo texto={textoSalvo} />
       <p className="text-base text-texto-2">{textoDasUnidades(grupos, inicial.unidades)}</p>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <Botao type="submit" carregando={seguindo} disabled={rascunho.semConexao}>Continuar para as datas</Botao>
+        <Botao type="submit" carregando={seguindo} disabled={rascunho.semConexao}>
+          {terminada ? 'Salvar e voltar à edição' : 'Continuar para as datas'}
+        </Botao>
         <Link to={`/adm/classe-biblica/${edicao.id}/etapa/1`} className={estiloDoBotao({ variante: 'texto' })}>Voltar aos dados</Link>
       </div>
     </form>
@@ -362,7 +380,7 @@ export function EtapaGrupos() {
 
   return (
     <div className="flex flex-col gap-5 py-4">
-      <CabecalhoDaPagina voltar={{ para: '/adm/classe-biblica', rotulo: 'Classe Bíblica' }} sobretitulo="Nova edição da Classe Bíblica" titulo="Grupos" />
+      <CabecalhoDaPagina voltar={{ para: '/adm/classe-biblica', rotulo: 'Classe Bíblica' }} sobretitulo={sobretituloDaEtapa(painel.data?.edicao)} titulo="Grupos" />
       <IndicadorDeEtapas etapas={ETAPAS_DA_EDICAO} atual={2} />
       {conteudo}
     </div>
