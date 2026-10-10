@@ -1,0 +1,176 @@
+{
+ "v": 3,
+ "attachments": {},
+ "boards": {
+  "Edicao-1-Dados.dc.html": {
+   "h": 1180,
+   "title": "Nova edição · etapa 1 — dados",
+   "w": 390,
+   "x": 0,
+   "y": 300
+  },
+  "Edicao-1-Erro.dc.html": {
+   "h": 900,
+   "title": "Nova edição · erro no campo, ao sair dele",
+   "w": 390,
+   "x": 470,
+   "y": 300
+  },
+  "Edicao-2-Grupos.dc.html": {
+   "h": 2020,
+   "title": "Nova edição · etapa 2 — grupos",
+   "w": 390,
+   "x": 940,
+   "y": 300
+  },
+  "Edicao-3-Datas.dc.html": {
+   "h": 1500,
+   "title": "Nova edição · etapa 3 — revisar as datas",
+   "w": 390,
+   "x": 1410,
+   "y": 300
+  },
+  "Edicao-Pronta.dc.html": {
+   "h": 820,
+   "title": "Nova edição · fechamento",
+   "w": 390,
+   "x": 1880,
+   "y": 300
+  },
+  "Lista-Edicoes.dc.html": {
+   "h": 900,
+   "title": "Classe Bíblica · lista de edições (com uma não terminada)",
+   "w": 390,
+   "x": 0,
+   "y": 2920
+  },
+  "Lista-Vazia.dc.html": {
+   "h": 1000,
+   "title": "Classe Bíblica · vazio e bloqueio",
+   "w": 390,
+   "x": 470,
+   "y": 2920
+  },
+  "Painel-Edicao.dc.html": {
+   "h": 2100,
+   "title": "Painel da edição · Grupo Daniel",
+   "w": 390,
+   "x": 940,
+   "y": 2920
+  },
+  "Encontro-Remarcar.dc.html": {
+   "h": 1460,
+   "title": "Remarcar ou cancelar um encontro",
+   "w": 390,
+   "x": 1410,
+   "y": 2920
+  },
+  "Chamada-Encontro.dc.html": {
+   "h": 1640,
+   "title": "Chamada do encontro · celular",
+   "w": 390,
+   "x": 0,
+   "y": 5420
+  },
+  "Chamada-SemConexao.dc.html": {
+   "h": 1040,
+   "title": "Chamada · salva sem conexão",
+   "w": 390,
+   "x": 470,
+   "y": 5420
+  },
+  "Chamada-Estados.dc.html": {
+   "h": 1500,
+   "title": "Chamada · carregando, vazio, erro, sem conexão",
+   "w": 390,
+   "x": 940,
+   "y": 5420
+  },
+  "Progresso-Requisito.dc.html": {
+   "h": 1100,
+   "title": "Progresso do DBV · frequência ao lado do requisito",
+   "w": 390,
+   "x": 0,
+   "y": 7660
+  },
+  "Calendario-Adm.dc.html": {
+   "h": 1240,
+   "title": "Calendário do Adm · encontros da Classe Bíblica",
+   "w": 1280,
+   "x": 0,
+   "y": 9360
+  },
+  "Calendario-Celular.dc.html": {
+   "h": 1000,
+   "title": "Calendário do Adm · celular",
+   "w": 390,
+   "x": 1360,
+   "y": 9360
+  }
+ },
+ "designSystems": [],
+ "launch": {
+  "view": "canvas"
+ },
+ "notes": {
+  "grupo-criar": {
+   "kind": "title1",
+   "maxW": 8000,
+   "text": "Criar edição — o cadastro longo",
+   "w": 240,
+   "x": 0,
+   "y": 0
+  },
+  "grupo-painel": {
+   "kind": "title1",
+   "maxW": 8000,
+   "text": "Lista, painel da edição e encontro",
+   "w": 240,
+   "x": 0,
+   "y": 2620
+  },
+  "grupo-chamada": {
+   "kind": "title1",
+   "maxW": 8000,
+   "text": "Chamada do encontro (celular)",
+   "w": 240,
+   "x": 0,
+   "y": 5120
+  },
+  "grupo-progresso": {
+   "kind": "title1",
+   "maxW": 8000,
+   "text": "Progresso do DBV",
+   "w": 240,
+   "x": 0,
+   "y": 7360
+  },
+  "grupo-calendario": {
+   "kind": "title1",
+   "maxW": 8000,
+   "text": "Calendário do Adm",
+   "w": 240,
+   "x": 0,
+   "y": 9060
+  }
+ },
+ "order": [
+  "Edicao-1-Dados.dc.html",
+  "Edicao-1-Erro.dc.html",
+  "Edicao-2-Grupos.dc.html",
+  "Edicao-3-Datas.dc.html",
+  "Edicao-Pronta.dc.html",
+  "Lista-Edicoes.dc.html",
+  "Lista-Vazia.dc.html",
+  "Painel-Edicao.dc.html",
+  "Encontro-Remarcar.dc.html",
+  "Chamada-Encontro.dc.html",
+  "Chamada-SemConexao.dc.html",
+  "Chamada-Estados.dc.html",
+  "Progresso-Requisito.dc.html",
+  "Calendario-Adm.dc.html",
+  "Calendario-Celular.dc.html"
+ ],
+ "pages": [],
+ "title": "Desbravador — Classe Bíblica"
+}
