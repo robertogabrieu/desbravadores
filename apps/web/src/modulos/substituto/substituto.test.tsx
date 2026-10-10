@@ -5,7 +5,8 @@ import { useSyncExternalStore } from 'react'
 import { z } from 'zod'
 import type { ReactElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ItemFila, ModoConexao, PacoteGuardado } from '../../offline'
+import type { ItemFila, ModoConexao, PacoteGuardado, TipoFila } from '../../offline'
+import { registrarTipo } from '../../offline'
 import { banco } from '../../offline/banco'
 import { configurarCliente, entrarNoModoSubstituicao, requisitar } from '../../api/cliente'
 import { reiniciarRelogio } from '../../substituicao/relogio'
@@ -94,6 +95,15 @@ function itemNaFila(n: number): ItemFila {
     chave: `${UNIDADE}:2026-10-11:${n}`, rotulo: 'Chamada', detalhe: 'Águia', payload: {}, estado: 'NA_FILA',
     progresso: 0, tentativas: 0, proximaTentativaEm: null, criadoEm: Date.now(), atualizadoEm: Date.now(),
   }
+}
+
+const tipoFalso: TipoFila<{ valor: string }, z.ZodObject<{ ok: z.ZodLiteral<true> }>> = {
+  tipo: 'FALSO',
+  rotulo: (carga) => `Falso ${carga.valor}`,
+  detalhe: (carga) => carga.valor,
+  fundir: (_anterior, novo) => novo,
+  enviar: (item, ctx) => ctx.requisitar('/api/falso', { metodo: 'PUT', corpo: item.payload }),
+  saida: z.object({ ok: z.literal(true) }),
 }
 
 const itensDaSubstituicao = () => banco.fila.where('[usuarioId+estado]').between([SUBSTITUICAO, ''], [SUBSTITUICAO, '￿']).count()
@@ -261,7 +271,7 @@ describe('critério 10: reabrir e outro aparelho', () => {
   it('link que não existe vê S7', async () => {
     servidor.use(
       ...handlersDoLink({
-        links: [criarLinkPublico({ estado: 'INEXISTENTE', tipo: null, alvo: null, data: null, inicioEm: null, fimEm: null, fimEnvioEm: null })],
+        links: [criarLinkPublico({ estado: 'INEXISTENTE', tipo: null, alvo: null, data: null, inicioEm: null, fimEm: null, fimEnvioEm: null, fuso: null })],
       }),
     )
     montar()
@@ -350,7 +360,13 @@ describe('critério 15: depois do fim', () => {
   it('com item na fila e antes do fim do envio: S5 com o progresso numa região viva educada', async () => {
     guardarAparelho()
     await banco.fila.bulkPut([itemNaFila(1), itemNaFila(2)])
-    servidor.use(...handlersDoLink({ links: [criarLinkPublico({ estado: 'ENCERRADO', agora: '2026-10-11T16:00:00.000Z' })] }))
+    const depoisDoFim = '2026-10-11T16:00:00.000Z'
+    servidor.use(
+      ...handlersDoLink({
+        links: [criarLinkPublico({ estado: 'ENCERRADO', agora: depoisDoFim })],
+        entrada: criarEntradaDoLink({}, { segredo: null, agora: depoisDoFim }),
+      }),
+    )
     montar()
     expect(await screen.findByRole('heading', { name: 'O horário acabou, mas ainda falta enviar' })).toBeInTheDocument()
     expect(screen.getByText('2 lançamentos')).toBeInTheDocument()
@@ -360,6 +376,41 @@ describe('critério 15: depois do fim', () => {
     expect(progresso).toHaveTextContent('Enviando… 1 de 2')
     expect(await itensDaSubstituicao()).toBe(2)
     semAula()
+  })
+
+  it('recarregar em S5: reentra com o segredo, sem formulário, o item sobe com a credencial e a tela vai a S6', async () => {
+    registrarTipo(tipoFalso)
+    guardarAparelho()
+    await banco.fila.put({ ...itemNaFila(1), tipo: 'FALSO', payload: { valor: 'x' } })
+    const registro = novoRegistroDoLink()
+    const autorizacoes: (string | null)[] = []
+    const depoisDoFim = '2026-10-11T16:00:00.000Z'
+    servidor.use(
+      ...handlersDoLink({
+        links: [criarLinkPublico({ estado: 'ENCERRADO', agora: depoisDoFim })],
+        entrada: criarEntradaDoLink({}, { segredo: null, agora: depoisDoFim }),
+        registro,
+      }),
+      http.put('/api/falso', ({ request }) => {
+        autorizacoes.push(request.headers.get('Authorization'))
+        return HttpResponse.json({ ok: true })
+      }),
+    )
+    montar()
+    await waitFor(() => expect(autorizacoes).toEqual(['Bearer credencial-do-link']))
+    expect(registro.entradas).toEqual([{ segredo: SEGREDO }])
+    expect(await screen.findByRole('heading', { name: 'Este link fechou às 12:00' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Qual é o seu nome?')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Substituindo na/)).not.toBeInTheDocument()
+  })
+
+  it('recarregar depois do fim sem nada na fila não reentra', async () => {
+    guardarAparelho()
+    const registro = novoRegistroDoLink()
+    servidor.use(...handlersDoLink({ links: [criarLinkPublico({ estado: 'ENCERRADO', agora: '2026-10-11T16:00:00.000Z' })], registro }))
+    montar()
+    expect(await screen.findByRole('heading', { name: 'Este link fechou às 12:00' })).toBeInTheDocument()
+    expect(registro.entradas).toEqual([])
   })
 
   it('com item na fila mas depois do fim do envio: S6 e a fila da substituição é apagada', async () => {
@@ -407,6 +458,29 @@ describe('critério 15: depois do fim', () => {
     montar()
     expect(await screen.findByRole('heading', { name: 'O Adm cancelou este link' })).toBeInTheDocument()
     expect(screen.queryByText(/não foram enviados/)).not.toBeInTheDocument()
+  })
+})
+
+describe('horas no fuso do clube', () => {
+  it('S1 e a faixa mostram as horas no fuso dado: Manaus uma hora antes de São Paulo', async () => {
+    servidor.use(...handlersDoLink({ links: [criarLinkPublico({ estado: 'ANTES', agora: '2026-10-11T11:00:00.000Z', fuso: 'America/Manaus' })] }))
+    montar()
+    await screen.findByText('Não precisa criar conta nem senha.')
+    expect(screen.getByText('08:00')).toBeInTheDocument()
+    expect(screen.getByText('11:00')).toBeInTheDocument()
+  })
+
+  it('a faixa usa o fuso da identidade', async () => {
+    guardarPacote()
+    guardarAparelho()
+    servidor.use(
+      ...handlersDoLink({
+        links: [criarLinkPublico({ identificado: true, fuso: 'America/Manaus' })],
+        entrada: criarEntradaDoLink({ fuso: 'America/Manaus' }, { segredo: null }),
+      }),
+    )
+    montar()
+    expect(await screen.findByText(/Substituindo na Unidade Águia/)).toHaveTextContent('Substituindo na Unidade Águia · aberto até 11:00')
   })
 })
 

@@ -13,10 +13,12 @@ import { registrarAgoraDoServidor } from '../../substituicao/relogio'
 import { Botao } from '../../ui/Botao'
 import { ErroDeCarga } from '../../ui/EstadosDeCarga'
 import { EstadoVazio } from '../../ui/EstadoVazio'
+import { FUSO_PADRAO_DO_CLUBE } from '../adm/formatos'
 import {
   AbrindoOLink,
   AntesDoHorario,
   DepoisDoFim,
+  contarNaoEnviados,
   EmOutroAparelho,
   LinkCancelado,
   LinkInexistente,
@@ -63,7 +65,14 @@ function estadoDaRecusa(erro: unknown): z.infer<typeof EstadoDoLink> | null {
 }
 
 function sobreOLink(link: Link): SobreOLink {
-  return { tipo: link.tipo ?? 'CHAMADA', alvoNome: link.alvo?.nome ?? '', data: link.data ?? '', inicioEm: link.inicioEm, fimEm: link.fimEm ?? link.agora }
+  return {
+    tipo: link.tipo ?? 'CHAMADA',
+    alvoNome: link.alvo?.nome ?? '',
+    data: link.data ?? '',
+    inicioEm: link.inicioEm,
+    fimEm: link.fimEm ?? link.agora,
+    fuso: link.fuso ?? FUSO_PADRAO_DO_CLUBE,
+  }
 }
 
 const sobreAIdentidade = (identidade: Identidade): SobreOLink => ({
@@ -72,6 +81,7 @@ const sobreAIdentidade = (identidade: Identidade): SobreOLink => ({
   data: identidade.data,
   inicioEm: null,
   fimEm: identidade.fimEm,
+  fuso: identidade.fuso,
 })
 
 type Fase =
@@ -112,7 +122,8 @@ export function TelaDoLink() {
   useEffect(() => {
     let vivo = true
     setFase({ tipo: 'carregando' })
-    const segredo = lerAparelho(token)?.segredo
+    const aparelho = lerAparelho(token)
+    const segredo = aparelho?.segredo
     void (async () => {
       try {
         const cabecalhos = segredo ? { [CABECALHO_DO_SEGREDO_DO_APARELHO]: segredo } : undefined
@@ -120,6 +131,7 @@ export function TelaDoLink() {
         registrarAgoraDoServidor(link.agora)
         if (!vivo) return
         if (link.estado === 'ABERTO' && link.identificado && segredo) await entrar({ segredo }, link)
+        else if (aparelho && (await reentraParaEnviar(link, aparelho))) await entrar({ segredo: aparelho.segredo }, link)
         else setFase({ tipo: 'link', link })
       } catch (erro) {
         if (vivo) setFase({ tipo: 'falhou', erro: erro instanceof Error ? erro : new Error(String(erro)) })
@@ -157,6 +169,15 @@ export function TelaDoLink() {
     case 'ABERTO':
       return <IdentificarSubstituto sobre={sobre} conta={link.conta} aoEntrar={(corpo) => entrar(corpo, link)} />
   }
+}
+
+/**
+ * S5 depois de recarregar: a janela fechou, mas o envio ainda vai e este aparelho tem o que subir. O
+ * reingresso com o segredo devolve a credencial, que só grava, para a fila subir sem mostrar o formulário.
+ */
+async function reentraParaEnviar(link: Link, aparelho: Aparelho): Promise<boolean> {
+  if (link.estado !== 'ENCERRADO' || link.fimEnvioEm === null || Date.parse(link.agora) >= Date.parse(link.fimEnvioEm)) return false
+  return (await contarNaoEnviados(aparelho.substituicaoId)) > 0
 }
 
 /** Sem internet ao abrir o link, ou a API fora: diz o que houve e deixa tentar de novo. */
@@ -200,9 +221,10 @@ function SessaoDoLink({ aoEncerrar }: { aoEncerrar: () => void }) {
   }, [encerrada, aoEncerrar])
 
   // A tela de chamada só lê o pacote guardado: quem o baixa para a identidade do link é esta sessão.
+  // Depois do fim a credencial não lê mais, e a recusa encerraria a sessão que só ficou para a fila subir.
   useEffect(() => {
-    if (substituicaoId && modo === 'ONLINE') void baixarPacoteSeVelho(substituicaoId, substituicaoId)
-  }, [substituicaoId, modo])
+    if (substituicaoId && modo === 'ONLINE' && !fechou) void baixarPacoteSeVelho(substituicaoId, substituicaoId)
+  }, [substituicaoId, modo, fechou])
 
   const base = `/substituto/${encodeURIComponent(token)}`
   const destinos = useMemo<Partial<Destinos>>(

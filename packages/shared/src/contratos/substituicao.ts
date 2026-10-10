@@ -49,6 +49,8 @@ export const LinkPublico = z.object({
   inicioEm: InstanteIso.nullable(),
   fimEm: InstanteIso.nullable(),
   fimEnvioEm: InstanteIso.nullable(),
+  /** Fuso do clube: as horas da tela saem nele. */
+  fuso: z.string().nullable(),
   /** Relógio do servidor: o aparelho decide S1→S2 e a virada da janela por ele. */
   agora: InstanteIso,
   /** Conta com vínculo ativo no clube do link, lida do cookie de refresh sem rotacionar (S3). */
@@ -78,6 +80,8 @@ export const IdentidadeDaSubstituicao = z.object({
   data: DataCivil,
   fimEm: InstanteIso,
   fimEnvioEm: InstanteIso,
+  /** Fuso do clube: as horas da tela saem nele. */
+  fuso: z.string(),
 })
 export const Entrada = z.object({
   credencial: z.string(),

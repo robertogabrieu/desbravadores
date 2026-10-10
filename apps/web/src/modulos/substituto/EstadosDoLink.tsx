@@ -10,7 +10,7 @@ import { limparDadosDaSubstituicao } from '../../offline/limpeza'
 import { agoraDoServidor } from '../../substituicao/relogio'
 import { cn } from '../../ui/cn'
 import { Carregando } from '../../ui/EstadosDeCarga'
-import { FUSO_PADRAO_DO_CLUBE, dataPorExtenso } from '../adm/formatos'
+import { dataPorExtenso } from '../adm/formatos'
 import { horaNoFuso } from '../adm/substituicao/mensagem-substituicao'
 
 type Tipo = z.infer<typeof TipoSubstituicao>
@@ -22,10 +22,11 @@ export interface SobreOLink {
   data: string
   inicioEm: string | null
   fimEm: string
+  /** Fuso do clube: as horas saem nele. */
+  fuso: string
 }
 
-// O LinkPublico não traz o fuso do clube; as horas saem no fuso padrão, o mesmo da mensagem do Adm.
-export const hora = (instante: string): string => horaNoFuso(instante, FUSO_PADRAO_DO_CLUBE)
+export const hora = (instante: string, fuso: string): string => horaNoFuso(instante, fuso)
 
 /** "Unidade Águia" | "classe Amigo" */
 export const nomeDoAlvo = ({ tipo, alvoNome }: Pick<SobreOLink, 'tipo' | 'alvoNome'>): string =>
@@ -70,7 +71,7 @@ export function useInstantePassou(instante: string | null): boolean {
   return passou
 }
 
-const contarNaoEnviados = (substituicaoId: string): Promise<number> =>
+export const contarNaoEnviados = (substituicaoId: string): Promise<number> =>
   banco.fila
     .where('[usuarioId+estado]')
     .anyOf(['NA_FILA', 'ENVIANDO', 'ERRO'].map((estado) => [substituicaoId, estado]))
@@ -152,7 +153,7 @@ export function AntesDoHorario({ sobre, aoAbrir }: { sobre: SobreOLink; aoAbrir:
           O Adm pediu que você faça {tarefaCurta(sobre.tipo)} {preposicao} <b>{dia}</b>.
         </p>
         <p>
-          Este link abre às <b>{sobre.inicioEm ? hora(sobre.inicioEm) : ''}</b> e fica aberto até <b>{hora(sobre.fimEm)}</b>. Volte por esta mesma
+          Este link abre às <b>{sobre.inicioEm ? hora(sobre.inicioEm, sobre.fuso) : ''}</b> e fica aberto até <b>{hora(sobre.fimEm, sobre.fuso)}</b>. Volte por esta mesma
           mensagem do WhatsApp nesse horário.
         </p>
         <Nota>Não precisa criar conta nem senha.</Nota>
@@ -205,7 +206,7 @@ function LinkFechou({ sobre, substituicaoId, chaveDoAparelho }: { sobre: SobreOL
   const tarefa = sobre.tipo === 'CHAMADA' ? `a chamada da ${nomeDoAlvo(sobre)}` : `o registro da ${nomeDoAlvo(sobre)}`
   return (
     <MolduraDoLink titulo="App do Desbravador">
-      <EstadoDoLink icone={Lock} tom="neutro" titulo={`Este link fechou às ${hora(sobre.fimEm)}`}>
+      <EstadoDoLink icone={Lock} tom="neutro" titulo={`Este link fechou às ${hora(sobre.fimEm, sobre.fuso)}`}>
         <p>
           Ele valia para {tarefa} {noDia(sobre.data)}.
         </p>

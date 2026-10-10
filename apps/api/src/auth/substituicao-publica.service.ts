@@ -16,6 +16,7 @@ interface LinkLido extends Substituicao {
   unidade: { nome: string } | null
   classe: { nome: string } | null
   substituto: { nome: string } | null
+  clube: { configuracao: { fuso: string } | null }
 }
 
 type Situacao =
@@ -55,7 +56,7 @@ export class SubstituicaoPublicaService {
     const { estado, link, identificado } = await this.situacao(token, segredo, agora)
     if (link === null) {
       return {
-        estado, tipo: null, alvo: null, data: null, inicioEm: null, fimEm: null, fimEnvioEm: null,
+        estado, tipo: null, alvo: null, data: null, inicioEm: null, fimEm: null, fimEnvioEm: null, fuso: null,
         agora: agora.toISOString(), conta: null, identificado: false,
       }
     }
@@ -68,6 +69,7 @@ export class SubstituicaoPublicaService {
       inicioEm: link.inicioEm.toISOString(),
       fimEm: link.fimEm.toISOString(),
       fimEnvioEm: link.fimEnvioEm.toISOString(),
+      fuso: fusoDoClube(link),
       agora: agora.toISOString(),
       conta: conta && { nome: conta.nome },
       identificado,
@@ -77,6 +79,10 @@ export class SubstituicaoPublicaService {
   async entrar(token: string, entrada: z.infer<typeof EntrarNoLink>, cookie: string | undefined): Promise<z.infer<typeof Entrada>> {
     const agora = new Date()
     const situacao = await this.situacao(token, entrada.segredo, agora)
+    // Depois do fim, só o aparelho já identificado volta, e só até o fim do envio: a credencial grava, não lê.
+    if (situacao.estado === 'ENCERRADO' && situacao.link.substituto && podeEnviarDepoisDoFim(situacao.link, entrada.segredo, agora)) {
+      return this.apresentar(situacao.link, situacao.link.substituto.nome, null, agora)
+    }
     if (situacao.estado !== 'ABERTO') throw recusa(situacao.estado)
     const { link, identificado } = situacao
     if (identificado && link.substituto) return this.apresentar(link, link.substituto.nome, null, agora)
@@ -122,6 +128,7 @@ export class SubstituicaoPublicaService {
         data: link.data.toISOString().slice(0, 10),
         fimEm: link.fimEm.toISOString(),
         fimEnvioEm: link.fimEnvioEm.toISOString(),
+        fuso: fusoDoClube(link),
       },
       agora: agora.toISOString(),
     }
@@ -131,7 +138,12 @@ export class SubstituicaoPublicaService {
   private async situacao(token: string, segredo: string | undefined, agora: Date): Promise<Situacao> {
     const link = await this.prisma.substituicao.findUnique({
       where: { tokenHash: hashDoToken(token) },
-      include: { unidade: { select: { nome: true } }, classe: { select: { nome: true } }, substituto: { select: { nome: true } } },
+      include: {
+        unidade: { select: { nome: true } },
+        classe: { select: { nome: true } },
+        substituto: { select: { nome: true } },
+        clube: { select: { configuracao: { select: { fuso: true } } } },
+      },
     })
     if (!link) return { estado: 'INEXISTENTE', link: null, identificado: false }
     const alvoId = alvoDoLink(link)
@@ -139,7 +151,7 @@ export class SubstituicaoPublicaService {
     if (link.canceladoEm || !ativo) return { estado: 'CANCELADO', link, identificado: false }
     if (agora >= link.fimEm) return { estado: 'ENCERRADO', link, identificado: false }
     if (agora < link.inicioEm) return { estado: 'ANTES', link, identificado: false }
-    const identificado = link.aparelhoHash !== null && segredo !== undefined && segredoConfere(segredo, link.aparelhoHash)
+    const identificado = aparelhoConfere(link, segredo)
     if (link.aparelhoHash !== null && !identificado) return { estado: 'EM_OUTRO_APARELHO', link, identificado: false }
     return { estado: 'ABERTO', link, identificado }
   }
@@ -158,6 +170,20 @@ export class SubstituicaoPublicaService {
 
 function nomeDoAlvo(link: LinkLido): string {
   return (link.tipo === 'CHAMADA' ? link.unidade?.nome : link.classe?.nome) ?? ''
+}
+
+const FUSO_PADRAO = 'America/Sao_Paulo'
+
+const fusoDoClube = (link: LinkLido): string => link.clube.configuracao?.fuso ?? FUSO_PADRAO
+
+/** Este aparelho é o que se identificou: o segredo apresentado confere com o gravado. */
+function aparelhoConfere(link: LinkLido, segredo: string | undefined): boolean {
+  return link.aparelhoHash !== null && segredo !== undefined && segredoConfere(segredo, link.aparelhoHash)
+}
+
+/** Entre o fim da janela e o fim do envio, o aparelho identificado ainda sobe o que salvou. */
+function podeEnviarDepoisDoFim(link: LinkLido, segredo: string | undefined, agora: Date): boolean {
+  return agora < link.fimEnvioEm && aparelhoConfere(link, segredo)
 }
 
 /** Compara os hashes em tempo constante. */

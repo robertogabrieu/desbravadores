@@ -6,7 +6,7 @@ import { hora, nomeDoAlvo } from './EstadosDoLink'
 export function FaixaDeSubstituicao({ identidade }: { identidade: z.infer<typeof IdentidadeDaSubstituicao> }) {
   return (
     <p className="bg-marca-escura px-4 py-2 text-base font-semibold text-white">
-      Substituindo na {nomeDoAlvo(identidade)} <span className="font-normal">· aberto até {hora(identidade.fimEm)}</span>
+      Substituindo na {nomeDoAlvo(identidade)} <span className="font-normal">· aberto até {hora(identidade.fimEm, identidade.fuso)}</span>
     </p>
   )
 }

@@ -13,6 +13,7 @@ import {
   criarUnidade,
   criarUsuario,
   criarVinculo,
+  configurarClube,
   desconectarPrismaDeTeste,
   prismaDeTeste,
 } from '../../test/fabricas'
@@ -50,7 +51,7 @@ interface LinkDeTeste {
 /** Link ainda não identificado, aberto agora por padrão; o token conhecido entra como hash. */
 async function link(
   c: Cenario,
-  dados: { inicioEm?: Date; fimEm?: Date; cancelada?: boolean; aparelhoHash?: string | null; substitutoId?: string | null } = {},
+  dados: { inicioEm?: Date; fimEm?: Date; fimEnvioEm?: Date; cancelada?: boolean; aparelhoHash?: string | null; substitutoId?: string | null } = {},
 ): Promise<LinkDeTeste> {
   const token = gerarTokenOpaco()
   const criada = await criarSubstituicao({
@@ -172,6 +173,7 @@ describe('POST /auth/substituicao/:token/entrar', () => {
       data: substituicao.data.toISOString().slice(0, 10),
       fimEm: substituicao.fimEm.toISOString(),
       fimEnvioEm: substituicao.fimEnvioEm.toISOString(),
+      fuso: 'America/Sao_Paulo',
     })
 
     const gravada = await prismaDeTeste().substituicao.findUniqueOrThrow({ where: { id: substituicao.id } })
@@ -271,6 +273,68 @@ describe('conta reconhecida pelo cookie (critério 9)', () => {
     const cookieRevogado = await loginComCookie(ativa.email)
     await prismaDeTeste().refreshToken.updateMany({ where: { usuarioId: ativa.id }, data: { revogadoEm: new Date() } })
     expect((await lerLink(ver(token).set('Cookie', cookieRevogado))).conta).toBeNull()
+  })
+})
+
+describe('reingresso depois do fim, para o salvo subir (critério 15)', () => {
+  /** Já identificado com o segredo; a janela fechou há uma hora e o envio vai até `fimEnvioEm`. */
+  async function encerrado(c: Cenario, fimEnvioEm: Date): Promise<LinkDeTeste & { segredo: string }> {
+    const segredo = gerarTokenOpaco()
+    const substituto = await criarUsuario({ nome: 'Maria Souza' })
+    const criado = await link(c, {
+      inicioEm: new Date(Date.now() - 4 * HORA_MS),
+      fimEm: new Date(Date.now() - HORA_MS),
+      fimEnvioEm,
+      aparelhoHash: hashDoToken(segredo),
+      substitutoId: substituto.id,
+    })
+    return { ...criado, segredo }
+  }
+
+  it('entre o fim e o fim do envio, o segredo devolve a credencial; ela grava, mas não lê', async () => {
+    const c = await cenario()
+    const { token, segredo } = await encerrado(c, new Date(Date.now() + HORA_MS))
+    const entrada = await lerEntrada(entrar(token, { segredo }))
+    expect(entrada.segredo).toBeNull()
+    expect(entrada.identidade.nome).toBe('Maria Souza')
+    await api.put('/api/_teste/pode-ou-substituto', `Bearer ${entrada.credencial}`).expect(200)
+    await api.get('/api/_teste/pode-ou-substituto', `Bearer ${entrada.credencial}`).expect(401)
+  })
+
+  it('segredo errado, ou cancelado, continua recusado depois do fim', async () => {
+    const c = await cenario()
+    const { token } = await encerrado(c, new Date(Date.now() + HORA_MS))
+    expect((await entrar(token, { segredo: 'nao-confere' }).expect(410)).body).toMatchObject({ campos: { estado: 'ENCERRADO' } })
+
+    const cancelado = await encerrado(c, new Date(Date.now() + HORA_MS))
+    await prismaDeTeste().substituicao.update({ where: { id: cancelado.substituicao.id }, data: { canceladoEm: new Date() } })
+    expect((await entrar(cancelado.token, { segredo: cancelado.segredo }).expect(410)).body).toMatchObject({ campos: { estado: 'CANCELADO' } })
+  })
+
+  it('depois do fim do envio, nem o segredo entra', async () => {
+    const c = await cenario()
+    const { token, segredo } = await encerrado(c, new Date(Date.now() - 1000))
+    expect((await entrar(token, { segredo }).expect(410)).body).toMatchObject({ campos: { estado: 'ENCERRADO' } })
+  })
+
+  it('a primeira identificação depois do fim é recusada e não prende o aparelho', async () => {
+    const c = await cenario()
+    const { substituicao, token } = await link(c, { inicioEm: new Date(Date.now() - 4 * HORA_MS), fimEnvioEm: new Date(Date.now() + HORA_MS) })
+    expect((await entrar(token, { nome: 'Maria Souza' }).expect(410)).body).toMatchObject({ campos: { estado: 'ENCERRADO' } })
+    const gravada = await prismaDeTeste().substituicao.findUniqueOrThrow({ where: { id: substituicao.id } })
+    expect(gravada.aparelhoHash).toBeNull()
+    expect(await usuariosDeSubstituicao(substituicao.id)).toBe(0)
+  })
+})
+
+describe('fuso do clube nas respostas públicas', () => {
+  it('o GET e a Entrada trazem o fuso do clube; INEXISTENTE traz nulo', async () => {
+    const c = await cenario()
+    await configurarClube({ clubeId: c.clube.id, fuso: 'America/Manaus' })
+    const { token } = await link(c)
+    expect((await lerLink(ver(token))).fuso).toBe('America/Manaus')
+    expect((await lerEntrada(entrar(token, { nome: 'Maria Souza' }))).identidade.fuso).toBe('America/Manaus')
+    expect((await lerLink(ver(gerarTokenOpaco()))).fuso).toBeNull()
   })
 })
 

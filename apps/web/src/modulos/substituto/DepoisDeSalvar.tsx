@@ -38,7 +38,7 @@ export function DepoisDeSalvar() {
       <EstadoDoLink icone={Check} tom="sucesso" titulo={ehChamada ? 'Chamada salva' : 'Registro da classe salvo'}>
         <p>{situacao}</p>
         <p>
-          Até <b>{hora(identidade.fimEm)}</b> você ainda pode corrigir.
+          Até <b>{hora(identidade.fimEm, identidade.fuso)}</b> você ainda pode corrigir.
         </p>
         <Link to={reabrir} className={estiloDoBotao({ largura: 'total' })}>
           {ehChamada ? 'Abrir a chamada de novo' : 'Abrir o registro da classe de novo'}

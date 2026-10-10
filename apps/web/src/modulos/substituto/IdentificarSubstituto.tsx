@@ -43,7 +43,7 @@ export function IdentificarSubstituto({ sobre, conta, aoEntrar }: Propriedades) 
   return (
     <MolduraDoLink titulo={tituloDoLink(sobre)}>
       <p className="text-base font-semibold text-texto-2">
-        {dataPorExtenso(sobre.data)} · até {hora(sobre.fimEm)}
+        {dataPorExtenso(sobre.data)} · até {hora(sobre.fimEm, sobre.fuso)}
       </p>
       {usarConta && conta ? (
         <ComConta nome={conta.nome} tipo={sobre.tipo} comecar={comecar} enviando={enviando} aoComecar={() => void entrar({ usarConta: true })} aoNaoSou={() => setUsarConta(false)} />
