@@ -669,7 +669,7 @@ describe('Substituição: alvo fixo, destinos e R1', () => {
     expect(await screen.findByRole('link', { name: 'Voltar ao link' })).toHaveAttribute('href', '/substituto/t')
   })
 
-  it('sem conexão, "Registrar classe" abre o registro pelo caminho dado', async () => {
+  it('sem conexão, "Registrar classe" abre o registro pelo caminho dado', () => {
     const roteador = createMemoryRouter([{ path: '/', element: <ProvedorDeDestinos destinos={{ registroDaClasse: () => '/substituto/t/classe' }}><ClassesSemConexao /></ProvedorDeDestinos> }])
     render(<RouterProvider router={roteador} />)
     expect(screen.getByRole('link', { name: 'Registrar classe' })).toHaveAttribute('href', '/substituto/t/classe')
