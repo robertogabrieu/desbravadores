@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common'
 import { mediaTurma, percentualClasse, prontoParaInvestidura } from '@desbravadores/shared'
-import type { ProgressoClasseSaida, ProgressoDbvSaida } from '@desbravadores/shared'
+import type { ClasseBiblicaDoRequisito, ProgressoClasseSaida, ProgressoDbvSaida } from '@desbravadores/shared'
 import type { z } from 'zod'
+import { contarPorDbv, edicoesNoPeriodo } from '../classe-biblica/frequencia'
 import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { ErroApp } from '../comum/erros'
@@ -13,12 +14,14 @@ import { ehFichaDaSessao } from './conclusoes'
 
 type ProgressoClasse = z.infer<typeof ProgressoClasseSaida>
 type ProgressoDbv = z.infer<typeof ProgressoDbvSaida>
+type EvidenciaClasseBiblica = z.infer<typeof ClasseBiblicaDoRequisito>
 
 /** B11: `DESISTIU` nunca entra no progresso. */
 const STATUS_NO_PROGRESSO: StatusMatricula[] = ['CURSANDO', 'CONCLUIDA', 'INVESTIDA']
 
 const CLASSE_NAO_ENCONTRADA = 'Classe não encontrada.'
 const DBV_NAO_ENCONTRADO = 'Desbravador não encontrado.'
+const UM_DIA_MS = 24 * 60 * 60 * 1000
 
 export interface SecaoDaClasse {
   codigo: string
@@ -178,6 +181,13 @@ export class ServicoProgresso {
     const permissoes = await this.escopo.permissoes(sessao)
     const classesDoInstrutor = sessao.papel === 'INSTRUTOR' ? await this.escopo.classesDoInstrutor(sessao) : []
     const temPermissao = permissoes.includes('requisito.marcar') && !ehFichaDaSessao(sessao, dbv.usuarioId)
+    const comMarcaClasseBiblica = await this.prisma.requisito.findMany({
+      where: { classeBiblica: true, secao: { classeId: { in: matriculas.map((matricula) => matricula.classe.id) } } },
+      select: { id: true },
+    })
+    const marcados = new Set(comMarcaClasseBiblica.map((requisito) => requisito.id))
+    // Todas as matrículas da ficha são do ano corrente, então a evidência é a mesma em todas.
+    const evidencia = marcados.size > 0 ? await this.evidenciaClasseBiblica(clubeId, dbvId, relogio) : null
 
     const saida: ProgressoDbv['matriculas'] = []
     for (const matricula of matriculas) {
@@ -192,6 +202,7 @@ export class ServicoProgresso {
             concluidoEm: conclusao ? paraDataCivil(conclusao.concluidoEm) : null,
             marcadoPor: conclusao?.marcadoPor.nome ?? null,
             podeMarcar,
+            ...(marcados.has(requisito.id) ? { classeBiblica: evidencia } : {}),
           }
         })
         return {
@@ -215,6 +226,49 @@ export class ServicoProgresso {
       })
     }
     return { matriculas: saida }
+  }
+
+  /**
+   * Regra 13: só edições que cruzam o ano do clube; em destaque a mais recente com encontro contado,
+   * as outras em "Antes". Sem linha no ano, avisa se a unidade atual ficou fora da edição em andamento.
+   */
+  private async evidenciaClasseBiblica(clubeId: string, dbvId: string, relogio: RelogioDoClube): Promise<EvidenciaClasseBiblica | null> {
+    const { de, ate } = this.intervaloDoAno(relogio)
+    const edicoes = await edicoesNoPeriodo(this.prisma, clubeId, paraDataCivil(de), paraDataCivil(new Date(ate.getTime() - UM_DIA_MS)))
+    const contadas: (EvidenciaClasseBiblica['anteriores'][number] & { grupo: string })[] = []
+    for (const edicao of edicoes) {
+      const contagem = (await contarPorDbv(this.prisma, clubeId, edicao.id, [dbvId])).get(dbvId)
+      if (!contagem || contagem.encontros === 0) continue
+      const { encontros, presencas, participacoes } = contagem
+      contadas.push({ edicao: edicao.nome, encontros, presencas, participacoes, grupo: contagem.grupoNome })
+    }
+    const [destaque, ...anteriores] = contadas
+    if (destaque) {
+      return {
+        ...destaque,
+        semGrupo: false,
+        anteriores: anteriores.map(({ edicao, encontros, presencas, participacoes }) => ({ edicao, encontros, presencas, participacoes })),
+      }
+    }
+    return this.unidadeForaDosGrupos(clubeId, dbvId, relogio.hoje)
+  }
+
+  /** Edição em andamento é a terminada que ainda não passou do fim (regra 2). */
+  private async unidadeForaDosGrupos(clubeId: string, dbvId: string, hoje: string): Promise<EvidenciaClasseBiblica | null> {
+    const emAndamento = await this.prisma.edicaoClasseBiblica.findMany({
+      where: { clubeId, terminadaEm: { not: null }, fim: { gte: daDataCivil(hoje) } },
+      select: { id: true, nome: true },
+      orderBy: [{ inicio: 'desc' }, { id: 'desc' }],
+    })
+    if (emAndamento.length === 0) return null
+    const membro = await this.prisma.membroUnidade.findFirst({ where: { clubeId, dbvId, fim: null }, select: { unidadeId: true } })
+    const emGrupo = membro
+      ? await this.prisma.grupoUnidadeClasseBiblica.count({
+          where: { clubeId, unidadeId: membro.unidadeId, edicaoId: { in: emAndamento.map((edicao) => edicao.id) } },
+        })
+      : 0
+    if (emGrupo > 0) return null
+    return { edicao: emAndamento[0].nome ?? '', encontros: 0, presencas: 0, participacoes: 0, grupo: null, semGrupo: true, anteriores: [] }
   }
 
   /** Inicio e fim (exclusivo) do ano do clube, como datas de coluna `@db.Date`. */

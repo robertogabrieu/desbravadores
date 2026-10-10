@@ -31,6 +31,14 @@ interface Especialidades {
   areas: { especialidades: unknown[] }[]
 }
 
+const MIGRATION_CLASSE_BIBLICA = resolve(__dirname, '../../prisma/migrations/20261010120000_classe_biblica/migration.sql')
+const MARCADOS_CLASSE_BIBLICA = [
+  'AGRUPADAS|Agrupadas (Amigo a Guia)|G|G15|oficial',
+  'INDIVIDUAL|Amigo|G|G6|oficial',
+  'INDIVIDUAL|Companheiro|G|G6|oficial',
+  'INDIVIDUAL|Pesquisador|G|G6|oficial',
+]
+
 const ZERADO = { criados: 0, atualizados: 0, desativados: 0 }
 
 describe('carga oficial (SPEC 5.3)', () => {
@@ -86,6 +94,33 @@ describe('carga oficial (SPEC 5.3)', () => {
     expect(primeira.especialidades.criados).toBe(514)
     expect(primeira.mestrados.criados).toBe(16)
     expect(await contagens()).toEqual({ classes: 14, requisitos: 399, areas: 9, especialidades: 514, mestrados: 16 })
+  })
+
+  async function marcadosClasseBiblica(): Promise<string[]> {
+    const requisitos = await banco.prisma.requisito.findMany({
+      where: { classeBiblica: true },
+      select: { codigo: true, secao: { select: { codigo: true, classe: { select: { nome: true, trilha: true, clubeId: true } } } } },
+    })
+    return requisitos
+      .map((r) => `${r.secao.classe.trilha}|${r.secao.classe.nome}|${r.secao.codigo}|${r.codigo}|${r.secao.classe.clubeId ?? 'oficial'}`)
+      .sort()
+  }
+
+  it('liga a marca de Classe Bíblica exatamente em Amigo G6, Companheiro G6, Pesquisador G6 e Agrupadas G15', async () => {
+    expect(await marcadosClasseBiblica()).toEqual(MARCADOS_CLASSE_BIBLICA)
+  })
+
+  it('o UPDATE da migration, rodado com a marca zerada, liga os mesmos 4 requisitos', async () => {
+    const sql = readFileSync(MIGRATION_CLASSE_BIBLICA, 'utf8')
+    const inicio = sql.indexOf('UPDATE "Requisito"')
+    expect(inicio).toBeGreaterThanOrEqual(0)
+    const update = sql.slice(inicio, sql.indexOf(';', inicio) + 1)
+    await banco.prisma.requisito.updateMany({ data: { classeBiblica: false } })
+    expect(await marcadosClasseBiblica()).toEqual([])
+
+    await banco.prisma.$executeRawUnsafe(update)
+
+    expect(await marcadosClasseBiblica()).toEqual(MARCADOS_CLASSE_BIBLICA)
   })
 
   it.each(REQUISITOS_POR_CLASSE)('%s (%s) tem %i requisitos', async (nome, trilha, total) => {
