@@ -491,6 +491,78 @@ describe('Biblioteca — adicionar', () => {
     expect(dialogo.getByRole('button', { name: 'Adicionar' })).toBeEnabled()
   })
 
+  describe('o erro vindo da API', () => {
+    const recusaDoPdf = { status: 422, corpo: { codigo: 'REGRA', mensagem: 'O arquivo não é um PDF.' } }
+    const MENSAGEM = 'O arquivo não é um PDF.'
+
+    async function provocarRecusa(usuario: Usuario, dialogo: Awaited<ReturnType<typeof abrirAdicionar>>) {
+      await usuario.upload(dialogo.getByLabelText('PDF'), pdfDe('falso.pdf'))
+      await usuario.click(dialogo.getByRole('button', { name: 'Adicionar' }))
+      expect(await dialogo.findByRole('alert')).toHaveTextContent(MENSAGEM)
+    }
+
+    it('some quando a pessoa escolhe outro PDF', async () => {
+      simularEnvios([recusaDoPdf])
+      const usuario = userEvent.setup()
+      abrir()
+      const dialogo = await abrirAdicionar(usuario)
+      await provocarRecusa(usuario, dialogo)
+      await usuario.upload(dialogo.getByLabelText('PDF'), pdfDe('certo.pdf'))
+      expect(dialogo.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('não convive com o aviso local: ao escolher uma capa grande demais, só resta o aviso da capa', async () => {
+      simularEnvios([recusaDoPdf])
+      const usuario = userEvent.setup()
+      abrir()
+      const dialogo = await abrirAdicionar(usuario)
+      await provocarRecusa(usuario, dialogo)
+      await usuario.upload(dialogo.getByLabelText('Capa'), capaDe('grande.png', 6 * MB))
+      expect(dialogo.getByText('A capa pode ter até 5 MB.')).toBeInTheDocument()
+      expect(dialogo.queryByText(MENSAGEM)).not.toBeInTheDocument()
+    })
+
+    it('some quando a pessoa muda o nome, a descrição, a categoria ou a capa', async () => {
+      simularEnvios([recusaDoPdf])
+      const usuario = userEvent.setup()
+      abrir()
+      const dialogo = await abrirAdicionar(usuario)
+      await provocarRecusa(usuario, dialogo)
+      await usuario.type(dialogo.getByLabelText('Nome'), ' 2')
+      expect(dialogo.queryByRole('alert')).not.toBeInTheDocument()
+
+      await usuario.click(dialogo.getByRole('button', { name: 'Adicionar' }))
+      expect(await dialogo.findByRole('alert')).toHaveTextContent(MENSAGEM)
+      await usuario.type(dialogo.getByLabelText('Descrição'), 'x')
+      expect(dialogo.queryByRole('alert')).not.toBeInTheDocument()
+
+      await usuario.click(dialogo.getByRole('button', { name: 'Adicionar' }))
+      expect(await dialogo.findByRole('alert')).toHaveTextContent(MENSAGEM)
+      await usuario.selectOptions(dialogo.getByLabelText('Categoria'), livros.id)
+      expect(dialogo.queryByRole('alert')).not.toBeInTheDocument()
+
+      await usuario.click(dialogo.getByRole('button', { name: 'Adicionar' }))
+      expect(await dialogo.findByRole('alert')).toHaveTextContent(MENSAGEM)
+      await usuario.upload(dialogo.getByLabelText('Capa'), capaDe())
+      expect(dialogo.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('some ao tentar enviar de novo, enquanto o novo envio corre', async () => {
+      const envio = simularEnvios([recusaDoPdf], true)
+      const usuario = userEvent.setup()
+      abrir()
+      const dialogo = await abrirAdicionar(usuario)
+      await usuario.upload(dialogo.getByLabelText('PDF'), pdfDe('falso.pdf'))
+      await usuario.click(dialogo.getByRole('button', { name: 'Adicionar' }))
+      await waitFor(() => expect(envio.enviados).toHaveLength(1))
+      envio.concluir()
+      expect(await dialogo.findByRole('alert')).toHaveTextContent(MENSAGEM)
+      await usuario.click(dialogo.getByRole('button', { name: 'Adicionar' }))
+      await waitFor(() => expect(envio.enviados).toHaveLength(2))
+      expect(dialogo.queryByRole('alert')).not.toBeInTheDocument()
+    })
+  })
+
   it('"Cancelar" durante o envio interrompe o envio e fecha o diálogo', async () => {
     const envio = simularEnvios([{ status: 201, corpo: criarItemBiblioteca(8) }], true)
     const usuario = userEvent.setup()
@@ -638,6 +710,54 @@ describe('Biblioteca — editar', () => {
     await usuario.click(dialogo.getByRole('button', { name: 'Salvar' }))
     expect(await dialogo.findByRole('alert')).toHaveTextContent('Categoria não encontrada.')
   })
+
+  describe('o erro vindo da API', () => {
+    const MENSAGEM = 'Categoria não encontrada.'
+
+    async function provocarRecusa(usuario: Usuario, dialogo: Awaited<ReturnType<typeof abrirEditar>>) {
+      servidor.use(http.patch('/api/biblioteca/itens/:id', () => HttpResponse.json({ codigo: 'NAO_ENCONTRADO', mensagem: MENSAGEM }, { status: 404 })))
+      await usuario.type(dialogo.getByLabelText('Nome'), ' novo')
+      await usuario.click(dialogo.getByRole('button', { name: 'Salvar' }))
+      expect(await dialogo.findByRole('alert')).toHaveTextContent(MENSAGEM)
+    }
+
+    it('some quando a pessoa muda o nome, a descrição ou a categoria', async () => {
+      const usuario = userEvent.setup()
+      abrir()
+      const dialogo = await abrirEditar(usuario, 'Amigo')
+      await provocarRecusa(usuario, dialogo)
+      await usuario.type(dialogo.getByLabelText('Nome'), '!')
+      expect(dialogo.queryByRole('alert')).not.toBeInTheDocument()
+
+      await usuario.click(dialogo.getByRole('button', { name: 'Salvar' }))
+      expect(await dialogo.findByRole('alert')).toHaveTextContent(MENSAGEM)
+      await usuario.type(dialogo.getByLabelText('Descrição'), '!')
+      expect(dialogo.queryByRole('alert')).not.toBeInTheDocument()
+
+      await usuario.click(dialogo.getByRole('button', { name: 'Salvar' }))
+      expect(await dialogo.findByRole('alert')).toHaveTextContent(MENSAGEM)
+      await usuario.selectOptions(dialogo.getByLabelText('Categoria'), livros.id)
+      expect(dialogo.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('não convive com o aviso local: ao escolher uma capa grande demais, só resta o aviso da capa', async () => {
+      const usuario = userEvent.setup()
+      abrir()
+      const dialogo = await abrirEditar(usuario, 'Amigo')
+      await provocarRecusa(usuario, dialogo)
+      await usuario.upload(dialogo.getByLabelText('Nova capa'), capaDe('grande.png', 6 * MB))
+      expect(dialogo.getAllByRole('alert').map((aviso) => aviso.textContent)).toEqual(['A capa pode ter até 5 MB.'])
+    })
+
+    it('some quando a pessoa tira a capa', async () => {
+      const usuario = userEvent.setup()
+      abrir()
+      const dialogo = await abrirEditar(usuario, 'Caminho a Cristo')
+      await provocarRecusa(usuario, dialogo)
+      await usuario.click(dialogo.getByRole('button', { name: 'Tirar capa' }))
+      expect(dialogo.queryByRole('alert')).not.toBeInTheDocument()
+    })
+  })
 })
 
 describe('Biblioteca — mover', () => {
@@ -730,6 +850,39 @@ describe('Biblioteca — categorias', () => {
     await usuario.type(dialogo.getByLabelText('Nome da categoria'), 'Livros')
     await usuario.click(dialogo.getByRole('button', { name: 'Criar' }))
     expect(await dialogo.findByRole('alert')).toHaveTextContent('Já existe uma categoria com esse nome.')
+  })
+
+  it('o erro da API some quando a pessoa muda o nome, e não convive com o aviso de nome vazio', async () => {
+    servidor.use(http.post('/api/biblioteca/categorias', () => HttpResponse.json({ codigo: 'REGRA', mensagem: 'Já existe uma categoria com esse nome.' }, { status: 422 })))
+    const usuario = userEvent.setup()
+    abrir()
+    await usuario.click(await screen.findByRole('button', { name: 'Nova categoria' }))
+    const dialogo = within(await screen.findByRole('dialog', { name: 'Nova categoria' }))
+    await usuario.type(dialogo.getByLabelText('Nome da categoria'), 'Livros')
+    await usuario.click(dialogo.getByRole('button', { name: 'Criar' }))
+    expect(await dialogo.findByRole('alert')).toHaveTextContent('Já existe uma categoria com esse nome.')
+    await usuario.type(dialogo.getByLabelText('Nome da categoria'), ' 2')
+    expect(dialogo.queryByRole('alert')).not.toBeInTheDocument()
+
+    await usuario.click(dialogo.getByRole('button', { name: 'Criar' }))
+    expect(await dialogo.findByRole('alert')).toHaveTextContent('Já existe uma categoria com esse nome.')
+    await usuario.clear(dialogo.getByLabelText('Nome da categoria'))
+    expect(dialogo.queryByText('Já existe uma categoria com esse nome.')).not.toBeInTheDocument()
+    expect(dialogo.getByText('Dê um nome à categoria.')).toBeInTheDocument()
+  })
+
+  it('"Renomear": o erro da API também some quando a pessoa muda o nome', async () => {
+    servidor.use(http.patch('/api/biblioteca/categorias/:id', () => HttpResponse.json({ codigo: 'REGRA', mensagem: 'Já existe uma categoria com esse nome.' }, { status: 422 })))
+    const usuario = userEvent.setup()
+    abrir()
+    const menu = await abrirMenu(usuario, 'Opções da categoria Livros')
+    await usuario.click(menu.getByRole('menuitem', { name: 'Renomear' }))
+    const dialogo = within(await screen.findByRole('dialog', { name: 'Renomear categoria' }))
+    await usuario.type(dialogo.getByLabelText('Nome da categoria'), ' 2')
+    await usuario.click(dialogo.getByRole('button', { name: 'Salvar' }))
+    expect(await dialogo.findByRole('alert')).toHaveTextContent('Já existe uma categoria com esse nome.')
+    await usuario.type(dialogo.getByLabelText('Nome da categoria'), '!')
+    expect(dialogo.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('"Nova categoria" grava o nome e fecha', async () => {

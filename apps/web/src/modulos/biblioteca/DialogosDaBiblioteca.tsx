@@ -67,6 +67,11 @@ function DialogoDeCategoria({ categoria, aoFechar }: { categoria?: CategoriaBibl
   const [tentou, definirTentou] = useState(false)
   const nomeLimpo = nome.trim()
 
+  const mudarNome = (evento: ChangeEvent<HTMLInputElement>) => {
+    gravando.reset()
+    definirNome(evento.target.value)
+  }
+
   const confirmar = () => {
     definirTentou(true)
     if (nomeLimpo === '') return
@@ -97,7 +102,7 @@ function DialogoDeCategoria({ categoria, aoFechar }: { categoria?: CategoriaBibl
           maxLength={60}
           ajuda={categoria ? undefined : 'Ela entra no fim da estante; mude a posição pelo menu dela.'}
           erro={tentou && nomeLimpo === '' ? 'Dê um nome à categoria.' : undefined}
-          onChange={(evento) => definirNome(evento.target.value)}
+          onChange={mudarNome}
         />
       </form>
     </Confirmacao>
@@ -220,6 +225,7 @@ function DialogoAdicionar({ categorias, aoFechar }: { categorias: CategoriaBibli
   const nomeLimpo = nome.trim()
 
   const escolherPdf = (evento: ChangeEvent<HTMLInputElement>) => {
+    definirErroDoEnvio(null)
     const escolhido = evento.target.files?.[0] ?? null
     const recusa = escolhido ? erroDoPdf(escolhido) : null
     definirErroPdf(recusa)
@@ -228,10 +234,26 @@ function DialogoAdicionar({ categorias, aoFechar }: { categorias: CategoriaBibli
   }
 
   const escolherCapa = (evento: ChangeEvent<HTMLInputElement>) => {
+    definirErroDoEnvio(null)
     const escolhida = evento.target.files?.[0] ?? null
     const recusa = escolhida ? erroDaCapa(escolhida) : null
     definirErroCapa(recusa)
     definirCapa(recusa ? null : escolhida)
+  }
+
+  const mudarNome = (evento: ChangeEvent<HTMLInputElement>) => {
+    definirErroDoEnvio(null)
+    definirNome(evento.target.value)
+  }
+
+  const mudarDescricao = (evento: ChangeEvent<HTMLInputElement>) => {
+    definirErroDoEnvio(null)
+    definirDescricao(evento.target.value)
+  }
+
+  const mudarCategoria = (evento: ChangeEvent<HTMLSelectElement>) => {
+    definirErroDoEnvio(null)
+    definirCategoriaId(evento.target.value)
   }
 
   const cancelar = () => {
@@ -291,10 +313,10 @@ function DialogoAdicionar({ categorias, aoFechar }: { categorias: CategoriaBibli
           disabled={enviando}
           ajuda={AJUDA_DO_NOME}
           erro={tentou && nomeLimpo === '' ? 'Dê um nome ao item.' : undefined}
-          onChange={(evento) => definirNome(evento.target.value)}
+          onChange={mudarNome}
         />
-        <Campo rotulo="Descrição" value={descricao} maxLength={120} disabled={enviando} ajuda={AJUDA_DA_DESCRICAO} onChange={(evento) => definirDescricao(evento.target.value)} />
-        <Selecao rotulo="Categoria" value={categoriaId} disabled={enviando} onChange={(evento) => definirCategoriaId(evento.target.value)}>
+        <Campo rotulo="Descrição" value={descricao} maxLength={120} disabled={enviando} ajuda={AJUDA_DA_DESCRICAO} onChange={mudarDescricao} />
+        <Selecao rotulo="Categoria" value={categoriaId} disabled={enviando} onChange={mudarCategoria}>
           <OpcoesDeCategoria categorias={categorias} />
         </Selecao>
         <Campo
@@ -335,6 +357,31 @@ function DialogoEditar({ item, categorias, aoFechar }: { item: ItemBiblioteca; c
   const trocandoCapa = porcento !== null
   const falha = editar.error ?? tirarCapa.error
 
+  const limparFalhas = () => {
+    editar.reset()
+    tirarCapa.reset()
+  }
+
+  const mudarNome = (evento: ChangeEvent<HTMLInputElement>) => {
+    limparFalhas()
+    definirNome(evento.target.value)
+  }
+
+  const mudarDescricao = (evento: ChangeEvent<HTMLInputElement>) => {
+    limparFalhas()
+    definirDescricao(evento.target.value)
+  }
+
+  const mudarCategoria = (evento: ChangeEvent<HTMLSelectElement>) => {
+    limparFalhas()
+    definirCategoriaId(evento.target.value)
+  }
+
+  const removerCapa = () => {
+    limparFalhas()
+    tirarCapa.mutate(item.id)
+  }
+
   const salvar = () => {
     definirTentou(true)
     if (nomeLimpo === '') return
@@ -350,6 +397,7 @@ function DialogoEditar({ item, categorias, aoFechar }: { item: ItemBiblioteca; c
     const escolhida = evento.target.files?.[0] ?? null
     evento.target.value = ''
     if (!escolhida) return
+    limparFalhas()
     const recusa = erroDaCapa(escolhida)
     definirErroCapa(recusa)
     if (recusa) return
@@ -381,10 +429,10 @@ function DialogoEditar({ item, categorias, aoFechar }: { item: ItemBiblioteca; c
           maxLength={120}
           ajuda={AJUDA_DO_NOME}
           erro={tentou && nomeLimpo === '' ? 'Dê um nome ao item.' : undefined}
-          onChange={(evento) => definirNome(evento.target.value)}
+          onChange={mudarNome}
         />
-        <Campo rotulo="Descrição" value={descricao} maxLength={120} ajuda={AJUDA_DA_DESCRICAO} onChange={(evento) => definirDescricao(evento.target.value)} />
-        <Selecao rotulo="Categoria" value={categoriaId} ajuda="Ao mudar de categoria, o item vai para o fim dela." onChange={(evento) => definirCategoriaId(evento.target.value)}>
+        <Campo rotulo="Descrição" value={descricao} maxLength={120} ajuda={AJUDA_DA_DESCRICAO} onChange={mudarDescricao} />
+        <Selecao rotulo="Categoria" value={categoriaId} ajuda="Ao mudar de categoria, o item vai para o fim dela." onChange={mudarCategoria}>
           <OpcoesDeCategoria categorias={categorias} />
         </Selecao>
         <div role="group" aria-label="Capa" className="flex flex-col gap-1.5">
@@ -398,7 +446,7 @@ function DialogoEditar({ item, categorias, aoFechar }: { item: ItemBiblioteca; c
                 Trocar capa
               </Botao>
               {item.capaUrl && (
-                <Botao variante="secundario" disabled={trocandoCapa} carregando={tirarCapa.isPending} onClick={() => tirarCapa.mutate(item.id)}>
+                <Botao variante="secundario" disabled={trocandoCapa} carregando={tirarCapa.isPending} onClick={removerCapa}>
                   Tirar capa
                 </Botao>
               )}
