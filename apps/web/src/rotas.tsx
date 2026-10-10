@@ -3,6 +3,7 @@ import { LayoutAdm } from './layouts/LayoutAdm'
 import { LayoutCelular } from './layouts/LayoutCelular'
 import { rotasAcessoPapel, rotasAcessoPublicas } from './modulos/acesso/rotas'
 import { rotasAdmCalendario } from './modulos/adm/calendario/rotas'
+import { rotasAdmClasseBiblica } from './modulos/adm/classe-biblica/rotas'
 import { rotasAdmReunioes } from './modulos/adm/reunioes/rotas'
 import { rotasAdmClasses } from './modulos/adm/classes/rotas'
 import { rotasAdmConfiguracoes } from './modulos/adm/configuracoes/rotas'
@@ -15,6 +16,7 @@ import { TelaConectar } from './modulos/conectar/TelaConectar'
 import { PaginaNaoEncontrada } from './modulos/erro/PaginaNaoEncontrada'
 import { PaginaFila } from './modulos/fila/PaginaFila'
 import { TelaRegistroAula } from './modulos/aulas/TelaRegistroAula'
+import { rotasClasseBiblica } from './modulos/classe-biblica/rotas'
 import { TelaClasses } from './modulos/classes/TelaClasses'
 import { TelaCronograma } from './modulos/cronograma/TelaCronograma'
 import { TelaEspecialidades } from './modulos/especialidades/TelaEspecialidades'
@@ -71,6 +73,7 @@ export const rotas: RouteObject[] = [
         children: [
           { path: '/inicio', element: <InicioDoPapel /> },
           { path: '/fila', element: <PaginaFila /> },
+          ...rotasClasseBiblica,
           {
             element: <GuardaRota papeis={['CONSELHEIRO']} />,
             children: [...rotasUnidade, ...rotasReunioes, ...rotasGaleria],
@@ -94,6 +97,7 @@ export const rotas: RouteObject[] = [
           ...rotasAdmCalendario,
           ...rotasAdmReunioes,
           ...rotasAdmCronogramas,
+          ...rotasAdmClasseBiblica,
           ...rotasAdmConfiguracoes,
         ],
       },
