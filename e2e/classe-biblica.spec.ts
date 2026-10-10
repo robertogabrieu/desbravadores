@@ -120,12 +120,18 @@ test('classe bíblica: o Adm cria a edição, faz a chamada sem rede e ela chega
   await context.setOffline(false)
   const outra = await context.newPage()
   await outra.goto(caminhoDoPainel)
-  await expect(outra.getByText(/aguardando envio/)).toHaveCount(0, { timeout: 30_000 })
 
-  // O painel mostra o encontro de hoje como feito, com os totais da chamada.
-  await outra.reload()
-  await outra.getByRole('tab', { name: 'Grupo Daniel' }).click()
-  await expect(outra.getByText('2 de 3 presentes · 1 participaram ativamente')).toBeVisible()
+  // O painel mostra o encontro de hoje como feito, com os totais da chamada, assim que a fila envia.
+  await expect
+    .poll(
+      async () => {
+        await outra.reload()
+        await outra.getByRole('tab', { name: 'Grupo Daniel' }).click()
+        return outra.getByText('2 de 3 presentes · 1 participaram ativamente').count()
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(1)
   await expect(outra.getByRole('link', { name: `Ver a chamada de ${diaMes(hoje)}` })).toBeVisible()
   await expect(outra.getByText(/de presença média em 1 encontro feito/)).toBeVisible()
 

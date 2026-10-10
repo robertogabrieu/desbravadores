@@ -6,7 +6,10 @@ import { useFila, usePacote } from '../../offline'
 import type { PacoteGuardado } from '../../offline'
 import { pendentesDaChamadaCB } from '../../offline/tipos/classe-biblica'
 import { useSessao } from '../../sessao/useSessao'
+import { estiloDoBotao } from '../../ui/Botao'
 import { Cartao } from '../../ui/Cartao'
+import { cn } from '../../ui/cn'
+import { diaDaSemana, diaMes } from '../classe-biblica/formatos'
 
 type ClasseBiblicaDoPacote = NonNullable<NonNullable<PacoteGuardado['pacote']>['classeBiblica']>
 type Encontro = ClasseBiblicaDoPacote['encontros'][number]
@@ -26,10 +29,7 @@ const somarDias = (data: string, dias: number): string => {
 }
 
 /** "2026-10-11" vira "domingo 11/10". */
-function diaDoEncontro(data: string): string {
-  const semana = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', timeZone: 'UTC' }).format(new Date(`${data}T00:00:00Z`))
-  return `${semana.replace('-feira', '')} ${data.slice(8, 10)}/${data.slice(5, 7)}`
-}
+const diaDoEncontro = (data: string): string => `${diaDaSemana(data)} ${diaMes(data)}`
 
 /**
  * Encontros do dia até 7 dias depois, cada um com os grupos ainda sem chamada registrada nem guardada na fila
@@ -64,7 +64,7 @@ function CartaoDoEncontro({ encontro, grupos }: ChamadaPendente) {
         <Link
           key={grupo.id}
           to={`/classe-biblica/encontros/${encontro.id}/grupos/${grupo.id}/chamada`}
-          className="flex min-h-[var(--touch-min)] items-center justify-center gap-2 rounded-botao bg-marca px-5 text-center text-base font-semibold text-white hover:bg-marca-escura focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marca"
+          className={cn(estiloDoBotao(), 'text-center')}
         >
           <ClipboardCheck aria-hidden className="size-5 shrink-0" />
           Fazer a chamada do {grupo.nome}

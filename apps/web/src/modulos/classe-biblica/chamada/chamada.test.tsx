@@ -6,6 +6,7 @@ import type { ReactNode } from 'react'
 import { HttpResponse, http } from 'msw'
 import { RouterProvider, createMemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { chavesClasseBiblica } from '../../../api/classe-biblica'
 import type { ItemFila, ModoConexao, PacoteGuardado } from '../../../offline'
 import type { PayloadChamadaCB } from '../../../offline/tipos/classe-biblica'
 import { ContextoDaSessao } from '../../../sessao/useSessao'
@@ -57,7 +58,7 @@ function guardar(classeBiblica = criarPacoteClasseBiblica()) {
   estado.pacote = { pacote: criarPacote({ classeBiblica }), carregando: false, baixadoEm: Date.now() }
 }
 
-function montar(rota = ROTA_ADM, permissoes = ['classebiblica.chamada', 'classebiblica.gerenciar']) {
+function montar(rota = ROTA_ADM, permissoes = ['classebiblica.chamada', 'classebiblica.gerenciar'], consultas = novoCliente()) {
   const sessao = { situacao: 'autenticada', pode: (p: string) => permissoes.includes(p) } as unknown as ContextoSessao
   const roteador = createMemoryRouter(
     [
@@ -69,12 +70,30 @@ function montar(rota = ROTA_ADM, permissoes = ['classebiblica.chamada', 'classeb
     { initialEntries: [rota] },
   )
   const Envoltorio = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <QueryClientProvider client={consultas}>
       <ContextoDaSessao.Provider value={sessao}>{children}</ContextoDaSessao.Provider>
     </QueryClientProvider>
   )
   render(<RouterProvider router={roteador} />, { wrapper: Envoltorio })
   return roteador
+}
+
+function novoCliente() {
+  return new QueryClient({ defaultOptions: { queries: { retry: false } } })
+}
+
+/** A chamada do fixture com Enzo já gravado como falta. */
+function chamadaComEnzoFaltando() {
+  const chamada = criarChamadaCB()
+  return {
+    ...chamada,
+    unidades: chamada.unidades.map((unidade) => ({
+      ...unidade,
+      desbravadores: unidade.desbravadores.map((dbv) =>
+        dbv.nome === 'Enzo Barros' ? { ...dbv, presente: false, versao: '2026-10-11T15:00:00.000Z' } : dbv,
+      ),
+    })),
+  }
 }
 
 const linha = (nome: string) => within(screen.getByRole('listitem', { name: nome }))
@@ -186,6 +205,19 @@ describe('Chamada com conexão', () => {
     expect(await screen.findByText('Chamada não encontrada.')).toBeInTheDocument()
   })
 
+  it('não monta as marcas da leitura guardada: espera a do servidor', async () => {
+    const consultas = novoCliente()
+    consultas.setQueryData(chavesClasseBiblica.chamada(ENCONTRO_CB_ID, GRUPO_DANIEL_ID), criarChamadaCB(), { updatedAt: Date.now() - 60_000 })
+    servidor.use(...handlersClasseBiblica({ chamada: chamadaComEnzoFaltando() }))
+    montar(ROTA_ADM, undefined, consultas)
+    await screen.findByText('Enzo Barros')
+    expect(linha('Enzo Barros').getByText('Faltou')).toBeInTheDocument()
+    await userEvent.click(rodape().getByRole('button', { name: 'Salvar chamada' }))
+    await waitFor(() => expect(estado.enfileirar).toHaveBeenCalledOnce())
+    const enzo = ultimoPayload().payload.corpo.linhas.find((l) => l.versaoVista !== null)
+    expect(enzo).toMatchObject({ presente: false, versaoVista: '2026-10-11T15:00:00.000Z' })
+  })
+
   it('falha de rede cai para o pacote', async () => {
     servidor.use(http.get('/api/classe-biblica/encontros/:id/grupos/:grupoId/chamada', () => HttpResponse.error()))
     montar()
@@ -226,6 +258,31 @@ describe('Sem conexão', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Voltar à edição' })).toHaveAttribute('href', `/adm/classe-biblica/${EDICAO_CB_ID}`)
     expect(ultimoPayload().payload.corpo.linhas).toHaveLength(31)
+  })
+
+  it('a conexão volta no meio: a chamada do pacote continua na tela com os toques', async () => {
+    let responder = () => {}
+    servidor.use(
+      http.get('/api/classe-biblica/encontros/:id/grupos/:grupoId/chamada', async () => {
+        await new Promise<void>((resolver) => {
+          responder = resolver
+        })
+        return HttpResponse.json(chamadaComEnzoFaltando())
+      }),
+    )
+    montar()
+    await screen.findByText('Pedro Henrique Lima')
+    await tocarNome('Pedro Henrique Lima')
+    estado.modo = 'ONLINE'
+    act(() => estado.ouvintes.forEach((ouvinte) => ouvinte()))
+    expect(screen.queryByRole('status', { name: 'Carregando a chamada' })).not.toBeInTheDocument()
+    expect(linha('Pedro Henrique Lima').getByText('Faltou')).toBeInTheDocument()
+    await act(async () => {
+      responder()
+      await new Promise((resolver) => setTimeout(resolver, 20))
+    })
+    expect(linha('Pedro Henrique Lima').getByText('Faltou')).toBeInTheDocument()
+    expect(rodape().getByText('30 presentes · 1 falta · 0 participaram ativamente')).toBeInTheDocument()
   })
 
   it('sem a chamada no pacote: "Esta chamada ainda não está no aparelho"', async () => {

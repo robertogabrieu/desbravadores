@@ -1,5 +1,5 @@
 import { Check, ChevronDown } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ErroDaApi } from '../../../api/cliente'
@@ -18,21 +18,14 @@ import { Carregando } from '../../../ui/EstadosDeCarga'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { FaixaAviso } from '../../../ui/FaixaAviso'
 import { cn } from '../../../ui/cn'
+import { diaDaSemana, diaMes } from '../formatos'
 import { alternarParticipacao, alternarPresenca, aplicarFila, chamadaDoPacote, fraseDosTotais, marcasIniciais, montarEnvio, textoDosTotais, totais } from './estado'
 import type { Marcas, Totais } from './estado'
 
 const TITULO = 'Chamada da Classe Bíblica'
 const SEM_CONEXAO = 'Sem conexão. A chamada fica guardada no aparelho e é enviada quando a internet voltar.'
 const ERRO_GENERICO = 'Não conseguimos abrir a chamada agora. Confira a internet e tente de novo.'
-const DIAS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
 const ESTILO_DO_LINK = 'inline-flex min-h-[var(--touch-min)] items-center font-semibold text-marca underline'
-
-function diaMes(data: string): string {
-  const [, mes, dia] = data.split('-')
-  return `${dia}/${mes}`
-}
-
-const diaDaSemana = (data: string): string => DIAS[new Date(`${data}T12:00:00Z`).getUTCDay()] ?? ''
 
 /** "Falcões e Panteras"; "Águias, Leões e Gaviões". */
 function emLista(nomes: string[]): string {
@@ -66,19 +59,30 @@ export function TelaChamadaCB() {
   const guardado = usePacote()
   const online = modo === 'ONLINE'
   const consulta = useChamadaCB(id, grupoId, online)
+  const [abertaEm] = useState(() => Date.now())
+  const naTela = useRef(false)
   const pacoteCB = guardado.pacote?.classeBiblica
   const doPacote = pacoteCB ? chamadaDoPacote(pacoteCB, id, grupoId) : null
   const recusa = consulta.error instanceof ErroDaApi && consulta.error.classe === 'RECUSA' ? consulta.error : null
+  // Só vale a leitura feita depois de a tela abrir: a que já estava guardada pode ser de antes do último envio.
+  const fresca = consulta.data && consulta.dataUpdatedAt >= abertaEm ? consulta.data : null
 
+  let chamada: ChamadaCB | null = null
   let conteudo
-  if (consulta.data) conteudo = <ChamadaComFila key={`${id}:${grupoId}`} chamada={consulta.data} />
-  else if (online && consulta.isPending) conteudo = <SemChamada carregando />
+  if (fresca) chamada = fresca
   else if (recusa) conteudo = <SemChamada erro={recusa.erro.mensagem} aoTentar={() => void consulta.refetch()} />
+  // A conexão voltou com a chamada do pacote aberta: ela fica na tela enquanto o servidor responde.
+  else if (naTela.current && doPacote) chamada = doPacote
+  else if (online && consulta.isFetching) conteudo = <SemChamada carregando />
   else if (guardado.carregando) conteudo = <SemChamada carregando />
   // Sem resposta do servidor, vale o que o aparelho guardou.
-  else if (doPacote) conteudo = <ChamadaComFila key={`${id}:${grupoId}`} chamada={doPacote} />
+  else if (doPacote) chamada = doPacote
   else if (online) conteudo = <SemChamada erro={ERRO_GENERICO} aoTentar={() => void consulta.refetch()} />
   else conteudo = <SemChamada foraDoAparelho />
+  if (chamada) {
+    naTela.current = true
+    conteudo = <ChamadaComFila key={`${id}:${grupoId}`} chamada={chamada} />
+  }
 
   return (
     <main className="flex flex-col gap-4 p-4">
@@ -123,12 +127,18 @@ const horaMinuto = (instante: number): string =>
   new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false }).format(instante)
 
 interface Inicio {
+  /** A chamada de que as marcas partiram: as versões que vão no envio são as dela. */
+  chamada: ChamadaCB
   marcas: Marcas
   /** Quando o aparelho guardou o último item ainda não enviado; nulo sem item na fila. */
   guardadoEm: number | null
 }
 
-/** Lê a fila da chave uma vez, ao abrir: o que ainda não foi enviado entra por cima do servidor ou do pacote. */
+/**
+ * Lê a fila da chave uma vez, ao abrir: o que ainda não foi enviado entra por cima do servidor ou do pacote.
+ * Uma releitura depois disso não troca a chamada da tela: apagaria os toques, ou mandaria as marcas antigas
+ * com as versões novas e o servidor deixaria de ver o conflito.
+ */
 function ChamadaComFila({ chamada }: { chamada: ChamadaCB }) {
   const [inicio, setInicio] = useState<Inicio | null>(null)
   useEffect(() => {
@@ -136,6 +146,7 @@ function ChamadaComFila({ chamada }: { chamada: ChamadaCB }) {
     void chamadaCBNaFila(chamada.encontro.id, chamada.grupo.id).then((itens) => {
       if (cancelado) return
       setInicio({
+        chamada,
         marcas: aplicarFila(marcasIniciais(chamada), itens.map((item) => item.payload.corpo.linhas)),
         guardadoEm: itens.at(-1)?.atualizadoEm ?? null,
       })
@@ -143,10 +154,9 @@ function ChamadaComFila({ chamada }: { chamada: ChamadaCB }) {
     return () => {
       cancelado = true
     }
-    // Só ao abrir: uma releitura do servidor não apaga os toques.
   }, [chamada.encontro.id, chamada.grupo.id])
   if (!inicio) return <SemChamada carregando />
-  return <Chamada chamada={chamada} inicio={inicio} />
+  return <Chamada chamada={inicio.chamada} inicio={inicio} />
 }
 
 function Chamada({ chamada, inicio }: { chamada: ChamadaCB; inicio: Inicio }) {

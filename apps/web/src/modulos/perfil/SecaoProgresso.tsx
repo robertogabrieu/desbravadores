@@ -91,7 +91,7 @@ function CirculoDoRequisito({ concluido, codigo, podeMarcar, aoTocar }: { conclu
 function QuadroClasseBiblica({ contagem }: { contagem: ClasseBiblicaDoRequisito }) {
   return (
     <div className="mt-1 flex items-start gap-2 rounded-cartao bg-superficie-suave p-3">
-      <BookOpen aria-hidden className="mt-0.5 size-[18px] shrink-0 text-marca" />
+      <BookOpen aria-hidden className="mt-0.5 size-4 shrink-0 text-marca" />
       {contagem.semGrupo ? (
         <span className="text-sm text-texto">{contagem.edicao}: a unidade dele(a) não está em nenhum grupo</span>
       ) : (

@@ -1,6 +1,7 @@
 import { ChamadaCBEnvio, ChamadaCBEnvioSaida } from '@desbravadores/shared'
 import { toast } from 'sonner'
 import { z } from 'zod'
+import { diaMes } from '../../modulos/classe-biblica/formatos'
 import { itensDaChave, registrarTipo } from '../index'
 import type { ContextoAposEnvio, ContextoEnvio, ItemFila } from '../tipos'
 
@@ -41,11 +42,6 @@ export function pendentesDaChamadaCB(itens: ItemFila[]): ItemFila<PayloadChamada
 /** O que o aparelho ainda guarda da chamada deste encontro e grupo; vazio = nada pendente. */
 export async function chamadaCBNaFila(encontroId: string, grupoId: string): Promise<ItemFila<PayloadChamadaCB>[]> {
   return pendentesDaChamadaCB(await itensDaChave(chaveDaChamadaCB(encontroId, grupoId)))
-}
-
-function diaMes(data: string): string {
-  const [, mes, dia] = data.split('-')
-  return `${dia}/${mes}`
 }
 
 const rotulo = (payload: PayloadChamadaCB): string => `Chamada da Classe Bíblica · ${payload.grupoNome} · ${diaMes(payload.data)}`

@@ -252,6 +252,9 @@ export function useChamadaCB(encontroId: string, grupoId: string, habilitada = t
     queryKey: chavesClasseBiblica.chamada(encontroId, grupoId),
     queryFn: () => requisitar(`${caminhoDoEncontro(encontroId)}/grupos/${grupoId}/chamada`, ChamadaCBSaida),
     enabled: habilitada && encontroId !== '' && grupoId !== '',
+    // A chamada é corrigida em cima do que já foi gravado: abrir com uma leitura antiga desfaria o que a fila acabou de enviar.
+    staleTime: 0,
+    gcTime: 0,
   })
 }
 
