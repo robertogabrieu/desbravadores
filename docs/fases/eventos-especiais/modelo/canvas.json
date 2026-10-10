@@ -1,0 +1,192 @@
+{
+ "v": 3,
+ "attachments": {},
+ "boards": {
+  "Form-Especial.dc.html": {
+   "h": 1500,
+   "title": "Novo evento especial · computador",
+   "w": 1280,
+   "x": 0,
+   "y": 300
+  },
+  "Form-Especial-Celular.dc.html": {
+   "h": 2050,
+   "title": "Novo evento especial · celular, com erro no campo e sem uniforme escolhido",
+   "w": 360,
+   "x": 1360,
+   "y": 300
+  },
+  "Form-Especial-Editar.dc.html": {
+   "h": 2650,
+   "title": "Editar evento com a lista concluída · celular",
+   "w": 360,
+   "x": 1800,
+   "y": 300
+  },
+  "Ficha-Especial.dc.html": {
+   "h": 1700,
+   "title": "Ficha do evento · computador, com os quatro estados de “Quem foi”",
+   "w": 1280,
+   "x": 2240,
+   "y": 300
+  },
+  "Ficha-Especial-Celular.dc.html": {
+   "h": 1700,
+   "title": "Ficha do evento · celular, logo depois de salvar",
+   "w": 360,
+   "x": 3600,
+   "y": 300
+  },
+  "Ficha-Especial-Excluir.dc.html": {
+   "h": 800,
+   "title": "Excluir evento com a lista concluída · celular",
+   "w": 360,
+   "x": 0,
+   "y": 3070
+  },
+  "Calendario-Adm.dc.html": {
+   "h": 1700,
+   "title": "Calendário do Adm · computador",
+   "w": 1280,
+   "x": 0,
+   "y": 4410
+  },
+  "Calendario-Celular.dc.html": {
+   "h": 1800,
+   "title": "Calendário do Adm · celular",
+   "w": 360,
+   "x": 1360,
+   "y": 4410
+  },
+  "Presenca-Celular.dc.html": {
+   "h": 2900,
+   "title": "Quem foi · celular",
+   "w": 360,
+   "x": 0,
+   "y": 6750
+  },
+  "Presenca-Computador.dc.html": {
+   "h": 2300,
+   "title": "Quem foi · computador",
+   "w": 1280,
+   "x": 440,
+   "y": 6750
+  },
+  "Presenca-Estados.dc.html": {
+   "h": 5500,
+   "title": "Quem foi · todos os estados, inclusive evento de campo",
+   "w": 360,
+   "x": 1800,
+   "y": 6750
+  },
+  "Presenca-Concluida.dc.html": {
+   "h": 2300,
+   "title": "Quem foi · lista concluída e correção depois dela",
+   "w": 360,
+   "x": 2240,
+   "y": 6750
+  },
+  "VisaoGeral-Pendencia.dc.html": {
+   "h": 800,
+   "title": "Visão geral · “Falta registrar quem foi” · celular",
+   "w": 360,
+   "x": 2680,
+   "y": 6750
+  },
+  "VisaoGeral-Computador.dc.html": {
+   "h": 700,
+   "title": "Visão geral · cartão “Eventos sem lista” · computador",
+   "w": 1280,
+   "x": 0,
+   "y": 12370
+  },
+  "Inicio-Conselheiro.dc.html": {
+   "h": 1000,
+   "title": "Início do conselheiro · próximo evento com gala",
+   "w": 360,
+   "x": 0,
+   "y": 13610
+  },
+  "Inicio-Instrutor.dc.html": {
+   "h": 1900,
+   "title": "Início do instrutor · próximo evento, hoje, em andamento e sem pontos",
+   "w": 360,
+   "x": 440,
+   "y": 13610
+  },
+  "Calendario-Leitura.dc.html": {
+   "h": 1900,
+   "title": "Calendário só para ler · conselheiro e instrutor",
+   "w": 360,
+   "x": 880,
+   "y": 13610
+  },
+  "Calendario-Leitura-Estados.dc.html": {
+   "h": 1700,
+   "title": "Calendário só para ler · estados",
+   "w": 360,
+   "x": 1320,
+   "y": 13610
+  }
+ },
+ "designSystems": [],
+ "launch": {
+  "view": "canvas"
+ },
+ "notes": {
+  "grupo-cadastro": {
+   "kind": "title1",
+   "maxW": 8000,
+   "text": "Cadastrar o evento especial (Adm)",
+   "w": 240,
+   "x": 0,
+   "y": 0
+  },
+  "grupo-calendario": {
+   "kind": "title1",
+   "maxW": 8000,
+   "text": "Calendário do Adm",
+   "w": 240,
+   "x": 0,
+   "y": 4110
+  },
+  "grupo-presenca": {
+   "kind": "title1",
+   "maxW": 8000,
+   "text": "Quem foi ao evento (Adm)",
+   "w": 240,
+   "x": 0,
+   "y": 6450
+  },
+  "grupo-leitura": {
+   "kind": "title1",
+   "maxW": 8000,
+   "text": "Conselheiro e instrutor: só leitura",
+   "w": 240,
+   "x": 0,
+   "y": 13310
+  }
+ },
+ "order": [
+  "Form-Especial.dc.html",
+  "Form-Especial-Celular.dc.html",
+  "Form-Especial-Editar.dc.html",
+  "Ficha-Especial.dc.html",
+  "Ficha-Especial-Celular.dc.html",
+  "Ficha-Especial-Excluir.dc.html",
+  "Calendario-Adm.dc.html",
+  "Calendario-Celular.dc.html",
+  "Presenca-Celular.dc.html",
+  "Presenca-Computador.dc.html",
+  "Presenca-Estados.dc.html",
+  "Presenca-Concluida.dc.html",
+  "VisaoGeral-Pendencia.dc.html",
+  "VisaoGeral-Computador.dc.html",
+  "Inicio-Conselheiro.dc.html",
+  "Inicio-Instrutor.dc.html",
+  "Calendario-Leitura.dc.html",
+  "Calendario-Leitura-Estados.dc.html"
+ ],
+ "pages": [],
+ "title": "Desbravador — Eventos especiais"
+}

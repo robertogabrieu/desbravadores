@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quem foi · computador</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+x-dc{display:block}helmet{display:none}
+:root{
+  --font-display:'Bricolage Grotesque',system-ui,sans-serif;--font-body:'Figtree',system-ui,sans-serif;
+  --color-primary:#1F4D3A;--color-primary-dark:#163828;--color-primary-soft:#E3EEE7;--color-primary-tint:#F3F8F5;
+  --color-on-primary:#FFFFFF;--color-on-soft:#1F4D3A;--color-link:#1F4D3A;--color-header:#1F4D3A;--color-on-header-muted:#CFE0D6;--color-nav-active:#163828;
+  --color-bg:#F4F1EA;--color-bg-deep:#E8E3D7;--color-surface:#FFFFFF;--color-surface-muted:#F9F7F2;--color-disabled:#EFEBE1;
+  --color-text:#1B221F;--color-text-secondary:#5B645F;--color-text-tertiary:#4A524E;
+  --color-border:#D9D3C5;--color-border-control:#8A8375;--color-divider:#EFEBE1;
+  --color-success:#1D7442;--color-danger:#B42318;--color-warning:#9A3412;--color-warning-bg:#FBEFE3;
+  --color-offline-bg:#3A2A12;--color-offline-fg:#FDEBD2;
+  --cal-reuniao-bg:#E3EEE7;--cal-reuniao-fg:#1F4D3A;--cal-sem-bg:#FBE4E1;--cal-sem-fg:#9F2A20;
+  --cal-acamp-bg:#E6F0D4;--cal-acamp-fg:#3F6212;--cal-evento-bg:#EDE4F6;--cal-evento-fg:#5B3391;
+  --cal-feriado-bg:#FBEFE3;--cal-feriado-fg:#9A3412;--cal-ferias-bg:#DCEBF7;--cal-ferias-fg:#1D4E7A;
+  --cal-especial-bg:#F5DC86;--cal-especial-fg:#5A3F00;
+  --rotulo-bg:#EDE4F6;--rotulo-fg:#5B3391;
+  --touch-min:44px;--radius-sm:9px;--radius-md:12px;--radius-lg:16px;
+}
+/* O app não tem modo escuro. Este bloco só existe para o desenho abrir bem em tela escura. */
+@media (prefers-color-scheme:dark){:root{
+  --color-primary:#2E7A5A;--color-primary-dark:#266549;--color-primary-soft:#1E3A2E;--color-primary-tint:#17251E;
+  --color-on-soft:#BFE3D0;--color-link:#8FD0B0;--color-header:#14231C;--color-nav-active:#1E3A2E;
+  --color-bg:#121714;--color-bg-deep:#222B27;--color-surface:#1B221F;--color-surface-muted:#222B27;--color-disabled:#2A3430;
+  --color-text:#EEF1EE;--color-text-secondary:#B4BDB8;--color-text-tertiary:#C6CEC9;
+  --color-border:#3A4540;--color-border-control:#8A958F;--color-divider:#2A3430;
+  --color-success:#6FCF97;--color-danger:#FF9C92;--color-warning:#F2B27B;--color-warning-bg:#3A2A12;
+  --cal-reuniao-bg:#1E3A2E;--cal-reuniao-fg:#BFE3D0;--cal-sem-bg:#4A1E1A;--cal-sem-fg:#F5AFA7;
+  --cal-acamp-bg:#26380A;--cal-acamp-fg:#C7E08F;--cal-evento-bg:#33224D;--cal-evento-fg:#D9C4F2;
+  --cal-feriado-bg:#3A2A12;--cal-feriado-fg:#F2B27B;--cal-ferias-bg:#173149;--cal-ferias-fg:#BBD9F2;
+  --cal-especial-bg:#3B3000;--cal-especial-fg:#F4DB85;
+  --rotulo-bg:#33224D;--rotulo-fg:#D9C4F2;
+}}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font-body);font-size:16px;color:var(--color-text);background:var(--color-bg)}
+a{color:var(--color-link)}
+.t{font-family:var(--font-display)}
+h1,h2,h3,p{margin:0}
+.h1{font-family:var(--font-display);font-size:24px;font-weight:800;margin:0}
+.h2{font-family:var(--font-display);font-size:18px;font-weight:700;margin:0}
+.card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:20px;display:flex;flex-direction:column;gap:12px}
+.rot{font-size:14px;font-weight:600;color:var(--color-text-secondary)}
+.sub{font-size:16px;color:var(--color-text-secondary)}
+.ajuda{font-size:14px;color:var(--color-text-tertiary)}
+.corpo{font-size:16px;color:var(--color-text)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 20px;border-radius:var(--radius-md);font-size:16px;font-weight:600;text-decoration:none;border:0;font-family:inherit;cursor:pointer}
+.pri{background:var(--color-primary);color:var(--color-on-primary)}
+.sec{background:var(--color-surface);color:var(--color-text);border:1px solid var(--color-border-control)}
+.txt{background:transparent;color:var(--color-link);padding:0 12px}
+.perigo{color:var(--color-danger)}
+.cheio{width:100%}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 12px;font-size:14px;font-weight:700}
+.chip-especial{background:var(--cal-especial-bg);color:var(--cal-especial-fg)}
+.chip-extra{background:var(--cal-reuniao-bg);color:var(--cal-reuniao-fg);border:1px dashed currentColor}
+.chip-evento{background:var(--cal-evento-bg);color:var(--cal-evento-fg)}
+.chip-reuniao{background:var(--cal-reuniao-bg);color:var(--cal-reuniao-fg)}
+.chip-ferias{background:var(--cal-ferias-bg);color:var(--cal-ferias-fg)}
+.chip-feriado{background:var(--cal-feriado-bg);color:var(--cal-feriado-fg)}
+.chip-sem{background:var(--cal-sem-bg);color:var(--cal-sem-fg)}
+.chip-acamp{background:var(--cal-acamp-bg);color:var(--cal-acamp-fg)}
+.gala{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:2px 12px;border-radius:999px;border:2px solid var(--cal-especial-fg);background:var(--color-surface);color:var(--cal-especial-fg);font-size:16px;font-weight:700;align-self:flex-start}
+.lbl{font-size:14px;font-weight:600;color:var(--color-text)}
+.in{min-height:44px;border:1px solid var(--color-border-control);border-radius:var(--radius-sm);background:var(--color-surface);padding:0 14px;font-size:16px;font-family:inherit;color:var(--color-text);width:100%}
+.in.curto{width:140px}
+.in.erro{border:2px solid var(--color-danger)}
+.in[disabled]{background:var(--color-disabled);color:var(--color-text-secondary)}
+.err{font-size:14px;font-weight:500;color:var(--color-danger);display:flex;align-items:flex-start;gap:6px}
+.err.grande{font-size:16px;font-weight:700}
+.ok{font-size:16px;font-weight:600;color:var(--color-success);display:flex;align-items:center;gap:6px}
+.aviso{font-size:16px;color:var(--color-warning);background:var(--color-warning-bg);border-radius:var(--radius-sm);padding:12px;display:flex;gap:8px;align-items:flex-start}
+.faixa-sem-rede{font-size:16px;background:var(--color-offline-bg);color:var(--color-offline-fg);border-radius:var(--radius-sm);padding:12px;display:flex;gap:8px;align-items:flex-start}
+.resumo{font-size:16px;background:var(--color-primary-soft);color:var(--color-on-soft);border-radius:var(--radius-sm);padding:12px;display:flex;gap:8px;align-items:flex-start;font-weight:600}
+.cx{display:flex;align-items:center;gap:12px;min-height:44px;font-size:16px}
+.cx input{width:20px;height:20px;margin:0;accent-color:var(--color-primary)}
+.campo{display:flex;flex-direction:column;gap:6px}
+.grupo{display:flex;flex-direction:column;gap:16px;border:0;margin:0;padding:24px 0 0;border-top:1px solid var(--color-border)}
+.grupo legend{padding:0;font-family:var(--font-display);font-size:18px;font-weight:700}
+.dl{display:grid;gap:16px 24px}
+.par{display:flex;flex-direction:column;gap:2px}
+.par .rot{font-size:14px}
+.par .val{font-size:16px;color:var(--color-text)}
+.lin{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--color-divider)}
+.volta{display:inline-flex;align-items:center;gap:4px;font-weight:600;text-decoration:none;min-height:44px;align-self:flex-start;font-size:16px}
+.rotulo-quadro{font-size:14px;font-weight:800;color:var(--rotulo-fg);background:var(--rotulo-bg);border-radius:var(--radius-sm);padding:6px 10px}
+.secao{font-size:14px;font-weight:800;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.04em}
+.sk{background:var(--color-bg-deep);border-radius:var(--radius-md)}
+.centro{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:24px 8px}
+/* estrutura das telas */
+.desk{width:1280px;max-width:100%;display:flex;background:var(--color-bg)}
+.side{width:248px;flex-shrink:0;background:var(--color-header);color:#fff;display:flex;flex-direction:column;gap:4px;padding:20px 8px}
+.nav{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:var(--radius-md);color:var(--color-on-header-muted);font-weight:600;font-size:16px}
+.nav.on{background:var(--color-nav-active);color:#fff}
+.col{flex-grow:1;display:flex;flex-direction:column;min-width:0}
+.topo{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:8px 32px;background:var(--color-surface);border-bottom:1px solid var(--color-border)}
+.dmain{padding:32px 48px;display:flex;flex-direction:column;gap:20px;max-width:1024px;width:100%}
+.mb{width:360px;max-width:100%;display:flex;flex-direction:column;background:var(--color-bg)}
+.mtopo{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;background:var(--color-header);color:#fff}
+.mmain{flex-grow:1;padding:16px;display:flex;flex-direction:column;gap:16px}
+.marca{font-family:var(--font-display);font-size:17px;font-weight:700}
+.bnav{display:flex;height:76px;border-top:1px solid var(--color-border);background:var(--color-surface);margin-top:auto}
+.bnav a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:600;color:var(--color-text-secondary);text-decoration:none;min-height:44px}
+.bnav a.on{color:var(--color-on-soft);font-weight:800}
+.bnav a.on svg{background:var(--color-primary-soft);border-radius:999px;padding:2px;width:28px;height:28px;box-sizing:content-box}
+/* calendário */
+.cabecalho-dias{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center;font-size:14px;font-weight:800;color:var(--color-text-tertiary)}
+.grade{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cel{display:flex;flex-direction:column;gap:4px;min-height:96px;border:1px solid var(--color-divider);border-radius:var(--radius-sm);padding:6px;min-width:0}
+.cel.vazia{border:0;background:var(--color-bg-deep);opacity:.5}
+.cel.hoje{border:2px solid var(--color-primary)}
+.cel .n{font-size:14px;font-weight:700}
+.fx{display:flex;align-items:center;gap:4px;border-radius:var(--radius-sm);padding:2px 6px;font-size:14px;font-weight:600;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fx.quebra{white-space:normal;line-height:1.2;align-items:flex-start}
+.fx.reuniao{background:var(--cal-reuniao-bg);color:var(--cal-reuniao-fg)}
+.fx.feriado{background:var(--cal-feriado-bg);color:var(--cal-feriado-fg)}
+.fx.especial{background:var(--cal-especial-bg);color:var(--cal-especial-fg);min-height:44px}
+.fx.gala-mini{background:var(--color-surface);color:var(--cal-especial-fg);border:2px solid var(--cal-especial-fg);font-weight:700}
+.fx.campo-mini{background:var(--color-surface);color:var(--color-text);border:2px dashed var(--color-border-control);font-weight:700}
+.campo-un{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:2px 12px;border-radius:999px;border:2px dashed var(--color-border-control);background:var(--color-surface);color:var(--color-text);font-size:16px;font-weight:700;align-self:flex-start}
+.dia{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:48px;border-radius:var(--radius-sm);font-size:16px;font-weight:600;border:0;background:var(--color-surface);color:var(--color-text);font-family:inherit}
+.dia.hoje{border:2px solid var(--color-primary);font-weight:800}
+.dia.sel{background:var(--color-primary);color:var(--color-on-primary)}
+.pontos{display:flex;height:10px;align-items:center;gap:4px}
+.p{width:8px;height:8px;border-radius:999px;display:inline-block;box-shadow:0 0 0 1px var(--color-surface)}
+.p.reuniao{background:var(--cal-reuniao-fg)}.p.feriado{background:var(--cal-feriado-fg)}
+.p.especial{background:var(--cal-especial-fg);border-radius:0;transform:rotate(45deg);width:9px;height:9px}
+.p.acamp{background:var(--cal-acamp-fg)}
+.cartao-ev{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:16px;min-height:44px;text-decoration:none;color:inherit}
+.cartao-ev .txt-ev{display:flex;flex-direction:column;gap:6px;min-width:0}
+.cartao-ev .nome{font-size:16px;font-weight:700;color:var(--color-text)}
+.cartao-ev .meta{font-size:14px;color:var(--color-text-secondary)}
+.pendente{display:flex;align-items:center;gap:6px;font-size:16px;font-weight:700;color:var(--color-warning)}
+.agenda{display:flex;gap:12px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:16px}
+.agenda .data{flex-shrink:0;align-self:flex-start;width:72px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;border-radius:var(--radius-sm);background:var(--color-bg-deep);padding:6px 0}
+.agenda .data .dow{font-size:14px;font-weight:800;color:var(--color-text-tertiary)}
+.agenda .data .num{font-family:var(--font-display);font-size:22px;font-weight:800;line-height:1.1}
+.agenda .data .mes{font-size:14px;font-weight:700;color:var(--color-text-tertiary)}
+.agenda .corpo-ev{display:flex;flex-direction:column;gap:8px;min-width:0}
+.agenda .nome{font-family:var(--font-display);font-size:18px;font-weight:700}
+.agenda .meta{font-size:16px;color:var(--color-text-secondary);display:flex;align-items:flex-start;gap:6px}
+.agenda .meta svg,.cartao-ev svg{flex-shrink:0}
+.agenda .vale{font-size:16px;color:var(--color-text)}
+.mes-titulo{font-family:var(--font-display);font-size:18px;font-weight:800}
+/* lista de quem foi */
+.lp{list-style:none;display:flex;flex-direction:column;gap:8px;border-radius:var(--radius-lg);padding:12px;background:var(--color-surface);border:1px solid var(--color-surface)}
+.lp.nao{background:var(--color-surface-muted);border:1px dashed var(--color-border-control)}
+.lp-nome{display:flex;align-items:center;gap:12px;min-height:44px;border:0;background:transparent;font-family:inherit;text-align:left;padding:0;color:var(--color-text)}
+.lp-caixa{width:32px;height:32px;border-radius:var(--radius-sm);background:var(--color-primary);color:var(--color-on-primary);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.lp.nao .lp-caixa{border:2px solid var(--color-border-control);background:var(--color-surface)}
+.lp-txt{display:flex;flex-direction:column}
+.lp-n{font-size:16px;font-weight:600}
+.lp-e{font-size:16px;color:var(--color-text-secondary)}
+.pill{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 16px;border-radius:999px;font-size:16px;font-weight:600;font-family:inherit;border:1px solid var(--color-border-control);background:var(--color-surface);color:var(--color-text);align-self:flex-start}
+.pill.on{border-color:var(--color-primary);background:var(--color-primary-soft);color:var(--color-on-soft)}
+.pill[disabled]{border:1px dashed var(--color-border-control);background:var(--color-disabled);color:var(--color-text-secondary);cursor:not-allowed}
+.lista-un{display:flex;flex-direction:column;gap:8px;list-style:none;margin:0;padding:0}
+.cab-un{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:56px;border:0;background:var(--color-surface);border-radius:var(--radius-md);font-family:inherit;padding:8px 12px;width:100%;text-align:left;color:var(--color-text)}
+.cab-un .nm{font-size:16px;font-weight:800}
+.cab-un .ct{font-size:16px;color:var(--color-text-secondary)}
+.cab-un svg{color:var(--color-link);flex-shrink:0}
+.tab{width:100%;border-collapse:collapse}
+.tab th{text-align:left;font-size:14px;font-weight:800;color:var(--color-text-tertiary);padding:8px 12px;border-bottom:1px solid var(--color-border)}
+.tab td{padding:4px 12px;border-bottom:1px solid var(--color-divider);vertical-align:middle;font-size:16px}
+.tab tr.nao td.nome{color:var(--color-text)}
+.marca-lin{display:inline-flex;align-items:center;gap:10px;min-height:44px;font-size:16px;font-weight:600}
+.marca-lin .quad{width:24px;height:24px;border-radius:6px;border:2px solid var(--color-border-control);background:var(--color-surface);display:flex;align-items:center;justify-content:center}
+.marca-lin.on .quad{background:var(--color-primary);border-color:var(--color-primary);color:var(--color-on-primary)}
+.marca-lin.off{color:var(--color-text-secondary);font-weight:500}
+.marca-lin.bloq .quad{background:var(--color-disabled);border-style:dashed}
+.rolagem{overflow-x:auto}
+.dialogo{background:var(--color-surface);border:1px solid var(--color-border-control);border-radius:var(--radius-lg);padding:20px;display:flex;flex-direction:column;gap:12px}
+.so-largo{display:flex;flex-direction:column;gap:12px}
+.so-estreito{display:none}
+@media (max-width:900px){
+  .so-largo{display:none}
+  .so-estreito{display:block}
+  .side{display:none}
+  .topo{padding:8px 16px}
+  .dmain{padding:16px}
+  .dl{grid-template-columns:1fr!important}
+  .cel{min-height:64px}
+  .agenda-largura{grid-template-columns:1fr!important}
+}
+</style>
+</helmet>
+<div class="desk" style="min-height:2300px"><aside class="side"><div class="t marca" style="padding:0 12px 16px">App do Desbravador</div><nav aria-label="Menu do Adm" style="display:flex;flex-direction:column;gap:4px"><span class="nav">Visão geral</span><span class="nav">Desbravadores</span><span class="nav">Usuários</span><span class="nav">Unidades</span><span class="nav">Classes e especialidades</span><span class="nav on">Calendário do clube</span><span class="nav">Cronogramas</span><span class="nav">Classe Bíblica</span><span class="nav">Configurações do clube</span><span class="nav">Ranking</span></nav></aside><div class="col"><header class="topo"><button class="btn txt" aria-label="Notificações" style="color:var(--color-text)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg></button><button class="btn txt" style="color:var(--color-text)">Rosa Almeida <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></header><main class="dmain">
+<div style="display:flex;flex-direction:column;gap:8px"><a class="volta" href="Ficha-Especial.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg> Culto de Ação de Graças</a>
+<div style="display:flex;flex-direction:column;gap:6px"><h1 class="h1" style="font-size:30px">Quem foi</h1><p class="sub">Culto de Ação de Graças · sábado, 3 de outubro</p><span class="gala"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg> Uniforme de gala</span></div></div>
+<p class="corpo">Marque quem foi. Depois marque quem veio de gala. Tudo é salvo sozinho: pode sair e voltar.</p>
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+<label class="campo" style="width:360px;max-width:100%"><span class="lbl">Buscar pelo nome</span><span style="position:relative;display:block"><input class="in" type="search" style="padding-left:44px"><span style="position:absolute;left:14px;top:12px;color:var(--color-text-secondary)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span></span></label>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec" type="button">Marcar todos como presentes</button><button class="btn sec" type="button">Marcar de gala todos que foram</button></div></div>
+<div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap"><p class="corpo" style="font-weight:800;font-size:18px">41 de 62 foram</p><p class="sub">12 de gala</p><p class="ok" role="status" aria-live="polite" style="margin-left:auto"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Salvo às 16:42.</p></div>
+<div class="card" style="padding:0;gap:0"><button type="button" class="cab-un" aria-expanded="true" style="border-radius:var(--radius-lg) var(--radius-lg) 0 0"><span style="display:flex;flex-direction:column"><span class="nm">Águias</span><span class="ct">8 de 10 foram · 6 de gala</span></span><span style="transform:rotate(180deg)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></button>
+<div class="rolagem"><table class="tab"><thead><tr><th scope="col">Nome</th><th scope="col">Foi</th><th scope="col">Foi de gala</th></tr></thead><tbody><tr class=""><td class="nome"><span style="font-weight:600">Ana Clara Souza</span></td><td><button type="button" style="border:0;background:transparent;font-family:inherit;padding:0;color:inherit" aria-pressed="true"><span class="marca-lin on"><span class="quad"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>Foi</span></button></td><td><button type="button" style="border:0;background:transparent;font-family:inherit;padding:0;color:inherit" aria-pressed="true"><span class="marca-lin on"><span class="quad"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>De gala</span></button></td></tr><tr class=""><td class="nome"><span style="font-weight:600">Davi Carvalho</span></td><td><button type="button" style="border:0;background:transparent;font-family:inherit;padding:0;color:inherit" aria-pressed="true"><span class="marca-lin on"><span class="quad"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>Foi</span></button></td><td><button type="button" style="border:0;background:transparent;font-family:inherit;padding:0;color:inherit" aria-pressed="true"><span class="marca-lin on"><span class="quad"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>De gala</span></button></td></tr><tr class="nao"><td class="nome"><span style="font-weight:600">Enzo Barros</span></td><td><button type="button" style="border:0;background:transparent;font-family:inherit;padding:0;color:inherit" aria-pressed="false"><span class="marca-lin off"><span class="quad"></span>Não foi</span></button></td><td><button type="button" disabled style="border:0;background:transparent;font-family:inherit;padding:0;color:inherit;cursor:not-allowed" aria-pressed="false" aria-label="De gala: indisponível porque Enzo não foi"><span class="marca-lin bloq off"><span class="quad"></span>De gala · só quem foi</span></button></td></tr><tr class=""><td class="nome"><span style="font-weight:600">Gabriel Nunes</span></td><td><button type="button" style="border:0;background:transparent;font-family:inherit;padding:0;color:inherit" aria-pressed="true"><span class="marca-lin on"><span class="quad"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>Foi</span></button></td><td><button type="button" style="border:0;background:transparent;font-family:inherit;padding:0;color:inherit" aria-pressed="true"><span class="marca-lin on"><span class="quad"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>De gala</span></button></td></tr><tr class=""><td class="nome"><span style="font-weight:600">Isabela Martins</span></td><td><button type="button" style="border:0;background:transparent;font-family:inherit;padding:0;color:inherit" aria-pressed="true"><span class="marca-lin on"><span class="quad"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>Foi</span></button></td><td><button type="button" style="border:0;background:transparent;font-family:inherit;padding:0;color:inherit" aria-pressed="true"><span class="marca-lin on"><span class="quad"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>De gala</span></button></td></tr><tr class=""><td class="nome"><span style="font-weight:600">Júlia Ramos</span></td><td><button type="button" style="border:0;background:transparent;font-family:inherit;padding:0;color:inherit" aria-pressed="true"><span class="marca-lin on"><span class="quad"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>Foi</span></button></td><td><button type="button" style="border:0;background:transparent;font-family:inherit;padding:0;color:inherit" aria-pressed="false"><span class="marca-lin"><span class="quad"></span>De gala</span></button></td></tr><tr class=""><td class="nome"><span style="font-weight:600">Lívia Fernandes</span></td><td><button type="button" style="border:0;background:transparent;font-family:inherit;padding:0;color:inherit" aria-pressed="true"><span class="marca-lin on"><span class="quad"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>Foi</span></button></td><td><button type="button" style="border:0;background:transparent;font-family:inherit;padding:0;color:inherit" aria-pressed="true"><span class="marca-lin on"><span class="quad"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>De gala</span></button></td></tr><tr class="nao"><td class="nome"><span style="font-weight:600">Pedro Henrique Lima</span></td><td><button type="button" style="border:0;background:transparent;font-family:inherit;padding:0;color:inherit" aria-pressed="false"><span class="marca-lin off"><span class="quad"></span>Não foi</span></button></td><td><button type="button" disabled style="border:0;background:transparent;font-family:inherit;padding:0;color:inherit;cursor:not-allowed" aria-pressed="false" aria-label="De gala: indisponível porque Pedro não foi"><span class="marca-lin bloq off"><span class="quad"></span>De gala · só quem foi</span></button></td></tr><tr class=""><td class="nome"><span style="font-weight:600">Noah Campos</span></td><td><button type="button" style="border:0;background:transparent;font-family:inherit;padding:0;color:inherit" aria-pressed="true"><span class="marca-lin on"><span class="quad"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>Foi</span></button></td><td><button type="button" style="border:0;background:transparent;font-family:inherit;padding:0;color:inherit" aria-pressed="true"><span class="marca-lin on"><span class="quad"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>De gala</span></button></td></tr><tr class=""><td class="nome"><span style="font-weight:600">Alice Moura</span></td><td><button type="button" style="border:0;background:transparent;font-family:inherit;padding:0;color:inherit" aria-pressed="true"><span class="marca-lin on"><span class="quad"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>Foi</span></button></td><td><button type="button" style="border:0;background:transparent;font-family:inherit;padding:0;color:inherit" aria-pressed="false"><span class="marca-lin"><span class="quad"></span>De gala</span></button></td></tr></tbody></table></div></div>
+<div class="card" style="padding:0;gap:0"><button type="button" class="cab-un" aria-expanded="false" style="border-radius:var(--radius-lg)"><span style="display:flex;flex-direction:column"><span class="nm">Leões</span><span class="ct">7 de 10 foram · 2 de gala</span></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div><div class="card" style="padding:0;gap:0"><button type="button" class="cab-un" aria-expanded="false" style="border-radius:var(--radius-lg)"><span style="display:flex;flex-direction:column"><span class="nm">Gaviões</span><span class="ct">9 de 11 foram · 3 de gala</span></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div><div class="card" style="padding:0;gap:0"><button type="button" class="cab-un" aria-expanded="false" style="border-radius:var(--radius-lg)"><span style="display:flex;flex-direction:column"><span class="nm">Falcões</span><span class="ct">6 de 10 foram · 0 de gala</span></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div><div class="card" style="padding:0;gap:0"><button type="button" class="cab-un" aria-expanded="false" style="border-radius:var(--radius-lg)"><span style="display:flex;flex-direction:column"><span class="nm">Lobos</span><span class="ct">5 de 10 foram · 1 de gala</span></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div><div class="card" style="padding:0;gap:0"><button type="button" class="cab-un" aria-expanded="false" style="border-radius:var(--radius-lg)"><span style="display:flex;flex-direction:column"><span class="nm">Panteras</span><span class="ct">5 de 9 foram · 0 de gala</span></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div><div class="card" style="padding:0;gap:0"><button type="button" class="cab-un" aria-expanded="false" style="border-radius:var(--radius-lg)"><span style="display:flex;flex-direction:column"><span class="nm">Sem unidade</span><span class="ct">1 de 2 foram · 0 de gala</span></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div>
+<div style="display:flex;justify-content:flex-end;align-items:center;gap:16px;border-top:1px solid var(--color-border);padding-top:20px"><p class="corpo" style="max-width:560px">Ao concluir, os 41 que foram ganham os pontos de ir ao evento, e os 12 de gala ganham também os do uniforme. Depois você ainda pode corrigir a lista.</p><a class="btn pri" href="Presenca-Concluida.dc.html">Concluir a lista</a></div>
+<p class="rotulo-quadro">Depois de concluída a lista: tirar alguém, ou tirar só o uniforme, pede confirmação que diz o efeito</p>
+<div class="dl" style="grid-template-columns:repeat(2,minmax(0,1fr));align-items:start">
+<section class="dialogo" role="alertdialog" aria-labelledby="dlg-d1" aria-describedby="dlg-d1d"><h2 id="dlg-d1" class="h2">Tirar Ana Clara Souza da lista?</h2><p id="dlg-d1d" class="corpo">Ana Clara perde 30 pontos do ranking de outubro: 20 de ir ao evento e 10 de gala. Você pode marcar de novo depois.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn pri" type="button">Manter na lista</button><button class="btn sec perigo" type="button">Tirar os pontos</button></div></section>
+<section class="dialogo" role="alertdialog" aria-labelledby="dlg-d2" aria-describedby="dlg-d2d"><h2 id="dlg-d2" class="h2">Tirar o uniforme de gala de Davi Carvalho?</h2><p id="dlg-d2d" class="corpo">Davi perde 10 pontos do ranking de outubro. Os 20 de ir ao evento ficam. Você pode marcar de novo depois.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn pri" type="button">Manter o uniforme</button><button class="btn sec perigo" type="button">Tirar os pontos</button></div></section></div></main></div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":2300}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
