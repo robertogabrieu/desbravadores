@@ -6,6 +6,7 @@ import { apagarRascunho, enfileirar, useConexao } from '../offline'
 import type { PayloadAulaFila } from '../offline/tipos/aula'
 import { toast } from 'sonner'
 import { useSessao } from '../sessao/useSessao'
+import { useDestinos } from '../substituicao/contextos'
 import { montarConsulta, requisitar } from './cliente'
 
 /** Raízes que o `aoEnviar` do tipo AULA invalida (com `progresso`). */
@@ -53,6 +54,7 @@ export interface EntradaSalvarAula {
 /** Não chama a API: guarda a aula na fila (que a envia, com ou sem internet) e volta ao Início. */
 export function useSalvarAula() {
   const navegar = useNavigate()
+  const { depoisDeSalvarRegistroDaClasse } = useDestinos()
   const { eu } = useSessao()
   const { modo } = useConexao()
   return useMutation({
@@ -92,7 +94,7 @@ export function useSalvarAula() {
       toast.success('Classe salva', {
         description: modo === 'SEM_CONEXAO' ? 'Vai ser enviada quando houver internet.' : 'Enviando agora.',
       })
-      void navegar('/inicio')
+      void navegar(depoisDeSalvarRegistroDaClasse)
     },
   })
 }

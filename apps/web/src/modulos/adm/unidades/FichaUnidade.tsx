@@ -15,6 +15,7 @@ import { LinhaQueNavega } from '../../../ui/LinhaQueNavega'
 import { NomeDaFicha } from '../../../ui/LinkDeFicha'
 import { ListaDePares } from '../../../ui/ListaDePares'
 import { juntarNomes } from '../formatos'
+import { CartaoSubstituto } from '../substituicao/CartaoSubstituto'
 import { useEstadoDeVolta, useVoltar } from '../navegacao'
 import { AdicionarSemUnidade } from './AdicionarSemUnidade'
 import { ReunioesDoMes } from './ReunioesDoMes'
@@ -148,6 +149,7 @@ function FichaCarregada({ unidade }: { unidade: Unidade }) {
         />
       </Cartao>
 
+      <CartaoSubstituto alvo={{ tipo: 'unidade', id: unidade.id, nome: unidade.nome }} ativo={unidade.ativa} />
       <SecaoMembros unidade={unidade} />
       <ReunioesDoMes unidadeId={unidade.id} />
     </>

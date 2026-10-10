@@ -21,6 +21,8 @@ export class GuardaPermissao implements CanActivate {
     if (exigida === undefined) return true
 
     const sessao = contexto.switchToHttp().getRequest<RequisicaoComSessao>().sessao
+    // A guarda de sessao so abre sessao de substituicao em rota marcada; as permissoes sao as do papel.
+    if (sessao?.substituicao) return true
     if (!sessao?.vinculoId || !sessao.papel) {
       throw new ErroApp('VINCULO_INATIVO', 'Seu acesso a este clube não está mais ativo. Escolha outro papel.')
     }

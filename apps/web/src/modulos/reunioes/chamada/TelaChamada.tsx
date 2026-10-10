@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom'
 import { ErroDaApi } from '../../../api/cliente'
 import { useReuniao, useReunioes } from '../../../api/reunioes'
 import { useConexao, usePacote } from '../../../offline'
+import { useAlvoFixo } from '../../../substituicao/contextos'
 import type { PacoteGuardado } from '../../../offline'
 import { Campo } from '../../../ui/Campo'
 import { Selecao } from '../../../ui/Selecao'
@@ -49,20 +50,23 @@ interface PropriedadesModo {
 }
 
 function ChamadaNova({ pacote, baixadoEm }: PropriedadesModo) {
+  const alvo = useAlvoFixo()
   const unidades = [...pacote.unidades].sort(porNome)
   const hoje = hojeNoFuso(pacote.clube.fuso, new Date())
   const minimo = somarDias(hoje, -30)
-  const [escolhida, setEscolhida] = useState<string | null>(null)
-  const [data, setData] = useState(hoje)
+  const [escolhida, setEscolhida] = useState<string | null>(alvo?.unidadeId ?? null)
+  const [dataEscolhida, setDataEscolhida] = useState(hoje)
+  const data = alvo?.data ?? dataEscolhida
   const unidade = unidades.find((u) => u.id === escolhida) ?? unidades[0]
 
   if (!unidade) return <ChamadaVazia titulo="Você ainda não tem unidade para registrar chamada" descricao="Avise o Adm para ligar você a uma unidade." />
   if (unidade.membros.length === 0) return <ChamadaVazia titulo="Nenhum desbravador nesta unidade" descricao="Avise o Adm para cadastrar os membros." />
 
-  const dataValida = data >= minimo && data <= hoje
+  // A data do alvo fixo vale como veio: quem a valida é o servidor.
+  const dataValida = alvo !== null || (data >= minimo && data <= hoje)
   return (
     <>
-      {unidades.length > 1 && (
+      {!alvo?.unidadeId && unidades.length > 1 && (
         <Selecao rotulo="Unidade" value={unidade.id} onChange={(e) => setEscolhida(e.target.value)}>
           {unidades.map((u) => (
             <option key={u.id} value={u.id}>
@@ -71,15 +75,17 @@ function ChamadaNova({ pacote, baixadoEm }: PropriedadesModo) {
           ))}
         </Selecao>
       )}
-      <Campo
-        rotulo="Data"
-        type="date"
-        value={data}
-        min={minimo}
-        max={hoje}
-        onChange={(e) => setData(e.target.value)}
-        erro={dataValida ? undefined : `Escolha uma data entre ${dataCurta(minimo)} e hoje.`}
-      />
+      {!alvo && (
+        <Campo
+          rotulo="Data"
+          type="date"
+          value={data}
+          min={minimo}
+          max={hoje}
+          onChange={(e) => setDataEscolhida(e.target.value)}
+          erro={dataValida ? undefined : `Escolha uma data entre ${dataCurta(minimo)} e hoje.`}
+        />
+      )}
       {dataValida && (
         <ChamadaDaData key={`${unidade.id}:${data}`} pacote={pacote} baixadoEm={baixadoEm} unidade={unidade} data={data} />
       )}

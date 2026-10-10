@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const PAPEIS = ['ADM', 'CONSELHEIRO', 'INSTRUTOR'] as const
-export const STATUS_USUARIO = ['CONVIDADO', 'ATIVO', 'INATIVO'] as const
+export const STATUS_USUARIO = ['CONVIDADO', 'ATIVO', 'INATIVO', 'SUBSTITUTO'] as const
 export const SEXOS = ['F', 'M'] as const
 export const TIPOS_PESSOA = ['DBV', 'DIRETORIA', 'LIDER'] as const
 export const TIPOS_UNIDADE = ['MISTA', 'MASCULINA', 'FEMININA'] as const

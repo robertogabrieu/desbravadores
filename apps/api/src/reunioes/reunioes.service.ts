@@ -86,7 +86,7 @@ export class ReunioesService {
       throw new ErroApp('NAO_ENCONTRADO', 'Reunião não encontrada.')
     })
 
-    const [configuracao, lancamentos, ultimaAlteracao, conflitos, album] = await Promise.all([
+    const [configuracao, lancamentos, ultimaAlteracao, conflitos, album, substituicao] = await Promise.all([
       this.prisma.configuracaoClube.findUniqueOrThrow({ where: { clubeId } }),
       this.prisma.lancamentoPontos.findMany({
         where: { clubeId, origemTipo: 'CHAMADA', origemId: { startsWith: `${id}:` }, estornadoEm: null },
@@ -99,6 +99,7 @@ export class ReunioesService {
       }),
       this.prisma.chamadaAlteracao.count({ where: { clubeId, reuniaoId: id, origem: 'CONFLITO_SYNC' } }),
       this.albumDaReuniao(clubeId, id),
+      this.substituicaoDaReuniao(clubeId, reuniao.substituicaoId, reuniao.registradaPorId),
     ])
     const pontosPorDbv = new Map<string, number>()
     for (const lancamento of lancamentos) {
@@ -128,6 +129,7 @@ export class ReunioesService {
       cabecalhoVersao: reuniao.cabecalhoVersao.toISOString(),
       registradaPor: { nome: reuniao.registradaPor.nome },
       registradaEm: reuniao.registradaEm.toISOString(),
+      substituicao,
       alterada: ultimaAlteracao
         ? { por: ultimaAlteracao.alteradaPor.nome, em: ultimaAlteracao.alteradaEm.toISOString(), conflito: conflitos > 0 }
         : null,
@@ -143,6 +145,26 @@ export class ReunioesService {
         pontos: chamada.reduce((soma, linha) => soma + linha.pontos, 0),
       },
       album,
+    }
+  }
+
+  /** Quem lancou pelo link (R1); `lancou` e falso quando o substituto so alterou o que o titular lancou. */
+  private async substituicaoDaReuniao(
+    clubeId: string,
+    substituicaoId: string | null,
+    registradaPorId: string,
+  ): Promise<Detalhe['substituicao']> {
+    if (substituicaoId === null) return null
+    const substituicao = await this.prisma.substituicao.findFirst({
+      where: { clubeId, id: substituicaoId },
+      select: { substitutoId: true, substituto: { select: { nome: true, status: true } }, criadoPor: { select: { nome: true } } },
+    })
+    if (!substituicao?.substituto) return null
+    return {
+      autor: substituicao.substituto.nome,
+      semConta: substituicao.substituto.status === 'SUBSTITUTO',
+      geradoPor: substituicao.criadoPor.nome,
+      lancou: substituicao.substitutoId === registradaPorId,
     }
   }
 

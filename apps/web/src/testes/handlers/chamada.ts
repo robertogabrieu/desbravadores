@@ -18,6 +18,7 @@ export function criarDetalheReuniao(parcial: Partial<Detalhe> = {}): Detalhe {
     local: null,
     observacoes: null,
     cabecalhoVersao: '2030-03-10T12:00:00.000Z',
+    substituicao: null,
     registradaPor: { nome: 'Ana Souza' },
     registradaEm: '2030-03-10T12:00:00.000Z',
     alterada: null,

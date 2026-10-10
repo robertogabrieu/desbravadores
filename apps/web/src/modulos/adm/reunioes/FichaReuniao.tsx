@@ -9,6 +9,7 @@ import { CabecalhoDaPagina } from '../../../ui/CabecalhoDaPagina'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/EstadosDeCarga'
 import { EstadoNaoEncontrado, ehNaoEncontrado } from '../../../ui/EstadoNaoEncontrado'
 import { FUSO_PADRAO_DO_CLUBE, dataPorExtenso, horaCurta, instanteCurto } from '../formatos'
+import { AvisoDeSubstituicao } from '../../reunioes/detalhe/DetalheReuniao'
 import { Indicadores, ListaDaChamada } from '../../reunioes/detalhe/PartesDaReuniao'
 
 type Detalhe = z.infer<typeof ReuniaoDetalhe>
@@ -51,6 +52,7 @@ function FichaCarregada({ dados }: { dados: Detalhe }) {
           )
         }
       />
+      {dados.substituicao && <AvisoDeSubstituicao substituicao={dados.substituicao} />}
       <Indicadores dados={dados} variante="adm" />
       <section aria-labelledby="chamada-titulo" className="flex flex-col gap-3">
         <h2 id="chamada-titulo" className="font-titulo text-lg font-bold">

@@ -3,6 +3,7 @@ import type { EspecialidadesDoDbvSaida } from '@desbravadores/shared'
 import type { z } from 'zod'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { ErroApp } from '../comum/erros'
+import { nomeDoAutor } from '../comum/nome-do-autor'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { daDataCivil, paraDataCivil } from '../desbravadores/apoio'
 import { ServicoEscopo } from '../desbravadores/escopo.service'
@@ -30,14 +31,14 @@ export class EspecialidadesDbvService {
     const concluidas = await this.prisma.especialidadeConcluida.findMany({
       where: { clubeId, dbvId, removidoEm: null },
       orderBy: [{ concluidaEm: 'desc' }, { id: 'asc' }],
-      select: { especialidadeId: true, concluidaEm: true, marcadoPor: { select: { nome: true } } },
+      select: { especialidadeId: true, concluidaEm: true, marcadoPor: { select: { nome: true, status: true } } },
     })
     return {
       dbvId,
       concluidas: concluidas.map((linha) => ({
         especialidadeId: linha.especialidadeId,
         concluidaEm: paraDataCivil(linha.concluidaEm),
-        marcadoPor: linha.marcadoPor.nome,
+        marcadoPor: nomeDoAutor(linha.marcadoPor),
         podeDesmarcar,
       })),
     }

@@ -2,12 +2,25 @@ import { createParamDecorator, type ExecutionContext } from '@nestjs/common'
 import type { Papel } from '@desbravadores/shared'
 import type { Request } from 'express'
 
-/** O que as guardas deixam em `req.sessao`; clube e papel vem do banco, nunca do token. */
+/** Alvo e dia do link, presentes so na sessao aberta pela credencial de substituicao. */
+export interface SubstituicaoDaSessao {
+  id: string
+  unidadeId: string | null
+  classeId: string | null
+  /** Dia civil do link, `AAAA-MM-DD`. */
+  data: string
+}
+
+/**
+ * O que as guardas deixam em `req.sessao`; clube e papel vem do banco, nunca do token. Na sessao de
+ * substituicao, `usuarioId` e o autor, `vinculoId` e o id da substituicao e `substituicao` vem preenchido.
+ */
 export interface Sessao {
   usuarioId: string
   vinculoId: string | null
   clubeId: string | null
   papel: Papel | null
+  substituicao?: SubstituicaoDaSessao
 }
 
 /** Sessao de rota `@Logado`/`@Pode`: o vinculo ativo esta garantido. */

@@ -55,6 +55,7 @@ export class ReunioesEnvioService {
   /** `PUT /sync/reunioes/:uuid` (SPEC Fase 1, 5.1 e 5.2). Corrida de banco vira 503 para a fila repetir. */
   async enviar(sessao: SessaoLogada, uuid: string, envio: Envio, agora: Date = new Date()): Promise<Saida> {
     await exigirUnidadeNoEscopo(this.prisma, this.escopo, sessao, envio.unidadeId)
+    if (sessao.substituicao && envio.data !== sessao.substituicao.data) throw new ErroApp('NAO_ENCONTRADO', 'Reunião não encontrada.')
     const feito = new Date(Math.min(Date.parse(envio.feitaNoAparelhoEm), agora.getTime()))
     try {
       return await this.prisma.$transaction((tx) => this.aplicar(tx, sessao, uuid, envio, feito, emMilissegundos(agora)), {
@@ -86,6 +87,10 @@ export class ReunioesEnvioService {
     const { conflitos, ignorados, gravadas } = await this.aplicarLinhas(tx, sessao, reuniao, envio, agora)
     if (gravadas.length > 0 && !localizada.criada && envio.cabecalho === null) {
       await tx.reuniao.updateMany({ where: { clubeId, id: reuniao.id }, data: { atualizadaPorId: sessao.usuarioId, atualizadaEm: agora } })
+    }
+    // Houve substituicao so quando o link gravou alguma linha; envio do titular nao apaga a marca.
+    if (sessao.substituicao && gravadas.length > 0) {
+      await tx.reuniao.updateMany({ where: { clubeId, id: reuniao.id }, data: { substituicaoId: sessao.substituicao.id } })
     }
     await this.sincronizarPontos(tx, sessao, reuniao, configuracao, gravadas)
 

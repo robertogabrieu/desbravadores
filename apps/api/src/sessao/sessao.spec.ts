@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { JwtService } from '@nestjs/jwt'
 import { ErroApp } from '../comum/erros'
 import { PrismaSistema } from '../comum/prisma/prisma-sistema'
-import { criarClube, criarUsuario, criarVinculo, prismaDeTeste } from '../../test/fabricas'
+import { criarClube, criarSubstituicao, criarUnidade, criarUsuario, criarVinculo, prismaDeTeste } from '../../test/fabricas'
 import { ServicoAccessToken } from './access-token.service'
 import { ServicoRefresh } from './refresh.service'
 import { ServicoSessao } from './sessao.service'
@@ -70,6 +70,96 @@ describe('sessao', () => {
         } catch (erro) {
           expect((erro as ErroApp).codigo).toBe('NAO_AUTENTICADO')
         }
+      }
+    })
+  })
+
+  describe('credencial de substituicao', () => {
+    it('leva sub e tipo, e vale ate o fim do envio', () => {
+      const validadeAte = new Date(Date.now() + 5 * HORA)
+      const jwt = access.emitirSubstituicao('s1', validadeAte)
+      const carga = JSON.parse(Buffer.from(jwt.split('.')[1] ?? '', 'base64url').toString()) as Record<
+        string,
+        number | string
+      >
+      expect(Object.keys(carga).sort()).toEqual(['exp', 'iat', 'sub', 'tipo'])
+      expect(carga['tipo']).toBe('substituicao')
+      expect(carga['exp']).toBe(Math.floor(validadeAte.getTime() / 1000))
+      expect(access.verificarSubstituicao(jwt)).toEqual({ substituicaoId: 's1' })
+    })
+
+    it('verificar() recusa qualquer carga com tipo, inclusive a de substituicao', () => {
+      const jwt = new JwtService({ secret: process.env['JWT_SEGREDO'] })
+      const comTipo = jwt.sign({ sub: 'u1', vinculoId: 'v1', tipo: 'outro' }, { expiresIn: 60 })
+      const deSubstituicao = access.emitirSubstituicao('s1', new Date(Date.now() + HORA))
+      for (const token of [comTipo, deSubstituicao]) {
+        expect(() => access.verificar(token)).toThrow(ErroApp)
+      }
+    })
+
+    it('verificarSubstituicao() recusa a sessao normal e outro tipo; expirada vira SUBSTITUICAO_ENCERRADA', () => {
+      const jwt = new JwtService({ secret: process.env['JWT_SEGREDO'] })
+      const normal = access.emitir({ usuarioId: 'u1', vinculoId: 'v1' })
+      const outroTipo = jwt.sign({ sub: 's1', tipo: 'outro' }, { expiresIn: 60 })
+      for (const token of [normal, outroTipo, 'lixo']) {
+        try {
+          access.verificarSubstituicao(token)
+          throw new Error('nao lancou')
+        } catch (erro) {
+          expect((erro as ErroApp).codigo).toBe('NAO_AUTENTICADO')
+        }
+      }
+      const vencida = access.emitirSubstituicao('s1', new Date(Date.now() - MINUTO), new Date(Date.now() - HORA))
+      try {
+        access.verificarSubstituicao(vencida)
+        throw new Error('nao lancou')
+      } catch (erro) {
+        expect((erro as ErroApp).codigo).toBe('SUBSTITUICAO_ENCERRADA')
+      }
+    })
+  })
+
+  describe('carregarSubstituicao', () => {
+    it('prazo de leitura e o fim; de gravacao, o fim do envio; antes do inicio, nada', async () => {
+      const clube = await criarClube()
+      const unidade = await criarUnidade({ clubeId: clube.id })
+      const substituicao = await criarSubstituicao({ clubeId: clube.id, tipo: 'CHAMADA', unidadeId: unidade.id })
+      const em = (deslocamento: number, base: Date): Date => new Date(base.getTime() + deslocamento)
+
+      const aberta = await sessao.carregarSubstituicao(substituicao.id, 'LEITURA', em(-SEGUNDO, substituicao.fimEm))
+      expect(aberta).toEqual({
+        substituicaoId: substituicao.id,
+        usuarioId: substituicao.substitutoId,
+        clubeId: clube.id,
+        papel: 'CONSELHEIRO',
+        unidadeId: unidade.id,
+        classeId: null,
+        data: substituicao.data.toISOString().slice(0, 10),
+      })
+      expect(await codigoDoErro(sessao.carregarSubstituicao(substituicao.id, 'LEITURA', substituicao.fimEm))).toBe(
+        'SUBSTITUICAO_ENCERRADA',
+      )
+      await sessao.carregarSubstituicao(substituicao.id, 'GRAVACAO', em(-SEGUNDO, substituicao.fimEnvioEm))
+      expect(
+        await codigoDoErro(sessao.carregarSubstituicao(substituicao.id, 'GRAVACAO', substituicao.fimEnvioEm)),
+      ).toBe('SUBSTITUICAO_ENCERRADA')
+      expect(
+        await codigoDoErro(sessao.carregarSubstituicao(substituicao.id, 'GRAVACAO', em(-SEGUNDO, substituicao.inicioEm))),
+      ).toBe('SUBSTITUICAO_ENCERRADA')
+    })
+
+    it('inexistente, cancelada, sem aparelho ou sem autor: SUBSTITUICAO_ENCERRADA', async () => {
+      const clube = await criarClube()
+      const unidade = await criarUnidade({ clubeId: clube.id })
+      const base = { clubeId: clube.id, tipo: 'CHAMADA' as const, unidadeId: unidade.id }
+      const ids = [
+        '01900000-0000-7000-8000-000000000000',
+        (await criarSubstituicao({ ...base, cancelada: true })).id,
+        (await criarSubstituicao({ ...base, aparelhoHash: null })).id,
+        (await criarSubstituicao({ ...base, substitutoId: null })).id,
+      ]
+      for (const id of ids) {
+        expect(await codigoDoErro(sessao.carregarSubstituicao(id, 'LEITURA'))).toBe('SUBSTITUICAO_ENCERRADA')
       }
     })
   })

@@ -9,6 +9,7 @@ import { useConexao, usePacote } from '../../offline'
 import type { PacoteGuardado } from '../../offline'
 import { baixarPacoteAoVoltarConexao } from '../../offline/pacote'
 import { useSessao } from '../../sessao/useSessao'
+import { useAlvoFixo } from '../../substituicao/contextos'
 import { Campo } from '../../ui/Campo'
 import { Selecao } from '../../ui/Selecao'
 import { dataCurta, somarDias } from './datas'
@@ -66,20 +67,23 @@ export function TelaRegistroAula() {
 
 function AulaNova({ pacote, classes, baixadoEm }: PropriedadesModo) {
   const [busca] = useSearchParams()
+  const alvo = useAlvoFixo()
   const hoje = hojeNoFuso(pacote.clube.fuso, new Date())
   const minimo = somarDias(hoje, -30)
-  const pedida = busca.get('classe')
+  const pedida = alvo?.classeId ?? busca.get('classe')
   const [escolhida, setEscolhida] = useState(pedida)
-  const [data, setData] = useState(busca.get('data') ?? hoje)
+  const [dataEscolhida, setDataEscolhida] = useState(busca.get('data') ?? hoje)
+  const data = alvo?.data ?? dataEscolhida
   const classe = classes.find((c) => c.classe.id === (escolhida ?? classes[0]?.classe.id))
 
   if (!classe) return <AulaVazia titulo="Esta classe não é sua" descricao="Escolha uma das suas classes no Início." />
   if (classe.membros.length === 0) return <AulaVazia titulo="Nenhum desbravador cursando esta classe" descricao="Avise o Adm para matricular os desbravadores." />
 
-  const dataValida = data >= minimo && data <= hoje
+  // A data do alvo fixo vale como veio: quem a valida é o servidor.
+  const dataValida = alvo !== null || (data >= minimo && data <= hoje)
   return (
     <>
-      {classes.length > 1 && (
+      {!alvo?.classeId && classes.length > 1 && (
         <Selecao rotulo="Classe" value={classe.classe.id} onChange={(e) => setEscolhida(e.target.value)}>
           {classes.map((c) => (
             <option key={c.classe.id} value={c.classe.id}>
@@ -88,15 +92,17 @@ function AulaNova({ pacote, classes, baixadoEm }: PropriedadesModo) {
           ))}
         </Selecao>
       )}
-      <Campo
-        rotulo="Data"
-        type="date"
-        value={data}
-        min={minimo}
-        max={hoje}
-        onChange={(e) => setData(e.target.value)}
-        erro={dataValida ? undefined : `Escolha uma data entre ${dataCurta(minimo)} e hoje.`}
-      />
+      {!alvo && (
+        <Campo
+          rotulo="Data"
+          type="date"
+          value={data}
+          min={minimo}
+          max={hoje}
+          onChange={(e) => setDataEscolhida(e.target.value)}
+          erro={dataValida ? undefined : `Escolha uma data entre ${dataCurta(minimo)} e hoje.`}
+        />
+      )}
       {dataValida && <AulaDaData key={`${classe.classe.id}:${data}`} pacote={pacote} classes={classes} baixadoEm={baixadoEm} classe={classe} data={data} />}
     </>
   )
@@ -137,7 +143,7 @@ function AulaComDetalhe({ aulaId, ...props }: PropriedadesDaData & { aulaId: str
   if (detalhe.isPending) return <EsqueletoAula />
   // Uma releitura que falha depois não tira a aula que já chegou.
   if (!detalhe.data) return <AulaComBaseDoPacote {...props} />
-  return <FormularioAula pacote={props.pacote} baixadoEm={props.baixadoEm} classe={props.classe} data={props.data} base={baseDoDetalhe(detalhe.data)} />
+  return <FormularioAula pacote={props.pacote} baixadoEm={props.baixadoEm} classe={props.classe} data={props.data} base={baseDoDetalhe(detalhe.data)} substituicao={detalhe.data.substituicao} />
 }
 
 interface PropriedadesEdicao extends PropriedadesModo {
@@ -162,5 +168,5 @@ function EdicaoDoServidor({ id, pacote, classes, baixadoEm }: PropriedadesEdicao
   }
   const classe = classes.find((c) => c.classe.id === consulta.data.classe.id)
   if (!classe) return <AulaVazia titulo="Esta classe não está neste aparelho" descricao="Abra-a de novo quando houver internet." />
-  return <FormularioAula key={consulta.data.id} pacote={pacote} baixadoEm={baixadoEm} classe={classe} data={consulta.data.data} base={baseDoDetalhe(consulta.data)} />
+  return <FormularioAula key={consulta.data.id} pacote={pacote} baixadoEm={baixadoEm} classe={classe} data={consulta.data.data} base={baseDoDetalhe(consulta.data)} substituicao={consulta.data.substituicao} />
 }

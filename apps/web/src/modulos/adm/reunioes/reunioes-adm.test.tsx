@@ -262,3 +262,21 @@ describe('corrigir chamada (Adm)', () => {
     expect(clienteConsultas.getQueryState([chavesLeitura.semMembros[0], uuid(201)])?.isInvalidated).toBe(true)
   })
 })
+
+describe('ficha da reunião: substituição (R1)', () => {
+  const r1 = () => screen.getByText((_, elemento) => elemento?.getAttribute('data-r1') === 'substituicao')
+
+  it('mostra quem lançou pelo link e o Adm que gerou', async () => {
+    const registro = caixa({ ...reuniao().atual, substituicao: { autor: 'Ana Souza', semConta: true, geradoPor: 'Rita Campos', lancou: true } })
+    abrir(`/adm/reunioes/${uuid(601)}`, registro)
+    expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument()
+    expect(r1()).toHaveTextContent('Substituição. Chamada lançada por Ana Souza (sem conta no app), pelo link que Rita Campos (Adm) gerou.')
+  })
+
+  it('alterada por membro: "alterada", sem o parêntese', async () => {
+    const registro = caixa({ ...reuniao().atual, substituicao: { autor: 'Marcos Lima', semConta: false, geradoPor: 'Rita Campos', lancou: false } })
+    abrir(`/adm/reunioes/${uuid(601)}`, registro)
+    expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument()
+    expect(r1()).toHaveTextContent('Substituição. Chamada alterada por Marcos Lima, pelo link que Rita Campos (Adm) gerou.')
+  })
+})

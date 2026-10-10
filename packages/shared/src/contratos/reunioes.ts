@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { Horario, MesCivil, SituacaoChamadaZ } from '../enums'
 import { DataCivil, InstanteIso, Uuid } from './comum'
 import { RefUnidade } from './auth'
+import { SubstituicaoNoRegistro } from './substituicao'
 
 const camposMarcacao = {
   situacao: SituacaoChamadaZ,
@@ -99,6 +100,8 @@ export const ReuniaoDetalhe = z.object({
     uniformes: z.number().int(), biblias: z.number().int(), pontos: z.number().int(),
   }),
   album: z.object({ id: Uuid, totalFotos: z.number().int(), miniaturas: z.array(z.string()).max(4) }).nullable(),
+  /** R1: houve substituição na última gravação por link de substituição. */
+  substituicao: SubstituicaoNoRegistro.nullable().default(null),
 })
 
 export const MARCAS_GRADE = ['P', 'A', 'F', 'J'] as const

@@ -10,6 +10,7 @@ import {
 } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
+import { nomeDoAutor } from '../comum/nome-do-autor'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { ServicoCronograma } from '../cronogramas/servico-cronograma'
 import { daDataCivil, paraDataCivil } from '../desbravadores/apoio'
@@ -252,7 +253,7 @@ export class VisaoGeralService {
   private async atividadeRecente(clubeId: string): Promise<Visao['atividades']> {
     const atividades = await this.prisma.atividade.findMany({
       where: { clubeId, tipo: { in: TIPOS_DO_FEED } },
-      select: { id: true, descricao: true, link: true, criadaEm: true, autor: { select: { nome: true } } },
+      select: { id: true, descricao: true, link: true, criadaEm: true, autor: { select: { nome: true, status: true } } },
       orderBy: [{ criadaEm: 'desc' }, { id: 'desc' }],
       take: 10,
     })
@@ -261,7 +262,7 @@ export class VisaoGeralService {
       descricao: atividade.descricao,
       link: atividade.link,
       criadaEm: atividade.criadaEm.toISOString(),
-      autor: atividade.autor?.nome ?? null,
+      autor: atividade.autor ? nomeDoAutor(atividade.autor) : null,
     }))
   }
 }

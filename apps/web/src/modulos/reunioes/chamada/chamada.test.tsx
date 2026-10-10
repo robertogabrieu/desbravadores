@@ -15,6 +15,7 @@ import { criarPacote } from '../../../testes/handlers/offline'
 import { criarEu, criarVinculo, uuid } from '../../../testes/handlers/sessao'
 import { simularLargura } from '../../../testes/midia'
 import { servidor } from '../../../testes/servidor'
+import { ProvedorDeAlvoFixo, ProvedorDeDestinos } from '../../../substituicao/contextos'
 import { TelaChamada } from './TelaChamada'
 
 const estado = vi.hoisted(() => ({
@@ -81,7 +82,7 @@ function guardar(p = pacote(), baixadoEm: number | null = Date.parse('2030-03-15
   estado.pacote = { pacote: p, carregando: false, baixadoEm }
 }
 
-function montar(rota: string, unidades = [AGUIAS]) {
+function montar(rota: string, unidades = [AGUIAS], envolver = (filho: ReactNode): ReactNode => filho) {
   const vinculo = criarVinculo('CONSELHEIRO', 1, { unidades })
   const eu = criarEu([vinculo], vinculo.id)
   const sessao = { situacao: 'autenticada', eu, vinculoAtivo: vinculo, papel: 'CONSELHEIRO', vinculos: [vinculo] } as unknown as ContextoSessao
@@ -90,12 +91,13 @@ function montar(rota: string, unidades = [AGUIAS]) {
       { path: '/reunioes/nova', element: <TelaChamada /> },
       { path: '/reunioes/:id/editar', element: <TelaChamada /> },
       { path: '/reunioes', element: <p>Histórico</p> },
+      { path: '*', element: <p>Outro destino</p> },
     ],
     { initialEntries: [rota] },
   )
   const Envoltorio = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <ContextoDaSessao.Provider value={sessao}>{children}</ContextoDaSessao.Provider>
+      <ContextoDaSessao.Provider value={sessao}>{envolver(children)}</ContextoDaSessao.Provider>
     </QueryClientProvider>
   )
   render(<RouterProvider router={roteador} />, { wrapper: Envoltorio })
@@ -566,5 +568,36 @@ describe('Os quatro estados', () => {
     estado.pacote = { pacote: null, carregando: false, baixadoEm: null }
     montar('/reunioes/nova')
     expect(screen.getByText('Disponível quando houver internet')).toBeInTheDocument()
+  })
+})
+
+describe('Substituição: alvo fixo e destinos', () => {
+  const marcarTodos = async () => {
+    for (const nome of ['Ana Clara', 'Bruno Lima', 'Carla Dias']) {
+      await userEvent.click(linha(nome).getByRole('button', { name: new RegExp(nome) }))
+    }
+  }
+
+  it('com alvo fixo, a unidade é a do alvo e a data não pode ser trocada', async () => {
+    guardar(pacote({ unidades: [{ ...AGUIAS, membros: [membro(ANA, 'Ana Clara')] }, { ...LEOES, membros: [membro(uuid(304), 'Davi Nunes')] }] }))
+    montar('/reunioes/nova', [AGUIAS, LEOES], (filho) => <ProvedorDeAlvoFixo alvo={{ unidadeId: LEOES.id, data: HOJE }}>{filho}</ProvedorDeAlvoFixo>)
+    expect(await screen.findByText('Davi Nunes')).toBeInTheDocument()
+    expect(screen.queryByText('Ana Clara')).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: 'Unidade' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Data')).not.toBeInTheDocument()
+  })
+
+  it('com o contexto de destinos trocado, salvar vai ao destino dado', async () => {
+    const roteador = montar('/reunioes/nova', [AGUIAS], (filho) => <ProvedorDeDestinos destinos={{ depoisDeSalvarChamada: '/substituto/t/salvo' }}>{filho}</ProvedorDeDestinos>)
+    await screen.findByText('Ana Clara')
+    await marcarTodos()
+    await userEvent.click(botaoSalvar())
+    await waitFor(() => expect(roteador.state.location.pathname).toBe('/substituto/t/salvo'))
+  })
+
+  it('o estado vazio volta ao destino dado', async () => {
+    guardar(pacote({ unidades: [] }))
+    montar('/reunioes/nova', [AGUIAS], (filho) => <ProvedorDeDestinos destinos={{ voltarDaChamada: { caminho: '/substituto/t', rotulo: 'Voltar ao link' } }}>{filho}</ProvedorDeDestinos>)
+    expect(await screen.findByRole('link', { name: 'Voltar ao link' })).toHaveAttribute('href', '/substituto/t')
   })
 })

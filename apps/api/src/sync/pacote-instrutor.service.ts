@@ -8,7 +8,6 @@ import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { ServicoCronograma } from '../cronogramas/servico-cronograma'
 import { colador, daDataCivil, paraDataCivil } from '../desbravadores/apoio'
-import { ServicoEscopo } from '../desbravadores/escopo.service'
 import { ehFichaDaSessao } from '../progresso/conclusoes'
 import type { ConfiguracaoClube } from '../generated/prisma/client.js'
 
@@ -27,14 +26,12 @@ function somarDias(data: string, dias: number): string {
 export class PacoteInstrutorService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly escopo: ServicoEscopo,
     private readonly cronogramas: ServicoCronograma,
   ) {}
 
-  async montar(sessao: SessaoLogada, configuracao: ConfiguracaoClube, hoje: string): Promise<PacoteInstrutor> {
+  async montar(sessao: SessaoLogada, classeIds: string[], configuracao: ConfiguracaoClube, hoje: string): Promise<PacoteInstrutor> {
     const { clubeId } = sessao
     const ano = anoClube(hoje, configuracao.inicioAnoClube)
-    const classeIds = await this.escopo.classesDoInstrutor(sessao)
     const classes = await this.prisma.classe.findMany({
       where: { id: { in: classeIds }, OR: [{ clubeId: null }, { clubeId }] },
       orderBy: [{ ordem: 'asc' }, { id: 'asc' }],
@@ -140,7 +137,7 @@ export class PacoteInstrutorService {
           classeAtual: atual ? refClasse(atual) : null,
           autorizacaoImagem: dbv.autorizacaoImagem,
           tipo: dbv.tipo,
-          voce: ehFichaDaSessao(sessao, dbv.usuarioId),
+          voce: !sessao.substituicao && ehFichaDaSessao(sessao, dbv.usuarioId),
           concluidos: dbv.requisitosConcluidos.map((conclusao) => conclusao.requisitoId),
           conclusoes: dbv.requisitosConcluidos.map((conclusao) => ({
             requisitoId: conclusao.requisitoId,

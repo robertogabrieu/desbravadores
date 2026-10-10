@@ -9,7 +9,9 @@ import {
   criarCronograma,
   criarDbv,
   criarRegistroAula,
+  criarSubstituicao,
   criarTarefa,
+  criarUsuarioDeSubstituicao,
   desconectarPrismaDeTeste,
   prismaDeTeste,
   publicarCronograma,
@@ -139,5 +141,56 @@ describe('leitura de aulas', () => {
     const doOutroClube = await cenario()
     expect((await api.get(`/api/aulas/${velha.id}`, doOutroClube.adm.autorizacao)).status).toBe(404)
     expect((await api.get(`/api/aulas/${velha.id}`, doOutroClube.instrutor.autorizacao)).status).toBe(404)
+  })
+
+  describe('detalhe: substituicao (R1)', () => {
+    async function nomeDeQuemGerou(criadoPorId: string): Promise<string> {
+      return (await prismaDeTeste().usuario.findUniqueOrThrow({ where: { id: criadoPorId } })).nome
+    }
+
+    it('registro lancado pelo usuario de substituicao: autor sem marca, semConta, geradoPor e lancou', async () => {
+      const c = await cenario()
+      const substituto = await criarUsuarioDeSubstituicao({ nome: 'Joana Visitante' })
+      const substituicao = await criarSubstituicao({ clubeId: c.clube.id, tipo: 'CLASSE', classeId: c.classe.id, substitutoId: substituto.id })
+      const registro = await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: diasAtras(0) })
+      await prismaDeTeste().registroAula.update({ where: { id: registro.id }, data: { registradoPorId: substituto.id, substituicaoId: substituicao.id } })
+
+      const detalhe = AulaDetalhe.parse(corpo<unknown>(await api.get(`/api/aulas/${registro.id}`, c.instrutor.autorizacao)))
+      expect(detalhe.substituicao).toEqual({
+        autor: 'Joana Visitante',
+        semConta: true,
+        geradoPor: await nomeDeQuemGerou(substituicao.criadoPorId),
+        lancou: true,
+      })
+    })
+
+    it('titular registrou e o substituto membro alterou: lancou falso e semConta falso', async () => {
+      const c = await cenario()
+      const membro = await criarAcesso({ clubeId: c.clube.id, papel: 'INSTRUTOR' })
+      const substituicao = await criarSubstituicao({ clubeId: c.clube.id, tipo: 'CLASSE', classeId: c.classe.id, substitutoId: membro.usuario.id })
+      const registro = await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: diasAtras(0) })
+      await prismaDeTeste().registroAula.update({ where: { id: registro.id }, data: { substituicaoId: substituicao.id } })
+
+      const detalhe = AulaDetalhe.parse(corpo<unknown>(await api.get(`/api/aulas/${registro.id}`, c.instrutor.autorizacao)))
+      expect(detalhe.substituicao).toEqual({
+        autor: membro.usuario.nome,
+        semConta: false,
+        geradoPor: await nomeDeQuemGerou(substituicao.criadoPorId),
+        lancou: false,
+      })
+    })
+
+    it('sem substituicao e null; substituicao de outro clube nao se liga ao registro', async () => {
+      const c = await cenario()
+      const registro = await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: diasAtras(0) })
+      const outro = await cenario()
+      const alheia = await criarSubstituicao({ clubeId: outro.clube.id, tipo: 'CLASSE', classeId: outro.classe.id })
+
+      await expect(
+        prismaDeTeste().registroAula.update({ where: { id: registro.id }, data: { substituicaoId: alheia.id } }),
+      ).rejects.toThrow()
+      const detalhe = AulaDetalhe.parse(corpo<unknown>(await api.get(`/api/aulas/${registro.id}`, c.instrutor.autorizacao)))
+      expect(detalhe.substituicao).toBeNull()
+    })
   })
 })

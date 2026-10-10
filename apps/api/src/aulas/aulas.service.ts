@@ -65,9 +65,10 @@ export class AulasService {
       throw erro
     })
 
-    const [configuracao, planejados] = await Promise.all([
+    const [configuracao, planejados, substituicao] = await Promise.all([
       this.prisma.configuracaoClube.findUniqueOrThrow({ where: { clubeId } }),
       this.requisitosPlanejados(clubeId, registro.aulaPlanejadaId),
+      this.substituicaoDoRegistro(clubeId, registro.substituicaoId, registro.registradoPorId),
     ])
     const marcadosNaAula = registro.requisitos.map((conclusao) => conclusao.requisitoId)
     const idsDosRequisitos = [...new Set([...planejados, ...marcadosNaAula])]
@@ -79,6 +80,7 @@ export class AulasService {
       data: paraDataCivil(registro.data),
       aulaPlanejadaId: registro.aulaPlanejadaId,
       registradoPor: registro.registradoPor.nome,
+      substituicao,
       presencas: registro.presencas
         .map((presenca) => ({
           dbvId: presenca.dbvId,
@@ -90,6 +92,26 @@ export class AulasService {
       requisitosDaAula,
       concluidosNaAula: registro.requisitos.map(({ dbvId, requisitoId }) => ({ dbvId, requisitoId })),
       podeEditar: sessao.papel === 'ADM' || dentroDoPrazoDeCorrecao(paraDataCivil(registro.data), agora, configuracao.fuso),
+    }
+  }
+
+  /** Quem registrou pelo link (R1); `lancou` e falso quando o substituto so alterou o que o titular registrou. */
+  private async substituicaoDoRegistro(
+    clubeId: string,
+    substituicaoId: string | null,
+    registradoPorId: string,
+  ): Promise<Detalhe['substituicao']> {
+    if (substituicaoId === null) return null
+    const substituicao = await this.prisma.substituicao.findFirst({
+      where: { clubeId, id: substituicaoId },
+      select: { substitutoId: true, substituto: { select: { nome: true, status: true } }, criadoPor: { select: { nome: true } } },
+    })
+    if (!substituicao?.substituto) return null
+    return {
+      autor: substituicao.substituto.nome,
+      semConta: substituicao.substituto.status === 'SUBSTITUTO',
+      geradoPor: substituicao.criadoPor.nome,
+      lancou: substituicao.substitutoId === registradoPorId,
     }
   }
 

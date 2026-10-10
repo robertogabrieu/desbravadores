@@ -2,6 +2,11 @@ export const ACESSO_PUBLICA = 'acesso:publica'
 export const ACESSO_AUTENTICADO = 'acesso:autenticado'
 export const ACESSO_LOGADO = 'acesso:logado'
 export const ACESSO_PODE = 'acesso:pode'
+/**
+ * Marca extra das rotas que aceitam tambem a credencial do link de substituicao. Fica fora de
+ * CHAVES_DE_ACESSO: a rota continua com uma declaracao so (a de `@Pode` ou `@Logado`).
+ */
+export const ACEITA_SUBSTITUTO = 'acesso:aceita-substituto'
 
 const CHAVES_DE_ACESSO = [ACESSO_PUBLICA, ACESSO_AUTENTICADO, ACESSO_LOGADO, ACESSO_PODE]
 

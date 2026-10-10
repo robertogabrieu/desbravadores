@@ -121,6 +121,8 @@ export class UsuariosService {
     for (const vinculo of entrada.vinculos) await this.validarVinculo(clubeId, vinculo)
 
     const existente = await this.prisma.usuario.findUnique({ where: { email: entrada.email } })
+    // Quem entrou por link de substituicao nao vira conta: o e-mail dele e so um marcador.
+    if (existente?.status === 'SUBSTITUTO') throw new ErroApp('REGRA', 'Este e-mail não pode receber acesso ao app.')
     if (existente) await this.exigirPapeisLivres(clubeId, existente.id, papeis)
     const hoje = await this.tipo.hoje(clubeId)
 

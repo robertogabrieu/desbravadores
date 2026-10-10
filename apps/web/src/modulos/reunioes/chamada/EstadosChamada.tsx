@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { useDestinos } from '../../../substituicao/contextos'
 import { Botao } from '../../../ui/Botao'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { Esqueleto } from '../../../ui/Esqueleto'
@@ -15,13 +16,13 @@ export function EsqueletoChamada() {
   )
 }
 
-const voltar = (
-  <Link to="/reunioes" className="font-semibold text-marca underline">
-    Voltar às reuniões
-  </Link>
-)
-
 export function ChamadaVazia({ titulo, descricao }: { titulo: string; descricao?: string }) {
+  const { voltarDaChamada } = useDestinos()
+  const voltar = (
+    <Link to={voltarDaChamada.caminho} className="font-semibold text-marca underline">
+      {voltarDaChamada.rotulo}
+    </Link>
+  )
   return <EstadoVazio titulo={titulo} descricao={descricao} acao={voltar} />
 }
 

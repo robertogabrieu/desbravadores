@@ -5,6 +5,7 @@ import type { z } from 'zod'
 import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { ErroApp } from '../comum/erros'
+import { nomeDoAutor } from '../comum/nome-do-autor'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { colador, daDataCivil, paraDataCivil } from '../desbravadores/apoio'
 import { ServicoEscopo, type RelogioDoClube } from '../desbravadores/escopo.service'
@@ -172,7 +173,7 @@ export class ServicoProgresso {
 
     const conclusoes = await this.prisma.requisitoConcluido.findMany({
       where: { clubeId, dbvId, removidoEm: null },
-      select: { requisitoId: true, concluidoEm: true, marcadoPor: { select: { nome: true } } },
+      select: { requisitoId: true, concluidoEm: true, marcadoPor: { select: { nome: true, status: true } } },
     })
     const conclusaoPorRequisito = new Map(conclusoes.map((conclusao) => [conclusao.requisitoId, conclusao]))
     const permissoes = await this.escopo.permissoes(sessao)
@@ -190,7 +191,7 @@ export class ServicoProgresso {
             ...requisito,
             secaoCodigo: secao.codigo,
             concluidoEm: conclusao ? paraDataCivil(conclusao.concluidoEm) : null,
-            marcadoPor: conclusao?.marcadoPor.nome ?? null,
+            marcadoPor: conclusao ? nomeDoAutor(conclusao.marcadoPor) : null,
             podeMarcar,
           }
         })

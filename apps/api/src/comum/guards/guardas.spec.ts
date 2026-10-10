@@ -3,9 +3,24 @@ import { Logger, type INestApplication } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import request from 'supertest'
 import { criarAppDeTeste } from '../../../test/app'
-import { criarAcesso, criarClube, criarUsuario, criarVinculo, desconectarPrismaDeTeste, prismaDeTeste } from '../../../test/fabricas'
+import {
+  admDefinirClasseClube,
+  classeOficial,
+  credencialDeSubstituicao,
+  criarAcesso,
+  criarClube,
+  criarSubstituicao,
+  criarUnidade,
+  criarUsuario,
+  criarVinculo,
+  desconectarPrismaDeTeste,
+  prismaDeTeste,
+} from '../../../test/fabricas'
+import { congelarRelogio, descongelarRelogio } from '../../../test/relogio'
+import { ServicoEscopo } from '../../desbravadores/escopo.service'
 import { RotasDeTesteModule } from '../../../test/rotas-de-teste'
 import { ServicoAccessToken } from '../../sessao/access-token.service'
+import type { SessaoLogada } from '../decorators/sessao.decorator'
 
 describe('guardas globais e filtro de erros', () => {
   let app: INestApplication
@@ -147,5 +162,168 @@ describe('guardas globais e filtro de erros', () => {
     expect(resposta.body).toEqual({ codigo: 'ERRO_INTERNO', mensagem: 'Algo deu errado. Tente de novo em instantes.' })
     expect(JSON.stringify(espiao.mock.calls)).toContain('ErroEscopoClube')
     espiao.mockRestore()
+  })
+  describe('credencial de substituicao', () => {
+    const HORA = 60 * 60 * 1000
+
+    async function linkDeUnidade(dados: Partial<Parameters<typeof criarSubstituicao>[0]> = {}) {
+      const clube = await criarClube()
+      const unidade = await criarUnidade({ clubeId: clube.id })
+      const substituicao = await criarSubstituicao({ clubeId: clube.id, tipo: 'CHAMADA', unidadeId: unidade.id, ...dados })
+      return { clube, unidade, substituicao, ...credencialDeSubstituicao(substituicao) }
+    }
+
+    async function codigo(metodo: 'get' | 'put', caminho: string, autorizacao: string, status: number): Promise<string> {
+      const resposta = await request(servidor())[metodo](caminho).set('Authorization', autorizacao).expect(status)
+      return (resposta.body as { codigo: string }).codigo
+    }
+
+    afterEach(() => {
+      descongelarRelogio()
+    })
+
+    it('criterio 19: em /api/eu e nas rotas @Autenticado responde 401 NAO_AUTENTICADO', async () => {
+      const { autorizacao } = await linkDeUnidade()
+      expect(await codigo('get', '/api/eu', autorizacao, 401)).toBe('NAO_AUTENTICADO')
+      expect(await codigo('get', '/api/_teste/autenticado', autorizacao, 401)).toBe('NAO_AUTENTICADO')
+    })
+
+    it('criterio 17: rota sem a marca responde 401 NAO_AUTENTICADO; a marcada aceita', async () => {
+      const { autorizacao } = await linkDeUnidade()
+      for (const rota of ['logado', 'pode-ver-dbv', 'pode-usuarios', 'unidades']) {
+        expect(await codigo('get', `/api/_teste/${rota}`, autorizacao, 401)).toBe('NAO_AUTENTICADO')
+      }
+      await request(servidor()).get('/api/_teste/logado-ou-substituto').set('Authorization', autorizacao).expect(200)
+      await request(servidor()).get('/api/_teste/pode-ou-substituto').set('Authorization', autorizacao).expect(200)
+      await request(servidor()).put('/api/_teste/pode-ou-substituto').set('Authorization', autorizacao).expect(200)
+    })
+
+    it('link de unidade: autor, clube do link, papel CONSELHEIRO, vinculoId = id da substituicao e o alvo', async () => {
+      const { clube, unidade, substituicao, autorizacao } = await linkDeUnidade()
+      const resposta = await request(servidor()).get('/api/_teste/pode-ou-substituto').set('Authorization', autorizacao).expect(200)
+      expect(resposta.body).toEqual({
+        usuarioId: substituicao.substitutoId,
+        vinculoId: substituicao.id,
+        clubeId: clube.id,
+        papel: 'CONSELHEIRO',
+        substituicao: {
+          id: substituicao.id,
+          unidadeId: unidade.id,
+          classeId: null,
+          data: substituicao.data.toISOString().slice(0, 10),
+        },
+      })
+    })
+
+    it('link de classe oficial ativa no clube: papel INSTRUTOR, sem ler vinculo nem ajuste', async () => {
+      const clube = await criarClube()
+      const amigo = await classeOficial('Amigo')
+      const substituicao = await criarSubstituicao({ clubeId: clube.id, tipo: 'CLASSE', classeId: amigo.id })
+      const { autorizacao } = credencialDeSubstituicao(substituicao)
+      const resposta = await request(servidor()).put('/api/_teste/pode-ou-substituto').set('Authorization', autorizacao).expect(200)
+      expect(resposta.body).toMatchObject({
+        papel: 'INSTRUTOR',
+        vinculoId: substituicao.id,
+        substituicao: { id: substituicao.id, unidadeId: null, classeId: amigo.id },
+      })
+    })
+
+    it('a sessao normal segue passando nas rotas marcadas, sem campo de substituicao', async () => {
+      const clube = await criarClube()
+      const conselheiro = await criarAcesso({ clubeId: clube.id, papel: 'CONSELHEIRO' })
+      const resposta = await request(servidor())
+        .get('/api/_teste/logado-ou-substituto')
+        .set('Authorization', conselheiro.autorizacao)
+        .expect(200)
+      expect(resposta.body).toEqual({
+        usuarioId: conselheiro.usuario.id,
+        vinculoId: conselheiro.vinculo.id,
+        clubeId: clube.id,
+        papel: 'CONSELHEIRO',
+      })
+    })
+
+    it('cancelada, sem aparelho identificado ou antes do inicio: 401 SUBSTITUICAO_ENCERRADA', async () => {
+      const cancelada = await linkDeUnidade({ cancelada: true })
+      const semAparelho = await linkDeUnidade({ aparelhoHash: null })
+      const antes = await linkDeUnidade({ inicioEm: new Date(Date.now() + HORA) })
+      for (const { autorizacao } of [cancelada, semAparelho, antes]) {
+        expect(await codigo('get', '/api/_teste/pode-ou-substituto', autorizacao, 401)).toBe('SUBSTITUICAO_ENCERRADA')
+        expect(await codigo('put', '/api/_teste/pode-ou-substituto', autorizacao, 401)).toBe('SUBSTITUICAO_ENCERRADA')
+      }
+    })
+
+    it('entre o fim e o fim do envio: grava, mas a leitura ja encerrou', async () => {
+      const { substituicao, autorizacao } = await linkDeUnidade()
+      congelarRelogio(new Date(substituicao.fimEm.getTime() + HORA).toISOString())
+      await request(servidor()).put('/api/_teste/pode-ou-substituto').set('Authorization', autorizacao).expect(200)
+      expect(await codigo('get', '/api/_teste/pode-ou-substituto', autorizacao, 401)).toBe('SUBSTITUICAO_ENCERRADA')
+      expect(await codigo('get', '/api/_teste/logado-ou-substituto', autorizacao, 401)).toBe('SUBSTITUICAO_ENCERRADA')
+    })
+
+    it('depois do fim do envio: gravacao e leitura encerradas', async () => {
+      const { substituicao, autorizacao } = await linkDeUnidade()
+      congelarRelogio(new Date(substituicao.fimEnvioEm.getTime() + 1000).toISOString())
+      expect(await codigo('put', '/api/_teste/pode-ou-substituto', autorizacao, 401)).toBe('SUBSTITUICAO_ENCERRADA')
+      expect(await codigo('get', '/api/_teste/pode-ou-substituto', autorizacao, 401)).toBe('SUBSTITUICAO_ENCERRADA')
+    })
+
+    it('alvo desativado (unidade inativa, classe desligada no clube, classe de outro clube): SUBSTITUICAO_ENCERRADA', async () => {
+      const unidade = await linkDeUnidade()
+      await prismaDeTeste().unidade.update({ where: { id: unidade.unidade.id }, data: { ativa: false } })
+
+      const clube = await criarClube()
+      const amigo = await classeOficial('Amigo')
+      const desligada = await criarSubstituicao({ clubeId: clube.id, tipo: 'CLASSE', classeId: amigo.id })
+      await admDefinirClasseClube({ clubeId: clube.id, classeId: amigo.id, ativa: false })
+
+      const outroClube = await criarClube()
+      const classeAlheia = await prismaDeTeste().classe.create({
+        data: { clubeId: outroClube.id, origem: 'CLUBE', nome: 'Alheia', tipo: 'REGULAR', trilha: 'INDIVIDUAL', ordem: 99 },
+      })
+      const alheia = await criarSubstituicao({ clubeId: clube.id, tipo: 'CLASSE', classeId: classeAlheia.id })
+
+      for (const autorizacao of [
+        unidade.autorizacao,
+        credencialDeSubstituicao(desligada).autorizacao,
+        credencialDeSubstituicao(alheia).autorizacao,
+      ]) {
+        expect(await codigo('put', '/api/_teste/pode-ou-substituto', autorizacao, 401)).toBe('SUBSTITUICAO_ENCERRADA')
+      }
+    })
+
+    it('classe do proprio clube e alvo valido', async () => {
+      const clube = await criarClube()
+      const propria = await prismaDeTeste().classe.create({
+        data: { clubeId: clube.id, origem: 'CLUBE', nome: 'Propria', tipo: 'REGULAR', trilha: 'INDIVIDUAL', ordem: 99 },
+      })
+      const substituicao = await criarSubstituicao({ clubeId: clube.id, tipo: 'CLASSE', classeId: propria.id })
+      await request(servidor())
+        .put('/api/_teste/pode-ou-substituto')
+        .set('Authorization', credencialDeSubstituicao(substituicao).autorizacao)
+        .expect(200)
+    })
+
+    it('escopo: unidadesDoConselheiro e classesDoInstrutor devolvem so o alvo do link', async () => {
+      const escopo = app.get(ServicoEscopo, { strict: false })
+      const clube = await criarClube()
+      const alvo = await criarUnidade({ clubeId: clube.id })
+      const amigo = await classeOficial('Amigo')
+      const base = { usuarioId: 'u', clubeId: clube.id, vinculoId: 'sub' }
+      const deUnidade: SessaoLogada = {
+        ...base,
+        papel: 'CONSELHEIRO',
+        substituicao: { id: 'sub', unidadeId: alvo.id, classeId: null, data: '2026-10-10' },
+      }
+      const deClasse: SessaoLogada = {
+        ...base,
+        papel: 'INSTRUTOR',
+        substituicao: { id: 'sub', unidadeId: null, classeId: amigo.id, data: '2026-10-10' },
+      }
+      expect(await escopo.unidadesDoConselheiro(deUnidade)).toEqual([alvo.id])
+      expect(await escopo.classesDoInstrutor(deUnidade)).toEqual([])
+      expect(await escopo.classesDoInstrutor(deClasse)).toEqual([amigo.id])
+      expect(await escopo.unidadesDoConselheiro(deClasse)).toEqual([])
+    })
   })
 })

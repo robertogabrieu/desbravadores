@@ -33,7 +33,9 @@ export class ServicoEscopo {
     return permissoesEfetivas(sessao.papel, ajustes)
   }
 
+  /** Com sessao de substituicao, so o alvo do link. */
   async unidadesDoConselheiro(sessao: SessaoLogada): Promise<string[]> {
+    if (sessao.substituicao) return sessao.substituicao.unidadeId ? [sessao.substituicao.unidadeId] : []
     const ligacoes = await this.prisma.vinculoUnidade.findMany({
       where: { clubeId: sessao.clubeId, vinculoId: sessao.vinculoId },
       select: { unidadeId: true },
@@ -41,7 +43,9 @@ export class ServicoEscopo {
     return ligacoes.map((ligacao) => ligacao.unidadeId)
   }
 
+  /** Com sessao de substituicao, so o alvo do link. */
   async classesDoInstrutor(sessao: SessaoLogada): Promise<string[]> {
+    if (sessao.substituicao) return sessao.substituicao.classeId ? [sessao.substituicao.classeId] : []
     const ligacoes = await this.prisma.vinculoClasse.findMany({
       where: { vinculoId: sessao.vinculoId },
       select: { classeId: true },

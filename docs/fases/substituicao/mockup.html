@@ -1,0 +1,324 @@
+<title>Link de substituição</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Prancheta: telas de celular lado a lado, agrupadas por quem usa; tokens copiados de docs/design/tokens.css (visual único, claro, como o app) */
+:root {
+  color-scheme: light;
+  --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
+  --font-body: 'Figtree', system-ui, sans-serif;
+  --primary: #1F4D3A; --primary-dark: #163828; --primary-soft: #E3EEE7; --accent: #F3E3C8;
+  --bg: #F4F1EA; --bg-deep: #E8E3D7; --surface: #FFFFFF; --surface-muted: #F9F7F2;
+  --text: #1B221F; --text-2: #5B645F; --border: #D9D3C5; --divider: #EFEBE1;
+  --success: #1F7A45; --danger: #B42318; --warning: #9A3412; --warning-bg: #FBEFE3;
+  --note: #5B3391; --note-bg: #EDE4F6;
+  --r-sm: 9px; --r-md: 12px; --r-lg: 16px; --r-xl: 22px;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg-deep); color: var(--text); font-family: var(--font-body); font-size: 16px; line-height: 1.45; padding-inline: 16px; padding-block: 32px 64px; }
+.page { max-width: 1320px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
+header.intro { max-width: 760px; display: flex; flex-direction: column; gap: 8px; }
+h1 { font-family: var(--font-display); font-size: 2rem; margin: 0; text-wrap: balance; }
+.intro p { margin: 0; color: var(--text-2); }
+.regra { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: 12px 16px; color: var(--text); }
+section.grupo { display: flex; flex-direction: column; gap: 16px; }
+section.grupo > h2 { font-family: var(--font-display); font-size: 1.4rem; margin: 0; }
+section.grupo > p { margin: 0; color: var(--text-2); max-width: 760px; }
+.prancha { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 28px; align-items: start; }
+figure { margin: 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+figcaption { font-size: 0.9rem; color: var(--text-2); }
+figcaption b { color: var(--text); display: block; font-size: 1rem; }
+.cel { background: var(--bg); border-radius: 28px; border: 1px solid var(--border); overflow: hidden; min-height: 600px; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(27,34,31,.10); }
+.barra { background: var(--primary); color: #fff; padding: 14px 16px; display: flex; align-items: center; gap: 10px; }
+.barra .t { font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; }
+.barra .v { font-size: 1.3rem; line-height: 1; opacity: .9; }
+.corpo { padding: 16px; display: flex; flex-direction: column; gap: 16px; flex: 1; }
+.cartao { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.cartao h3 { font-family: var(--font-display); font-size: 1.15rem; margin: 0; }
+.cartao p { margin: 0; }
+.sec { color: var(--text-2); font-size: 0.95rem; }
+.btn { min-height: 48px; border-radius: var(--r-md); border: 0; font: 600 1rem var(--font-body); padding: 0 16px; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; cursor: pointer; }
+.btn.pri { background: var(--primary); color: #fff; }
+.btn.sec2 { background: var(--surface); color: var(--primary); border: 1.5px solid var(--primary); }
+.btn.perigo { background: var(--surface); color: var(--danger); border: 1.5px solid var(--danger); }
+.lnk { color: var(--primary); font-weight: 600; text-decoration: underline; background: none; border: 0; font: 600 1rem var(--font-body); padding: 12px 0; text-align: center; cursor: pointer; }
+.pares { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: .95rem; }
+.pares dt { color: var(--text-2); }
+.pares dd { margin: 0; font-weight: 600; }
+.opcao { display: flex; gap: 12px; align-items: flex-start; border: 1.5px solid var(--border); border-radius: var(--r-md); padding: 12px; background: var(--surface); }
+.opcao.on { border-color: var(--primary); background: var(--primary-soft); }
+.radio { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--text-2); flex: none; margin-top: 2px; }
+.on .radio { border: 7px solid var(--primary); }
+.opcao b { display: block; }
+.opcao span { color: var(--text-2); font-size: .92rem; }
+.selo { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; width: fit-content; }
+.selo.espera { background: var(--bg-deep); color: var(--text); }
+.selo.aberto { background: var(--primary-soft); color: var(--primary); }
+.whats { background: var(--surface-muted); border: 1px dashed var(--border); border-radius: var(--r-md); padding: 10px 12px; font-size: .9rem; color: var(--text); }
+.ok { color: var(--success); font-weight: 600; }
+.campo { display: flex; flex-direction: column; gap: 6px; }
+.campo label { font-weight: 600; }
+.campo .inp { min-height: 48px; border: 1.5px solid var(--text-2); border-radius: var(--r-md); background: var(--surface); padding: 12px; color: var(--text-2); }
+.faixa { background: var(--accent); color: var(--primary-dark); padding: 10px 16px; font-size: .95rem; font-weight: 600; border-bottom: 1px solid var(--border); }
+.faixa span { font-weight: 400; }
+.linha-dbv { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--divider); background: var(--surface); }
+.linha-dbv:last-child { border-bottom: 0; }
+.lista { border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; }
+.marca { font-size: .85rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--primary-soft); color: var(--primary); }
+.marca.f { background: var(--bg-deep); color: var(--text-2); }
+.titular { font-size: .82rem; color: var(--text-2); border: 1px dashed var(--border); border-radius: var(--r-sm); padding: 8px 10px; background: var(--surface-muted); }
+.estado { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 12px; padding: 24px 20px; }
+.estado h3 { font-family: var(--font-display); font-size: 1.35rem; margin: 0; text-wrap: balance; }
+.estado p { margin: 0; }
+.ic { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-size: 1.5rem; background: var(--primary-soft); color: var(--primary); }
+.ic.alerta { background: var(--warning-bg); color: var(--warning); }
+.ic.neutro { background: var(--bg-deep); color: var(--text-2); }
+.autor { background: var(--note-bg); color: var(--note); border-radius: var(--r-md); padding: 10px 12px; font-size: .95rem; }
+.autor b { color: var(--text); }
+.nota { font-size: .85rem; color: var(--text-2); }
+:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+</style>
+
+<div class="page">
+  <header class="intro">
+    <h1>Link de substituição</h1>
+    <p>O Adm gera um link de um dia para quem vai cobrir um conselheiro ou instrutor que faltou. O link chega pelo WhatsApp, abre sem login no horário da reunião e fecha 3 horas depois.</p>
+    <p class="regra"><b>Este desenho é o alvo.</b> Se a spec e o desenho divergirem, o desenho vence. Do desenho não se copia CSS: a estrutura e os textos saem daqui, o estilo sai dos componentes do app (Cartao, Botao, CabecalhoDaPagina, ListaDePares).</p>
+  </header>
+
+  <section class="grupo">
+    <h2>1 · Adm: gerar e acompanhar o link</h2>
+    <p>Na ficha da unidade (para conselheiro) e no detalhe da classe (para instrutor). O exemplo é a unidade; na classe muda só o texto: "fazer o registro da classe Amigo".</p>
+    <div class="prancha">
+      <figure>
+        <div class="cel">
+          <div class="barra"><span class="v">‹</span><span class="t">Unidade Águia</span></div>
+          <div class="corpo">
+            <div class="cartao">
+              <h3>Conselheiros</h3>
+              <p class="sec">Paulo Ribeiro · Clara Mendes</p>
+            </div>
+            <div class="cartao" aria-labelledby="t-sub">
+              <h3 id="t-sub">Substituto para um dia</h3>
+              <p>Se nenhum conselheiro puder vir, mande um link para outra pessoa fazer a chamada. Ela não precisa de conta.</p>
+              <button class="btn pri">Gerar link de substituição</button>
+            </div>
+          </div>
+        </div>
+        <figcaption><b>A1 · Ficha da unidade, sem link</b>O cartão entra depois dos conselheiros, porque é sobre eles. O botão verde é a única ação da tela.</figcaption>
+      </figure>
+
+      <figure>
+        <div class="cel">
+          <div class="barra"><span class="v">‹</span><span class="t">Link de substituição</span></div>
+          <div class="corpo">
+            <p><b>Para qual reunião?</b><br><span class="sec">O link abre no horário da reunião e fecha 3 horas depois.</span></p>
+            <div class="opcao on"><span class="radio"></span><div><b>Domingo, 12 de outubro</b><span>das 09:00 às 12:00 · próxima reunião</span></div></div>
+            <div class="opcao"><span class="radio"></span><div><b>Sábado, 18 de outubro</b><span>das 15:00 às 18:00 · reunião extra: Gincana</span></div></div>
+            <div class="opcao"><span class="radio"></span><div><b>Domingo, 19 de outubro</b><span>das 09:00 às 12:00</span></div></div>
+            <p class="nota">Só aparecem dias com reunião no calendário, de hoje até 4 semanas à frente.</p>
+            <div style="flex:1"></div>
+            <button class="btn pri">Gerar link para 12 de outubro</button>
+          </div>
+        </div>
+        <figcaption><b>A2 · Escolher o dia</b>Uma pergunta só, já respondida com a próxima reunião. O botão repete o dia escolhido, para o Adm conferir sem reler a lista.</figcaption>
+      </figure>
+
+      <figure>
+        <div class="cel">
+          <div class="barra"><span class="v">‹</span><span class="t">Link de substituição</span></div>
+          <div class="corpo">
+            <p class="ok">✓ Link pronto</p>
+            <dl class="pares">
+              <dt>Para</dt><dd>Chamada da Unidade Águia</dd>
+              <dt>Quando</dt><dd>Dom., 12/10, das 09:00 às 12:00</dd>
+            </dl>
+            <p class="sec">Mensagem que vai no WhatsApp:</p>
+            <div class="whats">Olá! Você vai fazer a chamada da Unidade Águia no domingo, 12/10. O link abre às 09:00 e fecha às 12:00. Não precisa de senha: https://app.clube.org/substituto/Xk3…</div>
+            <p class="nota">O link aparece só agora. Para mandar de novo, gere outro: o anterior deixa de valer.</p>
+            <div style="flex:1"></div>
+            <button class="btn pri">Enviar por WhatsApp</button>
+            <button class="btn sec2">Copiar link</button>
+          </div>
+        </div>
+        <figcaption><b>A3 · Link gerado</b>Fechamento com o próximo passo: mandar. Nada some sozinho; "Copiar link" confirma com "Link copiado." ao lado do botão.</figcaption>
+      </figure>
+
+      <figure>
+        <div class="cel">
+          <div class="barra"><span class="v">‹</span><span class="t">Unidade Águia</span></div>
+          <div class="corpo">
+            <div class="cartao">
+              <h3>Substituto para um dia</h3>
+              <dl class="pares">
+                <dt>Reunião</dt><dd>Dom., 12/10, 09:00 às 12:00</dd>
+              </dl>
+              <span class="selo aberto">● Aberto por Marcos Lima às 09:05</span>
+              <p class="nota">Antes de abrir aparece "Ainda não foi aberto". Depois de 12:00, o cartão volta ao estado A1.</p>
+              <button class="btn perigo">Cancelar link</button>
+            </div>
+          </div>
+        </div>
+        <figcaption><b>A4 · Link em uso</b>O Adm vê quem abriu. "Cancelar link" pede confirmação na própria tela: "Cancelar? Marcos não vai conseguir lançar mais nada por este link." [Sim, cancelar] [Voltar].</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="grupo">
+    <h2>2 · Substituto: o que o link mostra em cada momento</h2>
+    <p>Rota pública própria. Sem cabeçalho de papel nem menu do app: quem abre não tem conta, ou tem e não deve ver a própria.</p>
+    <div class="prancha">
+      <figure>
+        <div class="cel">
+          <div class="barra"><span class="t">App do Desbravador</span></div>
+          <div class="estado">
+            <div class="ic neutro" aria-hidden="true">🕘</div>
+            <h3>Chamada da Unidade Águia</h3>
+            <p>O Adm pediu que você faça a chamada no <b>domingo, 12 de outubro</b>.</p>
+            <p>Este link abre às <b>09:00</b> e fica aberto até <b>12:00</b>. Volte por esta mesma mensagem do WhatsApp nesse horário.</p>
+            <p class="nota">Não precisa criar conta nem senha.</p>
+          </div>
+        </div>
+        <figcaption><b>S1 · Antes do horário</b>Só informa. Não pede nome e não prende o link ao celular: isso só acontece quando a janela abre.</figcaption>
+      </figure>
+
+      <figure>
+        <div class="cel">
+          <div class="barra"><span class="t">Chamada da Unidade Águia</span></div>
+          <div class="corpo">
+            <p class="sec">Domingo, 12 de outubro · até 12:00</p>
+            <div class="campo">
+              <label for="nome">Qual é o seu nome?</label>
+              <span class="nota">Ex.: Ana Souza. Ele fica registrado na chamada como quem lançou.</span>
+              <div class="inp" id="nome">Seu nome e sobrenome</div>
+            </div>
+            <div style="flex:1"></div>
+            <button class="btn pri">Começar a chamada</button>
+          </div>
+        </div>
+        <figcaption><b>S2 · Primeira abertura, sem conta</b>Uma pergunta. Ao confirmar, o link fica preso a este celular. Na próxima abertura vai direto para S4.</figcaption>
+      </figure>
+
+      <figure>
+        <div class="cel">
+          <div class="barra"><span class="t">Chamada da Unidade Águia</span></div>
+          <div class="corpo">
+            <p class="sec">Domingo, 12 de outubro · até 12:00</p>
+            <div class="cartao">
+              <p>Você vai lançar como</p>
+              <h3>Marcos Lima</h3>
+              <p class="nota">Seus papéis no app não mudam. Esta chamada fica separada do que você já faz.</p>
+            </div>
+            <div style="flex:1"></div>
+            <button class="btn pri">Começar a chamada</button>
+            <button class="lnk">Não sou Marcos</button>
+          </div>
+        </div>
+        <figcaption><b>S3 · Primeira abertura, já logado no clube</b>O nome vem da conta. "Não sou Marcos" leva a S2 (celular emprestado).</figcaption>
+      </figure>
+
+      <figure>
+        <div class="cel">
+          <div class="faixa">Substituindo na Unidade Águia <span>· aberto até 12:00</span></div>
+          <div class="barra"><span class="t">Chamada</span></div>
+          <div class="corpo">
+            <p class="titular">Daqui para baixo é a tela de chamada do conselheiro, a mesma, sem mudança. Só a faixa acima é nova.</p>
+            <div class="lista">
+              <div class="linha-dbv"><span>Bruno Alves</span><span class="marca">Presente</span></div>
+              <div class="linha-dbv"><span>Carla Nunes</span><span class="marca">Presente</span></div>
+              <div class="linha-dbv"><span>Davi Rocha</span><span class="marca f">Falta</span></div>
+              <div class="linha-dbv"><span>Elisa Prado</span><span class="marca f">Toque para marcar</span></div>
+            </div>
+            <div style="flex:1"></div>
+            <button class="btn pri">Salvar chamada</button>
+          </div>
+        </div>
+        <figcaption><b>S4 · Dentro da janela</b>A faixa abre a página e rola junto com ela (o app não usa barra presa). Para instrutor: "Substituindo na classe Amigo" e a tela de registro de classe.</figcaption>
+      </figure>
+
+      <figure>
+        <div class="cel">
+          <div class="faixa">Substituindo na Unidade Águia <span>· aberto até 12:00</span></div>
+          <div class="estado">
+            <div class="ic" aria-hidden="true">✓</div>
+            <h3>Chamada salva</h3>
+            <p>Ela já aparece para os conselheiros da unidade e para o Adm, com o seu nome.</p>
+            <p>Até <b>12:00</b> você ainda pode corrigir.</p>
+            <p class="nota">Sem internet, o texto muda para: "Chamada salva neste celular. Ela vai sozinha quando a internet voltar."</p>
+            <button class="btn pri">Abrir a chamada de novo</button>
+          </div>
+        </div>
+        <figcaption><b>S8 · Depois de salvar</b>No lugar do histórico da unidade, que é para onde o titular vai. Fechamento com o único próximo passo possível. Para instrutor: "Registro da classe salvo".</figcaption>
+      </figure>
+
+      <figure>
+        <div class="cel">
+          <div class="barra"><span class="t">App do Desbravador</span></div>
+          <div class="estado">
+            <div class="ic alerta" aria-hidden="true">↻</div>
+            <h3>O horário acabou, mas ainda falta enviar</h3>
+            <p>Há <b>3 lançamentos</b> salvos neste celular esperando internet.</p>
+            <p>Deixe esta página aberta. Eles vão sozinhos assim que a internet voltar.</p>
+            <p class="nota" role="status">Enviando… 1 de 3</p>
+          </div>
+        </div>
+        <figcaption><b>S5 · Janela fechada, com envio pendente</b>Não dá mais para lançar nada. O que foi salvo dentro do horário pode subir por até 12 horas. Quando a fila zera, vira S6.</figcaption>
+      </figure>
+
+      <figure>
+        <div class="cel">
+          <div class="barra"><span class="t">App do Desbravador</span></div>
+          <div class="estado">
+            <div class="ic neutro" aria-hidden="true">🔒</div>
+            <h3>Este link fechou às 12:00</h3>
+            <p>Ele valia para a chamada da Unidade Águia no domingo, 12 de outubro.</p>
+            <p>Se ainda precisa lançar alguma coisa, peça um novo link ao Adm do clube.</p>
+          </div>
+        </div>
+        <figcaption><b>S6 · Depois da janela</b>Estado sem saída no app: o texto basta e diz a quem pedir.</figcaption>
+      </figure>
+
+      <figure>
+        <div class="cel">
+          <div class="barra"><span class="t">App do Desbravador</span></div>
+          <div class="corpo" style="gap:28px; padding-top:28px">
+            <div class="cartao">
+              <h3>Este link já está aberto em outro celular</h3>
+              <p>Cada link funciona em um celular só, e no mesmo navegador em que foi aberto da primeira vez. Se foi você, abra por ele. Se o celular de quem abriu primeiro parou, peça um novo link ao Adm.</p>
+            </div>
+            <div class="cartao">
+              <h3>O Adm cancelou este link</h3>
+              <p>Se você ainda vai substituir, peça um novo link ao Adm.</p>
+              <p class="nota">Com lançamento não enviado neste celular, acrescenta: "2 lançamentos feitos aqui não foram enviados e não vão mais ser. Avise o Adm."</p>
+            </div>
+            <div class="cartao">
+              <h3>Este link não existe</h3>
+              <p>Confira se copiou o endereço inteiro da mensagem.</p>
+            </div>
+          </div>
+        </div>
+        <figcaption><b>S7 · Outros bloqueios</b>Três telas, no mesmo formato de S6; aqui juntas para economizar espaço.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="grupo">
+    <h2>3 · O registro de que houve substituição</h2>
+    <p>Onde a tela já mostra quem lançou, ela passa a dizer que foi substituição. Nenhuma tela nova.</p>
+    <div class="prancha">
+      <figure>
+        <div class="cel">
+          <div class="barra"><span class="v">‹</span><span class="t">Reunião de 12/10</span></div>
+          <div class="corpo">
+            <div class="autor"><b>Substituição.</b> Chamada lançada por <b>Ana Souza</b> (sem conta no app), pelo link que Rita Campos (Adm) gerou.</div>
+            <dl class="pares">
+              <dt>Presentes</dt><dd>14 de 16</dd>
+              <dt>Atrasos</dt><dd>2</dd>
+            </dl>
+            <p class="titular">Resto do detalhe da reunião sem mudança.</p>
+          </div>
+        </div>
+        <figcaption><b>R1 · Detalhe da reunião (e do registro de classe)</b>Membro: "lançada por Marcos Lima". De fora: o nome digitado e "(sem conta no app)". Se a chamada já existia e o substituto só mexeu, "alterada por" no lugar de "lançada por". Mostra o Adm que gerou o link.</figcaption>
+      </figure>
+    </div>
+  </section>
+</div>

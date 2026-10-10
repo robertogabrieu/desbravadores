@@ -1,4 +1,4 @@
-import type { PacoteSaida } from '@desbravadores/shared'
+import type { PacoteSaida, SubstituicaoNoRegistro } from '@desbravadores/shared'
 import { useEffect, useRef, useState } from 'react'
 import type { z } from 'zod'
 import { useSalvarAula } from '../../api/aulas'
@@ -57,6 +57,8 @@ interface Propriedades {
   data: string
   /** A aula como o servidor a tem; `null` = ainda não existe (aula nova). */
   base: BaseAula | null
+  /** Só vem do servidor: offline o registro sai do pacote, que não traz a substituição. */
+  substituicao?: z.infer<typeof SubstituicaoNoRegistro> | null
 }
 
 /** Carrega a fila e o rascunho da chave antes de mostrar; muda a chave (classe ou data), remonta. */
@@ -115,7 +117,7 @@ interface PropriedadesCorpo extends Propriedades {
   fila: ItemPendente[]
 }
 
-function CorpoAula({ pacote, baixadoEm, classe, data, base, chave, registroAulaId, inicial, fila }: PropriedadesCorpo) {
+function CorpoAula({ pacote, baixadoEm, classe, data, base, substituicao, chave, registroAulaId, inicial, fila }: PropriedadesCorpo) {
   const { eu, pode } = useSessao()
   const { modo } = useConexao()
   const { avisos } = useFila()
@@ -187,6 +189,7 @@ function CorpoAula({ pacote, baixadoEm, classe, data, base, chave, registroAulaI
         <p className="text-sm text-texto-2">{`${classe.classe.nome} · ${diaDaSemana(data)} ${dataCurta(data)}`}</p>
         {atualizada && <p className="text-sm text-texto-2">{atualizada}</p>}
       </header>
+      {substituicao && <AvisoDeSubstituicao substituicao={substituicao} />}
 
       <section aria-label="Presença e requisitos" className="flex flex-col gap-2">
         <p className="text-sm text-texto-2">Toque no nome para marcar presença ou falta. Depois marque os requisitos de quem veio.</p>
@@ -376,5 +379,17 @@ function LinhaDbv({ membro, presente, situacao, requisitos, estado, comFila, aoA
         })
       )}
     </li>
+  )
+}
+
+/** R1: o registro veio pelo link de substituição; quem lançou ou alterou e o Adm que gerou o link. */
+function AvisoDeSubstituicao({ substituicao }: { substituicao: z.infer<typeof SubstituicaoNoRegistro> }) {
+  const { autor, semConta, geradoPor, lancou } = substituicao
+  return (
+    <p data-r1="substituicao" className="text-base text-texto">
+      <b>Substituição.</b> {`Registro da classe ${lancou ? 'lançado' : 'alterado'} por `}
+      <b>{autor}</b>
+      {`${semConta ? ' (sem conta no app)' : ''}, pelo link que ${geradoPor} (Adm) gerou.`}
+    </p>
   )
 }

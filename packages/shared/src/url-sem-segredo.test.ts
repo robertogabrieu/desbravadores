@@ -8,6 +8,9 @@ describe('urlSemSegredo', () => {
     ['/senha/redefinir/abc123', '/senha/redefinir/:token'],
     ['/api/convite-acesso/abc123', '/api/convite-acesso/:token'],
     ['/api/acesso/abc123', '/api/acesso/:token'],
+    ['https://app.exemplo/substituto/abc123/chamada', 'https://app.exemplo/substituto/:token/chamada'],
+    ['/api/auth/substituicao/abc123', '/api/auth/substituicao/:token'],
+    ['POST /api/auth/substituicao/abc123/entrar', 'POST /api/auth/substituicao/:token/entrar'],
   ])('mascara o token do caminho: %s', (url, esperado) => {
     expect(urlSemSegredo(url)).toBe(esperado)
   })
@@ -26,5 +29,6 @@ describe('urlSemSegredo', () => {
   it('não mexe no que não tem segredo', () => {
     expect(urlSemSegredo('https://app.exemplo/inicio')).toBe('https://app.exemplo/inicio')
     expect(urlSemSegredo('/api/desbravadores/12/convite-acesso')).toBe('/api/desbravadores/12/convite-acesso')
+    expect(urlSemSegredo('/api/unidades/12/substituicao')).toBe('/api/unidades/12/substituicao')
   })
 })

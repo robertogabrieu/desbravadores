@@ -17,6 +17,8 @@ Convenções: listas paginadas com `?pagina=&porPagina=`; datas em `YYYY-MM-DD`;
 | `POST /auth/convite/aceitar` | Token do convite + senha → ativa a conta | público |
 | `POST /auth/senha/esqueci` | Envia link de redefinição (resposta igual exista ou não o e-mail) | público |
 | `POST /auth/senha/redefinir` | Token + nova senha | público |
+| `GET /auth/substituicao/{token}` | Estado do link de substituição (`INEXISTENTE`, `CANCELADO`, `ENCERRADO`, `ANTES`, `EM_OUTRO_APARELHO`, `ABERTO`), alvo, janela, fuso do clube, hora do servidor e, se o cookie de refresh for de um membro do clube, o nome da conta. O segredo do aparelho, se houver, vai no cabeçalho `X-Segredo-Aparelho`. Limite de 30 por minuto por link | público |
+| `POST /auth/substituicao/{token}/entrar` | Identifica quem abriu o link — `{ nome }` (sem conta), `{ usarConta: true }` (conta reconhecida pelo cookie) ou `{ segredo }` (mesmo aparelho voltando) — e devolve a credencial de substituição. Só um aparelho por link. Fora de `ABERTO` recusa com `campos.estado`: 410 (inexistente, cancelado, encerrado), 422 (antes da janela) ou 409 (outro aparelho). Depois do fim da janela, só o aparelho já identificado volta, até o fim do envio. Limite de 10 por minuto por link | público |
 | `GET /eu` | Usuário, vínculos (papéis, unidades, classes), permissões efetivas | logado |
 | `POST /eu/papel-ativo` | Troca o papel/clube ativo (novo access token) | logado |
 
@@ -64,6 +66,9 @@ Convenções: listas paginadas com `?pagina=&porPagina=`; datas em `YYYY-MM-DD`;
 | `POST /unidades` · `PATCH /unidades/{id}` | Cria e edita (inclui grito de guerra) | `unidade.gerenciar` |
 | `GET /unidades/{id}/membros` | Membros atuais com frequência e classe | `dbv.ver` + escopo |
 | `GET /unidades/sem-membros` | DBVs ativos sem unidade (coluna "Sem unidade") | `unidade.gerenciar` |
+| `GET /unidades/{id}/substituicao` | Link de substituição aberto da unidade (data, janela, quem se identificou) ou `null` | `usuario.gerenciar` |
+| `POST /unidades/{id}/substituicao` | Gera o link para o dia `{ data }` (cancela o aberto da unidade); a resposta traz `link`, que só existe nela | `usuario.gerenciar` |
+| `DELETE /unidades/{id}/substituicao` | Cancela o link aberto (204); o registro fica com quem cancelou e quando | `usuario.gerenciar` |
 
 ## Classes, requisitos e especialidades
 
@@ -114,6 +119,19 @@ Convenções: listas paginadas com `?pagina=&porPagina=`; datas em `YYYY-MM-DD`;
 "Quem monta" = Adm sempre; instrutor da classe só se `Classe.quemMontaCronograma=INSTRUTOR`.
 Instrutor que não monta vê só o cronograma **publicado**.
 
+## Substituição por link
+
+O Adm gera um link para um dia e um alvo (uma unidade, para lançar a chamada; ou uma classe, para registrar a aula). Quem abre o link lança sem ter conta. Um link aberto por alvo: gerar outro cancela o anterior. O link abre no horário da reunião do clube (`horaReuniao`, no fuso do clube) e a leitura vale por 3 h; o que o aparelho salvou ainda sobe até 12 h depois disso. Só dias com reunião (link de unidade) ou com classe (link de classe), de hoje a 28 dias à frente. Gerar para outro dia dá 400; unidade ou classe inativa dá 404.
+
+| Método e rota | O que faz | Permissão |
+|---|---|---|
+| `GET /substituicoes/datas?tipo=CHAMADA\|CLASSE` | Dias elegíveis com início e fim da janela de cada um | `usuario.gerenciar` |
+| `GET` · `POST` · `DELETE /classes/{id}/substituicao` | Igual ao da unidade (acima), para o link de classe | `usuario.gerenciar` |
+
+**Credencial de substituição.** `entrar` devolve um JWT com `tipo: 'substituicao'` (`sub` = id do link), sem refresh, válido até o fim do envio. Não vale como sessão normal e a sessão normal não vale nele. Só as 8 rotas marcadas `@PodeOuSubstituto` / `@LogadoOuSubstituto` o aceitam: `GET /sync/pacote`, `GET /classes/{id}/cronograma`, `PUT /sync/reunioes/{uuid}`, `GET /reunioes`, `GET /reunioes/{id}`, `PUT /sync/aulas/{uuid}`, `GET /classes/{id}/aulas` e `GET /aulas/{id}`. Nelas a sessão assume o papel Conselheiro (link de unidade) ou Instrutor (link de classe) e enxerga só o alvo e o dia do link; fora disso responde 404. As permissões são as do papel, sem ajuste de vínculo.
+
+O link é conferido no banco a cada requisição: GET e HEAD valem até o fim da janela; qualquer outro método, até o fim do envio. Link cancelado, alvo desativado, aparelho ainda não identificado, credencial vencida ou fora do prazo respondem `401` com código `SUBSTITUICAO_ENCERRADA`, que encerra a tela do substituto. O `GET /reunioes/{id}` e o `GET /aulas/{id}` trazem `substituicao` (autor, se tem conta, quem gerou o link e se ele lançou ou só alterou); é `null` sem substituição.
+
 ## Reuniões e chamada
 
 | Método e rota | O que faz | Permissão |
@@ -121,7 +139,7 @@ Instrutor que não monta vê só o cronograma **publicado**.
 | `GET /unidades/{id}/reunioes?de=&ate=` | Aba "Por reunião": presentes, atrasos, uniformes, % | `reuniao.ver` + escopo |
 | `GET /unidades/{id}/frequencia?ultimas=8` | Aba "Por DBV": grade P/A/F/J | `reuniao.ver` + escopo |
 | `GET /reunioes/{id}` | Detalhe, chamada completa, pontos lançados, alterações (quem/quando) | `reuniao.ver` + escopo |
-| `PUT /sync/reunioes/{clienteUuid}` | Grava a chamada inteira (idempotente; usado online e offline) → pontos calculados | `reuniao.registrar` + escopo |
+| `PUT /sync/reunioes/{clienteUuid}` | Grava a chamada inteira (idempotente; usado online e offline) → pontos calculados | `reuniao.registrar` + escopo (ou credencial de substituição de unidade, só no dia do link) |
 
 ## Aulas
 
@@ -129,13 +147,13 @@ Instrutor que não monta vê só o cronograma **publicado**.
 |---|---|---|
 | `GET /classes/{id}/aulas?anoClube=` | Aulas registradas ("N aulas dadas"), data decrescente | `aula.registrar` + escopo |
 | `GET /aulas/{id}` | Detalhe: presença e requisitos marcados | `aula.registrar` + escopo |
-| `PUT /sync/aulas/{clienteUuid}` | Grava presença + requisitos cumpridos, tarefa para casa e entregas de especialidade (idempotente) → pontos | `aula.registrar` + escopo |
+| `PUT /sync/aulas/{clienteUuid}` | Grava presença + requisitos cumpridos, tarefa para casa e entregas de especialidade (idempotente) → pontos | `aula.registrar` + escopo (ou credencial de substituição de classe, só no dia do link) |
 
 ## Sincronização offline
 
 | Método e rota | O que faz | Permissão |
 |---|---|---|
-| `GET /sync/pacote` | Pacote do domingo do usuário: DBVs das unidades/classes, critérios ativos, aulas das próximas 2 semanas, requisitos já concluídos, `versao` | logado |
+| `GET /sync/pacote` | Pacote do domingo do usuário: DBVs das unidades/classes, critérios ativos, aulas das próximas 2 semanas, requisitos já concluídos, `versao`. Com a credencial de substituição: só o alvo do link, só a reunião do dia dele e sem álbuns | logado ou credencial de substituição |
 | `PUT /sync/reunioes/{uuid}` · `PUT /sync/aulas/{uuid}` | (acima) | — |
 
 ## Ranking

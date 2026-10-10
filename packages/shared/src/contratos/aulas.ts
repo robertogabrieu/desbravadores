@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { RefClasse } from './auth'
 import { DataCivil, InstanteIso, Uuid } from './comum'
 import { RequisitoResumo } from './cronograma'
+import { SubstituicaoNoRegistro } from './substituicao'
 
 export const PresencaEnvio = z.object({ dbvId: Uuid, presente: z.boolean(), versaoVista: InstanteIso.nullable() })
 export const MarcaRequisito = z.object({ dbvId: Uuid, requisitoId: Uuid })
@@ -68,6 +69,8 @@ export const AulaDetalhe = z.object({
   requisitosDaAula: z.array(RequisitoResumo),     // planejados + os marcados nela (reposição)
   concluidosNaAula: z.array(MarcaRequisito),
   podeEditar: z.boolean(),
+  /** R1: houve substituição na última gravação por link de substituição. */
+  substituicao: SubstituicaoNoRegistro.nullable().default(null),
 })
 export const AulasFiltro = z.object({ anoClube: z.coerce.number().int().optional() })
 // GET /classes/:id/aulas?anoClube → AulaResumo[] (data decrescente) · GET /aulas/:id → AulaDetalhe

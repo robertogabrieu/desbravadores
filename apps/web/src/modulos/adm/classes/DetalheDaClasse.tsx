@@ -8,6 +8,7 @@ import { CaixaMarcacao } from '../../../ui/CaixaMarcacao'
 import { Cartao } from '../../../ui/Cartao'
 import { cn } from '../../../ui/cn'
 import { lerErroDaApi } from '../desbravadores/erros'
+import { CartaoSubstituto } from '../substituicao/CartaoSubstituto'
 import { CorpoDaConsulta } from './CorpoDaConsulta'
 
 const plural = (n: number, singular: string, muitos: string): string =>
@@ -259,6 +260,8 @@ function Corpo({ detalhe }: { detalhe: ClasseDetalhe }) {
           </div>
         </div>
       </Cartao>
+
+      <CartaoSubstituto alvo={{ tipo: 'classe', id: detalhe.id, nome: detalhe.nome }} ativo={detalhe.ativa} nivelDoTitulo={3} />
 
       <Cartao className="flex flex-col">
         <div className="flex flex-col gap-1 pb-3">

@@ -32,6 +32,12 @@ enum StatusUsuario {
   CONVIDADO
   ATIVO
   INATIVO
+  SUBSTITUTO
+}
+
+enum TipoSubstituicao {
+  CHAMADA
+  CLASSE
 }
 
 enum Sexo {
@@ -216,6 +222,7 @@ model Clube {
   convitesAcesso           ConviteAcesso[]
   tarefas                  TarefaCasa[]
   tarefaItens              TarefaItem[]
+  substituicoes            Substituicao[]
 }
 
 model ConfiguracaoClube {
@@ -280,6 +287,9 @@ model Usuario {
   tarefasEncerradas       TarefaCasa[]             @relation("TarefaEncerradaPor")
   tarefaItensCriados      TarefaItem[]             @relation("TarefaItemCriadoPor")
   tarefaItensRetirados    TarefaItem[]             @relation("TarefaItemRemovidoPor")
+  substituicoesCobertas   Substituicao[]           @relation("SubstituicaoSubstituto")
+  substituicoesCriadas    Substituicao[]           @relation("SubstituicaoCriadaPor")
+  substituicoesCanceladas Substituicao[]           @relation("SubstituicaoCanceladaPor")
 }
 
 model Vinculo {
@@ -459,6 +469,7 @@ model Unidade {
   reunioes                Reuniao[]
   albuns                  Album[]
   pedidos                 PedidoAoAdm[]
+  substituicoes           Substituicao[]
 
   @@unique([clubeId, nome])
   @@unique([clubeId, id])
@@ -506,7 +517,8 @@ model Classe {
   observacoes   Observacao[]
   materiais     Material[]
 
-  tarefas TarefaCasa[]
+  tarefas       TarefaCasa[]
+  substituicoes Substituicao[]
 
   @@unique([nome, trilha], where: { clubeId: null }, map: "classe_oficial_nome_trilha")
   @@unique([clubeId, nome, trilha])
@@ -662,11 +674,13 @@ model Reuniao {
   atualizadaPorId String   @db.Uuid
   atualizadaEm    DateTime @db.Timestamptz
   cabecalhoVersao DateTime @db.Timestamptz(3)
+  substituicaoId  String?  @db.Uuid
 
   clube         Clube              @relation(fields: [clubeId], references: [id], onDelete: Restrict)
   unidade       Unidade            @relation(fields: [clubeId, unidadeId], references: [clubeId, id], onDelete: Restrict)
   registradaPor Usuario            @relation("ReuniaoRegistradaPor", fields: [registradaPorId], references: [id], onDelete: Restrict)
   atualizadaPor Usuario            @relation("ReuniaoAtualizadaPor", fields: [atualizadaPorId], references: [id], onDelete: Restrict)
+  substituicao  Substituicao?      @relation(fields: [clubeId, substituicaoId], references: [clubeId, id], onDelete: Restrict)
   chamadas      Chamada[]
   alteracoes    ChamadaAlteracao[]
   album         Album?
@@ -953,11 +967,13 @@ model RegistroAula {
   registradoPorId String   @db.Uuid
   registradoEm    DateTime @default(now()) @db.Timestamptz
   atualizadoEm    DateTime @db.Timestamptz
+  substituicaoId  String?  @db.Uuid
 
   clube          Clube                    @relation(fields: [clubeId], references: [id], onDelete: Restrict)
   classe         Classe                   @relation(fields: [classeId], references: [id], onDelete: Restrict)
   aulaPlanejada  AulaPlanejada?           @relation(fields: [clubeId, aulaPlanejadaId], references: [clubeId, id], onDelete: Restrict)
   registradoPor  Usuario                  @relation(fields: [registradoPorId], references: [id], onDelete: Restrict)
+  substituicao   Substituicao?            @relation(fields: [clubeId, substituicaoId], references: [clubeId, id], onDelete: Restrict)
   presencas      PresencaAula[]
   requisitos     RequisitoConcluido[]
   observacoes    Observacao[]
@@ -1180,4 +1196,39 @@ model Atividade {
   autor Usuario? @relation(fields: [autorId], references: [id], onDelete: Restrict)
 
   @@index([clubeId, criadaEm])
+}
+
+/// Link de substituição: um dia, um alvo (unidade OU classe), janela gravada na geração.
+/// Exatamente um de unidadeId e classeId, coerente com tipo: CHECK "substituicao_alvo_coerente"
+/// escrito à mão na migration.
+model Substituicao {
+  id             String           @id @default(uuid(7)) @db.Uuid
+  clubeId        String           @db.Uuid
+  tipo           TipoSubstituicao
+  unidadeId      String?          @db.Uuid
+  classeId       String?          @db.Uuid
+  data           DateTime         @db.Date
+  inicioEm       DateTime         @db.Timestamptz
+  fimEm          DateTime         @db.Timestamptz
+  fimEnvioEm     DateTime         @db.Timestamptz
+  tokenHash      String           @unique
+  aparelhoHash   String?
+  identificadaEm DateTime?        @db.Timestamptz
+  substitutoId   String?          @db.Uuid
+  criadoPorId    String           @db.Uuid
+  criadoEm       DateTime         @default(now()) @db.Timestamptz
+  canceladoEm    DateTime?        @db.Timestamptz
+  canceladoPorId String?          @db.Uuid
+
+  clube        Clube          @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  unidade      Unidade?       @relation(fields: [clubeId, unidadeId], references: [clubeId, id], onDelete: Restrict)
+  classe       Classe?        @relation(fields: [classeId], references: [id], onDelete: Restrict)
+  substituto   Usuario?       @relation("SubstituicaoSubstituto", fields: [substitutoId], references: [id], onDelete: Restrict)
+  criadoPor    Usuario        @relation("SubstituicaoCriadaPor", fields: [criadoPorId], references: [id], onDelete: Restrict)
+  canceladoPor Usuario?       @relation("SubstituicaoCanceladaPor", fields: [canceladoPorId], references: [id], onDelete: Restrict)
+  reunioes     Reuniao[]
+  registros    RegistroAula[]
+
+  @@unique([clubeId, id])
+  @@index([clubeId, tipo, unidadeId, classeId])
 }

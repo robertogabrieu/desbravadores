@@ -6,6 +6,7 @@ export type CodigoErro = (typeof CODIGOS_ERRO)[number]
 export const STATUS_POR_CODIGO: Record<CodigoErro, number> = {
   VALIDACAO: 400,
   NAO_AUTENTICADO: 401,
+  SUBSTITUICAO_ENCERRADA: 401,
   CREDENCIAIS: 401,
   SEM_PERMISSAO: 403,
   VINCULO_INATIVO: 403,
