@@ -46,7 +46,8 @@
               "codigo": "G6",
               "texto": "Participar ativamente da classe bíblica do seu clube.",
               "campo": false,
-              "pagina": 10
+              "pagina": 10,
+              "classeBiblica": true
             }
           ]
         },

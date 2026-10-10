@@ -6,8 +6,12 @@ import {
   classeOficial,
   configurarClube,
   criarAcesso,
+  criarChamadaCB,
   criarClube,
   criarDbv,
+  criarEdicaoCB,
+  criarEncontroCB,
+  criarGrupoCB,
   criarMatricula,
   criarMembro,
   criarRequisitoConcluido,
@@ -21,6 +25,7 @@ import { congelarRelogio, descongelarRelogio } from '../../test/relogio'
 
 type Classe = z.infer<typeof ProgressoClasseSaida>
 type Dbv = z.infer<typeof ProgressoDbvSaida>
+type RequisitoDaFicha = Dbv['matriculas'][number]['secoes'][number]['requisitos'][number]
 
 describe('progresso', () => {
   let app: INestApplication
@@ -211,6 +216,146 @@ describe('progresso', () => {
         return { metodo: 'get', caminho: `/api/desbravadores/${dbv.id}/progresso` }
       },
       esperado: { tipo: 'NAO_ENCONTRADO' },
+    })
+  })
+
+  describe('evidência da Classe Bíblica na ficha', () => {
+    function requisito(saida: Dbv, codigo: string): RequisitoDaFicha {
+      const achado = saida.matriculas[0].secoes.flatMap((secao) => secao.requisitos).find((item) => item.secaoCodigo === 'G' && item.codigo === codigo)
+      if (!achado) throw new Error(`requisito ${codigo} não está na ficha`)
+      return achado
+    }
+
+    /** Clube com Águias e Leões, um Adm e Lívia em Águias, matriculada em Amigo no ano do clube 2026. */
+    async function cenario() {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const aguias = await criarUnidade({ clubeId: clube.id, nome: 'Águias' })
+      const leoes = await criarUnidade({ clubeId: clube.id, nome: 'Leões' })
+      const amigo = await classeOficial('Amigo')
+      const livia = await criarDbv({ clubeId: clube.id, nome: 'Lívia' })
+      await criarMembro({ dbvId: livia.id, unidadeId: aguias.id, inicio: '2026-02-01' })
+      await criarMatricula({ clubeId: clube.id, dbvId: livia.id, classeId: amigo.id })
+      return { clube, adm, aguias, leoes, amigo, livia }
+    }
+
+    async function ficha(dbvId: string, autorizacao: string): Promise<Dbv> {
+      return corpo<Dbv>(await api.get(`/api/desbravadores/${dbvId}/progresso`, autorizacao).expect(200))
+    }
+
+    it('G6 traz a edição mais recente em destaque e as outras do ano em "Antes"; outro ano não entra; G5 sem quadro', async () => {
+      const { clube, adm, aguias, livia } = await cenario()
+      const clubeId = clube.id
+      const linha = (presente: boolean, participou = false) => [{ dbvId: livia.id, unidadeId: aguias.id, presente, participou }]
+
+      const primeiro = await criarEdicaoCB({ clubeId, terminada: true, nome: 'Classe Bíblica 2026 · 1º semestre', inicio: '2026-03-01', fim: '2026-06-28' })
+      const ester = await criarGrupoCB({ clubeId, edicaoId: primeiro.id, unidadeIds: [aguias.id], nome: 'Grupo Ester' })
+      for (const [data, presente] of [['2026-03-08', true], ['2026-03-15', false]] as const) {
+        const encontro = await criarEncontroCB({ clubeId, edicaoId: primeiro.id, data })
+        await criarChamadaCB({ clubeId, encontroId: encontro.id, grupoId: ester.id, linhas: linha(presente) })
+      }
+
+      const segundo = await criarEdicaoCB({ clubeId, terminada: true, nome: 'Classe Bíblica 2026 · 2º semestre', inicio: '2026-08-16', fim: '2026-12-13' })
+      const daniel = await criarGrupoCB({ clubeId, edicaoId: segundo.id, unidadeIds: [aguias.id], nome: 'Grupo Daniel' })
+      const chamadas: [string, boolean, boolean][] = [['2026-08-16', true, true], ['2026-08-23', true, true], ['2026-08-30', false, false]]
+      for (const [data, presente, participou] of chamadas) {
+        const encontro = await criarEncontroCB({ clubeId, edicaoId: segundo.id, data })
+        await criarChamadaCB({ clubeId, encontroId: encontro.id, grupoId: daniel.id, linhas: linha(presente, participou) })
+      }
+      await criarEncontroCB({ clubeId, edicaoId: segundo.id, data: '2026-09-06' })
+      const cancelado = await criarEncontroCB({ clubeId, edicaoId: segundo.id, data: '2026-09-13', cancelado: true })
+      await criarChamadaCB({ clubeId, encontroId: cancelado.id, grupoId: daniel.id, linhas: linha(true, true) })
+
+      const deOutroAno = await criarEdicaoCB({ clubeId, terminada: true, nome: 'Classe Bíblica 2025', inicio: '2025-03-02', fim: '2025-06-29' })
+      const grupoAntigo = await criarGrupoCB({ clubeId, edicaoId: deOutroAno.id, unidadeIds: [aguias.id], nome: 'Grupo Rute' })
+      const antigo = await criarEncontroCB({ clubeId, edicaoId: deOutroAno.id, data: '2025-03-02' })
+      await criarChamadaCB({ clubeId, encontroId: antigo.id, grupoId: grupoAntigo.id, linhas: linha(true, true) })
+
+      const saida = await ficha(livia.id, adm.autorizacao)
+
+      const g6 = requisito(saida, 'G6')
+      expect(g6.classeBiblica).toEqual({
+        edicao: 'Classe Bíblica 2026 · 2º semestre',
+        encontros: 3,
+        presencas: 2,
+        participacoes: 2,
+        grupo: 'Grupo Daniel',
+        semGrupo: false,
+        anteriores: [{ edicao: 'Classe Bíblica 2026 · 1º semestre', encontros: 2, presencas: 1, participacoes: 0 }],
+      })
+      expect(g6.concluidoEm).toBeNull()
+      expect(requisito(saida, 'G5').classeBiblica ?? null).toBeNull()
+    })
+
+    it('quem entrou no meio conta só os encontros em que tem linha; mover a unidade de grupo não muda o passado', async () => {
+      const { clube, adm, aguias, livia } = await cenario()
+      const clubeId = clube.id
+      const amigo = await classeOficial('Amigo')
+      const novato = await criarDbv({ clubeId, nome: 'Novato' })
+      await criarMembro({ dbvId: novato.id, unidadeId: aguias.id, inicio: '2026-08-25' })
+      await criarMatricula({ clubeId, dbvId: novato.id, classeId: amigo.id })
+
+      const edicao = await criarEdicaoCB({ clubeId, terminada: true, nome: 'CB 2026', inicio: '2026-08-16', fim: '2026-12-13' })
+      const daniel = await criarGrupoCB({ clubeId, edicaoId: edicao.id, unidadeIds: [aguias.id], nome: 'Grupo Daniel' })
+      await criarGrupoCB({ clubeId, edicaoId: edicao.id, unidadeIds: [], nome: 'Grupo Ester' })
+      for (const data of ['2026-08-16', '2026-08-23', '2026-08-30']) {
+        const encontro = await criarEncontroCB({ clubeId, edicaoId: edicao.id, data })
+        const linhas = [{ dbvId: livia.id, unidadeId: aguias.id, presente: true, participou: true }]
+        if (data === '2026-08-30') linhas.push({ dbvId: novato.id, unidadeId: aguias.id, presente: true, participou: false })
+        await criarChamadaCB({ clubeId, encontroId: encontro.id, grupoId: daniel.id, linhas })
+      }
+      const ester = await prismaDeTeste().grupoClasseBiblica.findFirstOrThrow({ where: { clubeId, edicaoId: edicao.id, nome: 'Grupo Ester' } })
+      await prismaDeTeste().grupoUnidadeClasseBiblica.updateMany({ where: { clubeId, edicaoId: edicao.id, unidadeId: aguias.id }, data: { grupoId: ester.id } })
+
+      const daLivia = requisito(await ficha(livia.id, adm.autorizacao), 'G6').classeBiblica
+      const doNovato = requisito(await ficha(novato.id, adm.autorizacao), 'G6').classeBiblica
+
+      expect(daLivia).toMatchObject({ encontros: 3, presencas: 3, participacoes: 3, grupo: 'Grupo Daniel', semGrupo: false })
+      expect(doNovato).toMatchObject({ encontros: 1, presencas: 1, participacoes: 0, grupo: 'Grupo Daniel', semGrupo: false })
+    })
+
+    it('sem linha no ano: semGrupo quando a unidade atual não está em grupo da edição em andamento; senão, sem quadro', async () => {
+      const { clube, adm, aguias, leoes, amigo, livia } = await cenario()
+      const clubeId = clube.id
+      expect(requisito(await ficha(livia.id, adm.autorizacao), 'G6').classeBiblica ?? null).toBeNull()
+
+      const edicao = await criarEdicaoCB({ clubeId, terminada: true, nome: 'CB 2026', inicio: '2026-08-16', fim: '2026-12-13' })
+      await criarGrupoCB({ clubeId, edicaoId: edicao.id, unidadeIds: [leoes.id], nome: 'Grupo Daniel' })
+      const rascunho = await criarEdicaoCB({ clubeId, nome: 'Rascunho', inicio: '2026-08-16', fim: '2026-12-13' })
+      await criarGrupoCB({ clubeId, edicaoId: rascunho.id, unidadeIds: [aguias.id] })
+      const leao = await criarDbv({ clubeId, nome: 'Leão' })
+      await criarMembro({ dbvId: leao.id, unidadeId: leoes.id, inicio: '2026-02-01' })
+      await criarMatricula({ clubeId, dbvId: leao.id, classeId: amigo.id })
+
+      expect(requisito(await ficha(livia.id, adm.autorizacao), 'G6').classeBiblica).toEqual({
+        edicao: 'CB 2026', encontros: 0, presencas: 0, participacoes: 0, grupo: null, semGrupo: true, anteriores: [],
+      })
+      expect(requisito(await ficha(leao.id, adm.autorizacao), 'G6').classeBiblica ?? null).toBeNull()
+
+      // Leões saiu do grupo: o período fechado não conta como grupo de hoje.
+      await prismaDeTeste().grupoUnidadeClasseBiblica.updateMany({
+        where: { clubeId, edicaoId: edicao.id, unidadeId: leoes.id },
+        data: { fim: new Date('2026-09-01T00:00:00Z') },
+      })
+      expect(requisito(await ficha(leao.id, adm.autorizacao), 'G6').classeBiblica).toMatchObject({ semGrupo: true })
+    })
+
+    it('edição encerrada não conta como em andamento para o semGrupo', async () => {
+      const { clube, adm, leoes, livia } = await cenario()
+      const encerrada = await criarEdicaoCB({ clubeId: clube.id, terminada: true, nome: 'CB 1º semestre', inicio: '2026-03-01', fim: '2026-06-28' })
+      await criarGrupoCB({ clubeId: clube.id, edicaoId: encerrada.id, unidadeIds: [leoes.id] })
+
+      expect(requisito(await ficha(livia.id, adm.autorizacao), 'G6').classeBiblica ?? null).toBeNull()
+    })
+
+    it('não conta edição de outro clube', async () => {
+      const { adm, livia } = await cenario()
+      const outro = await criarClube()
+      const unidade = await criarUnidade({ clubeId: outro.id })
+      const edicao = await criarEdicaoCB({ clubeId: outro.id, terminada: true, nome: 'De outro clube', inicio: '2026-08-16', fim: '2026-12-13' })
+      await criarGrupoCB({ clubeId: outro.id, edicaoId: edicao.id, unidadeIds: [unidade.id] })
+
+      expect(requisito(await ficha(livia.id, adm.autorizacao), 'G6').classeBiblica ?? null).toBeNull()
     })
   })
 })

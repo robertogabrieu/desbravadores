@@ -3,3 +3,4 @@
 import './reuniao'
 import './foto'
 import './aula'
+import './classe-biblica'

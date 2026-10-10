@@ -37,6 +37,13 @@ export const MODELOS_DE_CLUBE = [
   'ConviteAcesso',
   'TarefaCasa',
   'TarefaItem',
+  'EdicaoClasseBiblica',
+  'GrupoClasseBiblica',
+  'GrupoUnidadeClasseBiblica',
+  'EncontroClasseBiblica',
+  'ChamadaClasseBiblica',
+  'PresencaClasseBiblica',
+  'EnvioClasseBiblicaProcessado',
   'Substituicao',
 ] as const
 

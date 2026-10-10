@@ -1,7 +1,7 @@
 import { screen, within } from '@testing-library/react'
 import { delay, http } from 'msw'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ModoConexao, PacoteGuardado } from '../../offline'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ItemFilaNaTela, ModoConexao, PacoteGuardado } from '../../offline'
 import {
   CLASSE_AGRUPADAS,
   CLASSE_AMIGO,
@@ -12,23 +12,26 @@ import {
   handlerInicioInstrutor,
 } from '../../testes/handlers/instrutor'
 import { criarClasseInstrutor } from '../../testes/handlers/aulas'
+import { ENCONTRO_CB_ID, GRUPO_DANIEL_ID, criarPacoteClasseBiblica } from '../../testes/handlers/classe-biblica'
 import { criarPacote } from '../../testes/handlers/offline'
 import { criarVinculo, handlersSessao, uuid } from '../../testes/handlers/sessao'
 import { renderizarRotas } from '../../testes/renderizar'
 import { servidor } from '../../testes/servidor'
 import { TelaInicioInstrutor } from './TelaInicioInstrutor'
 
-const offline = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao, pacote: null as PacoteGuardado['pacote'] }))
+const offline = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao, pacote: null as PacoteGuardado['pacote'], fila: [] as ItemFilaNaTela[] }))
 
 vi.mock('../../offline', async (importarOriginal) => ({
   ...(await importarOriginal<typeof import('../../offline')>()),
   useConexao: () => ({ modo: offline.modo }),
   usePacote: () => ({ pacote: offline.pacote, carregando: false, baixadoEm: null }),
+  useFila: () => ({ itens: offline.fila }),
 }))
 
 beforeEach(() => {
   offline.modo = 'ONLINE'
   offline.pacote = null
+  offline.fila = []
 })
 
 const guardarPacote = () => {
@@ -242,5 +245,63 @@ describe('sinais do início do instrutor', () => {
     servidor.use(handlerInicioInstrutor())
     abrir([CLASSE_AMIGO])
     expect(await screen.findByRole('region', { name: 'Próxima classe de Amigo' })).toHaveClass('border-borda-controle')
+  })
+})
+
+describe('cartão da Classe Bíblica no início do instrutor', () => {
+  const linkDaniel = `/classe-biblica/encontros/${ENCONTRO_CB_ID}/grupos/${GRUPO_DANIEL_ID}/chamada`
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-11T15:00:00Z'))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  const abrirComPermissoes = (permissoes: string[]) => {
+    servidor.use(...handlersSessao([criarVinculo('INSTRUTOR', 1, { classes: [CLASSE_AMIGO] })], undefined, permissoes))
+    return renderizarRotas(rotas, '/inicio')
+  }
+
+  it('com a permissão: "Classe Bíblica · domingo 11/10" com o link da chamada do grupo', async () => {
+    servidor.use(handlerInicioInstrutor())
+    offline.pacote = criarPacote({ classeBiblica: criarPacoteClasseBiblica() })
+    abrirComPermissoes(['classebiblica.chamada'])
+    const cartao = await screen.findByRole('region', { name: 'Classe Bíblica · domingo 11/10' })
+    expect(within(cartao).getByRole('link', { name: 'Fazer a chamada do Grupo Daniel' })).toHaveAttribute('href', linkDaniel)
+  })
+
+  it('sem a permissão: nenhum cartão', async () => {
+    servidor.use(handlerInicioInstrutor())
+    offline.pacote = criarPacote({ classeBiblica: criarPacoteClasseBiblica() })
+    abrirComPermissoes([])
+    await screen.findByRole('region', { name: 'Próxima classe de Amigo' })
+    expect(screen.queryByText(/Fazer a chamada do Grupo/)).not.toBeInTheDocument()
+  })
+
+  it('chamada guardada na fila: sem o link daquele grupo', async () => {
+    offline.modo = 'SEM_CONEXAO'
+    offline.pacote = criarPacote({ classeBiblica: criarPacoteClasseBiblica() })
+    offline.fila = [{
+      id: 'item-cb', versaoPayload: 1, usuarioId: 'u', vinculoId: 'v', tipo: 'CLASSE_BIBLICA',
+      chave: `classe-biblica:${ENCONTRO_CB_ID}:${GRUPO_DANIEL_ID}`, rotulo: 'Chamada', detalhe: '',
+      payload: {
+        encontroId: ENCONTRO_CB_ID, grupoId: GRUPO_DANIEL_ID, grupoNome: 'Grupo Daniel', data: '2026-10-11',
+        corpo: { envioId: '00000000-0000-4000-8000-000000009001', linhas: [] },
+      },
+      estado: 'NA_FILA', progresso: 0, tentativas: 0, proximaTentativaEm: null, criadoEm: 0, atualizadoEm: 0, esperandoDependencia: false,
+    }]
+    abrirComPermissoes(['classebiblica.chamada'])
+    expect(await screen.findByRole('link', { name: 'Fazer a chamada do Grupo Ester' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Fazer a chamada do Grupo Daniel' })).not.toBeInTheDocument()
+  })
+
+  it('sem conexão: o cartão vem do pacote guardado', async () => {
+    offline.modo = 'SEM_CONEXAO'
+    offline.pacote = criarPacote({ classeBiblica: criarPacoteClasseBiblica() })
+    abrirComPermissoes(['classebiblica.chamada'])
+    expect(await screen.findByRole('link', { name: 'Fazer a chamada do Grupo Daniel' })).toHaveAttribute('href', linkDaniel)
   })
 })

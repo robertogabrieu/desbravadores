@@ -3,6 +3,7 @@ import { StatusMatricula, TipoPessoa } from '../enums'
 import { RefClasse } from './auth'
 import { DataCivil, Uuid } from './comum'
 import { RequisitoResumo } from './cronograma'
+import { ClasseBiblicaDoRequisito } from './classe-biblica'
 
 export const ProgressoClasseFiltro = z.object({ anoClube: z.coerce.number().int().optional() })
 export const ProgressoClasseSaida = z.object({
@@ -24,6 +25,8 @@ export const RequisitoDoDbv = RequisitoResumo.extend({
   concluidoEm: DataCivil.nullable(),
   marcadoPor: z.string().nullable(),
   podeMarcar: z.boolean(),
+  /** Só nos requisitos com a marca `classeBiblica`. */
+  classeBiblica: ClasseBiblicaDoRequisito.nullable().optional(),
 })
 export const ProgressoDbvSaida = z.object({
   matriculas: z.array(z.object({

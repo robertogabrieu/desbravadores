@@ -5,6 +5,7 @@ import { ArquivosModule } from './arquivos/arquivos.module'
 import { AtividadesModule } from './atividades/atividades.module'
 import { AuthModule } from './auth/auth.module'
 import { CalendarioModule } from './calendario/calendario.module'
+import { ClasseBiblicaModule } from './classe-biblica/classe-biblica.module'
 import { EventosModule } from './calendario/eventos.module'
 import { AjustesClassesModule } from './classes/ajustes.module'
 import { ClassesModule } from './classes/classes.module'
@@ -78,6 +79,7 @@ import { VisaoGeralModule } from './visao-geral/visao-geral.module'
     MateriaisModule,
     InstrutorModule,
     TarefasModule,
+    ClasseBiblicaModule,
     SubstituicoesModule,
   ],
 })

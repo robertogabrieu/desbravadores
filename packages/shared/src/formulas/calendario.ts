@@ -49,13 +49,14 @@ function cobre(data: string) {
 }
 
 /**
- * A regra do dia. Comuns (tudo menos a Reunião extra): qualquer um que tire, tira. A extra só
- * acrescenta e vence a sobreposição. Férias é gravada com Terá classe = sim para não derrubar o
- * acampamento no meio dela: sem reunião e sem campo, não há classe.
+ * A regra do dia. Comuns (tudo menos a Reunião extra e o encontro da Classe Bíblica): qualquer um
+ * que tire, tira. A extra só acrescenta e vence a sobreposição. O encontro da Classe Bíblica não
+ * entra nas contas: ele divide o dia com a reunião sem mudá-la. Férias é gravada com Terá classe =
+ * sim para não derrubar o acampamento no meio dela: sem reunião e sem campo, não há classe.
  */
 export function situacaoDaData(data: string, diaReuniao: number, eventos: readonly EventoDoCalendario[]): SituacaoDeData {
   const doDia = eventos.filter(cobre(data))
-  const comuns = doDia.filter((evento) => evento.tipo !== 'REUNIAO_EXTRA')
+  const comuns = doDia.filter((evento) => evento.tipo !== 'REUNIAO_EXTRA' && evento.tipo !== 'CLASSE_BIBLICA')
   const extra = doDia.find((evento) => evento.tipo === 'REUNIAO_EXTRA') ?? null
   const reuniaoMantida = comuns.every((evento) => evento.temReuniao)
   const classeLiberada = comuns.every((evento) => evento.temClasse)

@@ -99,6 +99,8 @@ enum GatilhoCriterio {
   REQUISITO
   ESPECIALIDADE
   MANUAL
+  CLASSE_BIBLICA_PRESENCA
+  CLASSE_BIBLICA_PARTICIPACAO
 }
 
 enum FinalidadeToken {
@@ -126,6 +128,7 @@ enum OrigemPontos {
   REQUISITO
   ESPECIALIDADE
   MANUAL
+  CLASSE_BIBLICA
 }
 
 // FASE 1
@@ -141,6 +144,7 @@ enum TipoEvento {
   FERIADO
   FERIAS
   REUNIAO_EXTRA
+  CLASSE_BIBLICA
 }
 
 // FASE 2-3
@@ -222,6 +226,13 @@ model Clube {
   convitesAcesso           ConviteAcesso[]
   tarefas                  TarefaCasa[]
   tarefaItens              TarefaItem[]
+  edicoesClasseBiblica     EdicaoClasseBiblica[]
+  gruposClasseBiblica      GrupoClasseBiblica[]
+  unidadesClasseBiblica    GrupoUnidadeClasseBiblica[]
+  encontrosClasseBiblica   EncontroClasseBiblica[]
+  chamadasClasseBiblica    ChamadaClasseBiblica[]
+  presencasClasseBiblica   PresencaClasseBiblica[]
+  enviosClasseBiblica      EnvioClasseBiblicaProcessado[]
   substituicoes            Substituicao[]
 }
 
@@ -287,6 +298,10 @@ model Usuario {
   tarefasEncerradas       TarefaCasa[]             @relation("TarefaEncerradaPor")
   tarefaItensCriados      TarefaItem[]             @relation("TarefaItemCriadoPor")
   tarefaItensRetirados    TarefaItem[]             @relation("TarefaItemRemovidoPor")
+  edicoesClasseBiblica    EdicaoClasseBiblica[]
+  encontrosCancelados     EncontroClasseBiblica[]
+  chamadasClasseBiblica   ChamadaClasseBiblica[]
+  presencasClasseBiblica  PresencaClasseBiblica[]
   substituicoesCobertas   Substituicao[]           @relation("SubstituicaoSubstituto")
   substituicoesCriadas    Substituicao[]           @relation("SubstituicaoCriadaPor")
   substituicoesCanceladas Substituicao[]           @relation("SubstituicaoCanceladaPor")
@@ -447,6 +462,7 @@ model Desbravador {
   especialidadesConcluidas EspecialidadeConcluida[]
   observacoes              Observacao[]
   convitesAcesso           ConviteAcesso[]
+  presencasClasseBiblica   PresencaClasseBiblica[]
 
   @@unique([clubeId, id])
   @@unique([clubeId, usuarioId], where: { usuarioId: { not: null } }, map: "desbravador_conta_por_clube")
@@ -462,13 +478,15 @@ model Unidade {
   gritoDeGuerra String?
   ativa         Boolean     @default(true)
 
-  clube                   Clube            @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  clube                   Clube                       @relation(fields: [clubeId], references: [id], onDelete: Restrict)
   membros                 MembroUnidade[]
   diretoriasQueSairamDela Desbravador[]
   vinculos                VinculoUnidade[]
   reunioes                Reuniao[]
   albuns                  Album[]
   pedidos                 PedidoAoAdm[]
+  gruposClasseBiblica     GrupoUnidadeClasseBiblica[]
+  presencasClasseBiblica  PresencaClasseBiblica[]
   substituicoes           Substituicao[]
 
   @@unique([clubeId, nome])
@@ -552,14 +570,16 @@ model SecaoRequisito {
 }
 
 model Requisito {
-  id      String  @id @default(uuid(7)) @db.Uuid
-  secaoId String  @db.Uuid
-  codigo  String
-  texto   String
-  campo   Boolean @default(false)
-  ordem   Int
-  pagina  Int?
-  ativo   Boolean @default(true)
+  id            String  @id @default(uuid(7)) @db.Uuid
+  secaoId       String  @db.Uuid
+  codigo        String
+  texto         String
+  campo         Boolean @default(false)
+  /// "Participar ativamente da classe bíblica": a ficha mostra a frequência ao lado.
+  classeBiblica Boolean @default(false)
+  ordem         Int
+  pagina        Int?
+  ativo         Boolean @default(true)
 
   secao      SecaoRequisito       @relation(fields: [secaoId], references: [id], onDelete: Restrict)
   ajustes    RequisitoAjuste[]
@@ -771,10 +791,11 @@ model Arquivo {
   criadoPorId      String   @db.Uuid
   criadoEm         DateTime @default(now()) @db.Timestamptz
 
-  clube     Clube     @relation(fields: [clubeId], references: [id], onDelete: Restrict)
-  criadoPor Usuario   @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
-  foto      Foto?
-  material  Material?
+  clube               Clube                @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  criadoPor           Usuario              @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
+  foto                Foto?
+  material            Material?
+  gruposClasseBiblica GrupoClasseBiblica[]
 
   @@unique([clubeId, id])
 }
@@ -871,8 +892,9 @@ model EventoCalendario {
   atualizadoEm DateTime   @updatedAt @db.Timestamptz
   removidoEm   DateTime?  @db.Timestamptz
 
-  clube     Clube   @relation(fields: [clubeId], references: [id], onDelete: Restrict)
-  criadoPor Usuario @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
+  clube                 Clube                  @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  criadoPor             Usuario                @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
+  encontroClasseBiblica EncontroClasseBiblica?
 
   @@unique([clubeId, id])
   @@index([clubeId, inicio, fim])
@@ -1196,6 +1218,165 @@ model Atividade {
   autor Usuario? @relation(fields: [autorId], references: [id], onDelete: Restrict)
 
   @@index([clubeId, criadaEm])
+}
+
+// ───────────────────────── Classe Bíblica ─────────────────────────
+
+// Os campos nascem opcionais porque o rascunho começa incompleto; terminar exige nome, período, dia e horário.
+model EdicaoClasseBiblica {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  clubeId      String    @db.Uuid
+  nome         String?
+  inicio       DateTime? @db.Date
+  fim          DateTime? @db.Date
+  diaSemana    Int
+  horario      String?
+  local        String?
+  /// Etapa onde o Adm parou (1–3).
+  etapa        Int       @default(1)
+  terminadaEm  DateTime? @db.Timestamptz
+  criadaPorId  String    @db.Uuid
+  criadaEm     DateTime  @default(now()) @db.Timestamptz
+  atualizadaEm DateTime  @updatedAt @db.Timestamptz
+
+  clube     Clube                       @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  criadaPor Usuario                     @relation(fields: [criadaPorId], references: [id], onDelete: Restrict)
+  grupos    GrupoClasseBiblica[]
+  unidades  GrupoUnidadeClasseBiblica[]
+  encontros EncontroClasseBiblica[]
+
+  @@unique([clubeId, id])
+  @@index([clubeId, terminadaEm])
+}
+
+// Material opcional, para a edição inteira: PDF (Arquivo) ou link. Trocar substitui; o Arquivo antigo fica.
+model GrupoClasseBiblica {
+  id                String    @id @default(uuid(7)) @db.Uuid
+  clubeId           String    @db.Uuid
+  edicaoId          String    @db.Uuid
+  nome              String
+  ordem             Int
+  materialTitulo    String?
+  materialArquivoId String?   @db.Uuid
+  materialUrl       String?
+  removidoEm        DateTime? @db.Timestamptz
+
+  clube           Clube                          @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  edicao          EdicaoClasseBiblica            @relation(fields: [clubeId, edicaoId], references: [clubeId, id], onDelete: Restrict)
+  materialArquivo Arquivo?                       @relation(fields: [clubeId, materialArquivoId], references: [clubeId, id], onDelete: Restrict)
+  unidades        GrupoUnidadeClasseBiblica[]
+  chamadas        ChamadaClasseBiblica[]
+  presencas       PresencaClasseBiblica[]
+  envios          EnvioClasseBiblicaProcessado[]
+
+  @@unique([clubeId, id])
+  @@index([clubeId, edicaoId])
+}
+
+// Uma unidade fica em no máximo um grupo por edição de cada vez. O período guarda a troca de
+// grupo: a composição de uma data é a dos períodos com inicio <= data e fim nulo ou > data.
+model GrupoUnidadeClasseBiblica {
+  clubeId   String    @db.Uuid
+  edicaoId  String    @db.Uuid
+  grupoId   String    @db.Uuid
+  unidadeId String    @db.Uuid
+  inicio    DateTime  @db.Date
+  fim       DateTime? @db.Date
+
+  clube   Clube               @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  edicao  EdicaoClasseBiblica @relation(fields: [clubeId, edicaoId], references: [clubeId, id], onDelete: Restrict)
+  grupo   GrupoClasseBiblica  @relation(fields: [clubeId, grupoId], references: [clubeId, id], onDelete: Restrict)
+  unidade Unidade             @relation(fields: [clubeId, unidadeId], references: [clubeId, id], onDelete: Restrict)
+
+  @@id([grupoId, unidadeId, inicio])
+  @@unique([edicaoId, unidadeId], where: { fim: null }, map: "grupo_unidade_cb_aberta_por_edicao")
+  @@index([clubeId, unidadeId])
+  @@index([clubeId, edicaoId, inicio])
+}
+
+// Um por data marcada, com o EventoCalendario do tipo CLASSE_BIBLICA que o mostra no calendário.
+model EncontroClasseBiblica {
+  id                 String    @id @default(uuid(7)) @db.Uuid
+  clubeId            String    @db.Uuid
+  edicaoId           String    @db.Uuid
+  data               DateTime  @db.Date
+  horario            String
+  local              String?
+  /// Preenchida quando remarcado.
+  dataOriginal       DateTime? @db.Date
+  eventoId           String    @unique @db.Uuid
+  canceladoEm        DateTime? @db.Timestamptz
+  motivoCancelamento String?
+  canceladoPorId     String?   @db.Uuid
+
+  clube        Clube                          @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  edicao       EdicaoClasseBiblica            @relation(fields: [clubeId, edicaoId], references: [clubeId, id], onDelete: Restrict)
+  evento       EventoCalendario               @relation(fields: [clubeId, eventoId], references: [clubeId, id], onDelete: Restrict)
+  canceladoPor Usuario?                       @relation(fields: [canceladoPorId], references: [id], onDelete: Restrict)
+  chamadas     ChamadaClasseBiblica[]
+  presencas    PresencaClasseBiblica[]
+  envios       EnvioClasseBiblicaProcessado[]
+
+  @@unique([clubeId, id])
+  @@unique([clubeId, eventoId])
+  @@index([clubeId, data])
+  @@index([clubeId, edicaoId])
+}
+
+// "Chamada registrada" do grupo no encontro, inclusive a sem linhas (grupo vazio na data).
+model ChamadaClasseBiblica {
+  clubeId         String   @db.Uuid
+  encontroId      String   @db.Uuid
+  grupoId         String   @db.Uuid
+  registradaPorId String   @db.Uuid
+  registradaEm    DateTime @default(now()) @db.Timestamptz
+
+  clube         Clube                 @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  encontro      EncontroClasseBiblica @relation(fields: [clubeId, encontroId], references: [clubeId, id], onDelete: Restrict)
+  grupo         GrupoClasseBiblica    @relation(fields: [clubeId, grupoId], references: [clubeId, id], onDelete: Restrict)
+  registradaPor Usuario               @relation(fields: [registradaPorId], references: [id], onDelete: Restrict)
+
+  @@id([encontroId, grupoId])
+  @@index([clubeId, grupoId])
+}
+
+// Grupo e unidade do dia ficam na linha: mover a unidade de grupo depois não muda o passado.
+model PresencaClasseBiblica {
+  clubeId       String   @db.Uuid
+  encontroId    String   @db.Uuid
+  grupoId       String   @db.Uuid
+  dbvId         String   @db.Uuid
+  unidadeId     String   @db.Uuid
+  presente      Boolean
+  participou    Boolean
+  versao        DateTime @db.Timestamptz(3)
+  alteradaPorId String   @db.Uuid
+  envioId       String   @db.Uuid
+
+  clube       Clube                 @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  encontro    EncontroClasseBiblica @relation(fields: [clubeId, encontroId], references: [clubeId, id], onDelete: Restrict)
+  grupo       GrupoClasseBiblica    @relation(fields: [clubeId, grupoId], references: [clubeId, id], onDelete: Restrict)
+  dbv         Desbravador           @relation(fields: [clubeId, dbvId], references: [clubeId, id], onDelete: Restrict)
+  unidade     Unidade               @relation(fields: [clubeId, unidadeId], references: [clubeId, id], onDelete: Restrict)
+  alteradaPor Usuario               @relation(fields: [alteradaPorId], references: [id], onDelete: Restrict)
+
+  @@id([encontroId, dbvId])
+  @@index([clubeId, dbvId])
+  @@index([clubeId, grupoId])
+}
+
+model EnvioClasseBiblicaProcessado {
+  envioId      String   @id @db.Uuid
+  clubeId      String   @db.Uuid
+  encontroId   String   @db.Uuid
+  grupoId      String   @db.Uuid
+  processadoEm DateTime @default(now()) @db.Timestamptz
+
+  clube    Clube                 @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  encontro EncontroClasseBiblica @relation(fields: [clubeId, encontroId], references: [clubeId, id], onDelete: Restrict)
+  grupo    GrupoClasseBiblica    @relation(fields: [clubeId, grupoId], references: [clubeId, id], onDelete: Restrict)
+
+  @@index([clubeId, encontroId, grupoId])
 }
 
 /// Link de substituição: um dia, um alvo (unidade OU classe), janela gravada na geração.

@@ -1,5 +1,5 @@
 import { hojeNoFuso } from '@desbravadores/shared'
-import { Check, ChevronDown, Circle } from 'lucide-react'
+import { BookOpen, Check, ChevronDown, Circle } from 'lucide-react'
 import { useState } from 'react'
 import { ErroDaApi } from '../../api/cliente'
 import type { ProgressoDbv } from '../../api/progresso'
@@ -17,6 +17,7 @@ import { cn } from '../../ui/cn'
 type Matricula = ProgressoDbv['matriculas'][number]
 type Secao = Matricula['secoes'][number]
 type Requisito = Secao['requisitos'][number]
+type ClasseBiblicaDoRequisito = NonNullable<Requisito['classeBiblica']>
 
 const hojeLocal = (): string => hojeNoFuso(Intl.DateTimeFormat().resolvedOptions().timeZone, new Date())
 
@@ -86,6 +87,32 @@ function CirculoDoRequisito({ concluido, codigo, podeMarcar, aoTocar }: { conclu
   )
 }
 
+/** Evidência da Classe Bíblica sob o requisito "participar ativamente" (M6): não marca nada sozinho. */
+function QuadroClasseBiblica({ contagem }: { contagem: ClasseBiblicaDoRequisito }) {
+  return (
+    <div className="mt-1 flex items-start gap-2 rounded-cartao bg-superficie-suave p-3">
+      <BookOpen aria-hidden className="mt-0.5 size-4 shrink-0 text-marca" />
+      {contagem.semGrupo ? (
+        <span className="text-sm text-texto">{contagem.edicao}: a unidade dele(a) não está em nenhum grupo</span>
+      ) : (
+        <span className="flex flex-col gap-0.5">
+          <span className="text-sm font-semibold text-texto">
+            {contagem.edicao}: {contagem.presencas} de {contagem.encontros} encontros
+          </span>
+          <span className="text-sm text-texto">
+            {[`Participou ativamente em ${contagem.participacoes}`, contagem.grupo].filter(Boolean).join(' · ')}
+          </span>
+          {contagem.anteriores.map((anterior) => (
+            <span key={anterior.edicao} className="text-sm text-texto-2">
+              Antes: {anterior.edicao} — {anterior.presencas} de {anterior.encontros} encontros · participou ativamente em {anterior.participacoes}
+            </span>
+          ))}
+        </span>
+      )}
+    </div>
+  )
+}
+
 function LinhaDoRequisito({ requisito, dbvId, minimo, compacta }: DaLinha) {
   const marcar = useMarcarRequisito()
   const desmarcar = useDesmarcarRequisito()
@@ -129,6 +156,7 @@ function LinhaDoRequisito({ requisito, dbvId, minimo, compacta }: DaLinha) {
             <span className="font-semibold">{requisito.codigo}</span> {requisito.texto}
           </span>
           <span className="text-sm text-texto-2">{concluido ? `Concluído em ${formatarData(requisito.concluidoEm ?? '')}` : 'Ainda não concluído'}</span>
+          {requisito.classeBiblica && <QuadroClasseBiblica contagem={requisito.classeBiblica} />}
         </div>
       </div>
 

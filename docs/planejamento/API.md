@@ -99,7 +99,7 @@ Convenções: listas paginadas com `?pagina=&porPagina=`; datas em `YYYY-MM-DD`;
 | `GET /calendario?ano=` | Eventos + dias de reunião (domingos implícitos e reuniões extras), já resolvidos | logado |
 | `POST /calendario/eventos` | Cria; responde com as aulas em conflito e dispara notificações | `calendario.gerenciar` |
 | `GET /calendario/eventos/{id}` | Um evento do clube (404 se removido ou de outro clube) | logado |
-| `PATCH` / `DELETE /calendario/eventos/{id}` | Edita / exclui; idem conflitos | `calendario.gerenciar` |
+| `PATCH` / `DELETE /calendario/eventos/{id}` | Edita / exclui; idem conflitos. Evento `CLASSE_BIBLICA` (criado só pela edição da Classe Bíblica) não se cria, edita nem exclui aqui: 422 "Este encontro é da Classe Bíblica: remarque ou cancele pela edição." | `calendario.gerenciar` |
 | `GET /calendario/proxima-reuniao?unidadeId=` | Data, hora e local da próxima reunião (card do Início) | logado |
 
 ## Cronogramas
@@ -153,8 +153,25 @@ O link é conferido no banco a cada requisição: GET e HEAD valem até o fim da
 
 | Método e rota | O que faz | Permissão |
 |---|---|---|
-| `GET /sync/pacote` | Pacote do domingo do usuário: DBVs das unidades/classes, critérios ativos, aulas das próximas 2 semanas, requisitos já concluídos, `versao`. Com a credencial de substituição: só o alvo do link, só a reunião do dia dele e sem álbuns | logado ou credencial de substituição |
+| `GET /sync/pacote` | Pacote do domingo do usuário: DBVs das unidades/classes, critérios ativos, aulas das próximas 2 semanas, requisitos já concluídos, `versao`. Com a credencial de substituição: só o alvo do link, só a reunião do dia dele e sem álbuns; para quem tem `classebiblica.chamada` (e não entra pelo link), também `classeBiblica` (encontros de ±7 dias, grupos do escopo, presenças e chamadas já registradas) | logado ou credencial de substituição |
 | `PUT /sync/reunioes/{uuid}` · `PUT /sync/aulas/{uuid}` | (acima) | — |
+| `PUT /sync/classe-biblica/encontros/{id}/grupos/{grupoId}` | Chamada de um grupo num encontro (presente e participou por DBV, versão vista, id de envio); gera os pontos | `classebiblica.chamada` + escopo |
+
+## Classe Bíblica
+
+| Método e rota | O que faz | Permissão |
+|---|---|---|
+| `GET` / `POST /classe-biblica/edicoes` | Lista as edições / cria o rascunho | `classebiblica.gerenciar` |
+| `PATCH /classe-biblica/edicoes/{id}` | Salva o rascunho; em edição terminada, horário e local descem aos encontros futuros sem chamada | `classebiblica.gerenciar` |
+| `GET /classe-biblica/edicoes/{id}` | Painel da edição (guarda no serviço: gerenciar, ou chamada com grupo no escopo) | logado |
+| `GET` / `PUT /classe-biblica/edicoes/{id}/grupos` | Lê / grava os grupos e suas unidades | `classebiblica.gerenciar` |
+| `GET /classe-biblica/edicoes/{id}/datas` | Datas possíveis da etapa 3, com o motivo das desmarcadas | `classebiblica.gerenciar` |
+| `POST /classe-biblica/edicoes/{id}/terminar` | Cria encontros e eventos `CLASSE_BIBLICA`; idempotente | `classebiblica.gerenciar` |
+| `POST /classe-biblica/grupos/{grupoId}/material/link` · `/material/arquivo` | Material de estudo do grupo: link ou PDF de até 20 MB (multipart, campo `arquivo`) | `classebiblica.gerenciar` |
+| `GET /classe-biblica/grupos/{grupoId}/frequencia` | Frequência do grupo (guarda no serviço, como o painel) | logado |
+| `GET /classe-biblica/encontros/{id}` · `POST .../remarcar` · `.../cancelar` · `.../desfazer-cancelamento` | Detalhe, remarcação, cancelamento com motivo e desfazer | `classebiblica.gerenciar` |
+| `GET /classe-biblica/encontros/{id}/grupos/{grupoId}/chamada` | Lista da chamada do grupo | `classebiblica.chamada` + escopo |
+| `GET` / `PATCH /classe-biblica/pontos` | Valor e "Contar" dos critérios `CLASSE_BIBLICA_PRESENCA` e `CLASSE_BIBLICA_PARTICIPACAO` | `ranking.configurar` |
 
 ## Ranking
 
@@ -218,6 +235,7 @@ Nenhuma rota de conselheiro, pública ou de perfil do DBV devolve observações.
 | `classe.ver_relatorio` | ✔ | — | ✔ |
 | `observacao.ver_outros` | ✔ | — | desligada |
 | `ranking.lancar_manual` | ✔ | — | — |
-| `dbv.cadastrar`, `usuario.gerenciar`, `unidade.gerenciar`, `classe.gerenciar`, `calendario.gerenciar`, `ranking.configurar`, `relatorio.geral`, `clube.configurar` | ✔ | — | — |
+| `classebiblica.chamada` | ✔ | desligada | desligada |
+| `dbv.cadastrar`, `usuario.gerenciar`, `unidade.gerenciar`, `classe.gerenciar`, `calendario.gerenciar`, `ranking.configurar`, `relatorio.geral`, `clube.configurar`, `classebiblica.gerenciar` | ✔ | — | — |
 
 "desligada" = existe para o papel, começa desligada, o Adm pode ligar. "—" = não se aplica ao papel.
