@@ -4,6 +4,7 @@ import { AulasModule } from './aulas/aulas.module'
 import { ArquivosModule } from './arquivos/arquivos.module'
 import { AtividadesModule } from './atividades/atividades.module'
 import { AuthModule } from './auth/auth.module'
+import { BibliotecaModule } from './biblioteca/biblioteca.module'
 import { CalendarioModule } from './calendario/calendario.module'
 import { EventosModule } from './calendario/eventos.module'
 import { AjustesClassesModule } from './classes/ajustes.module'
@@ -79,6 +80,7 @@ import { VisaoGeralModule } from './visao-geral/visao-geral.module'
     InstrutorModule,
     TarefasModule,
     SubstituicoesModule,
+    BibliotecaModule,
   ],
 })
 export class AppModule {}
