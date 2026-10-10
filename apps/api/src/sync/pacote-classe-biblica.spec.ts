@@ -156,13 +156,14 @@ describe('GET /api/sync/pacote: classe bíblica', () => {
       .filter(([, nomes]) => nomes.length > 0)
   }
 
-  it('Águias muda do Daniel para o Ester: o encontro com chamada fica como foi, os outros seguem a composição nova', async () => {
+  it('Águias muda do Daniel para o Ester hoje: os encontros de antes seguem a composição do dia, os de hoje em diante a nova', async () => {
     const { clube, adm, edicao, daniel, ester, aguias, passado, deHoje } = await cenario()
-    await prismaDeTeste().grupoUnidadeClasseBiblica.deleteMany({ where: { grupoId: daniel.id, unidadeId: aguias.id } })
-    await prismaDeTeste().grupoUnidadeClasseBiblica.create({ data: { clubeId: clube.id, edicaoId: edicao.id, grupoId: ester.id, unidadeId: aguias.id } })
+    const hoje = new Date(`${dia(0)}T00:00:00Z`)
+    await prismaDeTeste().grupoUnidadeClasseBiblica.updateMany({ where: { grupoId: daniel.id, unidadeId: aguias.id }, data: { fim: hoje } })
+    await prismaDeTeste().grupoUnidadeClasseBiblica.create({ data: { clubeId: clube.id, edicaoId: edicao.id, grupoId: ester.id, unidadeId: aguias.id, inicio: hoje } })
     const cb = (await baixar(adm.autorizacao)).classeBiblica
-    expect(listaNoAparelho(cb, passado.id, daniel.id)).toEqual([['Águias', ['Ana Lima']], ['Leões', ['Caio Reis']]])
-    expect(listaNoAparelho(cb, passado.id, ester.id)).toEqual([['Águias', ['Rui Paz']], ['Gaviões', ['Duda Melo']]])
+    expect(listaNoAparelho(cb, passado.id, daniel.id)).toEqual([['Águias', ['Ana Lima', 'Rui Paz']], ['Leões', ['Caio Reis']]])
+    expect(listaNoAparelho(cb, passado.id, ester.id)).toEqual([['Gaviões', ['Duda Melo']]])
     expect(listaNoAparelho(cb, deHoje.id, daniel.id)).toEqual([['Leões', ['Caio Reis']]])
     expect(listaNoAparelho(cb, deHoje.id, ester.id)).toEqual([['Águias', ['Ana Lima']], ['Gaviões', ['Duda Melo']]])
   })

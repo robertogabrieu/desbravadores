@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { INestApplication } from '@nestjs/common'
-import { hojeNoFuso, type ChamadaCBEnvioSaida, type ChamadaCBSaida, type ErroApi } from '@desbravadores/shared'
+import { hojeNoFuso, type ChamadaCBEnvioSaida, type ChamadaCBSaida, type ErroApi, type FrequenciaGrupoSaida, type PainelSaida } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { criarAppDeTeste } from '../../test/app'
 import {
@@ -24,6 +24,8 @@ import { garantirCriterios } from './criterios'
 type Chamada = z.infer<typeof ChamadaCBSaida>
 type Saida = z.infer<typeof ChamadaCBEnvioSaida>
 type Erro = z.infer<typeof ErroApi>
+type Painel = z.infer<typeof PainelSaida>
+type Frequencia = z.infer<typeof FrequenciaGrupoSaida>
 interface Linha { dbvId: string; presente: boolean; participou: boolean; versaoVista?: string | null }
 
 const DIA = 86_400_000
@@ -260,7 +262,13 @@ describe('classe bíblica: chamada (regras 8–12)', () => {
   })
 
   describe('grupo e unidade do dia (regras 8 e 14)', () => {
-    /** Chamada do Daniel em hoje−7 com Ana, Bia e Rui (Águias) e Caio (Leões); depois Águias passa para o Ester. */
+    /** Fecha o período da unidade num grupo na data e abre outro no grupo novo no mesmo dia (D32). */
+    async function moverDeGrupo(clubeId: string, edicaoId: string, unidadeId: string, de: string, para: string, data: string) {
+      const prisma = prismaDeTeste()
+      await prisma.grupoUnidadeClasseBiblica.updateMany({ where: { grupoId: de, unidadeId, fim: null }, data: { fim: new Date(`${data}T00:00:00Z`) } })
+      await prisma.grupoUnidadeClasseBiblica.create({ data: { clubeId, edicaoId, grupoId: para, unidadeId, inicio: new Date(`${data}T00:00:00Z`) } })
+    }
+    /** Chamada do Daniel em hoje−7 com Ana, Bia e Rui (Águias) e Caio (Leões); hoje Águias passa para o Ester. */
     async function aguiasMudaDeGrupo() {
       const base = await cenario()
       const { clube, adm, edicao, daniel, ester, aguias, ana, bia, rui, caio } = base
@@ -271,8 +279,7 @@ describe('classe bíblica: chamada (regras 8–12)', () => {
         { dbvId: rui.id, presente: true, participou: false },
         { dbvId: caio.id, presente: true, participou: false },
       ])).expect(200)
-      await prismaDeTeste().grupoUnidadeClasseBiblica.deleteMany({ where: { grupoId: daniel.id, unidadeId: aguias.id } })
-      await prismaDeTeste().grupoUnidadeClasseBiblica.create({ data: { clubeId: clube.id, edicaoId: edicao.id, grupoId: ester.id, unidadeId: aguias.id } })
+      await moverDeGrupo(clube.id, edicao.id, aguias.id, daniel.id, ester.id, dia(0))
       return { ...base, passado }
     }
     const porUnidade = (chamada: Chamada) => chamada.unidades.map((u) => [u.nome, u.desbravadores.map((d) => [d.nome, d.presente])])
@@ -294,6 +301,41 @@ describe('classe bíblica: chamada (regras 8–12)', () => {
       expect(doEster.unidades.map((u) => u.nome)).toEqual(['Águias', 'Gaviões'])
       const doDaniel = corpo<Chamada>(await api.get(urlChamada(encontro.id, daniel.id), adm.autorizacao).expect(200))
       expect(doDaniel.unidades.map((u) => u.nome)).toEqual(['Leões'])
+    })
+
+    it('critério 50: encontro passado sem chamada de grupo nenhum lista Águias no Daniel e não no Ester, mesmo depois da troca', async () => {
+      const { clube, adm, edicao, daniel, ester } = await aguiasMudaDeGrupo()
+      const antigo = await criarEncontroCB({ clubeId: clube.id, edicaoId: edicao.id, data: dia(-14) })
+      const doDaniel = corpo<Chamada>(await api.get(urlChamada(antigo.id, daniel.id), adm.autorizacao).expect(200))
+      expect(porUnidade(doDaniel)).toEqual([
+        ['Águias', [['Ana Lima', true], ['Bia Souza', true], ['Rui Paz', true]]],
+        ['Leões', [['Caio Reis', true]]],
+      ])
+      const doEster = corpo<Chamada>(await api.get(urlChamada(antigo.id, ester.id), adm.autorizacao).expect(200))
+      expect(doEster.unidades.map((u) => u.nome)).toEqual(['Gaviões'])
+    })
+
+    it('critério 51: o Conselheiro de Águias continua vendo o Daniel, corrige as linhas de Águias e vê os números delas no painel e na frequência', async () => {
+      const { clube, edicao, passado, daniel, ester, aguias, ana, bia, rui } = await aguiasMudaDeGrupo()
+      const conselheiro = await criarAcesso({ clubeId: clube.id, papel: 'CONSELHEIRO', unidadeIds: [aguias.id] })
+      await ajustarPermissao(conselheiro.vinculo.id, 'classebiblica.chamada', true)
+      const lista = corpo<Chamada>(await api.get(urlChamada(passado.id, daniel.id), conselheiro.autorizacao).expect(200))
+      expect(lista.unidades.map((u) => [u.nome, u.desbravadores.map((d) => d.dbvId)])).toEqual([['Águias', [ana.id, bia.id, rui.id]]])
+      const versaoDoRui = lista.unidades[0]?.desbravadores.find((d) => d.dbvId === rui.id)?.versao ?? null
+      const saida = corpo<Saida>(
+        await api.put(urlEnvio(passado.id, daniel.id), conselheiro.autorizacao, envio([{ dbvId: rui.id, presente: false, participou: false, versaoVista: versaoDoRui }])).expect(200),
+      )
+      expect(saida).toMatchObject({ conflitos: [], ignorados: [], presentes: 1, participaram: 1 })
+      expect(saida.linhas.map((l) => l.dbvId).sort()).toEqual([ana.id, bia.id, rui.id].sort())
+
+      const painel = corpo<Painel>(await api.get(`/api/classe-biblica/edicoes/${edicao.id}`, conselheiro.autorizacao).expect(200))
+      expect(painel.grupos.map((g) => g.id)).toEqual([daniel.id, ester.id])
+      const doDaniel = painel.grupos[0]?.encontros.find((e) => e.id === passado.id)
+      expect(doDaniel?.chamada).toEqual({ presentes: 1, total: 3, participaram: 1 })
+      const freq = corpo<Frequencia>(await api.get(`/api/classe-biblica/grupos/${daniel.id}/frequencia`, conselheiro.autorizacao).expect(200))
+      expect(freq.itens.map((i) => [i.nome, i.unidade, i.presencas, i.encontros])).toEqual([
+        ['Bia Souza', 'Águias', 0, 1], ['Rui Paz', 'Águias', 0, 1], ['Ana Lima', 'Águias', 1, 1],
+      ])
     })
 
     it('corrigir a do Daniel funciona e mantém grupo e unidade; enviar pelo Ester ignora quem já tem linha', async () => {

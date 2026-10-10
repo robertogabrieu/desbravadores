@@ -123,12 +123,18 @@ function lerDadosDoArquivo(corpo: unknown): z.infer<typeof MaterialCBArquivoDado
 
 interface OcupacaoPorEdicao { nome: string; inicio: string; fim: string }
 
-/** Unidades já em grupo de edição terminada (outra que não esta) com período cruzando [inicio, fim] (regra 3). */
+/**
+ * Unidades em grupo de edição terminada (outra que não esta) num período, aberto ou fechado, que cruza [inicio, fim]
+ * (regra 3): a unidade que saiu da outra edição antes de `inicio` fica livre.
+ */
 async function unidadesEmEdicaoTerminada(db: Banco, clubeId: string, edicaoId: string, inicio: Date, fim: Date): Promise<Map<string, OcupacaoPorEdicao>> {
+  if (fim < inicio) return new Map()
   const ligacoes = await db.grupoUnidadeClasseBiblica.findMany({
     where: {
       clubeId,
       edicaoId: { not: edicaoId },
+      inicio: { lte: fim },
+      OR: [{ fim: null }, { fim: { gt: inicio } }],
       grupo: { clubeId, removidoEm: null },
       edicao: { clubeId, terminadaEm: { not: null }, inicio: { lte: fim }, fim: { gte: inicio } },
     },
@@ -224,7 +230,8 @@ export class ServicoEdicoes {
 
   async grupos(sessao: SessaoLogada, id: string): Promise<z.infer<typeof GruposSaida>> {
     const { clubeId } = sessao
-    const edicao = await exigirEdicao(this.prisma, clubeId, id)
+    const [edicao, { hoje }] = await Promise.all([exigirEdicao(this.prisma, clubeId, id), this.escopo.relogio(clubeId)])
+    const janela = janelaDeEntrada(edicao, daDataCivil(hoje))
     const [grupos, unidades, emOutraEdicao] = await Promise.all([
       this.gruposDaEdicao(clubeId, id),
       this.prisma.unidade.findMany({
@@ -236,7 +243,7 @@ export class ServicoEdicoes {
         },
         orderBy: [{ nome: 'asc' }, { id: 'asc' }],
       }),
-      edicao.inicio && edicao.fim ? unidadesEmEdicaoTerminada(this.prisma, clubeId, id, edicao.inicio, edicao.fim) : new Map<string, OcupacaoPorEdicao>(),
+      janela ? unidadesEmEdicaoTerminada(this.prisma, clubeId, id, janela.inicio, janela.fim) : new Map<string, OcupacaoPorEdicao>(),
     ])
     const grupoDaUnidade = new Map(grupos.flatMap((grupo) => grupo.unidadeIds.map((unidadeId) => [unidadeId, grupo.nome] as const)))
     return {
@@ -255,9 +262,13 @@ export class ServicoEdicoes {
     }
   }
 
-  /** Grava os grupos como vieram (regras 3 e 14): o que sumiu sai, se não tiver chamada. */
+  /**
+   * Grava os grupos como vieram (regras 3 e 14); o grupo que sumiu sai, se não tiver chamada, com os períodos dele.
+   * Em rascunho as unidades são substituídas; em edição terminada, quem sai fecha o período e quem entra abre um (D32).
+   */
   async salvarGrupos(sessao: SessaoLogada, id: string, entrada: z.infer<typeof GruposEntrada>): Promise<z.infer<typeof GruposSaida>> {
     const { clubeId } = sessao
+    const hoje = daDataCivil((await this.escopo.relogio(clubeId)).hoje)
     await this.prisma.$transaction(
       async (tx) => {
         await travarClube(tx, clubeId)
@@ -295,28 +306,41 @@ export class ServicoEdicoes {
         const comChamada = saindo.find((grupo) => grupo._count.chamadas > 0)
         if (comChamada) throw new ErroApp('REGRA', `O grupo ${comChamada.nome} já tem chamada feita e não pode sair da edição.`)
 
-        if (edicao.inicio && edicao.fim) {
-          const ocupadas = await unidadesEmEdicaoTerminada(tx, clubeId, id, edicao.inicio, edicao.fim)
-          const emConflito = [...vistas].find((unidadeId) => ocupadas.has(unidadeId))
+        const abertos = edicao.terminadaEm
+          ? await tx.grupoUnidadeClasseBiblica.findMany({ where: { clubeId, edicaoId: id, fim: null }, select: { grupoId: true, unidadeId: true, inicio: true } })
+          : []
+        // Em edição terminada só a unidade que chega à edição pode conflitar, e só do dia em que entra em diante.
+        const jaNaEdicao = new Set(abertos.map((aberto) => aberto.unidadeId))
+        const chegando = [...vistas].filter((unidadeId) => !jaNaEdicao.has(unidadeId))
+        const janela = janelaDeEntrada(edicao, hoje)
+        if (janela) {
+          const ocupadas = await unidadesEmEdicaoTerminada(tx, clubeId, id, janela.inicio, janela.fim)
+          const emConflito = chegando.find((unidadeId) => ocupadas.has(unidadeId))
           const outra = emConflito && ocupadas.get(emConflito)
           if (emConflito && outra) throw new ErroApp('REGRA', mensagemDeConflito(nomeDa.get(emConflito) ?? '', outra))
         }
 
-        await tx.grupoUnidadeClasseBiblica.deleteMany({ where: { clubeId, edicaoId: id } })
         if (saindo.length > 0) {
-          await tx.grupoClasseBiblica.updateMany({
-            where: { clubeId, id: { in: saindo.map((grupo) => grupo.id) } },
-            data: { removidoEm: new Date() },
-          })
+          const saindoIds = saindo.map((grupo) => grupo.id)
+          await tx.grupoUnidadeClasseBiblica.deleteMany({ where: { clubeId, grupoId: { in: saindoIds } } })
+          await tx.grupoClasseBiblica.updateMany({ where: { clubeId, id: { in: saindoIds } }, data: { removidoEm: new Date() } })
         }
-        const ligacoes: Prisma.GrupoUnidadeClasseBiblicaCreateManyInput[] = []
+        const grupoDaUnidade = new Map<string, string>()
         for (const [ordem, grupo] of entrada.grupos.entries()) {
           const grupoId = grupo.id
             ? (await tx.grupoClasseBiblica.update({ where: { clubeId_id: { clubeId, id: grupo.id } }, data: { nome: grupo.nome, ordem }, select: { id: true } })).id
             : (await tx.grupoClasseBiblica.create({ data: { clubeId, edicaoId: id, nome: grupo.nome, ordem }, select: { id: true } })).id
-          for (const unidadeId of new Set(grupo.unidadeIds)) ligacoes.push({ clubeId, edicaoId: id, grupoId, unidadeId })
+          for (const unidadeId of grupo.unidadeIds) grupoDaUnidade.set(unidadeId, grupoId)
         }
-        if (ligacoes.length > 0) await tx.grupoUnidadeClasseBiblica.createMany({ data: ligacoes })
+        if (edicao.terminadaEm) {
+          const saindoIds = new Set(saindo.map((grupo) => grupo.id))
+          await moverPeriodos(tx, clubeId, id, abertos.filter((aberto) => !saindoIds.has(aberto.grupoId)), grupoDaUnidade, hoje, edicao.inicio)
+        } else {
+          await tx.grupoUnidadeClasseBiblica.deleteMany({ where: { clubeId, edicaoId: id } })
+          const inicio = edicao.inicio ?? hoje
+          const ligacoes = [...grupoDaUnidade].map(([unidadeId, grupoId]) => ({ clubeId, edicaoId: id, grupoId, unidadeId, inicio }))
+          if (ligacoes.length > 0) await tx.grupoUnidadeClasseBiblica.createMany({ data: ligacoes })
+        }
         await tx.edicaoClasseBiblica.update({ where: { clubeId_id: { clubeId, id } }, data: { atualizadaEm: new Date() } })
       },
       { timeout: TEMPO_DA_TRANSACAO_MS },
@@ -349,7 +373,7 @@ export class ServicoEdicoes {
 
         const grupos = await tx.grupoClasseBiblica.findMany({
           where: { clubeId, edicaoId: id, removidoEm: null },
-          select: { nome: true, unidades: { where: { clubeId }, select: { unidadeId: true, unidade: { select: { nome: true } } } } },
+          select: { nome: true, unidades: { where: { clubeId, fim: null }, select: { unidadeId: true, unidade: { select: { nome: true } } } } },
           orderBy: [{ ordem: 'asc' }, { id: 'asc' }],
         })
         if (grupos.length === 0) throw new ErroApp('REGRA', 'Crie ao menos um grupo antes de terminar.')
@@ -387,6 +411,8 @@ export class ServicoEdicoes {
         await tx.encontroClasseBiblica.createMany({
           data: encontros.map(({ data, eventoId }) => ({ clubeId, edicaoId: id, data, horario, local: edicao.local, eventoId })),
         })
+        // Os períodos do rascunho nasceram com o início que a edição tinha (ou hoje); terminada, todos começam com ela.
+        await tx.grupoUnidadeClasseBiblica.updateMany({ where: { clubeId, edicaoId: id }, data: { inicio } })
         await tx.edicaoClasseBiblica.update({ where: { clubeId_id: { clubeId, id } }, data: { terminadaEm: new Date(), etapa: 3 } })
         await garantirCriterios(tx, clubeId)
       },
@@ -467,7 +493,7 @@ export class ServicoEdicoes {
       where: { clubeId, removidoEm: null, ...(edicaoId ? { edicaoId } : {}), ...(grupoId ? { id: grupoId } : {}) },
       select: {
         ...SELECAO_GRUPO,
-        unidades: { where: { clubeId }, select: { unidadeId: true, unidade: { select: { nome: true } } } },
+        unidades: { where: { clubeId, fim: null }, select: { unidadeId: true, unidade: { select: { nome: true } } } },
         _count: { select: { chamadas: { where: { clubeId } } } },
       },
       orderBy: [{ ordem: 'asc' }, { id: 'asc' }],
@@ -480,6 +506,47 @@ export class ServicoEdicoes {
       material: materialDoGrupo(this.arquivos, clubeId, grupo),
       temChamada: grupo._count.chamadas > 0,
     }))
+  }
+}
+
+/**
+ * Onde a regra 3 olha ao pôr uma unidade nesta edição: em rascunho, o período inteiro; terminada, do dia em que
+ * a unidade entraria (hoje, ou o início se a edição ainda não começou) até o fim. Sem período: nenhuma.
+ */
+function janelaDeEntrada(edicao: EdicaoClasseBiblica, hoje: Date): { inicio: Date; fim: Date } | null {
+  if (!edicao.inicio || !edicao.fim) return null
+  if (!edicao.terminadaEm) return { inicio: edicao.inicio, fim: edicao.fim }
+  return { inicio: edicao.inicio > hoje ? edicao.inicio : hoje, fim: edicao.fim }
+}
+
+/**
+ * Edição terminada (D32): quem sai do grupo fecha o período em hoje, ou o perde se ele ainda não começou; quem entra
+ * abre um período em hoje (no início, se a edição ainda não começou), ou reabre o que fechou nesse mesmo dia.
+ */
+async function moverPeriodos(
+  tx: Prisma.TransactionClient,
+  clubeId: string,
+  edicaoId: string,
+  abertos: { grupoId: string; unidadeId: string; inicio: Date }[],
+  grupoDaUnidade: Map<string, string>,
+  hoje: Date,
+  inicioDaEdicao: Date | null,
+): Promise<void> {
+  const abertura = inicioDaEdicao && inicioDaEdicao > hoje ? inicioDaEdicao : hoje
+  const ficam = new Set<string>()
+  for (const aberto of abertos) {
+    if (grupoDaUnidade.get(aberto.unidadeId) === aberto.grupoId) {
+      ficam.add(aberto.unidadeId)
+      continue
+    }
+    const periodo = { clubeId, grupoId: aberto.grupoId, unidadeId: aberto.unidadeId, inicio: aberto.inicio }
+    if (aberto.inicio >= hoje) await tx.grupoUnidadeClasseBiblica.deleteMany({ where: periodo })
+    else await tx.grupoUnidadeClasseBiblica.updateMany({ where: periodo, data: { fim: hoje } })
+  }
+  for (const [unidadeId, grupoId] of grupoDaUnidade) {
+    if (ficam.has(unidadeId)) continue
+    const { count } = await tx.grupoUnidadeClasseBiblica.updateMany({ where: { clubeId, grupoId, unidadeId, fim: abertura }, data: { fim: null } })
+    if (count === 0) await tx.grupoUnidadeClasseBiblica.create({ data: { clubeId, edicaoId, grupoId, unidadeId, inicio: abertura } })
   }
 }
 

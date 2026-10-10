@@ -77,10 +77,23 @@ export function cobre(vinculo: { inicio: Date; fim: Date | null }, data: Date): 
   return vinculo.inicio <= data && (vinculo.fim === null || vinculo.fim > data)
 }
 
+/** Período de uma unidade num grupo (D32): vale de `inicio` até a véspera de `fim`. */
+export interface PeriodoNoGrupo {
+  grupoId: string
+  unidadeId: string
+  inicio: Date
+  fim: Date | null
+}
+
+/** Composição do grupo numa data: as unidades cujo período cobre o dia (D32). */
+export function unidadesNaData(periodos: PeriodoNoGrupo[], grupoId: string, data: Date): Set<string> {
+  return new Set(periodos.filter((p) => p.grupoId === grupoId && cobre(p, data)).map((p) => p.unidadeId))
+}
+
 /**
  * Quem entra na chamada de um grupo num encontro (regras 8 e 14): as linhas que o grupo já gravou nele, com a
- * unidade do dia, mais quem a composição atual do grupo traz e ainda não tem linha no encontro em grupo nenhum.
- * Mover a unidade de grupo depois de uma chamada só muda os encontros sem linha.
+ * unidade do dia, mais quem a composição do grupo na data do encontro traz e ainda não tem linha em grupo nenhum.
+ * Mover a unidade de grupo muda só os encontros do dia da troca em diante, e nunca as linhas gravadas.
  */
 export function membrosDaChamada(
   grupoId: string,

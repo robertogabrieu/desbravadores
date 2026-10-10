@@ -9,14 +9,28 @@ import type { Prisma } from '../generated/prisma/client.js'
 export const EDICAO_NAO_ENCONTRADA = 'Edição não encontrada.'
 export const GRUPO_NAO_ENCONTRADO = 'Grupo não encontrado.'
 
+/** O que se corta pelo escopo: o desbravador e a unidade em que ele conta (a da linha gravada, ou a da composição na data). */
+export interface ItemDoEscopo {
+  dbvId: string
+  unidadeId: string
+}
+
+/** Corte de quem só tem a chamada (regra 9, D33). */
+export interface CorteDoEscopo {
+  /** Conselheiro: pela unidade do item, nunca pela de hoje; Instrutor: pelos CURSANDO das classes dele. */
+  itens: <T extends ItemDoEscopo>(itens: T[]) => Promise<T[]>
+  /** Das unidades dadas, as que a pessoa pode ver nomeadas no painel. */
+  unidades: (unidadeIds: string[]) => Promise<Set<string>>
+}
+
 /** O que a guarda própria do painel apurou: o que a pessoa pode e quais grupos ela enxerga. */
 export interface AcessoAoPainel {
   podeGerenciar: boolean
   podeFazerChamada: boolean
   /** Grupos não removidos da edição que a pessoa vê, na ordem da edição. */
   grupoIds: string[]
-  /** null = vê todos os desbravadores; senão, só estes (regra 9). Com `data`, vale também a unidade naquele dia. */
-  dbvsVisiveis: ((dbvIds: string[], data?: Date) => Promise<Set<string>>) | null
+  /** null = vê todos os desbravadores e todas as unidades. */
+  corte: CorteDoEscopo | null
 }
 
 /** Escopo da Classe Bíblica (regra 9): o Adm vê tudo; Conselheiro pelas unidades; Instrutor pelos CURSANDO das classes dele. */
@@ -46,20 +60,51 @@ export class ServicoEscopoGrupos {
     return grupos.map((grupo) => grupo.id)
   }
 
-  /**
-   * Dos desbravadores dados, os que a sessão alcança na chamada (regra 9). Com `data` (a do encontro),
-   * o Conselheiro alcança também quem estava numa unidade dele naquele dia, não só quem está nela hoje.
-   */
-  async dbvsNoEscopo(sessao: SessaoLogada, dbvIds: string[], data?: Date): Promise<Set<string>> {
-    if (dbvIds.length === 0) return new Set()
+  /** Corte da sessão; null para quem vê tudo (gerenciar ou Adm). */
+  async corte(sessao: SessaoLogada): Promise<CorteDoEscopo | null> {
     const { gerenciar } = await this.permissoes(sessao)
-    const filtro = gerenciar || sessao.papel === 'ADM' ? {} : await this.filtroDeDbv(sessao, data)
-    if (filtro === null) return new Set()
-    const dbvs = await this.prisma.desbravador.findMany({
-      where: { clubeId: sessao.clubeId, id: { in: dbvIds }, ...filtro },
-      select: { id: true },
-    })
-    return new Set(dbvs.map((dbv) => dbv.id))
+    return gerenciar || sessao.papel === 'ADM' ? null : this.corteSemVerTudo(sessao)
+  }
+
+  private corteSemVerTudo(sessao: SessaoLogada): CorteDoEscopo {
+    const { clubeId } = sessao
+    if (sessao.papel === 'CONSELHEIRO') {
+      const unidadesDele = this.escopo.unidadesDoConselheiro(sessao).then((ids) => new Set(ids))
+      return {
+        itens: async (itens) => {
+          const dele = await unidadesDele
+          return itens.filter((item) => dele.has(item.unidadeId))
+        },
+        unidades: async (unidadeIds) => {
+          const dele = await unidadesDele
+          return new Set(unidadeIds.filter((id) => dele.has(id)))
+        },
+      }
+    }
+    if (sessao.papel === 'INSTRUTOR') {
+      return {
+        itens: async (itens) => {
+          if (itens.length === 0) return []
+          const dbv = await this.filtroDoInstrutor(sessao)
+          const visiveis = await this.prisma.desbravador.findMany({
+            where: { clubeId, id: { in: [...new Set(itens.map((item) => item.dbvId))] }, ...dbv },
+            select: { id: true },
+          })
+          const ids = new Set(visiveis.map((v) => v.id))
+          return itens.filter((item) => ids.has(item.dbvId))
+        },
+        unidades: async (unidadeIds) => {
+          if (unidadeIds.length === 0) return new Set()
+          const dbv = await this.filtroDoInstrutor(sessao)
+          const membros = await this.prisma.membroUnidade.findMany({
+            where: { clubeId, unidadeId: { in: unidadeIds }, fim: null, dbv: { clubeId, ativo: true, ...dbv } },
+            select: { unidadeId: true },
+          })
+          return new Set(membros.map((membro) => membro.unidadeId))
+        },
+      }
+    }
+    return { itens: () => Promise.resolve([]), unidades: () => Promise.resolve(new Set()) }
   }
 
   /**
@@ -81,7 +126,7 @@ export class ServicoEscopoGrupos {
       podeGerenciar: gerenciar,
       podeFazerChamada: chamada,
       grupoIds,
-      dbvsVisiveis: veTudo ? null : (dbvIds, data) => this.dbvsNoEscopo(sessao, dbvIds, data),
+      corte: veTudo ? null : this.corteSemVerTudo(sessao),
     }
   }
 
@@ -97,28 +142,21 @@ export class ServicoEscopoGrupos {
     return { grupo, acesso }
   }
 
+  /** Conselheiro: grupo em que uma unidade dele está ou esteve (D33). Instrutor: pela composição de hoje. */
   private async filtroDeGrupo(sessao: SessaoLogada): Promise<Prisma.GrupoClasseBiblicaWhereInput | null> {
     const { clubeId } = sessao
     if (sessao.papel === 'CONSELHEIRO') {
       const unidadeIds = await this.escopo.unidadesDoConselheiro(sessao)
       return { unidades: { some: { clubeId, unidadeId: { in: unidadeIds } } } }
     }
-    const dbv = await this.filtroDeDbv(sessao)
-    if (dbv === null) return null
-    return { unidades: { some: { clubeId, unidade: { membros: { some: { clubeId, fim: null, dbv: { clubeId, ativo: true, ...dbv } } } } } } }
+    if (sessao.papel !== 'INSTRUTOR') return null
+    const dbv = await this.filtroDoInstrutor(sessao)
+    return { unidades: { some: { clubeId, fim: null, unidade: { membros: { some: { clubeId, fim: null, dbv: { clubeId, ativo: true, ...dbv } } } } } } }
   }
 
-  private async filtroDeDbv(sessao: SessaoLogada, data?: Date): Promise<Prisma.DesbravadorWhereInput | null> {
+  private async filtroDoInstrutor(sessao: SessaoLogada): Promise<Prisma.DesbravadorWhereInput> {
     const { clubeId } = sessao
-    if (sessao.papel === 'CONSELHEIRO') {
-      const unidadeIds = await this.escopo.unidadesDoConselheiro(sessao)
-      const naData = data ? [{ inicio: { lte: data }, fim: { gt: data } }] : []
-      return { membros: { some: { clubeId, unidadeId: { in: unidadeIds }, OR: [{ fim: null }, ...naData] } } }
-    }
-    if (sessao.papel === 'INSTRUTOR') {
-      const [classeIds, relogio] = await Promise.all([this.escopo.classesDoInstrutor(sessao), this.escopo.relogio(clubeId)])
-      return { matriculas: { some: { clubeId, classeId: { in: classeIds }, anoClube: relogio.anoClube, status: 'CURSANDO' } } }
-    }
-    return null
+    const [classeIds, relogio] = await Promise.all([this.escopo.classesDoInstrutor(sessao), this.escopo.relogio(clubeId)])
+    return { matriculas: { some: { clubeId, classeId: { in: classeIds }, anoClube: relogio.anoClube, status: 'CURSANDO' } } }
   }
 }

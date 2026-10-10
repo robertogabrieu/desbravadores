@@ -1,5 +1,5 @@
 import type { INestApplication } from '@nestjs/common'
-import type { DatasSaida, EdicaoSaida, EdicoesSaida, ErroApi, GruposSaida, PainelSaida } from '@desbravadores/shared'
+import { hojeNoFuso, type DatasSaida, type EdicaoSaida, type EdicoesSaida, type ErroApi, type GruposSaida, type PainelSaida } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { criarAppDeTeste } from '../../test/app'
 import {
@@ -390,6 +390,89 @@ describe('classe bíblica: edição', () => {
       }).expect(400)
       expect(corpo<Erro>(recusa)).toMatchObject({ codigo: 'VALIDACAO', campos: { grupos: 'Cada grupo precisa de ao menos uma unidade.' } })
       expect(await prismaDeTeste().grupoUnidadeClasseBiblica.count({ where: { grupoId: semChamada.id } })).toBe(1)
+    })
+  })
+
+  describe('período das unidades nos grupos (D32)', () => {
+    async function hojeDo(clubeId: string): Promise<string> {
+      const { fuso } = await prismaDeTeste().configuracaoClube.findUniqueOrThrow({ where: { clubeId } })
+      return hojeNoFuso(fuso, new Date())
+    }
+    /** Períodos da edição como [grupo, unidade, início, fim], em ordem estável. */
+    async function periodos(edicaoId: string, nomes: Record<string, string>): Promise<[string, string, string, string | null][]> {
+      const linhas = await prismaDeTeste().grupoUnidadeClasseBiblica.findMany({
+        where: { edicaoId },
+        include: { grupo: { select: { nome: true } } },
+        orderBy: [{ inicio: 'asc' }, { unidadeId: 'asc' }],
+      })
+      return linhas
+        .map((l): [string, string, string, string | null] => [l.grupo.nome, nomes[l.unidadeId] ?? l.unidadeId, l.inicio.toISOString().slice(0, 10), l.fim ? l.fim.toISOString().slice(0, 10) : null])
+        .sort((a, b) => a.join().localeCompare(b.join()))
+    }
+
+    it('em edição terminada: mover fecha em hoje e abre no outro grupo no mesmo dia; voltar no mesmo dia apaga o período de hoje e reabre o antigo', async () => {
+      const { clube, adm, aguias, leoes } = await cenario()
+      const gavioes = await criarUnidade({ clubeId: clube.id, nome: 'Gaviões' })
+      const edicao = await criarEdicaoCB({ clubeId: clube.id, terminada: true, inicio: '2026-08-16', fim: '2027-12-12' })
+      const daniel = await criarGrupoCB({ clubeId: clube.id, edicaoId: edicao.id, nome: 'Daniel', unidadeIds: [aguias.id] })
+      const ester = await criarGrupoCB({ clubeId: clube.id, edicaoId: edicao.id, nome: 'Ester', unidadeIds: [leoes.id] })
+      const hoje = await hojeDo(clube.id)
+      const nomes = { [aguias.id]: 'Águias', [leoes.id]: 'Leões', [gavioes.id]: 'Gaviões' }
+      const salvar = (dGrupos: string[], eGrupos: string[]) =>
+        api.put(`${BASE}/edicoes/${edicao.id}/grupos`, adm.autorizacao, {
+          grupos: [{ id: daniel.id, nome: 'Daniel', unidadeIds: dGrupos }, { id: ester.id, nome: 'Ester', unidadeIds: eGrupos }],
+        }).expect(200)
+
+      await salvar([gavioes.id], [leoes.id, aguias.id])
+      expect(await periodos(edicao.id, nomes)).toEqual([
+        ['Daniel', 'Gaviões', hoje, null],
+        ['Daniel', 'Águias', '2026-08-16', hoje],
+        ['Ester', 'Leões', '2026-08-16', null],
+        ['Ester', 'Águias', hoje, null],
+      ].sort((a, b) => a.join().localeCompare(b.join())))
+      const reaberto = corpo<Grupos>(await api.get(`${BASE}/edicoes/${edicao.id}/grupos`, adm.autorizacao).expect(200))
+      expect(reaberto.grupos.map((g) => [g.nome, g.unidadeIds])).toEqual([['Daniel', [gavioes.id]], ['Ester', [aguias.id, leoes.id]]])
+      expect(reaberto.unidades.find((u) => u.id === aguias.id)?.ocupadaPor).toEqual({ tipo: 'GRUPO', nome: 'Ester' })
+
+      await salvar([aguias.id], [leoes.id])
+      expect(await periodos(edicao.id, nomes)).toEqual([
+        ['Daniel', 'Águias', '2026-08-16', null],
+        ['Ester', 'Leões', '2026-08-16', null],
+      ])
+    })
+
+    it('em edição terminada que ainda não começou: o período que entra abre no início da edição e o que sai é apagado', async () => {
+      const { clube, adm, aguias, leoes } = await cenario()
+      const edicao = await criarEdicaoCB({ clubeId: clube.id, terminada: true, inicio: '2027-03-07', fim: '2027-06-27' })
+      const daniel = await criarGrupoCB({ clubeId: clube.id, edicaoId: edicao.id, nome: 'Daniel', unidadeIds: [aguias.id] })
+      await api.put(`${BASE}/edicoes/${edicao.id}/grupos`, adm.autorizacao, { grupos: [{ id: daniel.id, nome: 'Daniel', unidadeIds: [leoes.id] }] }).expect(200)
+      expect(await periodos(edicao.id, { [aguias.id]: 'Águias', [leoes.id]: 'Leões' })).toEqual([['Daniel', 'Leões', '2027-03-07', null]])
+    })
+
+    it('em rascunho, salvar substitui os períodos (sem início, começam hoje) e terminar os põe no início da edição', async () => {
+      const { clube, adm, aguias, leoes } = await cenario()
+      const criada = corpo<Edicao>(await api.post(`${BASE}/edicoes`, adm.autorizacao, { nome: 'CB 2027', diaSemana: 0, horario: '14:00' }).expect(201))
+      const nomes = { [aguias.id]: 'Águias', [leoes.id]: 'Leões' }
+      const hoje = await hojeDo(clube.id)
+      await api.put(`${BASE}/edicoes/${criada.id}/grupos`, adm.autorizacao, { grupos: [{ nome: 'Daniel', unidadeIds: [aguias.id] }] }).expect(200)
+      const [grupo] = corpo<Grupos>(await api.put(`${BASE}/edicoes/${criada.id}/grupos`, adm.autorizacao, { grupos: [{ nome: 'Daniel', unidadeIds: [leoes.id] }] }).expect(200)).grupos
+      expect(await periodos(criada.id, nomes)).toEqual([['Daniel', 'Leões', hoje, null]])
+      await api.patch(`${BASE}/edicoes/${criada.id}`, adm.autorizacao, { inicio: '2027-03-07', fim: '2027-06-27' }).expect(200)
+      await api.put(`${BASE}/edicoes/${criada.id}/grupos`, adm.autorizacao, { grupos: [{ id: grupo?.id, nome: 'Daniel', unidadeIds: [leoes.id] }] }).expect(200)
+      expect(await periodos(criada.id, nomes)).toEqual([['Daniel', 'Leões', '2027-03-07', null]])
+      await api.patch(`${BASE}/edicoes/${criada.id}`, adm.autorizacao, { inicio: '2027-03-14' }).expect(200)
+      await api.post(`${BASE}/edicoes/${criada.id}/terminar`, adm.autorizacao, { datas: ['2027-03-14'] }).expect(201)
+      expect(await periodos(criada.id, nomes)).toEqual([['Daniel', 'Leões', '2027-03-14', null]])
+    })
+
+    it('regra 3: unidade que saiu da outra edição terminada antes do início desta não conflita', async () => {
+      const { clube, adm, aguias } = await cenario()
+      const outra = await criarEdicaoCB({ clubeId: clube.id, terminada: true, nome: 'CB 1º semestre', inicio: '2027-03-07', fim: '2027-06-27' })
+      await criarGrupoCB({ clubeId: clube.id, edicaoId: outra.id, unidadeIds: [aguias.id], fim: '2027-04-04' })
+      const criada = await rascunho(adm.autorizacao, { inicio: '2027-06-06', fim: '2027-12-19' })
+      await api.put(`${BASE}/edicoes/${criada.id}/grupos`, adm.autorizacao, { grupos: [{ nome: 'Daniel', unidadeIds: [aguias.id] }] }).expect(200)
+      const grupos = corpo<Grupos>(await api.get(`${BASE}/edicoes/${criada.id}/grupos`, adm.autorizacao).expect(200))
+      expect(grupos.unidades.find((u) => u.id === aguias.id)?.ocupadaPor).toEqual({ tipo: 'GRUPO', nome: 'Daniel' })
     })
   })
 

@@ -158,6 +158,80 @@ describe('classe bíblica: painel, frequência e material', () => {
     })
   })
 
+  describe('unidade que troca de grupo (D31)', () => {
+    /**
+     * Daniel com Águias, Leões e Gaviões; Ester com Tigres. Em 12/10 Águias sai do Daniel e entra no Ester.
+     * Chamadas do Daniel em 04/10, 11/10 e 18/10; do Ester em 18/10. Ana está em Águias, Caio em Leões.
+     */
+    async function troca() {
+      const prisma = prismaDeTeste()
+      const clube = await criarClube()
+      const c = clube.id
+      const adm = await criarAcesso({ clubeId: c, papel: 'ADM' })
+      const [aguias, leoes, gavioes, tigres] = await Promise.all(
+        ['Águias', 'Leões', 'Gaviões', 'Tigres'].map((nome) => criarUnidade({ clubeId: c, nome })),
+      )
+      if (!aguias || !leoes || !gavioes || !tigres) throw new Error('unidades')
+      const edicao = await criarEdicaoCB({ clubeId: c, terminada: true, nome: 'CB 2026', inicio: '2026-08-16', fim: '2027-12-12' })
+      const daniel = await criarGrupoCB({ clubeId: c, edicaoId: edicao.id, nome: 'Grupo Daniel', unidadeIds: [leoes.id, gavioes.id] })
+      const ester = await criarGrupoCB({ clubeId: c, edicaoId: edicao.id, nome: 'Grupo Ester', unidadeIds: [tigres.id] })
+      const dia = (data: string) => new Date(`${data}T00:00:00Z`)
+      await prisma.grupoUnidadeClasseBiblica.createMany({ data: [
+        { clubeId: c, edicaoId: edicao.id, grupoId: daniel.id, unidadeId: aguias.id, inicio: dia('2026-08-16'), fim: dia('2026-10-12') },
+        { clubeId: c, edicaoId: edicao.id, grupoId: ester.id, unidadeId: aguias.id, inicio: dia('2026-10-12') },
+      ] })
+      const ana = await criarDbv({ clubeId: c, nome: 'Ana Lima' })
+      await criarMembro({ dbvId: ana.id, unidadeId: aguias.id, inicio: '2026-02-01' })
+      const caio = await criarDbv({ clubeId: c, nome: 'Caio Reis' })
+      await criarMembro({ dbvId: caio.id, unidadeId: leoes.id, inicio: '2026-02-01' })
+      const encontros: Awaited<ReturnType<typeof criarEncontroCB>>[] = []
+      for (const data of ['2026-10-04', '2026-10-11', '2026-10-18']) {
+        const encontro = await criarEncontroCB({ clubeId: c, edicaoId: edicao.id, data })
+        const linhas = data < '2026-10-12' ? [{ dbvId: ana.id, unidadeId: aguias.id }, { dbvId: caio.id, unidadeId: leoes.id }] : [{ dbvId: caio.id, unidadeId: leoes.id }]
+        await criarChamadaCB({ clubeId: c, encontroId: encontro.id, grupoId: daniel.id, linhas })
+        encontros.push(encontro)
+      }
+      const ultimo = encontros[2]
+      if (ultimo) await criarChamadaCB({ clubeId: c, encontroId: ultimo.id, grupoId: ester.id, linhas: [{ dbvId: ana.id, unidadeId: aguias.id }] })
+      return { clube, adm, aguias, leoes, edicao, daniel, ester }
+    }
+    const porData = (grupo: Painel['grupos'][number] | undefined) => grupo?.encontros.map((e) => [e.data, e.unidades])
+
+    it('critério 49: cada encontro diz as unidades do dia e a troca aparece nos dois grupos', async () => {
+      const { adm, edicao } = await troca()
+      const painel = corpo<Painel>(await api.get(`${BASE}/edicoes/${edicao.id}`, adm.autorizacao).expect(200))
+      const [daniel, ester] = painel.grupos
+      expect(porData(daniel)).toEqual([
+        ['2026-10-18', ['Gaviões', 'Leões']],
+        ['2026-10-11', ['Águias', 'Gaviões', 'Leões']],
+        ['2026-10-04', ['Águias', 'Gaviões', 'Leões']],
+      ])
+      expect(daniel?.mudancas).toEqual([{ data: '2026-10-12', unidade: 'Águias', tipo: 'SAIU', outroGrupo: 'Grupo Ester' }])
+      const doEster = (data: string) => ester?.encontros.find((e) => e.data === data)?.unidades
+      expect([doEster('2026-10-18'), doEster('2026-10-04')]).toEqual([['Águias', 'Tigres'], ['Tigres']])
+      expect(ester?.mudancas).toEqual([{ data: '2026-10-12', unidade: 'Águias', tipo: 'ENTROU', outroGrupo: 'Grupo Daniel' }])
+      expect(daniel?.unidades.map((u) => u.nome)).toEqual(['Gaviões', 'Leões'])
+    })
+
+    it('para quem só tem a chamada, as unidades e as trocas saem cortadas pelo escopo', async () => {
+      const { clube, edicao, aguias, leoes, daniel } = await troca()
+      const deLeoes = await criarAcesso({ clubeId: clube.id, papel: 'CONSELHEIRO', unidadeIds: [leoes.id] })
+      await ajustarPermissao(deLeoes.vinculo.id, 'classebiblica.chamada', true)
+      const painel = corpo<Painel>(await api.get(`${BASE}/edicoes/${edicao.id}`, deLeoes.autorizacao).expect(200))
+      expect(painel.grupos.map((g) => g.id)).toEqual([daniel.id])
+      expect(porData(painel.grupos[0])?.map(([, unidades]) => unidades)).toEqual([['Leões'], ['Leões'], ['Leões']])
+      expect(painel.grupos[0]?.mudancas).toEqual([])
+      expect(painel.grupos[0]?.encontros[2]?.chamada).toMatchObject({ total: 1 })
+
+      const deAguias = await criarAcesso({ clubeId: clube.id, papel: 'CONSELHEIRO', unidadeIds: [aguias.id] })
+      await ajustarPermissao(deAguias.vinculo.id, 'classebiblica.chamada', true)
+      const doAguias = corpo<Painel>(await api.get(`${BASE}/edicoes/${edicao.id}`, deAguias.autorizacao).expect(200))
+      expect(porData(doAguias.grupos[0])?.map(([, unidades]) => unidades)).toEqual([[], ['Águias'], ['Águias']])
+      expect(doAguias.grupos[0]?.mudancas).toEqual([{ data: '2026-10-12', unidade: 'Águias', tipo: 'SAIU', outroGrupo: 'Grupo Ester' }])
+      expect(doAguias.grupos[0]?.encontros[2]?.chamada).toMatchObject({ total: 1 })
+    })
+  })
+
   describe('frequência', () => {
     it('X de Y por desbravador do grupo, do menor para o maior, sem o encontro cancelado', async () => {
       const { adm, daniel } = await cenario()

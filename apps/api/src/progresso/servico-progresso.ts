@@ -264,7 +264,7 @@ export class ServicoProgresso {
     const membro = await this.prisma.membroUnidade.findFirst({ where: { clubeId, dbvId, fim: null }, select: { unidadeId: true } })
     const emGrupo = membro
       ? await this.prisma.grupoUnidadeClasseBiblica.count({
-          where: { clubeId, unidadeId: membro.unidadeId, edicaoId: { in: emAndamento.map((edicao) => edicao.id) } },
+          where: { clubeId, unidadeId: membro.unidadeId, fim: null, edicaoId: { in: emAndamento.map((edicao) => edicao.id) } },
         })
       : 0
     if (emGrupo > 0) return null

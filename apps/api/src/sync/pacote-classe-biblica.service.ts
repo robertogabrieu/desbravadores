@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common'
 import type { PacoteClasseBiblica } from '@desbravadores/shared'
 import type { z } from 'zod'
-import { cobre, linhaDoEncontro, membrosDaChamada, SELECAO_LINHA, SELECAO_VINCULO, vinculo, type Vinculo } from '../classe-biblica/composicao'
+import { cobre, linhaDoEncontro, membrosDaChamada, SELECAO_LINHA, SELECAO_VINCULO, unidadesNaData, vinculo, type Vinculo } from '../classe-biblica/composicao'
 import { somarDias } from '../classe-biblica/datas'
-import { ServicoEscopoGrupos } from '../classe-biblica/escopo-grupos'
+import { ServicoEscopoGrupos, type CorteDoEscopo } from '../classe-biblica/escopo-grupos'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { colador, daDataCivil, paraDataCivil } from '../desbravadores/apoio'
@@ -41,12 +41,12 @@ export class PacoteClasseBiblicaService {
     for (const edicaoId of edicaoIds) grupoIds.push(...(await this.escopoGrupos.gruposVisiveis(sessao, edicaoId)))
     const encontroIds = encontros.map((encontro) => encontro.id)
 
-    const visiveisNaData = this.escopoPorData(sessao)
-    const grupos = await this.grupos(sessao, grupoIds, encontros, desde, ate, visiveisNaData)
+    const corte = await this.escopoGrupos.corte(sessao)
+    const grupos = await this.grupos(sessao, grupoIds, encontros, desde, ate, corte)
     const [presencas, chamadas] = await Promise.all([
       this.prisma.presencaClasseBiblica.findMany({
         where: { clubeId, encontroId: { in: encontroIds }, grupoId: { in: grupoIds } },
-        select: { encontroId: true, dbvId: true, presente: true, participou: true, versao: true },
+        select: { encontroId: true, dbvId: true, unidadeId: true, presente: true, participou: true, versao: true },
         orderBy: [{ encontroId: 'asc' }, { dbvId: 'asc' }],
       }),
       this.prisma.chamadaClasseBiblica.findMany({
@@ -55,12 +55,7 @@ export class PacoteClasseBiblicaService {
         orderBy: [{ encontroId: 'asc' }, { grupoId: 'asc' }],
       }),
     ])
-    const visiveisPorEncontro = new Map<string, Set<string>>()
-    for (const encontro of encontros) {
-      const doEncontro = presencas.filter((linha) => linha.encontroId === encontro.id).map((linha) => linha.dbvId)
-      visiveisPorEncontro.set(encontro.id, await visiveisNaData(encontro.data, doEncontro))
-    }
-    const doEscopo = presencas.filter((linha) => visiveisPorEncontro.get(linha.encontroId)?.has(linha.dbvId))
+    const doEscopo = corte ? await corte.itens(presencas) : presencas
 
     return {
       encontros: encontros.map((encontro) => ({
@@ -73,23 +68,10 @@ export class PacoteClasseBiblicaService {
         dataOriginal: encontro.dataOriginal ? paraDataCivil(encontro.dataOriginal) : null,
       })),
       grupos,
-      presencas: doEscopo.map((linha) => ({ ...linha, versao: linha.versao.toISOString() })),
+      presencas: doEscopo.map((linha) => ({
+        encontroId: linha.encontroId, dbvId: linha.dbvId, presente: linha.presente, participou: linha.participou, versao: linha.versao.toISOString(),
+      })),
       chamadasRegistradas: chamadas,
-    }
-  }
-
-  /** Escopo da regra 9 na data de cada encontro; cada desbravador é conferido uma vez por data. */
-  private escopoPorData(sessao: SessaoLogada): (data: Date, dbvIds: string[]) => Promise<Set<string>> {
-    const conferidos = new Map<number, Map<string, boolean>>()
-    return async (data, dbvIds) => {
-      const doDia = conferidos.get(data.getTime()) ?? new Map<string, boolean>()
-      conferidos.set(data.getTime(), doDia)
-      const faltam = [...new Set(dbvIds)].filter((dbvId) => !doDia.has(dbvId))
-      if (faltam.length > 0) {
-        const visiveis = await this.escopoGrupos.dbvsNoEscopo(sessao, faltam, data)
-        for (const dbvId of faltam) doDia.set(dbvId, visiveis.has(dbvId))
-      }
-      return new Set(dbvIds.filter((dbvId) => doDia.get(dbvId)))
     }
   }
 
@@ -104,14 +86,14 @@ export class PacoteClasseBiblicaService {
     encontros: { id: string; edicaoId: string; data: Date }[],
     desde: Date,
     ate: Date,
-    visiveisNaData: (data: Date, dbvIds: string[]) => Promise<Set<string>>,
+    corte: CorteDoEscopo | null,
   ): Promise<GrupoDoPacote[]> {
     if (grupoIds.length === 0) return []
     const { clubeId } = sessao
     const [grupos, linhas] = await Promise.all([
       this.prisma.grupoClasseBiblica.findMany({
         where: { clubeId, id: { in: grupoIds } },
-        select: { id: true, nome: true, edicaoId: true, unidades: { where: { clubeId }, select: { unidadeId: true } } },
+        select: { id: true, nome: true, edicaoId: true, unidades: { where: { clubeId }, select: { grupoId: true, unidadeId: true, inicio: true, fim: true } } },
       }),
       this.prisma.presencaClasseBiblica.findMany({
         where: { clubeId, encontroId: { in: encontros.map((encontro) => encontro.id) } },
@@ -140,13 +122,11 @@ export class PacoteClasseBiblicaService {
       const grupo = porId.get(grupoId)
       if (!grupo) continue
       const doGrupo = encontros.filter((encontro) => encontro.edicaoId === grupo.edicaoId)
-      const unidadesDoGrupo = new Set(grupo.unidades.map((unidade) => unidade.unidadeId))
       const listados = new Map<string, { dbvId: string; nome: string; unidadeId: string; unidadeNome: string; datas: Date[] }>()
       for (const encontro of doGrupo) {
         const linhasDoEncontro = linhas.filter((linha) => linha.encontroId === encontro.id).map(linhaDoEncontro)
-        const membros = membrosDaChamada(grupo.id, unidadesDoGrupo, encontro.data, linhasDoEncontro, vinculos)
-        const visiveis = await visiveisNaData(encontro.data, membros.map((membro) => membro.dbvId))
-        for (const membro of membros.filter((m) => visiveis.has(m.dbvId))) {
+        const todos = membrosDaChamada(grupo.id, unidadesNaData(grupo.unidades, grupo.id, encontro.data), encontro.data, linhasDoEncontro, vinculos)
+        for (const membro of corte ? await corte.itens(todos) : todos) {
           const chave = `${membro.unidadeId}:${membro.dbvId}`
           const listado = listados.get(chave) ?? { ...membro, datas: [] }
           listado.datas.push(encontro.data)

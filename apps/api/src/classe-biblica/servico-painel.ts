@@ -6,29 +6,54 @@ import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { colador, paraDataCivil } from '../desbravadores/apoio'
 import { ServicoEscopo } from '../desbravadores/escopo.service'
-import { ServicoEscopoGrupos, type AcessoAoPainel } from './escopo-grupos'
+import { unidadesNaData, type PeriodoNoGrupo } from './composicao'
+import { ServicoEscopoGrupos, type AcessoAoPainel, type ItemDoEscopo } from './escopo-grupos'
 import { encontrosFeitos } from './frequencia'
 import { materialDoGrupo, saidaDaEdicao, SELECAO_GRUPO, situacaoDaEdicao } from './servico-edicoes'
 
 type Encontro = z.infer<typeof EncontroDoPainel>
+type Mudanca = z.infer<typeof PainelSaida>['grupos'][number]['mudancas'][number]
 
 interface Linha {
   encontroId: string
   grupoId: string
   dbvId: string
+  unidadeId: string
   presente: boolean
   participou: boolean
+}
+
+interface Periodo extends PeriodoNoGrupo {
+  unidadeNome: string
+  grupoNome: string
 }
 
 function porcentagem(parte: number, total: number): number | null {
   return total === 0 ? null : Math.round((100 * parte) / total)
 }
 
-/** Corta as linhas pelos desbravadores do escopo; `null` no acesso = vê todos. */
-async function noEscopo<T extends { dbvId: string }>(acesso: AcessoAoPainel, linhas: T[]): Promise<T[]> {
-  if (!acesso.dbvsVisiveis) return linhas
-  const visiveis = await acesso.dbvsVisiveis([...new Set(linhas.map((linha) => linha.dbvId))])
-  return linhas.filter((linha) => visiveis.has(linha.dbvId))
+/** Corta as linhas pelo escopo, pela unidade gravada nelas (D33); `null` no acesso = vê todas. */
+function noEscopo<T extends ItemDoEscopo>(acesso: AcessoAoPainel, linhas: T[]): Promise<T[]> {
+  return acesso.corte ? acesso.corte.itens(linhas) : Promise.resolve(linhas)
+}
+
+/**
+ * Trocas de unidade do grupo depois do início da edição (D31), data ↓. Fechar um período é SAIU, para o grupo
+ * aberto no mesmo dia; abrir depois do início é ENTROU, vindo do grupo fechado no mesmo dia.
+ */
+function mudancasDoGrupo(periodos: Periodo[], grupoId: string, inicioDaEdicao: Date): Mudanca[] {
+  const outro = (unidadeId: string, campo: 'inicio' | 'fim', data: Date): string | null =>
+    periodos.find((p) => p.grupoId !== grupoId && p.unidadeId === unidadeId && p[campo]?.getTime() === data.getTime())?.grupoNome ?? null
+  const mudancas: Mudanca[] = []
+  for (const periodo of periodos.filter((p) => p.grupoId === grupoId)) {
+    if (periodo.inicio > inicioDaEdicao) {
+      mudancas.push({ data: paraDataCivil(periodo.inicio), unidade: periodo.unidadeNome, tipo: 'ENTROU', outroGrupo: outro(periodo.unidadeId, 'fim', periodo.inicio) })
+    }
+    if (periodo.fim) {
+      mudancas.push({ data: paraDataCivil(periodo.fim), unidade: periodo.unidadeNome, tipo: 'SAIU', outroGrupo: outro(periodo.unidadeId, 'inicio', periodo.fim) })
+    }
+  }
+  return mudancas.sort((a, b) => b.data.localeCompare(a.data) || colador.compare(a.unidade, b.unidade))
 }
 
 /** Lista de edições, painel e frequência (regras 2, 9 e 13). */
@@ -108,7 +133,7 @@ export class ServicoPainel {
   async painel(sessao: SessaoLogada, edicaoId: string): Promise<z.infer<typeof PainelSaida>> {
     const { clubeId } = sessao
     const acesso = await this.escopoGrupos.exigirAcesso(sessao, edicaoId)
-    const [{ hoje }, edicao, grupos, encontros, todasAsLinhas] = await Promise.all([
+    const [{ hoje }, edicao, grupos, encontros, todasAsLinhas, todosOsPeriodos] = await Promise.all([
       this.escopo.relogio(clubeId),
       this.prisma.edicaoClasseBiblica.findFirstOrThrow({ where: { clubeId, id: edicaoId } }),
       this.prisma.grupoClasseBiblica.findMany({
@@ -116,7 +141,7 @@ export class ServicoPainel {
         select: {
           ...SELECAO_GRUPO,
           unidades: {
-            where: { clubeId },
+            where: { clubeId, fim: null },
             select: {
               unidade: {
                 select: {
@@ -146,10 +171,19 @@ export class ServicoPainel {
       }),
       this.prisma.presencaClasseBiblica.findMany({
         where: { clubeId, grupoId: { in: acesso.grupoIds }, encontro: { clubeId, edicaoId } },
-        select: { encontroId: true, grupoId: true, dbvId: true, presente: true, participou: true },
+        select: { encontroId: true, grupoId: true, dbvId: true, unidadeId: true, presente: true, participou: true },
+      }),
+      this.prisma.grupoUnidadeClasseBiblica.findMany({
+        where: { clubeId, edicaoId, grupo: { clubeId, removidoEm: null } },
+        select: { grupoId: true, unidadeId: true, inicio: true, fim: true, unidade: { select: { nome: true } }, grupo: { select: { nome: true } } },
       }),
     ])
     const linhas: Linha[] = await noEscopo(acesso, todasAsLinhas)
+    const unidadesVisiveis = acesso.corte ? await acesso.corte.unidades([...new Set(todosOsPeriodos.map((p) => p.unidadeId))]) : null
+    const periodos: Periodo[] = todosOsPeriodos
+      .filter((p) => unidadesVisiveis === null || unidadesVisiveis.has(p.unidadeId))
+      .map((p) => ({ grupoId: p.grupoId, unidadeId: p.unidadeId, inicio: p.inicio, fim: p.fim, unidadeNome: p.unidade.nome, grupoNome: p.grupo.nome }))
+    const nomeDaUnidade = new Map(periodos.map((p) => [p.unidadeId, p.unidadeNome]))
     const cancelados = new Set(encontros.filter((e) => e.canceladoEm).map((e) => e.id))
 
     const saidaDoGrupo = async (grupo: (typeof grupos)[number]) => {
@@ -175,6 +209,7 @@ export class ServicoPainel {
           cancelado: encontro.canceladoEm !== null,
           motivo: encontro.motivoCancelamento,
           temChamada: encontro.chamadas.length > 0,
+          unidades: [...unidadesNaData(periodos, grupo.id, encontro.data)].map((id) => nomeDaUnidade.get(id) ?? '').sort((a, b) => colador.compare(a, b)),
           chamada: temChamadaDoGrupo(encontro)
             ? {
                 presentes: daChamada.filter((linha) => linha.presente).length,
@@ -201,6 +236,7 @@ export class ServicoPainel {
           .filter((e) => e.canceladoEm || e.dataOriginal || temChamadaDoGrupo(e) || paraDataCivil(e.data) < hoje)
           .reverse()
           .map(encontroDoPainel),
+        mudancas: edicao.terminadaEm && edicao.inicio ? mudancasDoGrupo(periodos, grupo.id, edicao.inicio) : [],
       }
     }
 
@@ -220,6 +256,7 @@ export class ServicoPainel {
       where: { clubeId, grupoId, encontro: { clubeId, canceladoEm: null, chamadas: { some: { clubeId, grupoId } } } },
       select: {
         dbvId: true,
+        unidadeId: true,
         presente: true,
         participou: true,
         dbv: { select: { nome: true } },

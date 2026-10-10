@@ -331,6 +331,13 @@ describe('progresso', () => {
         edicao: 'CB 2026', encontros: 0, presencas: 0, participacoes: 0, grupo: null, semGrupo: true, anteriores: [],
       })
       expect(requisito(await ficha(leao.id, adm.autorizacao), 'G6').classeBiblica ?? null).toBeNull()
+
+      // Leões saiu do grupo: o período fechado não conta como grupo de hoje.
+      await prismaDeTeste().grupoUnidadeClasseBiblica.updateMany({
+        where: { clubeId, edicaoId: edicao.id, unidadeId: leoes.id },
+        data: { fim: new Date('2026-09-01T00:00:00Z') },
+      })
+      expect(requisito(await ficha(leao.id, adm.autorizacao), 'G6').classeBiblica).toMatchObject({ semGrupo: true })
     })
 
     it('edição encerrada não conta como em andamento para o semGrupo', async () => {

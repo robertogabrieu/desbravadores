@@ -230,7 +230,7 @@ async function envioProcessado(tx: Tx, clubeId: string, envioId: string): Promis
   return tx.envioClasseBiblicaProcessado.findFirst({ where: { clubeId, envioId }, select: { encontroId: true, grupoId: true } })
 }
 
-/** A lista do grupo no encontro (regras 8 e 14, ver `membrosDaChamada`), cortada pelo escopo na data do encontro (regra 9). */
+/** A lista do grupo na composição da data do encontro (regras 8 e 14, ver `membrosDaChamada`), cortada pelo escopo (regra 9, D33). */
 async function membrosNaData(
   db: Banco,
   clubeId: string,
@@ -240,7 +240,10 @@ async function membrosNaData(
 ): Promise<MembroDaChamada[]> {
   const { data } = encontro
   const [ligacoes, linhas] = await Promise.all([
-    db.grupoUnidadeClasseBiblica.findMany({ where: { clubeId, grupoId }, select: { unidadeId: true } }),
+    db.grupoUnidadeClasseBiblica.findMany({
+      where: { clubeId, grupoId, inicio: { lte: data }, OR: [{ fim: null }, { fim: { gt: data } }] },
+      select: { unidadeId: true },
+    }),
     db.presencaClasseBiblica.findMany({ where: { clubeId, encontroId: encontro.id }, select: SELECAO_LINHA }),
   ])
   const unidadeIds = ligacoes.map((ligacao) => ligacao.unidadeId)
@@ -255,8 +258,7 @@ async function membrosNaData(
     select: SELECAO_VINCULO,
   })
   const membros = membrosDaChamada(grupoId, new Set(unidadeIds), data, linhas.map(linhaDoEncontro), vinculos.map(vinculo))
-  const visiveis = acesso.dbvsVisiveis ? await acesso.dbvsVisiveis(membros.map((membro) => membro.dbvId), data) : null
-  return membros.filter((membro) => visiveis === null || visiveis.has(membro.dbvId))
+  return acesso.corte ? acesso.corte.itens(membros) : membros
 }
 
 async function montarSaida(
@@ -268,16 +270,12 @@ async function montarSaida(
   conflitos: Nomeado[],
   ignorados: Nomeado[],
 ): Promise<Saida> {
-  const [linhas, encontro] = await Promise.all([
-    tx.presencaClasseBiblica.findMany({
-      where: { clubeId, encontroId, grupoId },
-      select: { dbvId: true, presente: true, participou: true, versao: true },
-      orderBy: { dbvId: 'asc' },
-    }),
-    tx.encontroClasseBiblica.findFirstOrThrow({ where: { clubeId, id: encontroId }, select: { data: true } }),
-  ])
-  const visiveis = acesso.dbvsVisiveis ? await acesso.dbvsVisiveis(linhas.map((linha) => linha.dbvId), encontro.data) : null
-  const doEscopo = linhas.filter((linha) => visiveis === null || visiveis.has(linha.dbvId))
+  const linhas = await tx.presencaClasseBiblica.findMany({
+    where: { clubeId, encontroId, grupoId },
+    select: { dbvId: true, unidadeId: true, presente: true, participou: true, versao: true },
+    orderBy: { dbvId: 'asc' },
+  })
+  const doEscopo = acesso.corte ? await acesso.corte.itens(linhas) : linhas
   return {
     linhas: doEscopo.map((linha) => ({ dbvId: linha.dbvId, presente: linha.presente, participou: linha.participou, versao: linha.versao.toISOString() })),
     conflitos,
