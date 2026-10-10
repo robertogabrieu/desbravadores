@@ -18,6 +18,7 @@ import { DIAS_DA_SEMANA, dataCurta, diasNoPlural, nomeCurtoDaEdicao } from './us
 
 type Grupo = PainelDaEdicao['grupos'][number]
 type Encontro = Grupo['encontros'][number]
+type Mudanca = Grupo['mudancas'][number]
 
 const DIAS_CURTOS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
 const diaDaSemanaDe = (data: string): number => new Date(`${data}T12:00:00Z`).getUTCDay()
@@ -125,6 +126,43 @@ function rotuloDaData(data: string, diaSemana: number): string {
   return dia === diaSemana ? diaMes(data) : `${diaMes(data)} (${DIAS_CURTOS[dia]})`
 }
 
+/** A data do encontro e, ao lado, as unidades que formavam o grupo naquele dia (D31). */
+function DataEUnidades({ encontro, diaSemana }: { encontro: Encontro; diaSemana: number }) {
+  return (
+    <span className="text-base">
+      <span className="font-semibold text-texto">{rotuloDaData(encontro.data, diaSemana)}</span>
+      {encontro.unidades.length > 0 && <>{' '}<span className="text-texto-2">{juntarNomes(encontro.unidades)}</span></>}
+    </span>
+  )
+}
+
+function textoDaMudanca({ data, unidade, tipo, outroGrupo }: Mudanca): string {
+  const outro = outroGrupo ? (tipo === 'SAIU' ? ` (foi para o ${outroGrupo})` : ` (veio do ${outroGrupo})`) : ''
+  return `${diaMes(data)} · ${unidade} ${tipo === 'SAIU' ? 'saiu do grupo' : 'entrou no grupo'}${outro}`
+}
+
+function LinhaDaMudanca({ mudanca }: { mudanca: Mudanca }) {
+  return (
+    <li className="flex items-baseline gap-2 py-2 text-sm text-texto-2">
+      <span aria-hidden="true">▸</span>
+      <span>{textoDaMudanca(mudanca)}</span>
+    </li>
+  )
+}
+
+type ItemDaLinhaDoTempo = { tipo: 'encontro'; encontro: Encontro } | { tipo: 'mudanca'; mudanca: Mudanca }
+
+/** Encontros e trocas numa linha do tempo só, data ↓. A troca vale a partir do dia dela: fica abaixo do encontro desse dia. */
+function linhaDoTempo(encontros: Encontro[], mudancas: Mudanca[]): ItemDaLinhaDoTempo[] {
+  const restantes = [...mudancas]
+  const itens: ItemDaLinhaDoTempo[] = []
+  for (const encontro of encontros) {
+    while (restantes.length > 0 && restantes[0].data > encontro.data) itens.push({ tipo: 'mudanca', mudanca: restantes.shift()! })
+    itens.push({ tipo: 'encontro', encontro })
+  }
+  return [...itens, ...restantes.map((mudanca): ItemDaLinhaDoTempo => ({ tipo: 'mudanca', mudanca }))]
+}
+
 function LinhaDoEncontro({ encontro, grupo, painel }: { encontro: Encontro; grupo: Grupo; painel: PainelDaEdicao }) {
   const chamadaAberta = useChamadaAberta()
   const remarcado = encontro.dataOriginal
@@ -157,7 +195,7 @@ function LinhaDoEncontro({ encontro, grupo, painel }: { encontro: Encontro; grup
       <li className="flex flex-col gap-1 py-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="flex flex-col">
-            <span className="text-base font-semibold text-texto">{rotuloDaData(encontro.data, painel.edicao.diaSemana)}</span>
+            <DataEUnidades encontro={encontro} diaSemana={painel.edicao.diaSemana} />
             <span className="text-sm text-texto-2">Sem chamada</span>
           </span>
           {painel.podeFazerChamada && (
@@ -177,7 +215,7 @@ function LinhaDoEncontro({ encontro, grupo, painel }: { encontro: Encontro; grup
     <li className="flex flex-col gap-1 py-2">
       <div className="flex items-center justify-between gap-3">
         <span className="flex flex-col">
-          <span className="text-base font-semibold text-texto">{rotuloDaData(encontro.data, painel.edicao.diaSemana)}</span>
+          <DataEUnidades encontro={encontro} diaSemana={painel.edicao.diaSemana} />
           <span className="text-sm text-texto-2">{`${presentes} de ${total} presentes · ${ativos}`}</span>
         </span>
         <Link
@@ -201,9 +239,9 @@ function EncontrosFeitos({ grupo, painel }: { grupo: Grupo; painel: PainelDaEdic
   }
   return (
     <ul className="flex flex-col divide-y divide-borda-controle">
-      {encontros.map((encontro) => (
-        <LinhaDoEncontro key={encontro.id} encontro={encontro} grupo={grupo} painel={painel} />
-      ))}
+      {linhaDoTempo(encontros, grupo.mudancas).map((item) => item.tipo === 'encontro'
+        ? <LinhaDoEncontro key={item.encontro.id} encontro={item.encontro} grupo={grupo} painel={painel} />
+        : <LinhaDaMudanca key={`${item.mudanca.data}-${item.mudanca.unidade}-${item.mudanca.tipo}`} mudanca={item.mudanca} />)}
     </ul>
   )
 }

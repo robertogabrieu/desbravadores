@@ -385,3 +385,30 @@ export function handlersClasseBiblica(dados: DadosClasseBiblica = {}) {
 /** O servidor recusa o envio da fila (encontro cancelado ou remarcado para o futuro). */
 export const handlerChamadaCBRecusada = (mensagem: string, status = 422) =>
   http.put('/api/sync/classe-biblica/encontros/:id/grupos/:grupoId', () => HttpResponse.json({ codigo: 'REGRA', mensagem }, { status }))
+
+/** Critério 49: Águias sai do Grupo Daniel e entra no Grupo Ester em 12/10; um encontro antes e um depois da troca. */
+export function criarPainelComTroca(): Painel {
+  const painel = criarPainel()
+  const [daniel, ester] = painel.grupos
+  const proximo = { ...daniel.proximoEncontro!, data: '2026-10-25' }
+  const depois = (unidades: string[], chamada: { presentes: number; total: number; participaram: number }) =>
+    encontroDoPainel('2026-10-18', { unidades, chamada })
+  return {
+    ...painel,
+    grupos: [
+      {
+        ...daniel, proximoEncontro: proximo,
+        encontros: [depois(['Leões', 'Gaviões'], { presentes: 19, total: 21, participaram: 9 }), encontroDoPainel('2026-10-04')],
+        mudancas: [{ data: '2026-10-12', unidade: 'Águias', tipo: 'SAIU', outroGrupo: 'Grupo Ester' }],
+      },
+      {
+        ...ester, proximoEncontro: proximo,
+        encontros: [
+          depois(['Águias', 'Falcões', 'Panteras'], { presentes: 25, total: 29, participaram: 11 }),
+          encontroDoPainel('2026-10-04', { unidades: ['Falcões', 'Panteras'], chamada: { presentes: 17, total: 19, participaram: 8 } }),
+        ],
+        mudancas: [{ data: '2026-10-12', unidade: 'Águias', tipo: 'ENTROU', outroGrupo: 'Grupo Daniel' }],
+      },
+    ],
+  }
+}

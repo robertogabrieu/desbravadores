@@ -13,6 +13,7 @@ import {
   criarFrequencia,
   criarGrupos,
   criarPainel,
+  criarPainelComTroca,
   handlersClasseBiblica,
 } from '../../../testes/handlers/classe-biblica'
 import type { DadosClasseBiblica } from '../../../testes/handlers/classe-biblica'
@@ -243,6 +244,84 @@ describe('Painel — chamada no dia e chamada atrasada', () => {
     abrir({ painel: { ...painel, grupos: [{ ...daniel, encontros: [umSo] }, painel.grupos[1]] } })
     const feitos = await waitFor(() => secao('Encontros feitos'))
     expect(await feitos.findByText('26 de 31 presentes · 1 participou ativamente')).toBeInTheDocument()
+  })
+})
+
+/** O texto de cada linha da lista de encontros, na ordem da tela, sem o que o leitor de tela pula. */
+function textoLegivel(linha: HTMLElement): string {
+  const textos: string[] = []
+  const caminhante = document.createTreeWalker(linha, NodeFilter.SHOW_TEXT)
+  while (caminhante.nextNode()) {
+    if (!caminhante.currentNode.parentElement?.closest('[aria-hidden="true"]')) textos.push(caminhante.currentNode.textContent ?? '')
+  }
+  return textos.join(' ').replace(/\s+/g, ' ').trim()
+}
+
+const linhasDosEncontros = () =>
+  within(screen.getByRole('region', { name: 'Encontros feitos' }).querySelector('ul')!).getAllByRole('listitem').map(textoLegivel)
+
+describe('Painel — unidade que troca de grupo (critério 49)', () => {
+  beforeEach(() => vi.setSystemTime(new Date('2026-10-20T15:00:00.000Z')))
+
+  it('no Daniel, cada encontro diz as unidades do dia e a saída de Águias fica entre eles', async () => {
+    abrir({ painel: criarPainelComTroca() })
+    await screen.findByRole('region', { name: 'Encontros feitos' })
+    expect(linhasDosEncontros()).toEqual([
+      '18/10 Leões e Gaviões 19 de 21 presentes · 9 participaram ativamente Ver',
+      '12/10 · Águias saiu do grupo (foi para o Grupo Ester)',
+      '04/10 Águias, Leões e Gaviões 26 de 31 presentes · 16 participaram ativamente Ver',
+    ])
+    expect(secao('Encontros feitos').getAllByRole('link', { name: /^Ver/ })).toHaveLength(2)
+  })
+
+  it('no Ester, a mesma troca aparece como entrada, com o grupo de onde veio', async () => {
+    const usuario = userEvent.setup()
+    abrir({ painel: criarPainelComTroca() })
+    await usuario.click(await screen.findByRole('tab', { name: 'Grupo Ester' }))
+    expect(linhasDosEncontros()).toEqual([
+      '18/10 Águias, Falcões e Panteras 25 de 29 presentes · 11 participaram ativamente Ver',
+      '12/10 · Águias entrou no grupo (veio do Grupo Daniel)',
+      '04/10 Falcões e Panteras 17 de 19 presentes · 8 participaram ativamente Ver',
+    ])
+  })
+
+  it('troca sem o outro grupo não leva o parêntese; uma unidade só aparece sozinha', async () => {
+    const painel = criarPainelComTroca()
+    const [daniel, ester] = painel.grupos
+    const mudancas = [
+      { data: '2026-10-12', unidade: 'Gaviões', tipo: 'SAIU' as const, outroGrupo: null },
+      { data: '2026-10-11', unidade: 'Tigres', tipo: 'ENTROU' as const, outroGrupo: null },
+    ]
+    const encontros = [{ ...daniel.encontros[0], unidades: ['Leões'] }]
+    abrir({ painel: { ...painel, grupos: [{ ...daniel, encontros, mudancas }, ester] } })
+    await screen.findByRole('region', { name: 'Encontros feitos' })
+    expect(linhasDosEncontros()).toEqual([
+      '18/10 Leões 19 de 21 presentes · 9 participaram ativamente Ver',
+      '12/10 · Gaviões saiu do grupo',
+      '11/10 · Tigres entrou no grupo',
+    ])
+  })
+
+  it('em data igual, a troca fica abaixo do encontro do dia, que já tem a composição nova', async () => {
+    const painel = criarPainelComTroca()
+    const [daniel, ester] = painel.grupos
+    const mudancas = [{ ...daniel.mudancas[0], data: '2026-10-18' }]
+    abrir({ painel: { ...painel, grupos: [{ ...daniel, mudancas }, ester] } })
+    await screen.findByRole('region', { name: 'Encontros feitos' })
+    expect(linhasDosEncontros()).toEqual([
+      '18/10 Leões e Gaviões 19 de 21 presentes · 9 participaram ativamente Ver',
+      '18/10 · Águias saiu do grupo (foi para o Grupo Ester)',
+      '04/10 Águias, Leões e Gaviões 26 de 31 presentes · 16 participaram ativamente Ver',
+    ])
+  })
+
+  it('sem trocas, a lista não ganha linha nenhuma', async () => {
+    abrir()
+    await screen.findByRole('region', { name: 'Encontros feitos' })
+    const linhas = linhasDosEncontros()
+    expect(linhas).toHaveLength(8)
+    expect(linhas.some((linha) => linha.includes(' do grupo'))).toBe(false)
+    expect(linhas[0]).toBe('04/10 Águias, Leões e Gaviões 26 de 31 presentes · 16 participaram ativamente Ver')
   })
 })
 
