@@ -354,9 +354,10 @@ export function handlersClasseBiblica(dados: DadosClasseBiblica = {}) {
       ...criarGrupos().grupos[1], material: { ...(corpo as { titulo: string; url: string }), tipo: 'LINK', bytes: null },
     }))),
     http.get('/api/classe-biblica/encontros/:id', () => HttpResponse.json(dados.encontro ?? criarEncontroDetalhe())),
-    http.post('/api/classe-biblica/encontros/:id/remarcar', gravar('POST', (corpo) => criarEncontroCB({
-      ...(corpo as { data: string }), dataOriginal: '2026-10-18',
-    }))),
+    http.post('/api/classe-biblica/encontros/:id/remarcar', gravar('POST', (corpo) => ({
+      dados: criarEncontroCB({ ...(corpo as { data: string }), dataOriginal: '2026-10-18' }),
+      avisos: [],
+    }), 201)),
     http.post('/api/classe-biblica/encontros/:id/cancelar', gravar('POST', (corpo) => criarEncontroCB({
       cancelado: true, motivo: (corpo as { motivo: string }).motivo, podeDesfazer: true,
     }))),

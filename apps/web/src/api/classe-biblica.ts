@@ -10,6 +10,7 @@ import {
   GruposSaida,
   PainelSaida,
   PontosCBSaida,
+  comAvisos,
 } from '@desbravadores/shared'
 import type {
   CancelarEntrada,
@@ -233,12 +234,12 @@ export function useEncontroCB(id: string) {
   })
 }
 
-function useEscritaDoEncontro<E>(acao: string, corpoDe: (entrada: E) => unknown) {
+function useEscritaDoEncontro<E, S extends z.ZodType>(acao: string, saida: S, corpoDe: (entrada: E) => unknown) {
   const clienteConsultas = useQueryClient()
   return useMutation({
     networkMode: 'always',
     mutationFn: ({ id, entrada }: { id: string; entrada: E }) =>
-      requisitar(`${caminhoDoEncontro(id)}/${acao}`, EncontroSaida, { metodo: 'POST', corpo: corpoDe(entrada) }),
+      requisitar(`${caminhoDoEncontro(id)}/${acao}`, saida, { metodo: 'POST', corpo: corpoDe(entrada) }),
     onSuccess: () => {
       void clienteConsultas.invalidateQueries({ queryKey: chavesClasseBiblica.raiz })
       void clienteConsultas.invalidateQueries({ queryKey: chavesCalendario.todas })
@@ -246,9 +247,15 @@ function useEscritaDoEncontro<E>(acao: string, corpoDe: (entrada: E) => unknown)
   })
 }
 
-export const useRemarcarEncontroCB = () => useEscritaDoEncontro<z.input<typeof RemarcarEntrada>>('remarcar', (entrada) => entrada)
-export const useCancelarEncontroCB = () => useEscritaDoEncontro<z.input<typeof CancelarEntrada>>('cancelar', (entrada) => entrada)
-export const useDesfazerCancelamentoCB = () => useEscritaDoEncontro<null>('desfazer-cancelamento', () => undefined)
+/** Só o remarcar devolve avisos (a nova data cai num feriado do calendário). */
+const remarcadoComAvisos = comAvisos(EncontroSaida)
+
+export const useRemarcarEncontroCB = () =>
+  useEscritaDoEncontro<z.input<typeof RemarcarEntrada>, typeof remarcadoComAvisos>('remarcar', remarcadoComAvisos, (entrada) => entrada)
+export const useCancelarEncontroCB = () =>
+  useEscritaDoEncontro<z.input<typeof CancelarEntrada>, typeof EncontroSaida>('cancelar', EncontroSaida, (entrada) => entrada)
+export const useDesfazerCancelamentoCB = () =>
+  useEscritaDoEncontro<null, typeof EncontroSaida>('desfazer-cancelamento', EncontroSaida, () => undefined)
 
 // ── Chamada (leitura; o envio é da fila) ─────────────────────────────────────
 
