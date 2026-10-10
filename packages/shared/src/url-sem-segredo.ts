@@ -1,5 +1,5 @@
-// Depois destes segmentos o caminho leva um token de uso único: convite, primeiro acesso, troca de senha.
-const SEGMENTOS_ANTES_DO_TOKEN = new Set(['convite', 'acesso', 'redefinir', 'convite-acesso'])
+// Depois destes segmentos o caminho leva um token: convite, primeiro acesso, troca de senha, link de substituição.
+const SEGMENTOS_ANTES_DO_TOKEN = new Set(['convite', 'acesso', 'redefinir', 'convite-acesso', 'substituto', 'substituicao'])
 
 /**
  * Endereço que pode ir ao Sentry: sem query nem #hash (a assinatura de /api/arquivos/ vai na query) e

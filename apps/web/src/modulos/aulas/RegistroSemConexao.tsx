@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { usePacote } from '../../offline'
+import { useDestinos } from '../../substituicao/contextos'
 import { FaixaAviso } from '../../ui/FaixaAviso'
 import { DisponivelComInternet } from '../../ui/EstadosDeCarga'
 import { corDaClasse } from '../classes/cores'
@@ -8,14 +9,13 @@ import { formatarDataCurta } from '../cronograma/formatos'
 const LINK_PRIMARIO =
   'flex min-h-[var(--touch-min)] items-center justify-center gap-2 rounded-botao bg-marca px-5 text-base font-semibold text-white hover:bg-marca-escura focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marca'
 
-const CAMINHO_DO_REGISTRO = (classeId: string): string => `/aulas/nova?classe=${classeId}`
-
 /**
  * Sem conexão, as telas do instrutor que dependem da API não têm dado: o registro de aula (a única coisa offline)
  * continua a um toque, montado só com o que o pacote guardado no aparelho tem. Sem pacote, a mensagem de sempre.
  */
 export function ClassesSemConexao() {
   const { pacote } = usePacote()
+  const { registroDaClasse } = useDestinos()
   const classes = pacote?.instrutor?.classes ?? []
   if (classes.length === 0) return <DisponivelComInternet />
   return (
@@ -33,7 +33,7 @@ export function ClassesSemConexao() {
               {proxima && (
                 <span className="text-sm font-semibold text-texto-2">{`Próxima classe · ${formatarDataCurta(proxima.data)}${proxima.titulo ? ` · ${proxima.titulo}` : ''}`}</span>
               )}
-              <Link to={CAMINHO_DO_REGISTRO(classe.id)} className={LINK_PRIMARIO}>
+              <Link to={registroDaClasse(classe.id)} className={LINK_PRIMARIO}>
                 Registrar classe
               </Link>
             </div>
@@ -47,10 +47,11 @@ export function ClassesSemConexao() {
 /** Cronograma sem conexão: além da mensagem, o registro da aula de hoje da classe escolhida (se o pacote a tem). */
 export function RegistrarAulaDeHoje({ classeId }: { classeId: string }) {
   const { pacote } = usePacote()
+  const { registroDaClasse } = useDestinos()
   const noPacote = pacote?.instrutor?.classes.some((item) => item.classe.id === classeId) ?? false
   if (!noPacote) return null
   return (
-    <Link to={CAMINHO_DO_REGISTRO(classeId)} className={LINK_PRIMARIO}>
+    <Link to={registroDaClasse(classeId)} className={LINK_PRIMARIO}>
       Registrar classe de hoje
     </Link>
   )

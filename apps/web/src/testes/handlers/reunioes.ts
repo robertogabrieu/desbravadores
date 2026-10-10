@@ -32,6 +32,7 @@ export function criarDetalhe(parcial: Partial<Detalhe> = {}): Detalhe {
     local: null,
     observacoes: null,
     cabecalhoVersao: '2026-09-20T13:40:00.000Z',
+    substituicao: null,
     registradaPor: { nome: 'Thiago' },
     registradaEm: '2026-09-20T13:40:00.000Z',
     alterada: null,

@@ -25,6 +25,7 @@ export function criarDetalheAula(parcial: Partial<Detalhe> = {}): Detalhe {
     requisitosDaAula: [],
     concluidosNaAula: [],
     podeEditar: true,
+    substituicao: null,
     ...parcial,
   }
 }

@@ -70,6 +70,17 @@ export class ServicoRefresh {
     })
   }
 
+  /**
+   * Dono do cookie, sem rotacionar nem marcar uso: o link de substituicao so reconhece a conta.
+   * Familia revogada, token vencido ou ja reusado fora da tolerancia valem como sem sessao.
+   */
+  async lerSemRotacionar(token: string, agora: Date = new Date()): Promise<{ usuarioId: string } | null> {
+    const atual = await this.prisma.refreshToken.findUnique({ where: { tokenHash: hashDoToken(token) } })
+    if (!atual || atual.revogadoEm || atual.familiaExpiraEm <= agora || atual.expiraEm <= agora) return null
+    if (atual.usadoEm && agora.getTime() - atual.usadoEm.getTime() > TOLERANCIA_DE_REUSO_MS) return null
+    return { usuarioId: atual.usuarioId }
+  }
+
   /** Logout: revoga a familia do token apresentado (token desconhecido nao e erro). */
   async revogarFamiliaDoToken(token: string, agora: Date = new Date()): Promise<void> {
     const atual = await this.prisma.refreshToken.findUnique({ where: { tokenHash: hashDoToken(token) } })

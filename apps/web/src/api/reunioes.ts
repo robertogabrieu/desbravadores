@@ -14,6 +14,7 @@ import { z } from 'zod'
 import { apagarRascunho, enfileirar, useConexao } from '../offline'
 import type { PayloadReuniaoFila } from '../offline/tipos/reuniao'
 import { useSessao } from '../sessao/useSessao'
+import { useDestinos } from '../substituicao/contextos'
 import { montarConsulta, requisitar } from './cliente'
 import { chavesLeitura } from './leitura'
 import { chavesVisaoGeral } from './visao-geral'
@@ -73,6 +74,7 @@ export interface EntradaSalvarChamada {
 /** Não chama a API: guarda a chamada na fila (que a envia, com ou sem internet) e volta ao histórico. */
 export function useSalvarChamada() {
   const navegar = useNavigate()
+  const { depoisDeSalvarChamada } = useDestinos()
   const { eu } = useSessao()
   const { modo } = useConexao()
   return useMutation({
@@ -101,7 +103,7 @@ export function useSalvarChamada() {
       toast.success('Chamada salva', {
         description: modo === 'SEM_CONEXAO' ? 'Vai ser enviada quando houver internet.' : 'Enviando agora.',
       })
-      void navegar('/reunioes')
+      void navegar(depoisDeSalvarChamada)
     },
   })
 }

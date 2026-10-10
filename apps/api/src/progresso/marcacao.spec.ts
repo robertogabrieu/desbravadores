@@ -12,6 +12,7 @@ import {
   criarMatricula,
   criarRegistroAula,
   criarRequisitoConcluido,
+  criarUsuarioDeSubstituicao,
   criterioPorGatilho,
   desconectarPrismaDeTeste,
   prismaDeTeste,
@@ -88,6 +89,17 @@ describe('marcar e desmarcar fora da aula', () => {
       const item = corpo<Progresso>(desmarcado).matriculas[0].secoes.flatMap((secao) => secao.requisitos).find((i) => i.id === requisito.id)
       expect(item?.concluidoEm).toBeNull()
       expect((await lancamentos(dbv.id, 'REQUISITO'))[0].estornadoEm).not.toBeNull()
+    })
+
+    it('marcado pelo usuario de substituicao: "marcado por <nome> (substituto)"', async () => {
+      const { clube, requisito, dbv, instrutor } = await cenario()
+      const substituto = await criarUsuarioDeSubstituicao({ nome: 'Joana Visitante' })
+      const conclusao = await criarRequisitoConcluido({ clubeId: clube.id, dbvId: dbv.id, requisitoId: requisito.id })
+      await prismaDeTeste().requisitoConcluido.update({ where: { id: conclusao.id }, data: { marcadoPorId: substituto.id } })
+
+      const resposta = await api.get(`/api/desbravadores/${dbv.id}/progresso`, instrutor.autorizacao).expect(200)
+      const marcado = corpo<Progresso>(resposta).matriculas[0].secoes.flatMap((secao) => secao.requisitos).find((item) => item.id === requisito.id)
+      expect(marcado?.marcadoPor).toBe('Joana Visitante (substituto)')
     })
 
     it('ja concluido: 409 CONFLITO com a data; dia de hoje e inicio do ano sao aceitos', async () => {
@@ -207,6 +219,17 @@ describe('marcar e desmarcar fora da aula', () => {
       const depois = corpo<Especialidades>(await apagar(caminhoEspecialidade(dbv.id, esp.id), instrutor.autorizacao).expect(200))
       expect(depois.concluidas).toEqual([])
       expect((await lancamentos(dbv.id, 'ESPECIALIDADE'))[0].estornadoEm).not.toBeNull()
+    })
+
+    it('marcada pelo usuario de substituicao: "marcado por <nome> (substituto)"', async () => {
+      const { clube, dbv, instrutor } = await cenario()
+      const esp = await especialidade()
+      const substituto = await criarUsuarioDeSubstituicao({ nome: 'Joana Visitante' })
+      const conclusao = await criarEspecialidadeConcluida({ clubeId: clube.id, dbvId: dbv.id, especialidadeId: esp.id })
+      await prismaDeTeste().especialidadeConcluida.update({ where: { id: conclusao.id }, data: { marcadoPorId: substituto.id } })
+
+      const lista = corpo<Especialidades>(await api.get(`/api/desbravadores/${dbv.id}/especialidades`, instrutor.autorizacao).expect(200))
+      expect(lista.concluidas.map((linha) => linha.marcadoPor)).toEqual(['Joana Visitante (substituto)'])
     })
 
     it('ja concluida 409; data fora do ano 422; inexistente ou de outro clube 404', async () => {

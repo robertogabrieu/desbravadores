@@ -17,6 +17,7 @@ import {
   criarReuniao,
   criarUnidade,
   criarUsuario,
+  criarUsuarioDeSubstituicao,
   criarVinculo,
   desconectarPrismaDeTeste,
   prismaDeTeste,
@@ -261,5 +262,19 @@ describe('visao geral (GET /visao-geral)', () => {
     expect(atividades.map((a) => a.descricao)).toEqual(Array.from({ length: 10 }, (_, i) => `Atividade ${11 - i}`))
     expect(atividades[0]).toMatchObject({ autor: null, link: '/adm/cronogramas' })
     expect(atividades[1]).toMatchObject({ autor: 'Dora Autora', link: null })
+  })
+
+  it('atividade recente: registro de classe pelo usuario de substituicao leva "(substituto)" no texto e no autor', async () => {
+    const clube = await criarClube()
+    const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+    const substituto = await criarUsuarioDeSubstituicao({ nome: 'Joana Visitante' })
+    await prismaDeTeste().atividade.create({
+      data: { clubeId: clube.id, autorId: substituto.id, tipo: 'AULA_REGISTRADA', descricao: 'Joana Visitante (substituto) registrou a classe de Amigo' },
+    })
+
+    const { atividades } = corpo<Visao>(await api.get('/api/visao-geral', adm.autorizacao).expect(200))
+    expect(atividades).toEqual([
+      expect.objectContaining({ descricao: 'Joana Visitante (substituto) registrou a classe de Amigo', autor: 'Joana Visitante (substituto)' }),
+    ])
   })
 })
