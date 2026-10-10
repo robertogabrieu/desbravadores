@@ -182,4 +182,30 @@ describe('Detalhe da reunião', () => {
     abrir()
     expect(await screen.findByText('Disponível quando houver internet')).toBeInTheDocument()
   })
+
+  describe('substituição (R1)', () => {
+    const r1 = () => screen.getByText((_, elemento) => elemento?.getAttribute('data-r1') === 'substituicao')
+
+    it('chamada lançada por quem digitou o nome: "(sem conta no app)" e o Adm que gerou', async () => {
+      servidor.use(handlerReuniao(criarDetalhe({ substituicao: { autor: 'Ana Souza', semConta: true, geradoPor: 'Rita Campos', lancou: true } })))
+      abrir()
+      await screen.findByText(/Registrada por/)
+      expect(r1()).toHaveTextContent('Substituição. Chamada lançada por Ana Souza (sem conta no app), pelo link que Rita Campos (Adm) gerou.')
+    })
+
+    it('membro que alterou a chamada do titular: "alterada", sem o parêntese', async () => {
+      servidor.use(handlerReuniao(criarDetalhe({ substituicao: { autor: 'Marcos Lima', semConta: false, geradoPor: 'Rita Campos', lancou: false } })))
+      abrir()
+      await screen.findByText(/Registrada por/)
+      expect(r1()).toHaveTextContent('Substituição. Chamada alterada por Marcos Lima, pelo link que Rita Campos (Adm) gerou.')
+      expect(r1()).not.toHaveTextContent('sem conta')
+    })
+
+    it('sem substituição, nada aparece', async () => {
+      servidor.use(handlerReuniao())
+      abrir()
+      await screen.findByText(/Registrada por/)
+      expect(screen.queryByText(/Substituição\./)).not.toBeInTheDocument()
+    })
+  })
 })

@@ -10,6 +10,8 @@ Planejamento em `docs/planejamento/`; decisões de cada fase em `docs/fases/<fas
   `include` aninhado **não** passa pela guarda: o isolamento dele depende dos testes.
 - **Toda rota declara `@Publica`, `@Autenticado`, `@Logado` ou `@Pode`.** Recurso fora do escopo
   ou de outro clube responde 404, nunca 403.
+- **JWT com `tipo` nunca vale como sessão:** a credencial de substituição só passa em rota com
+  `@PodeOuSubstituto`/`@LogadoOuSubstituto`.
 - **`PrismaSistema` (client sem a guarda) só em `sessao/`, `auth/`, `scripts/` e `tarefas/`.**
   Em `tarefas/` só para listar os clubes; o resto roda pelo client com guarda, clube a clube.
 - **Classes, requisitos e especialidades oficiais não têm `clubeId`.** O que o clube escolhe

@@ -84,6 +84,11 @@ os pontos ao vivo durante a chamada offline). Uma fórmula, dois lugares, sem di
 - **Access token** JWT de 15 min na memória do app; **refresh token** de 30 dias em cookie
   httpOnly, com rotação a cada uso e revogação no banco. 30 dias (e não 7, como no Finance)
   porque o conselheiro pode abrir o app só no domingo, e sem internet.
+- **Credencial de substituição**: o 15 min acima não é o único token. O link de substituição
+  (ver API.md) troca por um JWT de outro tipo (`tipo: 'substituicao'`), sem refresh, que vale
+  até o fim do envio e só é aceito nas rotas marcadas para ele. A API reconfere o link no banco
+  a cada requisição (leitura até o fim da janela, gravação até o fim do envio), então cancelar
+  derruba o acesso na hora.
 - **Convite**: o Adm cadastra nome, e-mail e vínculos; o sistema manda um link de uso único
   (validade 7 dias) para a pessoa definir a senha. Não existe cadastro aberto.
 - **Recuperação de senha** por e-mail, link de uso único de 1 hora.

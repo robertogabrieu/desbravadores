@@ -23,7 +23,9 @@ ConfiguracaoClube(clubeId PK,
   descontarFalta = false, pontosDescontoFalta = 0)
 
 Usuario(id, nome, email UNIQUE, senhaHash?, genero?: F|M,   # "Instrutora"/"Instrutor"
-  status: CONVIDADO|ATIVO|INATIVO, ultimoAcessoEm)
+  status: CONVIDADO|ATIVO|INATIVO|SUBSTITUTO, ultimoAcessoEm)
+  # SUBSTITUTO = quem lançou por link de substituição sem ter conta: sem senha, e-mail só marcador
+  # (substituto-<id do link>@substituto.invalid); o cadastro de usuário recusa esse e-mail
   # sem clubeId: a mesma pessoa pode estar em mais de um clube
 
 Vinculo(id, usuarioId, clubeId, papel: ADM|CONSELHEIRO|INSTRUTOR, ativo)
@@ -35,6 +37,14 @@ PermissaoAjuste(vinculoId, permissao: texto, concedida: bool)
 
 Convite(id, usuarioId, tokenHash, expiraEm, usadoEm?)
 RefreshToken(id, usuarioId, tokenHash, expiraEm, revogadoEm?, aparelho)
+
+Substituicao(id, clubeId, tipo: CHAMADA|CLASSE, unidadeId?, classeId?, data,
+  inicioEm, fimEm, fimEnvioEm,                   # janela gravada na geração: fimEm = início + 3 h, fimEnvioEm = fimEm + 12 h
+  tokenHash UNIQUE,                              # o link em si só existe na resposta que o gerou
+  aparelhoHash?, identificadaEm?, substitutoId?, # o aparelho que abriu primeiro; quem lança (membro ou Usuario SUBSTITUTO)
+  criadoPorId, criadoEm, canceladoEm?, canceladoPorId?)
+  # CHECK: exatamente um de unidadeId e classeId, coerente com tipo. Nada se apaga: cancelar preenche canceladoEm.
+  # Aberto = não cancelado e fimEnvioEm no futuro; um aberto por alvo (gerar outro cancela o anterior).
 ```
 
 Uma pessoa conselheira e instrutora tem **dois Vínculos** no mesmo clube. O app mostra o
@@ -180,6 +190,7 @@ os instrutores da classe (e para o Adm, se `quemMontaCronograma=ADM`) e marca a 
 
 ```
 Reuniao(id, unidadeId, data, horario, local?, eventoId?,  # evento, se a "reunião" foi um evento
+  substituicaoId?,                               # preenchido quando um link de substituição gravou alguma linha da chamada
   observacoes?, registradaPor, registradaEm,
   clienteUuid UNIQUE)                            # id gerado no celular, para sincronizar sem duplicar
   UNIQUE(unidadeId, data)
@@ -191,6 +202,7 @@ Chamada(reuniaoId, dbvId,
   PK(reuniaoId, dbvId)
 
 RegistroAula(id, aulaPlanejadaId?, classeId, data, instrutorId,
+  substituicaoId?,                               # idem Reuniao, para o link de classe
   clienteUuid UNIQUE, registradoEm)
   # aulaPlanejadaId nulo = aula extra fora do cronograma
 PresencaAula(registroAulaId, dbvId, presente: bool)

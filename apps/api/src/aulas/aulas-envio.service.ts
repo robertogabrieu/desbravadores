@@ -3,6 +3,7 @@ import { anoClube, hojeNoFuso, type AulaEnvio, type AulaEnvioSaida } from '@desb
 import type { z } from 'zod'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { ErroApp } from '../comum/erros'
+import { nomeDoAutor } from '../comum/nome-do-autor'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { ServicoAtividade } from '../atividades/servico-atividade'
 import { ServicoCronograma } from '../cronogramas/servico-cronograma'
@@ -76,6 +77,11 @@ export class AulasEnvioService {
 
   /** `PUT /sync/aulas/:uuid` (SPEC Fase 2, 4.1). Corrida de banco vira 503 para a fila repetir. */
   async enviar(sessao: SessaoLogada, uuid: string, envio: Envio, agora: Date = new Date()): Promise<Saida> {
+    const { substituicao } = sessao
+    // O escopo so restringe o instrutor: o link de unidade (papel conselheiro) para aqui.
+    if (substituicao && (substituicao.classeId === null || envio.data !== substituicao.data)) {
+      throw new ErroApp('NAO_ENCONTRADO', 'Classe não encontrada.')
+    }
     const classe = await exigirClasseNoEscopo(this.prisma, this.escopo, sessao, envio.classeId)
     const feito = new Date(Math.min(Date.parse(envio.feitaNoAparelhoEm), agora.getTime()))
     try {
@@ -131,6 +137,11 @@ export class AulasEnvioService {
         where: { clubeId, id: registro.id },
         data: { atualizadoEm: agora, ...(ligarPlanejada ? { aulaPlanejadaId: planejada.id } : {}) },
       })
+    }
+
+    // Houve substituicao so quando o link gravou algo; envio do titular nao apaga a marca.
+    if (sessao.substituicao && gravouAlgo) {
+      await tx.registroAula.updateMany({ where: { clubeId, id: registro.id }, data: { substituicaoId: sessao.substituicao.id } })
     }
 
     await tx.envioAulaProcessado.create({ data: { envioId: envio.envioId, clubeId, registroAulaId: registro.id } })
@@ -405,12 +416,12 @@ export class AulasEnvioService {
   }
 
   private async registrarAtividade(tx: Tx, sessao: SessaoLogada, nomeDaClasse: string): Promise<void> {
-    const usuario = await tx.usuario.findUniqueOrThrow({ where: { id: sessao.usuarioId }, select: { nome: true } })
+    const usuario = await tx.usuario.findUniqueOrThrow({ where: { id: sessao.usuarioId }, select: { nome: true, status: true } })
     await this.atividades.registrar(tx, {
       clubeId: sessao.clubeId,
       autorId: sessao.usuarioId,
       tipo: 'AULA_REGISTRADA',
-      descricao: `${usuario.nome} registrou a classe de ${nomeDaClasse}`,
+      descricao: `${nomeDoAutor(usuario)} registrou a classe de ${nomeDaClasse}`,
       link: null,
     })
   }

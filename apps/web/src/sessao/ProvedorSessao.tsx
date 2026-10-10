@@ -51,12 +51,18 @@ async function tentarAbrir(): Promise<ResultadoDaTentativa> {
 
 const esperar = (ms: number): Promise<void> => new Promise((resolver) => setTimeout(resolver, ms))
 
+/** A rota do link de substituição tem sessão própria (`ProvedorSessaoSubstituto`): este provedor não age nela. */
+const ehRotaDoSubstituto = (): boolean => window.location.pathname.startsWith('/substituto/')
+
 const identidadeVale = (guardada: RegistroSessao | null): guardada is RegistroSessao =>
   guardada !== null && Date.now() - guardada.ultimoContatoEm < VALIDADE_DO_MODO_SEM_CONEXAO_MS
 
 export function ProvedorSessao({ children }: { children: ReactNode }) {
   const clienteConsultas = useQueryClient()
-  const [estado, definirEstado] = useState<EstadoSessao>({ situacao: 'carregando', eu: null })
+  // Decidido no primeiro render: nessa rota nenhum efeito roda, senão o boot leria o cookie da conta do
+  // membro e o efeito do motor pararia o motor do substituto.
+  const [inerte] = useState(ehRotaDoSubstituto)
+  const [estado, definirEstado] = useState<EstadoSessao>(inerte ? ESTADO_ANONIMO : { situacao: 'carregando', eu: null })
   const [avisoDeSaida, definirAvisoDeSaida] = useState<string | null>(null)
   /** Geração da sessão que já saiu por falta de acesso: as recusas seguintes da mesma sessão não saem de novo. */
   const geracaoDaSaida = useRef<number | null>(null)
@@ -174,6 +180,7 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
   )
 
   useEffect(() => {
+    if (inerte) return
     configurarCliente({
       // Refresh recusado durante o uso: a pessoa segue na tela (pode salvar); ir ao login é escolha dela.
       aoSessaoPerdida: () => definirExpirada(true),
@@ -194,45 +201,45 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
       },
     })
     void abrirSessao(true)
-  }, [abrirSessao, descartarSessao, lerEu, sairSemAcesso])
+  }, [inerte, abrirSessao, descartarSessao, lerEu, sairSemAcesso])
 
   useEffect(() => {
+    if (inerte) return
     if (usuarioId && vinculoId) iniciarMotor({ usuarioId, vinculoId, queryClient: clienteConsultas })
     else void pararMotor()
-  }, [usuarioId, vinculoId, clienteConsultas])
+  }, [inerte, usuarioId, vinculoId, clienteConsultas])
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    if (inerte) return
+    return () => {
       void pararMotor()
-    },
-    [],
-  )
+    }
+  }, [inerte])
 
   // Outra aba trocou de papel: o cookie de refresh já é do vínculo novo. Renova aqui também, para o
   // motor desta aba (que pode ser o dono da fila) passar ao vínculo novo e a tela relê o eu.
-  useEffect(
-    () =>
-      ouvirOutrasAbas((aviso) => {
-        const usuario = estadoAtual.current.eu?.usuario.id
-        if (estadoAtual.current.situacao !== 'autenticada' || !usuario) return
-        // Como na troca feita aqui: a fila pausa antes de renovar, senão um item do papel antigo já
-        // escolhido sairia com o token novo e seria recusado de vez. A pausa sai quando o motor recebe
-        // o vínculo da sessão renovada; se a renovação falhar ou vier sem vínculo, sai na hora.
-        pausarParaTrocaDePapel(aviso.vinculoId)
-        void (async () => {
-          const sessao = await renovarSessao()
-          if (sessao.vinculoAtivoId) iniciarMotor({ usuarioId: usuario, vinculoId: sessao.vinculoAtivoId, queryClient: clienteConsultas })
-          liberarTrocaDePapel()
-          clienteConsultas.clear()
-          await lerEu()
-        })().catch(() => liberarTrocaDePapel())
-      }),
-    [clienteConsultas, lerEu],
-  )
+  useEffect(() => {
+    if (inerte) return
+    return ouvirOutrasAbas((aviso) => {
+      const usuario = estadoAtual.current.eu?.usuario.id
+      if (estadoAtual.current.situacao !== 'autenticada' || !usuario) return
+      // Como na troca feita aqui: a fila pausa antes de renovar, senão um item do papel antigo já
+      // escolhido sairia com o token novo e seria recusado de vez. A pausa sai quando o motor recebe
+      // o vínculo da sessão renovada; se a renovação falhar ou vier sem vínculo, sai na hora.
+      pausarParaTrocaDePapel(aviso.vinculoId)
+      void (async () => {
+        const sessao = await renovarSessao()
+        if (sessao.vinculoAtivoId) iniciarMotor({ usuarioId: usuario, vinculoId: sessao.vinculoAtivoId, queryClient: clienteConsultas })
+        liberarTrocaDePapel()
+        clienteConsultas.clear()
+        await lerEu()
+      })().catch(() => liberarTrocaDePapel())
+    })
+  }, [inerte, clienteConsultas, lerEu])
 
   // Sem conexão: tenta renovar a cada evento `online` e a cada intervalo com a aba visível.
   useEffect(() => {
-    if (modo !== 'SEM_CONEXAO') return
+    if (inerte || modo !== 'SEM_CONEXAO') return
     let emTentativa = false
     const tentar = async () => {
       if (emTentativa) return
@@ -263,16 +270,17 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
       window.removeEventListener('online', aoVoltarInternet)
       clearInterval(intervalo)
     }
-  }, [modo, aplicarEuOnline, clienteConsultas, sairSemAcesso])
+  }, [inerte, modo, aplicarEuOnline, clienteConsultas, sairSemAcesso])
 
   // O navegador avisar que caiu já vale como sem conexão; quem confirma a volta é a API (efeito acima).
   useEffect(() => {
+    if (inerte) return
     const aoCairInternet = () => {
       if (estadoAtual.current.situacao === 'autenticada') definirConexao('SEM_CONEXAO')
     }
     window.addEventListener('offline', aoCairInternet)
     return () => window.removeEventListener('offline', aoCairInternet)
-  }, [])
+  }, [inerte])
 
   const entrar = useCallback(
     async (sessao: Sessao) => {

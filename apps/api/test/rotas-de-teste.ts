@@ -1,8 +1,10 @@
-import { Controller, Get, Module, Patch, Post, Body, Param } from '@nestjs/common'
+import { Controller, Get, Module, Patch, Post, Put, Body, Param } from '@nestjs/common'
 import { z } from 'zod'
 import { Autenticado } from '../src/comum/decorators/autenticado.decorator'
 import { Logado } from '../src/comum/decorators/logado.decorator'
+import { LogadoOuSubstituto } from '../src/comum/decorators/logado-ou-substituto.decorator'
 import { Pode } from '../src/comum/decorators/pode.decorator'
+import { PodeOuSubstituto } from '../src/comum/decorators/pode-ou-substituto.decorator'
 import { Publica } from '../src/comum/decorators/publica.decorator'
 import { SessaoAtual, SessaoDoClube, type Sessao, type SessaoLogada } from '../src/comum/decorators/sessao.decorator'
 import { ErroApp } from '../src/comum/erros'
@@ -45,6 +47,24 @@ export class RotasDeTesteController {
   @Get('pode-ver-dbv')
   podeVerDbv(): { ok: true } {
     return { ok: true }
+  }
+
+  @LogadoOuSubstituto()
+  @Get('logado-ou-substituto')
+  logadoOuSubstituto(@SessaoDoClube() sessao: SessaoLogada): SessaoLogada {
+    return sessao
+  }
+
+  @PodeOuSubstituto('reuniao.ver')
+  @Get('pode-ou-substituto')
+  lerComoSubstituto(@SessaoDoClube() sessao: SessaoLogada): SessaoLogada {
+    return sessao
+  }
+
+  @PodeOuSubstituto('reuniao.registrar')
+  @Put('pode-ou-substituto')
+  gravarComoSubstituto(@SessaoDoClube() sessao: SessaoLogada): SessaoLogada {
+    return sessao
   }
 
   @Logado()

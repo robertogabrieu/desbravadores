@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { anoClube, hojeNoFuso, idade } from './datas'
+import { anoClube, hojeNoFuso, idade, instanteDoHorario } from './datas'
 
 describe('anoClube', () => {
   it('antes do início pertence ao ano anterior', () => {
@@ -32,5 +32,23 @@ describe('hojeNoFuso', () => {
   })
   it('no mesmo instante, UTC já é 28/09', () => {
     expect(hojeNoFuso('UTC', new Date('2026-09-28T02:30:00Z'))).toBe('2026-09-28')
+  })
+})
+
+describe('instanteDoHorario', () => {
+  it('converte a hora local do clube no instante UTC, num fuso diferente de São Paulo', () => {
+    expect(instanteDoHorario('2026-10-10', '09:00', 'Asia/Tokyo').toISOString()).toBe('2026-10-10T00:00:00.000Z')
+    expect(instanteDoHorario('2026-10-10', '09:00', 'America/Sao_Paulo').toISOString()).toBe('2026-10-10T12:00:00.000Z')
+  })
+  it('reunião às 22:00 em Manaus: o fim (+3h) cai no dia seguinte e a data segue o dia do início', () => {
+    const inicio = instanteDoHorario('2026-10-10', '22:00', 'America/Manaus')
+    expect(inicio.toISOString()).toBe('2026-10-11T02:00:00.000Z')
+    const fim = new Date(inicio.getTime() + 3 * 60 * 60 * 1000)
+    expect(hojeNoFuso('America/Manaus', inicio)).toBe('2026-10-10')
+    expect(hojeNoFuso('America/Manaus', fim)).toBe('2026-10-11')
+  })
+  it('respeita o horário de verão do fuso no dia pedido', () => {
+    expect(instanteDoHorario('2026-07-01', '19:30', 'America/New_York').toISOString()).toBe('2026-07-01T23:30:00.000Z')
+    expect(instanteDoHorario('2026-12-01', '19:30', 'America/New_York').toISOString()).toBe('2026-12-02T00:30:00.000Z')
   })
 })
