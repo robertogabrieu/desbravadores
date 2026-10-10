@@ -10,19 +10,27 @@ import { ListaEdicoes } from './ListaEdicoes'
 import { PainelEdicao } from './PainelEdicao'
 import { RemarcarEncontro } from './RemarcarEncontro'
 
-/** Uma rota para as três etapas: o número no caminho escolhe a tela. */
+/** As três etapas e a criação: o número no caminho escolhe a tela; sem número é a edição nova. */
 function EtapaDaEdicao() {
   const { n } = useParams()
-  if (n === '1') return <EtapaDados />
+  if (n === undefined || n === '1') return <EtapaDados />
   if (n === '2') return <EtapaGrupos />
   if (n === '3') return <EtapaDatas />
   return <PaginaNaoEncontrada />
 }
 
+/**
+ * `/nova` e `/:id/etapa/:n` são filhas de um mesmo elemento, que fica montado quando o rascunho
+ * novo troca o endereço de um para o outro: a etapa 1 não remonta (ver `EtapaDados`).
+ */
+export const rotaDasEtapas: RouteObject = {
+  element: <EtapaDaEdicao />,
+  children: [{ path: '/adm/classe-biblica/nova' }, { path: '/adm/classe-biblica/:id/etapa/:n' }],
+}
+
 export const rotasAdmClasseBiblica: RouteObject[] = [
   { path: '/adm/classe-biblica', element: <ListaEdicoes /> },
-  { path: '/adm/classe-biblica/nova', element: <EtapaDados /> },
-  { path: '/adm/classe-biblica/:id/etapa/:n', element: <EtapaDaEdicao /> },
+  rotaDasEtapas,
   { path: '/adm/classe-biblica/:id/pronta', element: <EdicaoPronta /> },
   { path: '/adm/classe-biblica/:id', element: <PainelEdicao /> },
   { path: '/adm/classe-biblica/encontros/:id/remarcar', element: <RemarcarEncontro /> },

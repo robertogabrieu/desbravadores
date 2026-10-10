@@ -78,7 +78,13 @@ function campoParaSalvar(campo: keyof Valores, valores: Valores): RascunhoDaEdic
   }
 }
 
-function Formulario({ edicao, padroes }: { edicao: EdicaoCB | null; padroes: { diaSemana: number; local: string | null } }) {
+interface PropsDoFormulario {
+  edicao: EdicaoCB | null
+  padroes: { diaSemana: number; local: string | null }
+  aoNascer?: (id: string) => void
+}
+
+function Formulario({ edicao, padroes, aoNascer }: PropsDoFormulario) {
   const navegar = useNavigate()
   const inicial: Valores = {
     nome: edicao?.nome ?? '',
@@ -95,7 +101,7 @@ function Formulario({ edicao, padroes }: { edicao: EdicaoCB | null; padroes: { d
   const [erros, setErros] = useState<Erros>({})
   const [errosDoEnvio, setErrosDoEnvio] = useState<Erros>({})
   const [seguindo, setSeguindo] = useState(false)
-  const rascunho = useRascunhoDaEdicao(edicao?.id ?? null, { diaSemana: padroes.diaSemana, local: padroes.local })
+  const rascunho = useRascunhoDaEdicao(edicao?.id ?? null, { diaSemana: padroes.diaSemana, local: padroes.local }, aoNascer)
   const { formulario, pendencias } = useErrosAVista(errosDoEnvio)
 
   const mudar = <C extends keyof Valores>(campo: C, valor: Valores[C]) => {
@@ -207,13 +213,13 @@ function Pagina({ edicao, children }: { edicao: EdicaoCB | null | undefined; chi
   )
 }
 
-function EdicaoNova() {
+function EdicaoNova({ aoNascer }: { aoNascer: (id: string) => void }) {
   const lista = useEdicoesCB()
   const { modo } = useConexao()
   let conteudo
   if (lista.isPending) conteudo = modo === 'SEM_CONEXAO' ? <DisponivelComInternet /> : <Carregando rotulo="Carregando a edição" />
   else if (lista.isError) conteudo = <ErroDeCarga erro={lista.error} aoTentarDeNovo={() => void lista.refetch()} />
-  else conteudo = <Formulario edicao={null} padroes={lista.data.padroes} />
+  else conteudo = <Formulario edicao={null} padroes={lista.data.padroes} aoNascer={aoNascer} />
   return <Pagina edicao={null}>{conteudo}</Pagina>
 }
 
@@ -227,8 +233,19 @@ function EdicaoExistente({ id }: { id: string }) {
   return <Pagina edicao={painel.data?.edicao}>{conteudo}</Pagina>
 }
 
-/** Etapa 1: `/adm/classe-biblica/nova` (sem id) ou `/adm/classe-biblica/:id/etapa/1`. */
+/**
+ * Etapa 1: `/adm/classe-biblica/nova` (sem id) ou `/adm/classe-biblica/:id/etapa/1`. O rascunho que
+ * nasce aqui troca o endereço pelo dele (recarregar reabre o rascunho, em vez de criar outro), mas
+ * o formulário continua o mesmo: remontar tiraria o foco e o texto do campo em que a pessoa está.
+ * Para isso as duas rotas precisam renderizar esta mesma instância (ver `rotaDasEtapas`).
+ */
 export function EtapaDados() {
   const { id } = useParams()
-  return id ? <EdicaoExistente id={id} /> : <EdicaoNova />
+  const navegar = useNavigate()
+  const [nascidaAqui, setNascidaAqui] = useState<string | null>(null)
+  const aoNascer = (novoId: string) => {
+    setNascidaAqui(novoId)
+    void navegar(`/adm/classe-biblica/${novoId}/etapa/1`, { replace: true })
+  }
+  return id && id !== nascidaAqui ? <EdicaoExistente id={id} /> : <EdicaoNova aoNascer={aoNascer} />
 }

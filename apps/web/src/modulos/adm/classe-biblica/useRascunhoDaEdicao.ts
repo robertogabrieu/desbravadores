@@ -28,9 +28,14 @@ export function horaDoSalvo(instante: string): string {
 
 /**
  * O rascunho vive no servidor (D11): cada saída de campo e cada troca de etapa grava. Edição nova
- * (`idInicial` nulo) nasce no primeiro `salvar`, com os padrões do clube; sem conexão, nada sai.
+ * (`idInicial` nulo) nasce no primeiro `salvar`, com os padrões do clube, e avisa `aoNascer` uma vez;
+ * sem conexão, nada sai.
  */
-export function useRascunhoDaEdicao(idInicial: string | null, padroesDaCriacao: RascunhoDaEdicao = {}) {
+export function useRascunhoDaEdicao(
+  idInicial: string | null,
+  padroesDaCriacao: RascunhoDaEdicao = {},
+  aoNascer?: (id: string) => void,
+) {
   const { modo } = useConexao()
   const semConexao = modo === 'SEM_CONEXAO'
   const criar = useCriarRascunhoCB()
@@ -43,6 +48,7 @@ export function useRascunhoDaEdicao(idInicial: string | null, padroesDaCriacao: 
   const idAtual = useRef(idInicial)
 
   const gravar = async (campos: RascunhoDaEdicao): Promise<EdicaoCB> => {
+    const nascendo = idAtual.current === null
     const edicao = idAtual.current === null
       ? await criar.mutateAsync({ ...padroesDaCriacao, etapa: 1, ...campos })
       : await salvarNoServidor.mutateAsync({ id: idAtual.current, ...campos })
@@ -50,6 +56,7 @@ export function useRascunhoDaEdicao(idInicial: string | null, padroesDaCriacao: 
     setId(edicao.id)
     setSalvoEm(edicao.atualizadaEm)
     setErro(null)
+    if (nascendo) aoNascer?.(edicao.id)
     return edicao
   }
 

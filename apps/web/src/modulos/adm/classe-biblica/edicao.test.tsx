@@ -22,10 +22,8 @@ import { criarVinculo, handlersSessao, uuid } from '../../../testes/handlers/ses
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
 import { EdicaoPronta } from './EdicaoPronta'
-import { EtapaDados } from './EtapaDados'
-import { EtapaDatas } from './EtapaDatas'
-import { EtapaGrupos } from './EtapaGrupos'
 import { ListaEdicoes } from './ListaEdicoes'
+import { rotaDasEtapas, rotasAdmClasseBiblica } from './rotas'
 
 const conexao = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao, fuso: undefined as string | undefined }))
 
@@ -49,10 +47,7 @@ const RASCUNHO = criarEdicaoCB({
 
 const ROTAS: RouteObject[] = [
   { path: '/adm/classe-biblica', element: <ListaEdicoes /> },
-  { path: '/adm/classe-biblica/nova', element: <EtapaDados /> },
-  { path: '/adm/classe-biblica/:id/etapa/1', element: <EtapaDados /> },
-  { path: '/adm/classe-biblica/:id/etapa/2', element: <EtapaGrupos /> },
-  { path: '/adm/classe-biblica/:id/etapa/3', element: <EtapaDatas /> },
+  rotaDasEtapas,
   { path: '/adm/classe-biblica/:id/pronta', element: <EdicaoPronta /> },
   { path: '/adm/classe-biblica/:id', element: <h1>Painel da edição</h1> },
 ]
@@ -468,5 +463,44 @@ describe('Editar uma edição terminada (D14)', () => {
     await usuario.click(await screen.findByRole('button', { name: 'Salvar e voltar à edição' }))
     expect(await screen.findByRole('heading', { name: 'Painel da edição' })).toBeInTheDocument()
     expect(gravacoes.some((g) => g.metodo === 'PATCH')).toBe(false)
+  })
+})
+
+describe('Etapa 1 — o endereço do rascunho que acabou de nascer', () => {
+  const CAMINHO_DO_RASCUNHO = `/adm/classe-biblica/${EDICAO_CB_ID}/etapa/1`
+
+  function abrirPelasRotasDoModulo(rota: string, dados: DadosClasseBiblica = {}) {
+    const gravacoes: Gravacao[] = []
+    servidor.use(
+      ...handlersSessao([criarVinculo('ADM')], undefined, ['classebiblica.gerenciar']),
+      ...handlersClasseBiblica({ edicao: RASCUNHO, ...dados, aoGravar: (metodo, caminho, corpo) => gravacoes.push({ metodo, caminho, corpo }) }),
+    )
+    return { ...renderizarRotas(rotasAdmClasseBiblica, rota), gravacoes }
+  }
+
+  it('o primeiro campo salvo troca /nova pelo endereço do rascunho, sem tirar o foco nem o texto do campo seguinte', async () => {
+    const usuario = userEvent.setup()
+    const { gravacoes, roteador } = abrirPelasRotasDoModulo('/adm/classe-biblica/nova')
+    await usuario.type(await screen.findByLabelText('Nome da edição'), 'Classe Bíblica 2027 · 1º semestre')
+    await usuario.click(screen.getByLabelText('Horário'))
+    await usuario.keyboard('14')
+    await waitFor(() => expect(roteador.state.location.pathname).toBe(CAMINHO_DO_RASCUNHO))
+    expect(roteador.state.historyAction).toBe('REPLACE')
+    expect(await screen.findByText('Salvo às 15:42. Pode sair e continuar depois de onde parou.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Horário')).toHaveFocus()
+    expect(screen.getByLabelText('Horário')).toHaveValue('14')
+    expect(screen.getByLabelText('Nome da edição')).toHaveValue('Classe Bíblica 2027 · 1º semestre')
+
+    await usuario.click(screen.getByLabelText('Nome da edição'))
+    await usuario.type(screen.getByLabelText('Nome da edição'), ' A')
+    await usuario.click(screen.getByLabelText('Local'))
+    await waitFor(() => expect(gravacoes).toHaveLength(2))
+    expect(gravacoes.filter((g) => g.metodo === 'POST')).toHaveLength(1)
+    expect(gravacoes[1]).toMatchObject({ metodo: 'PATCH', caminho: `/api/classe-biblica/edicoes/${EDICAO_CB_ID}`, corpo: { nome: 'Classe Bíblica 2027 · 1º semestre A' } })
+  })
+
+  it('recarregar no endereço do rascunho reabre com o nome salvo', async () => {
+    abrirPelasRotasDoModulo(CAMINHO_DO_RASCUNHO, { edicao: { ...RASCUNHO, etapa: 1 } })
+    expect(await screen.findByLabelText('Nome da edição')).toHaveValue('Classe Bíblica 2027 · 1º semestre')
   })
 })
