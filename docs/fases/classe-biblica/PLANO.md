@@ -22,7 +22,7 @@ headless, só no CI).
 **Spec e modelo:** [SPEC.md](SPEC.md) e [modelo/](modelo/) — **o modelo vence a SPEC** (estrutura,
 ordem e texto; nunca CSS). **Branch:** `fase/classe-biblica` · **Worktree:**
 `/home/robertogabrieu/desbravadores/.claude/worktrees/classe-biblica` · **PR:** em draft
-#<a definir> · **Base:** `6bc7e05`.
+#34 · **Base:** `6bc7e05`.
 
 ## Global Constraints
 
@@ -53,7 +53,7 @@ ordem e texto; nunca CSS). **Branch:** `fase/classe-biblica` · **Worktree:**
 - **Banco de teste da API é próprio por execução** (`apps/api/test/banco.ts`): duas suítes da API ao
   mesmo tempo não disputam banco, só memória. Migration só o principal escreve (P0a), sem subagente no
   ar.
-- **e2e nunca roda na máquina local**: só no CI.
+- **e2e nunca roda na máquina local**, e o CI deste projeto não tem job de e2e: o e2e é escrito e fica sem executar, sem segurar a PR (decisão do usuário, PR #25).
 - **Nenhum subagente roda git.** Commit por pacote, pelo principal (skill `commit`).
 
 ---
@@ -494,13 +494,13 @@ permissão nem para grupo fora do escopo, funciona sem conexão; ficha com os n�
   cria a edição com dois grupos, um deles sem material; vê os encontros no calendário; faz a
   chamada sem rede; a conexão volta; o painel e o ranking mostram o resultado. Molde:
   `e2e/offline.spec.ts`.
-- [ ] **Push de revisão** (`gestor-pr`, PR em draft #<a definir>) e **revisão da PR inteira**
+- [ ] **Push de revisão** (`gestor-pr`, PR em draft #34) e **revisão da PR inteira**
   (`rules/pr-pronta.md` passos 3–4), até três rodadas.
 - [ ] **Suíte completa uma vez** (`testador`, `pesado testar --tudo`), lint, `tipos` da raiz,
   `build`. Falha fora de pacote: conferir só aquele arquivo na base `6bc7e05`.
 - [ ] **Medição no DOM** (critério 48) e **QA** pelo roteiro abaixo (`qa-runner`).
 - [ ] **`documentador`** com a branch e a base.
-- [ ] **`gestor-pr`**: sobe o resto e tira do rascunho; o e2e é o do CI.
+- [ ] **`gestor-pr`**: sobe o resto e tira do rascunho; o e2e fica escrito e não executado, e o fechamento diz isso.
 
 ### Roteiro de QA (um item por grupo de critérios; quadro do modelo entre parênteses)
 
@@ -532,7 +532,7 @@ A PR só sai do rascunho com:
 - revisão sem achado Critical ou Important em aberto;
 - suítes de API e web verdes (falha fora do pacote conferida na base);
 - lint, `tipos` e `build` verdes;
-- e2e verde no CI;
+- e2e escrito (`e2e/classe-biblica.spec.ts`), não executado: o CI não tem job de e2e;
 - roteiro de QA todo PASSOU;
 - no corpo da PR, o que a mudança precisa para funcionar no ar: a migration roda antes do código
   novo; o `nginx.conf` do web só vale com a imagem web refeita (`apps/web/Dockerfile:24`); o
@@ -577,7 +577,7 @@ Sem diff colado, sem trecho de arquivo, sem recapitular a SPEC.
 Use a skill `orquestrador`.
 
 ONDE: worktree /home/robertogabrieu/desbravadores/.claude/worktrees/classe-biblica, branch
-fase/classe-biblica, PR em draft #<a definir> (continue nelas; não crie branch nem PR novos).
+fase/classe-biblica, PR em draft #34 (continue nelas; não crie branch nem PR novos).
 Base 6bc7e05.
 
 LEIA PRIMEIRO: docs/fases/classe-biblica/PLANO.md (inteiro) e docs/fases/classe-biblica/SPEC.md
@@ -610,7 +610,7 @@ EXECUÇÃO:
 - Nenhum subagente roda git.
 
 GATE: o bloco "Gate" do plano — revisão limpa, suítes de API e web verdes, lint, tipos e build
-verdes, e2e verde no CI, roteiro de QA todo PASSOU, e a PR fora do rascunho.
+verdes, e2e escrito e não executado (o CI não tem job de e2e), roteiro de QA todo PASSOU, e a PR fora do rascunho.
 
 REPORTE: o fechamento do orquestrador (FEITO por pacote, SUÍTE, DOCS, PENDÊNCIAS, PR) e as
 decisões que algum pacote tomou sozinho, uma linha cada.
