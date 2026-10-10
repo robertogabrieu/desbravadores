@@ -128,6 +128,7 @@ export class ReunioesService {
       cabecalhoVersao: reuniao.cabecalhoVersao.toISOString(),
       registradaPor: { nome: reuniao.registradaPor.nome },
       registradaEm: reuniao.registradaEm.toISOString(),
+      substituicao: null,
       alterada: ultimaAlteracao
         ? { por: ultimaAlteracao.alteradaPor.nome, em: ultimaAlteracao.alteradaEm.toISOString(), conflito: conflitos > 0 }
         : null,

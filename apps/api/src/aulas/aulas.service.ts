@@ -79,6 +79,7 @@ export class AulasService {
       data: paraDataCivil(registro.data),
       aulaPlanejadaId: registro.aulaPlanejadaId,
       registradoPor: registro.registradoPor.nome,
+      substituicao: null,
       presencas: registro.presencas
         .map((presenca) => ({
           dbvId: presenca.dbvId,
