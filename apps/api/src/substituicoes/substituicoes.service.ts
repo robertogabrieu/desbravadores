@@ -50,6 +50,9 @@ export class SubstituicoesService {
     const token = gerarTokenOpaco()
     const doAlvo = this.doAlvo(clubeId, tipo, alvoId)
     const criada = await this.prisma.$transaction(async (tx) => {
+      // Trava a linha do alvo: outro gerar simultâneo espera este terminar e então cancela o link criado aqui.
+      if (tipo === 'CHAMADA') await tx.$queryRaw`SELECT id FROM "Unidade" WHERE id = ${alvoId}::uuid FOR UPDATE`
+      else await tx.$queryRaw`SELECT id FROM "Classe" WHERE id = ${alvoId}::uuid FOR UPDATE`
       await tx.substituicao.updateMany({
         where: { ...doAlvo, ...abertaEm(agora) },
         data: { canceladoEm: agora, canceladoPorId: sessao.usuarioId },

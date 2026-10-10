@@ -5,6 +5,7 @@ import { Outlet, useParams } from 'react-router-dom'
 import { z } from 'zod'
 import { ErroDaApi, requisitar } from '../../api/cliente'
 import { useConexao } from '../../offline'
+import { limparSubstituicoesVencidas } from '../../offline/limpeza'
 import { baixarPacoteSeVelho } from '../../offline/pacote'
 import { ProvedorSessaoSubstituto, useSubstituicao } from '../../sessao/ProvedorSessaoSubstituto'
 import { ProvedorDeAlvoFixo, ProvedorDeDestinos } from '../../substituicao/contextos'
@@ -18,7 +19,7 @@ import {
   AbrindoOLink,
   AntesDoHorario,
   DepoisDoFim,
-  contarNaoEnviados,
+  contarPendentes,
   EmOutroAparelho,
   LinkCancelado,
   LinkInexistente,
@@ -101,6 +102,11 @@ export function TelaDoLink() {
   const reler = useCallback(() => setLeitura((n) => n + 1), [])
   const caminho = `/api/auth/substituicao/${encodeURIComponent(token)}`
 
+  // Quem usa só o link nunca passa pela abertura da sessão, que é onde as substituições vencidas saem do aparelho.
+  useEffect(() => {
+    void limparSubstituicoesVencidas(Date.now(), lerAparelho(token)?.substituicaoId ?? null).catch(() => undefined)
+  }, [token])
+
   const entrar = useCallback(
     async (corpo: Corpo, link: Link) => {
       try {
@@ -177,7 +183,7 @@ export function TelaDoLink() {
  */
 async function reentraParaEnviar(link: Link, aparelho: Aparelho): Promise<boolean> {
   if (link.estado !== 'ENCERRADO' || link.fimEnvioEm === null || Date.parse(link.agora) >= Date.parse(link.fimEnvioEm)) return false
-  return (await contarNaoEnviados(aparelho.substituicaoId)) > 0
+  return (await contarPendentes(aparelho.substituicaoId)) > 0
 }
 
 /** Sem internet ao abrir o link, ou a API fora: diz o que houve e deixa tentar de novo. */

@@ -71,18 +71,24 @@ export function useInstantePassou(instante: string | null): boolean {
   return passou
 }
 
-export const contarNaoEnviados = (substituicaoId: string): Promise<number> =>
+const contarNosEstados = (substituicaoId: string, estados: string[]): Promise<number> =>
   banco.fila
     .where('[usuarioId+estado]')
-    .anyOf(['NA_FILA', 'ENVIANDO', 'ERRO'].map((estado) => [substituicaoId, estado]))
+    .anyOf(estados.map((estado) => [substituicaoId, estado]))
     .count()
 
-/** Itens desta substituição ainda não enviados (na fila, enviando ou com erro); `null` enquanto o banco não respondeu. */
-function useNaoEnviados(substituicaoId: string | null): number | null {
+/** O que ainda vai subir sozinho: na fila ou enviando. Recusado de vez (ERRO) não conta. */
+export const contarPendentes = (substituicaoId: string): Promise<number> => contarNosEstados(substituicaoId, ['NA_FILA', 'ENVIANDO'])
+
+/** Tudo o que não chegou ao servidor, recusado de vez incluído. */
+const contarNaoEnviados = (substituicaoId: string): Promise<number> => contarNosEstados(substituicaoId, ['NA_FILA', 'ENVIANDO', 'ERRO'])
+
+/** Itens desta substituição que ainda vão subir; `null` enquanto o banco não respondeu. */
+function usePendentes(substituicaoId: string | null): number | null {
   const [contagem, setContagem] = useState<number | null>(substituicaoId === null ? 0 : null)
   useEffect(() => {
     if (substituicaoId === null) return
-    const assinatura = liveQuery(() => contarNaoEnviados(substituicaoId)).subscribe({ next: setContagem, error: () => setContagem(0) })
+    const assinatura = liveQuery(() => contarPendentes(substituicaoId)).subscribe({ next: setContagem, error: () => setContagem(0) })
     return () => assinatura.unsubscribe()
   }, [substituicaoId])
   return contagem
@@ -165,15 +171,15 @@ export function AntesDoHorario({ sobre, aoAbrir }: { sobre: SobreOLink; aoAbrir:
 const lancamentos = (n: number): string => (n === 1 ? '1 lançamento' : `${n} lançamentos`)
 
 /**
- * Janela fechada. Com lançamento deste celular ainda não enviado e o fim do envio por vir: S5, que
+ * Janela fechada. Com lançamento deste celular na fila ou enviando e o fim do envio por vir: S5, que
  * acompanha a fila até zerar. Senão S6, e os dados locais da substituição saem (o pacote traz menores).
  */
 export function DepoisDoFim({ sobre, substituicaoId, fimEnvioEm, chaveDoAparelho }: { sobre: SobreOLink; substituicaoId: string | null; fimEnvioEm: string | null; chaveDoAparelho: string }) {
-  const naoEnviados = useNaoEnviados(substituicaoId)
+  const pendentes = usePendentes(substituicaoId)
   const envioAcabou = useInstantePassou(fimEnvioEm)
-  const enviando = naoEnviados !== null && naoEnviados > 0 && fimEnvioEm !== null && !envioAcabou
-  if (naoEnviados === null) return <AbrindoOLink />
-  if (enviando) return <EnvioPendente restantes={naoEnviados} />
+  const enviando = pendentes !== null && pendentes > 0 && fimEnvioEm !== null && !envioAcabou
+  if (pendentes === null) return <AbrindoOLink />
+  if (enviando) return <EnvioPendente restantes={pendentes} />
   return <LinkFechou sobre={sobre} substituicaoId={substituicaoId} chaveDoAparelho={chaveDoAparelho} />
 }
 
@@ -197,27 +203,11 @@ function EnvioPendente({ restantes }: { restantes: number }) {
   )
 }
 
-/** S6: estado sem saída no app; o texto diz a quem pedir. */
-function LinkFechou({ sobre, substituicaoId, chaveDoAparelho }: { sobre: SobreOLink; substituicaoId: string | null; chaveDoAparelho: string }) {
-  useEffect(() => {
-    esquecerAparelho(chaveDoAparelho)
-    if (substituicaoId) void limparDadosDaSubstituicao(substituicaoId)
-  }, [substituicaoId, chaveDoAparelho])
-  const tarefa = sobre.tipo === 'CHAMADA' ? `a chamada da ${nomeDoAlvo(sobre)}` : `o registro da ${nomeDoAlvo(sobre)}`
-  return (
-    <MolduraDoLink titulo="App do Desbravador">
-      <EstadoDoLink icone={Lock} tom="neutro" titulo={`Este link fechou às ${hora(sobre.fimEm, sobre.fuso)}`}>
-        <p>
-          Ele valia para {tarefa} {noDia(sobre.data)}.
-        </p>
-        <p>Se ainda precisa lançar alguma coisa, peça um novo link ao Adm do clube.</p>
-      </EstadoDoLink>
-    </MolduraDoLink>
-  )
-}
-
-/** S7, cancelado: conta o que ficou sem enviar antes de apagar, e só então apaga. */
-export function LinkCancelado({ substituicaoId, chaveDoAparelho }: { substituicaoId: string | null; chaveDoAparelho: string }) {
+/**
+ * Conta o que ficou sem enviar e só então apaga os dados locais da substituição; `null` enquanto conta.
+ * A contagem fica na tela depois da limpeza.
+ */
+function useContarEApagar(substituicaoId: string | null, chaveDoAparelho: string): number | null {
   const [perdidos, setPerdidos] = useState<number | null>(substituicaoId === null ? 0 : null)
   useEffect(() => {
     esquecerAparelho(chaveDoAparelho)
@@ -232,19 +222,50 @@ export function LinkCancelado({ substituicaoId, chaveDoAparelho }: { substituica
       vivo = false
     }
   }, [substituicaoId, chaveDoAparelho])
+  return perdidos
+}
+
+/** "1 lançamento feito aqui não foi enviado…": some quando nada se perdeu. */
+function AvisoDePerda({ perdidos }: { perdidos: number }) {
+  if (perdidos === 0) return null
+  return (
+    <p className="font-semibold">
+      {perdidos === 1
+        ? '1 lançamento feito aqui não foi enviado e não vai mais ser. Avise o Adm.'
+        : `${perdidos} lançamentos feitos aqui não foram enviados e não vão mais ser. Avise o Adm.`}
+    </p>
+  )
+}
+
+/** S6: estado sem saída no app; o texto diz a quem pedir e quantos lançamentos daqui não subiram. */
+function LinkFechou({ sobre, substituicaoId, chaveDoAparelho }: { sobre: SobreOLink; substituicaoId: string | null; chaveDoAparelho: string }) {
+  const perdidos = useContarEApagar(substituicaoId, chaveDoAparelho)
+  // O aviso de perda entra junto com a tela, nunca depois dela: nada aparece empurrando o texto já lido.
+  if (perdidos === null) return <AbrindoOLink />
+  const tarefa = sobre.tipo === 'CHAMADA' ? `a chamada da ${nomeDoAlvo(sobre)}` : `o registro da ${nomeDoAlvo(sobre)}`
+  return (
+    <MolduraDoLink titulo="App do Desbravador">
+      <EstadoDoLink icone={Lock} tom="neutro" titulo={`Este link fechou às ${hora(sobre.fimEm, sobre.fuso)}`}>
+        <p>
+          Ele valia para {tarefa} {noDia(sobre.data)}.
+        </p>
+        <p>Se ainda precisa lançar alguma coisa, peça um novo link ao Adm do clube.</p>
+        <AvisoDePerda perdidos={perdidos} />
+      </EstadoDoLink>
+    </MolduraDoLink>
+  )
+}
+
+/** S7, cancelado: conta o que ficou sem enviar antes de apagar, e só então apaga. */
+export function LinkCancelado({ substituicaoId, chaveDoAparelho }: { substituicaoId: string | null; chaveDoAparelho: string }) {
+  const perdidos = useContarEApagar(substituicaoId, chaveDoAparelho)
   // O aviso de perda entra junto com a tela, nunca depois dela: nada aparece empurrando o texto já lido.
   if (perdidos === null) return <AbrindoOLink />
   return (
     <MolduraDoLink titulo="App do Desbravador">
       <EstadoDoLink icone={TriangleAlert} tom="neutro" titulo="O Adm cancelou este link">
         <p>Se você ainda vai substituir, peça um novo link ao Adm.</p>
-        {perdidos > 0 && (
-          <p className="font-semibold">
-            {perdidos === 1
-              ? '1 lançamento feito aqui não foi enviado e não vai mais ser. Avise o Adm.'
-              : `${perdidos} lançamentos feitos aqui não foram enviados e não vão mais ser. Avise o Adm.`}
-          </p>
-        )}
+        <AvisoDePerda perdidos={perdidos} />
       </EstadoDoLink>
     </MolduraDoLink>
   )

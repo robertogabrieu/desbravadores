@@ -48,8 +48,12 @@ export async function limparDadosDaSubstituicao(substituicaoId: string): Promise
   gravarSubstituicoesLocais(lerSubstituicoesLocais().filter((guardada) => guardada.id !== substituicaoId))
 }
 
-async function limparSubstituicoesVencidas(agora: number): Promise<void> {
-  const vencidas = lerSubstituicoesLocais().filter((guardada) => Date.parse(guardada.fimEnvioEm) <= agora)
+/**
+ * Apaga os dados das substituições cujo fim do envio já passou. `exceto` fica de fora: é o link aberto na tela,
+ * que limpa os próprios dados depois de contar o que se perdeu.
+ */
+export async function limparSubstituicoesVencidas(agora = Date.now(), exceto: string | null = null): Promise<void> {
+  const vencidas = lerSubstituicoesLocais().filter((guardada) => guardada.id !== exceto && Date.parse(guardada.fimEnvioEm) <= agora)
   for (const vencida of vencidas) await limparDadosDaSubstituicao(vencida.id)
 }
 

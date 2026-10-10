@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ItemFila, ModoConexao, PacoteGuardado, TipoFila } from '../../offline'
 import { registrarTipo } from '../../offline'
 import { banco } from '../../offline/banco'
+import { registrarSubstituicaoLocal } from '../../offline/limpeza'
 import { configurarCliente, entrarNoModoSubstituicao, requisitar } from '../../api/cliente'
 import { reiniciarRelogio } from '../../substituicao/relogio'
 import { criarPacote, handlerPacote } from '../../testes/handlers/offline'
@@ -439,6 +440,36 @@ describe('critério 15: depois do fim', () => {
     expect(screen.queryByText('Bruno Alves')).not.toBeInTheDocument()
   })
 
+  it('só com item recusado de vez: S6 diz quantos não foram enviados, não reentra e os dados somem', async () => {
+    guardarAparelho()
+    await banco.fila.bulkPut([{ ...itemNaFila(1), estado: 'ERRO' }])
+    const registro = novoRegistroDoLink()
+    servidor.use(...handlersDoLink({ links: [criarLinkPublico({ estado: 'ENCERRADO', agora: '2026-10-11T16:00:00.000Z' })], registro }))
+    montar()
+    expect(await screen.findByRole('heading', { name: 'Este link fechou às 12:00' })).toBeInTheDocument()
+    expect(screen.queryByText(/Enviando…/)).not.toBeInTheDocument()
+    expect(screen.getByText('1 lançamento feito aqui não foi enviado e não vai mais ser. Avise o Adm.')).toBeInTheDocument()
+    await waitFor(async () => expect(await itensDaSubstituicao()).toBe(0))
+    expect(screen.getByText('1 lançamento feito aqui não foi enviado e não vai mais ser. Avise o Adm.')).toBeInTheDocument()
+    expect(registro.entradas).toEqual([])
+  })
+
+  it('na fila e recusado juntos: S5 conta só o que ainda vai subir', async () => {
+    guardarAparelho()
+    await banco.fila.bulkPut([itemNaFila(1), { ...itemNaFila(2), estado: 'ERRO' }])
+    const depoisDoFim = '2026-10-11T16:00:00.000Z'
+    servidor.use(
+      ...handlersDoLink({
+        links: [criarLinkPublico({ estado: 'ENCERRADO', agora: depoisDoFim })],
+        entrada: criarEntradaDoLink({}, { segredo: null, agora: depoisDoFim }),
+      }),
+    )
+    montar()
+    expect(await screen.findByRole('heading', { name: 'O horário acabou, mas ainda falta enviar' })).toBeInTheDocument()
+    expect(screen.getByText('1 lançamento')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Enviando… 1 de 1')
+  })
+
   it('cancelado com lançamentos não enviados: S7 diz quantos, e os dados somem', async () => {
     guardarAparelho()
     await banco.fila.bulkPut([itemNaFila(1), itemNaFila(2)])
@@ -458,6 +489,25 @@ describe('critério 15: depois do fim', () => {
     montar()
     expect(await screen.findByRole('heading', { name: 'O Adm cancelou este link' })).toBeInTheDocument()
     expect(screen.queryByText(/não foram enviados/)).not.toBeInTheDocument()
+  })
+})
+
+describe('limpeza ao abrir o link', () => {
+  it('os dados de outra substituição já vencida somem; os do link aberto ficam', async () => {
+    const vencida = uuid(951)
+    registrarSubstituicaoLocal({ id: vencida, fimEnvioEm: '2020-01-01T00:00:00.000Z' })
+    registrarSubstituicaoLocal({ id: SUBSTITUICAO, fimEnvioEm: '2999-01-01T00:00:00.000Z' })
+    await banco.pacotes.bulkPut([
+      { usuarioId: vencida, vinculoId: vencida, pacote: criarPacote(), baixadoEm: Date.now() },
+      { usuarioId: SUBSTITUICAO, vinculoId: SUBSTITUICAO, pacote: criarPacote(), baixadoEm: Date.now() },
+    ])
+    await banco.fila.put({ ...itemNaFila(9), usuarioId: vencida, vinculoId: vencida })
+    servidor.use(...handlersDoLink({ links: [criarLinkPublico()] }))
+    montar()
+    expect(await screen.findByLabelText('Qual é o seu nome?')).toBeInTheDocument()
+    await waitFor(async () => expect(await banco.pacotes.get([vencida, vencida])).toBeUndefined())
+    expect(await banco.fila.where('[usuarioId+estado]').between([vencida, ''], [vencida, '\uffff']).count()).toBe(0)
+    expect(await banco.pacotes.get([SUBSTITUICAO, SUBSTITUICAO])).toBeDefined()
   })
 })
 

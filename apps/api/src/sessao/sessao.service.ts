@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common'
-import type { Papel, TipoSubstituicao } from '../generated/prisma/client.js'
+import type { Papel } from '../generated/prisma/client.js'
 import { ErroApp } from '../comum/erros'
 import { PrismaSistema } from '../comum/prisma/prisma-sistema'
+import { alvoAtivo, alvoDoLink } from '../substituicoes/alvo'
 
 export interface VinculoAtivo {
   vinculoId: string
@@ -78,8 +79,6 @@ export class ServicoSessao {
         aparelhoHash: true,
         substitutoId: true,
         canceladoEm: true,
-        unidade: { select: { ativa: true } },
-        classe: { select: { clubeId: true, ativa: true } },
       },
     })
     if (!substituicao || substituicao.canceladoEm || !substituicao.aparelhoHash || !substituicao.substitutoId) {
@@ -87,7 +86,8 @@ export class ServicoSessao {
     }
     const prazo = operacao === 'LEITURA' ? substituicao.fimEm : substituicao.fimEnvioEm
     if (agora < substituicao.inicioEm || agora >= prazo) throw linkEncerrado()
-    if (!(await this.alvoAtivo(substituicao))) throw linkEncerrado()
+    const alvoId = alvoDoLink(substituicao)
+    if (alvoId === null || !(await alvoAtivo(this.prisma, substituicao.clubeId, substituicao.tipo, alvoId))) throw linkEncerrado()
     return {
       substituicaoId: substituicao.id,
       usuarioId: substituicao.substitutoId,
@@ -97,24 +97,5 @@ export class ServicoSessao {
       classeId: substituicao.classeId,
       data: substituicao.data.toISOString().slice(0, 10),
     }
-  }
-
-  /** Unidade ativa; classe do clube, ou oficial ligada no clube (`ClasseClube.ativa ?? true`). */
-  private async alvoAtivo(substituicao: {
-    clubeId: string
-    tipo: TipoSubstituicao
-    classeId: string | null
-    unidade: { ativa: boolean } | null
-    classe: { clubeId: string | null; ativa: boolean } | null
-  }): Promise<boolean> {
-    if (substituicao.tipo === 'CHAMADA') return substituicao.unidade?.ativa === true
-    const { classe, classeId } = substituicao
-    if (!classe || !classeId || !classe.ativa) return false
-    if (classe.clubeId !== null) return classe.clubeId === substituicao.clubeId
-    const doClube = await this.prisma.classeClube.findUnique({
-      where: { clubeId_classeId: { clubeId: substituicao.clubeId, classeId } },
-      select: { ativa: true },
-    })
-    return doClube?.ativa ?? true
   }
 }

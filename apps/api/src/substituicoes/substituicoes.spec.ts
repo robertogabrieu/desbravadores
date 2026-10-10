@@ -178,6 +178,38 @@ describe('gerar, ler e cancelar o link', () => {
     expect(anterior.canceladoEm).not.toBeNull()
   })
 
+  it('dois gerar ao mesmo tempo para o mesmo alvo: um espera o outro e fica um link só sem cancelar', async () => {
+    congelarRelogio('2026-10-10T11:00:00Z')
+    const c = await cenario()
+    let liberar = (): void => undefined
+    const segurando = new Promise<void>((resolver) => {
+      liberar = resolver
+    })
+    let avisarTravou = (): void => undefined
+    const travou = new Promise<void>((resolver) => {
+      avisarTravou = resolver
+    })
+    // Outra transação segura a linha da unidade: quem gera para ela tem de esperar a vez.
+    const outra = prismaDeTeste().$transaction(
+      async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "Unidade" WHERE id = ${c.unidade.id}::uuid FOR UPDATE`
+        avisarTravou()
+        await segurando
+      },
+      { timeout: 20_000 },
+    )
+    await travou
+    const terminados: string[] = []
+    const pedidos = [gerar(c), gerar(c)].map((pedido) => pedido.then((gerada) => terminados.push(gerada.id)))
+    await new Promise((resolver) => setTimeout(resolver, 800))
+    expect(terminados).toEqual([])
+    liberar()
+    await outra
+    await Promise.all(pedidos)
+    const abertos = await prismaDeTeste().substituicao.count({ where: { unidadeId: c.unidade.id, canceladoEm: null } })
+    expect(abertos).toBe(1)
+  })
+
   it('o link de outra unidade não é cancelado', async () => {
     congelarRelogio('2026-10-10T11:00:00Z')
     const c = await cenario()
