@@ -1,5 +1,5 @@
 import { hojeNoFuso } from '@desbravadores/shared'
-import { CalendarDays, ClipboardCheck, ClipboardList, Folder, MessageSquare, Medal, BarChart3 } from 'lucide-react'
+import { BookOpen, CalendarDays, ClipboardCheck, ClipboardList, Folder, MessageSquare, Medal, BarChart3 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useInicioInstrutor } from '../../api/instrutor'
@@ -26,6 +26,9 @@ interface Atalho {
 
 const comClasse = (caminho: string) => (classeId: string | undefined) => (classeId ? `${caminho}?classe=${classeId}` : caminho)
 
+/** A Biblioteca é do clube, não de uma classe: o atalho serve também a quem ainda não tem classe. */
+const ATALHO_BIBLIOTECA: Atalho = { rotulo: 'Biblioteca', icone: BookOpen, para: () => '/biblioteca' }
+
 const ATALHOS: Atalho[] = [
   { rotulo: 'Cronograma', icone: CalendarDays, para: comClasse('/cronograma') },
   { rotulo: 'Registrar classe', icone: ClipboardCheck, para: comClasse('/aulas/nova') },
@@ -33,6 +36,7 @@ const ATALHOS: Atalho[] = [
   { rotulo: 'Observações', icone: MessageSquare, para: comClasse('/observacoes') },
   { rotulo: 'Progresso', icone: BarChart3, para: (classeId) => (classeId ? `/classes/${classeId}/progresso` : '/classes') },
   { rotulo: 'Especialidades', icone: Medal, para: comClasse('/especialidades') },
+  ATALHO_BIBLIOTECA,
 ]
 
 const LINK_PRIMARIO =
@@ -152,12 +156,12 @@ function AlertaDeFaltas({ alertas }: { alertas: InicioInstrutor['alertaFaltas'] 
   )
 }
 
-function Atalhos({ classeUnica }: { classeUnica: string | undefined }) {
+function Atalhos({ atalhos, classeUnica }: { atalhos: Atalho[]; classeUnica?: string }) {
   return (
     <section className="flex flex-col gap-2">
       <h2 className="font-titulo text-lg font-bold text-texto">Atalhos</h2>
       <div className="grid grid-cols-2 gap-2">
-        {ATALHOS.map(({ rotulo, para, icone: Icone }) => (
+        {atalhos.map(({ rotulo, para, icone: Icone }) => (
           <LinhaQueNavega key={rotulo} to={para(classeUnica)} forma="cartao" className="gap-2 p-3">
             <span className="flex flex-col items-start gap-1 text-sm font-bold break-words hyphens-auto">
               <Icone aria-hidden className="size-6 text-marca" />
@@ -172,7 +176,12 @@ function Atalhos({ classeUnica }: { classeUnica: string | undefined }) {
 
 function Conteudo({ dados }: { dados: InicioInstrutor }) {
   if (dados.classes.length === 0) {
-    return <EstadoVazio titulo="Você ainda não tem classes. O Adm do clube as atribui." />
+    return (
+      <>
+        <EstadoVazio titulo="Você ainda não tem classes. O Adm do clube as atribui." />
+        <Atalhos atalhos={[ATALHO_BIBLIOTECA]} />
+      </>
+    )
   }
   const individuais = dados.classes.filter((item) => !ehAgrupada(item))
   const agrupadas = dados.classes.filter(ehAgrupada)
@@ -184,7 +193,7 @@ function Conteudo({ dados }: { dados: InicioInstrutor }) {
       <ListaDeClasses titulo="Minhas classes" itens={individuais} />
       <ListaDeClasses titulo="Agrupadas" itens={agrupadas} discreto />
       <AlertaDeFaltas alertas={dados.alertaFaltas} />
-      <Atalhos classeUnica={dados.classes.length === 1 ? dados.classes[0].classe.id : undefined} />
+      <Atalhos atalhos={ATALHOS} classeUnica={dados.classes.length === 1 ? dados.classes[0].classe.id : undefined} />
     </>
   )
 }

@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { hojeNoFuso } from '@desbravadores/shared'
@@ -136,9 +136,20 @@ describe('início do conselheiro', () => {
     expect(screen.getByRole('link', { name: 'Reuniões' })).toHaveAttribute('href', '/reunioes')
     expect(screen.getByRole('link', { name: 'Galeria' })).toHaveAttribute('href', '/galeria')
     expect(screen.getByRole('link', { name: 'Ranking' })).toHaveAttribute('href', '/ranking')
+    expect(screen.getByRole('link', { name: 'Biblioteca' })).toHaveAttribute('href', '/biblioteca')
     expect(screen.getByRole('link', { name: /Ana Clara Souza/ })).toHaveAttribute('href', expect.stringMatching(/^\/dbv\/.+/))
     expect(screen.getByText('446 pts')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /notificações/i })).not.toBeInTheDocument()
+  })
+
+  it('tem cinco atalhos, e o último é "Biblioteca"', async () => {
+    servidor.use(...handlersSessao([CONSELHEIRO]), handlerInicioConselheiro())
+    renderizarRotas(rotasInicio, '/inicio')
+
+    const secao = (await screen.findByRole('heading', { name: 'Atalhos' })).parentElement as HTMLElement
+    const atalhos = within(secao).getAllByRole('link')
+    expect(atalhos.map((atalho) => atalho.textContent)).toEqual(['Unidade', 'Reuniões', 'Galeria', 'Ranking', 'Biblioteca'])
+    expect(atalhos[4]).toHaveAttribute('href', '/biblioteca')
   })
 
   it('carregando: mostra o esqueleto até a resposta chegar', async () => {
@@ -425,7 +436,7 @@ describe('sinais do início do conselheiro', () => {
     const destaque = await screen.findByRole('link', { name: /Ana Clara Souza/ })
     expect(destaque.querySelector('[data-sinal="abre-ficha"]')).not.toBeNull()
     expect(destaque.querySelector('[data-sinal="navega"]')).toBeNull()
-    for (const rotulo of ['Unidade', 'Reuniões', 'Galeria', 'Ranking']) {
+    for (const rotulo of ['Unidade', 'Reuniões', 'Galeria', 'Ranking', 'Biblioteca']) {
       expect(screen.getByRole('link', { name: rotulo }).querySelector('[data-sinal="navega"]')).not.toBeNull()
     }
     const numero = screen.getByText('DBVs na unidade').parentElement as HTMLElement
@@ -441,5 +452,6 @@ describe('sinais do início do conselheiro', () => {
     expect(await screen.findByText('Disponível quando houver internet')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Galeria' })).toHaveAttribute('href', '/galeria')
     expect(screen.getByRole('link', { name: 'Unidade' })).toHaveAttribute('href', '/unidade')
+    expect(screen.getByRole('link', { name: 'Biblioteca' })).toHaveAttribute('href', '/biblioteca')
   })
 })

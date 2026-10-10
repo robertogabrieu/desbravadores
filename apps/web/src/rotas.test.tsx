@@ -1,6 +1,7 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ModoConexao } from './offline'
+import { handlerBiblioteca } from './testes/handlers/biblioteca'
 import { criarVinculo, handlersSessao } from './testes/handlers/sessao'
 import { renderizarRotas } from './testes/renderizar'
 import { servidor } from './testes/servidor'
@@ -68,5 +69,30 @@ describe('rotas do instrutor', () => {
     renderizarRotas(rotas, '/classes')
     await screen.findByRole('button', { name: /Ana Souza/ })
     expect(screen.queryByRole('heading', { name: 'Minhas classes' })).not.toBeInTheDocument()
+  })
+})
+
+describe('rotas da biblioteca', () => {
+  it.each<Papel>(['CONSELHEIRO', 'INSTRUTOR'])('/biblioteca abre a tela para %s', async (papel) => {
+    entrar(papel)
+    servidor.use(handlerBiblioteca([]))
+    const { roteador } = renderizarRotas(rotas, '/biblioteca')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Biblioteca' })).toBeInTheDocument()
+    expect(roteador.state.location.pathname).toBe('/biblioteca')
+  })
+
+  it('/adm/biblioteca abre a tela para ADM', async () => {
+    entrar('ADM')
+    servidor.use(handlerBiblioteca([]))
+    const { roteador } = renderizarRotas(rotas, '/adm/biblioteca')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Biblioteca' })).toBeInTheDocument()
+    expect(roteador.state.location.pathname).toBe('/adm/biblioteca')
+  })
+
+  it('conselheiro não entra em /adm/biblioteca: volta para o início', async () => {
+    entrar('CONSELHEIRO')
+    const { roteador } = renderizarRotas(rotas, '/adm/biblioteca')
+    await waitFor(() => expect(roteador.state.location.pathname).toBe('/inicio'))
+    expect(screen.queryByRole('heading', { level: 1, name: 'Biblioteca' })).not.toBeInTheDocument()
   })
 })

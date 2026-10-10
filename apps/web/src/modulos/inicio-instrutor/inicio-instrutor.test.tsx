@@ -117,6 +117,27 @@ describe('início do instrutor', () => {
     expect(screen.getByRole('link', { name: 'Progresso' })).toHaveAttribute('href', `/classes/${CLASSE_AMIGO.id}/progresso`)
   })
 
+  it.each([
+    ['uma classe', [CLASSE_AMIGO]],
+    ['várias classes', [CLASSE_AMIGO, CLASSE_COMPANHEIRO]],
+  ])('com %s tem sete atalhos, e o último é "Biblioteca", que leva sempre a /biblioteca', async (_nome, classes) => {
+    servidor.use(handlerInicioInstrutor(criarInicioInstrutor({ classes: classes.map((classe) => criarClasseDoInstrutor({ classe })) })))
+    abrir(classes)
+
+    const secao = (await screen.findByRole('heading', { name: 'Atalhos' })).parentElement as HTMLElement
+    const atalhos = within(secao).getAllByRole('link')
+    expect(atalhos.map((atalho) => atalho.textContent)).toEqual([
+      'Cronograma',
+      'Registrar classe',
+      'Materiais',
+      'Observações',
+      'Progresso',
+      'Especialidades',
+      'Biblioteca',
+    ])
+    expect(atalhos[6]).toHaveAttribute('href', '/biblioteca')
+  })
+
   it('sem alerta não mostra faixa de aviso', async () => {
     servidor.use(handlerInicioInstrutor())
     abrir([CLASSE_AMIGO])
@@ -128,6 +149,20 @@ describe('início do instrutor', () => {
     servidor.use(handlerInicioInstrutor(criarInicioInstrutor({ classes: [] })))
     abrir([])
     expect(await screen.findByText('Você ainda não tem classes. O Adm do clube as atribui.')).toBeInTheDocument()
+  })
+
+  it('sem classe, depois do aviso há uma seção "Atalhos" só com "Biblioteca"', async () => {
+    servidor.use(handlerInicioInstrutor(criarInicioInstrutor({ classes: [] })))
+    abrir([])
+    const aviso = await screen.findByRole('heading', { name: 'Você ainda não tem classes. O Adm do clube as atribui.' })
+
+    const secao = screen.getByRole('heading', { name: 'Atalhos' }).parentElement as HTMLElement
+    expect(aviso.compareDocumentPosition(secao) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const atalhos = within(secao).getAllByRole('link')
+    expect(atalhos).toHaveLength(1)
+    expect(atalhos[0]).toHaveTextContent('Biblioteca')
+    expect(atalhos[0]).toHaveAttribute('href', '/biblioteca')
+    expect(atalhos[0].querySelector('[data-sinal="navega"]')).not.toBeNull()
   })
 
   it('mostra carregando enquanto espera', async () => {
@@ -225,7 +260,7 @@ describe('sinais do início do instrutor', () => {
     const linha = within(minhas).getByRole('link', { name: /Amigo/ })
     expect(linha).toHaveAttribute('href', `/classes/${CLASSE_AMIGO.id}/progresso`)
     expect(linha.querySelector('[data-sinal="navega"]')).not.toBeNull()
-    for (const rotulo of ['Cronograma', 'Registrar classe', 'Materiais', 'Observações', 'Progresso', 'Especialidades']) {
+    for (const rotulo of ['Cronograma', 'Registrar classe', 'Materiais', 'Observações', 'Progresso', 'Especialidades', 'Biblioteca']) {
       expect(screen.getByRole('link', { name: rotulo }).querySelector('[data-sinal="navega"]')).not.toBeNull()
     }
   })
