@@ -22,9 +22,10 @@ import { Cartao } from '../../../ui/Cartao'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/EstadosDeCarga'
 import { ResumoDosErros, useErrosAVista } from '../../../ui/ErrosDoFormulario'
 import { IndicadorDeEtapas } from '../../../ui/IndicadorDeEtapas'
+import { diaMes } from '../../classe-biblica/formatos'
 import { horaCurta, juntarNomes } from '../formatos'
 import { LinhaDoSalvo, textoDoSalvo } from './EtapaDados'
-import { ETAPAS_DA_EDICAO, diaMes, diasNoPlural, sobretituloDaEtapa, useRascunhoDaEdicao } from './useRascunhoDaEdicao'
+import { ETAPAS_DA_EDICAO, diasNoPlural, sobretituloDaEtapa, useRascunhoDaEdicao } from './useRascunhoDaEdicao'
 
 type Material = GrupoDaEdicao['material']
 type Unidade = GruposDaEdicao['unidades'][number]

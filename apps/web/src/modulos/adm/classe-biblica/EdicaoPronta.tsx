@@ -4,8 +4,9 @@ import type { PainelDaEdicao } from '../../../api/classe-biblica'
 import { useConexao } from '../../../offline'
 import { estiloDoBotao } from '../../../ui/Botao'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/EstadosDeCarga'
+import { diaMes } from '../../classe-biblica/formatos'
 import { horaCurta, juntarNomes } from '../formatos'
-import { diaDaSemanaDaData, diaMes, diasNoPlural } from './useRascunhoDaEdicao'
+import { diaDaSemanaDaData, diasNoPlural } from './useRascunhoDaEdicao'
 
 /** `encontros` é o total de não cancelados, da lista; nulo quando a edição não veio nela. */
 function oQueFoiFeito({ edicao }: PainelDaEdicao, encontros: number | null): string {

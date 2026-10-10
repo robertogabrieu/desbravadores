@@ -4,16 +4,17 @@ import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { usePainelDaEdicao } from '../../../api/classe-biblica'
 import type { PainelDaEdicao } from '../../../api/classe-biblica'
-import { useConexao } from '../../../offline'
+import { useConexao, usePacote } from '../../../offline'
 import { Abas } from '../../../ui/Abas'
 import { estiloDoBotao } from '../../../ui/Botao'
 import { CabecalhoDaPagina } from '../../../ui/CabecalhoDaPagina'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/EstadosDeCarga'
+import { diaMes } from '../../classe-biblica/formatos'
 import { FUSO_PADRAO_DO_CLUBE, horaCurta, juntarNomes } from '../formatos'
 import { FrequenciaDoGrupo } from './FrequenciaDoGrupo'
 import { MaterialDoGrupo } from './MaterialDoGrupo'
-import { DIAS_DA_SEMANA, dataCurta, diaMes, diasNoPlural, nomeCurtoDaEdicao } from './useRascunhoDaEdicao'
+import { DIAS_DA_SEMANA, dataCurta, diasNoPlural, nomeCurtoDaEdicao } from './useRascunhoDaEdicao'
 
 type Grupo = PainelDaEdicao['grupos'][number]
 type Encontro = Grupo['encontros'][number]
@@ -26,7 +27,11 @@ const caminhoDaChamada = (encontroId: string, grupoId: string) => `/adm/classe-b
 const caminhoDoRemarcar = (encontroId: string) => `/adm/classe-biblica/encontros/${encontroId}/remarcar`
 
 /** A API só abre a chamada a partir do dia do encontro, no fuso do clube; atrasada continua valendo (regra 8). */
-const chamadaAberta = (encontro: Encontro): boolean => encontro.data <= hojeNoFuso(FUSO_PADRAO_DO_CLUBE, new Date())
+function useChamadaAberta(): (encontro: Encontro) => boolean {
+  const { pacote } = usePacote()
+  const hoje = hojeNoFuso(pacote?.clube.fuso ?? FUSO_PADRAO_DO_CLUBE, new Date())
+  return (encontro) => encontro.data <= hoje
+}
 
 function resumoDaEdicao({ edicao }: PainelDaEdicao): string {
   const quando = `${capitalizar(diasNoPlural(edicao.diaSemana))}${edicao.horario ? ` às ${horaCurta(edicao.horario)}` : ''}`
@@ -45,6 +50,7 @@ function Secao({ titulo, children }: { titulo: string; children: ReactNode }) {
 }
 
 function ProximoEncontro({ grupo, painel }: { grupo: Grupo; painel: PainelDaEdicao }) {
+  const chamadaAberta = useChamadaAberta()
   const encontro = grupo.proximoEncontro
   if (!encontro) return <p className="text-base text-texto-2">Nenhum encontro por vir nesta edição.</p>
   const dbvs = grupo.unidades.reduce((soma, unidade) => soma + unidade.dbvs, 0)
@@ -120,6 +126,7 @@ function rotuloDaData(data: string, diaSemana: number): string {
 }
 
 function LinhaDoEncontro({ encontro, grupo, painel }: { encontro: Encontro; grupo: Grupo; painel: PainelDaEdicao }) {
+  const chamadaAberta = useChamadaAberta()
   const remarcado = encontro.dataOriginal
     ? <p className="text-sm text-texto-2">{`${dataCurta(encontro.dataOriginal)} · remarcado para ${dataCurta(encontro.data)}`}</p>
     : null
@@ -187,12 +194,14 @@ function LinhaDoEncontro({ encontro, grupo, painel }: { encontro: Encontro; grup
 }
 
 function EncontrosFeitos({ grupo, painel }: { grupo: Grupo; painel: PainelDaEdicao }) {
-  if (grupo.encontros.length === 0) {
+  // O encontro de hoje remarcado já está em "Próximo encontro": não se repete aqui.
+  const encontros = grupo.encontros.filter((encontro) => encontro.id !== grupo.proximoEncontro?.id)
+  if (encontros.length === 0) {
     return <p className="text-base text-texto-2">Nenhum encontro feito ainda. Cada chamada registrada aparece aqui.</p>
   }
   return (
     <ul className="flex flex-col divide-y divide-borda-controle">
-      {grupo.encontros.map((encontro) => (
+      {encontros.map((encontro) => (
         <LinhaDoEncontro key={encontro.id} encontro={encontro} grupo={grupo} painel={painel} />
       ))}
     </ul>

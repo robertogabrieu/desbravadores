@@ -5,7 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useCancelarEncontroCB, useDesfazerCancelamentoCB, useEncontroCB, useRemarcarEncontroCB } from '../../../api/classe-biblica'
 import type { DetalheDoEncontro } from '../../../api/classe-biblica'
 import { ErroDaApi } from '../../../api/cliente'
-import { useConexao } from '../../../offline'
+import { useConexao, usePacote } from '../../../offline'
 import { Botao, estiloDoBotao } from '../../../ui/Botao'
 import { CabecalhoDaPagina } from '../../../ui/CabecalhoDaPagina'
 import { Campo } from '../../../ui/Campo'
@@ -13,8 +13,9 @@ import { CampoData } from '../../../ui/CampoData'
 import { Confirmacao } from '../../../ui/Confirmacao'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/EstadosDeCarga'
 import { FaixaAviso } from '../../../ui/FaixaAviso'
+import { diaMes } from '../../classe-biblica/formatos'
 import { FUSO_PADRAO_DO_CLUBE } from '../formatos'
-import { DIAS_DA_SEMANA, diaDaSemanaDaData, diaMes, nomeCurtoDaEdicao } from './useRascunhoDaEdicao'
+import { DIAS_DA_SEMANA, diaDaSemanaDaData, nomeCurtoDaEdicao } from './useRascunhoDaEdicao'
 
 type Opcao = 'remarcar' | 'cancelar'
 
@@ -59,7 +60,8 @@ function Formulario({ detalhe }: { detalhe: DetalheDoEncontro }) {
   const remarcar = useRemarcarEncontroCB()
   const cancelar = useCancelarEncontroCB()
 
-  const hoje = hojeNoFuso(FUSO_PADRAO_DO_CLUBE, new Date())
+  const { pacote } = usePacote()
+  const hoje = hojeNoFuso(pacote?.clube.fuso ?? FUSO_PADRAO_DO_CLUBE, new Date())
   const leitura = data ? lerData(data, detalhe, hoje) : null
   const voltarAoPainel = () => void navegar(`/adm/classe-biblica/${edicao.id}`)
   const dataDoEncontro = diaMes(encontro.data)

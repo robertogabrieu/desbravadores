@@ -16,20 +16,22 @@ import {
   handlersClasseBiblica,
 } from '../../../testes/handlers/classe-biblica'
 import type { DadosClasseBiblica } from '../../../testes/handlers/classe-biblica'
-import { criarVinculo, handlersSessao } from '../../../testes/handlers/sessao'
+import { criarVinculo, handlersSessao, uuid } from '../../../testes/handlers/sessao'
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
 import { PainelEdicao } from './PainelEdicao'
 
-const conexao = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao }))
+const conexao = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao, fuso: undefined as string | undefined }))
 
 vi.mock('../../../offline', async (importarOriginal) => ({
   ...(await importarOriginal<typeof import('../../../offline')>()),
   useConexao: () => ({ modo: conexao.modo }),
+  usePacote: () => ({ pacote: conexao.fuso ? { clube: { fuso: conexao.fuso } } : undefined }),
 }))
 
 beforeEach(() => {
   conexao.modo = 'ONLINE'
+  conexao.fuso = undefined
   vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-10-11T15:00:00.000Z') })
 })
 
@@ -162,7 +164,7 @@ describe('Painel da edição', () => {
     const daniel = painel.grupos[0]
     const base = daniel.encontros[0]
     const encontros = [
-      { ...base, id: ENCONTRO_CB_ID, data: '2026-10-24', dataOriginal: '2026-10-18', temChamada: false, chamada: null },
+      { ...base, id: uuid(5098), data: '2026-10-24', dataOriginal: '2026-10-18', temChamada: false, chamada: null },
       { ...base, data: '2026-09-13', cancelado: true, motivo: 'chuva forte', temChamada: false, chamada: null },
     ]
     abrir({ painel: { ...painel, grupos: [{ ...daniel, encontros }, painel.grupos[1]] } })
@@ -190,6 +192,26 @@ describe('Painel — chamada no dia e chamada atrasada', () => {
     abrir()
     const proximo = await waitFor(() => secao('Próximo encontro'))
     expect(await proximo.findByText('A chamada abre no dia do encontro.')).toBeInTheDocument()
+  })
+
+  it('"hoje" é o do fuso configurado do clube, não o padrão', async () => {
+    vi.setSystemTime(new Date('2026-10-11T02:30:00.000Z'))
+    conexao.fuso = 'Europe/Lisbon'
+    abrir()
+    const proximo = await waitFor(() => secao('Próximo encontro'))
+    expect(await proximo.findByRole('link', { name: 'Fazer a chamada do Grupo Daniel' })).toBeInTheDocument()
+  })
+
+  it('o encontro remarcado para hoje aparece só como próximo, não também nos feitos', async () => {
+    const painel = criarPainel()
+    const daniel = painel.grupos[0]
+    const remarcadoParaHoje = { ...daniel.proximoEncontro!, dataOriginal: '2026-10-10' }
+    abrir({ painel: { ...painel, grupos: [{ ...daniel, proximoEncontro: remarcadoParaHoje, encontros: [remarcadoParaHoje, ...daniel.encontros] }, painel.grupos[1]] } })
+    const feitos = await waitFor(() => secao('Encontros feitos'))
+    expect(await feitos.findByText('04/10')).toBeInTheDocument()
+    expect(feitos.queryByText('Sem chamada')).not.toBeInTheDocument()
+    expect(feitos.queryByText(/remarcado para domingo 11\/10/)).not.toBeInTheDocument()
+    expect(secao('Próximo encontro').getByRole('link', { name: 'Fazer a chamada do Grupo Daniel' })).toBeInTheDocument()
   })
 
   it('encontro passado sem chamada mostra "Sem chamada" e o caminho para fazê-la', async () => {

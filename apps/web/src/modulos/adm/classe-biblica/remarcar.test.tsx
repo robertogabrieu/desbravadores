@@ -18,15 +18,17 @@ import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
 import { RemarcarEncontro } from './RemarcarEncontro'
 
-const conexao = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao }))
+const conexao = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao, fuso: undefined as string | undefined }))
 
 vi.mock('../../../offline', async (importarOriginal) => ({
   ...(await importarOriginal<typeof import('../../../offline')>()),
   useConexao: () => ({ modo: conexao.modo }),
+  usePacote: () => ({ pacote: conexao.fuso ? { clube: { fuso: conexao.fuso } } : undefined }),
 }))
 
 beforeEach(() => {
   conexao.modo = 'ONLINE'
+  conexao.fuso = undefined
   vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-10-10T15:00:00.000Z') })
 })
 
@@ -116,6 +118,25 @@ describe('Remarcar o encontro', () => {
     await escolherData(usuario, '2026-10-24')
     await usuario.click(screen.getByRole('button', { name: 'Remarcar para sábado, 24/10' }))
     expect(await screen.findByText('Data ocupada.')).toBeInTheDocument()
+  })
+})
+
+describe('Remarcar — "hoje" no fuso do clube', () => {
+  it('no fuso configurado, a data que já passou lá é recusada', async () => {
+    const usuario = userEvent.setup()
+    vi.setSystemTime(new Date('2026-10-14T02:30:00.000Z'))
+    conexao.fuso = 'Europe/Lisbon'
+    abrir()
+    await escolherData(usuario, '2026-10-13')
+    expect(await screen.findByText('Escolha uma data a partir de hoje.')).toBeInTheDocument()
+  })
+
+  it('no fuso padrão, a mesma data ainda é hoje e fica livre', async () => {
+    const usuario = userEvent.setup()
+    vi.setSystemTime(new Date('2026-10-14T02:30:00.000Z'))
+    abrir()
+    await escolherData(usuario, '2026-10-13')
+    expect(await screen.findByText('Terça, 13/10 — dia livre no calendário')).toBeInTheDocument()
   })
 })
 

@@ -127,7 +127,7 @@ test('classe bíblica: o Adm cria a edição, faz a chamada sem rede e ela chega
       async () => {
         await outra.reload()
         await outra.getByRole('tab', { name: 'Grupo Daniel' }).click()
-        return outra.getByText('2 de 3 presentes · 1 participaram ativamente').count()
+        return outra.getByText('2 de 3 presentes · 1 participou ativamente').count()
       },
       { timeout: 30_000 },
     )

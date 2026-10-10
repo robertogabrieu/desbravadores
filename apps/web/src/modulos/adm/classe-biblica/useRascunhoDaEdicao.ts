@@ -3,6 +3,7 @@ import { useCriarRascunhoCB, useSalvarRascunhoCB } from '../../../api/classe-bib
 import type { EdicaoCB, RascunhoDaEdicao } from '../../../api/classe-biblica'
 import { ErroDaApi } from '../../../api/cliente'
 import { useConexao } from '../../../offline'
+import { diaMes } from '../../classe-biblica/formatos'
 import { FUSO_PADRAO_DO_CLUBE } from '../formatos'
 
 export const ETAPAS_DA_EDICAO = ['Dados da edição', 'Grupos', 'Datas']
@@ -80,8 +81,6 @@ export const DIAS_DA_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta
 
 const diaDaSemanaDe = (data: string): number => new Date(`${data}T12:00:00Z`).getUTCDay()
 
-/** "2027-03-07" → "07/03" */
-export const diaMes = (data: string): string => `${data.slice(8, 10)}/${data.slice(5, 7)}`
 
 /** "2027-03-07" → "domingo" */
 export const diaDaSemanaDaData = (data: string): string => DIAS[diaDaSemanaDe(data)]

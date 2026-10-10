@@ -107,10 +107,15 @@ export function useGruposDaEdicao(id: string) {
 }
 
 export function useGravarGruposCB(id: string) {
+  const clienteConsultas = useQueryClient()
   return useMutation({
     networkMode: 'always',
     mutationFn: (entrada: EntradaDosGrupos) =>
       requisitar(`${caminhoDaEdicao(id)}/grupos`, GruposSaida, { metodo: 'PUT', corpo: entrada }),
+    onSuccess: () => {
+      void clienteConsultas.invalidateQueries({ queryKey: chavesClasseBiblica.edicoes })
+      void clienteConsultas.invalidateQueries({ queryKey: chavesClasseBiblica.painel(id), exact: true })
+    },
   })
 }
 

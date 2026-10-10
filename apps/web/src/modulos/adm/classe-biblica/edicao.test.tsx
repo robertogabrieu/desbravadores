@@ -27,15 +27,17 @@ import { EtapaDatas } from './EtapaDatas'
 import { EtapaGrupos } from './EtapaGrupos'
 import { ListaEdicoes } from './ListaEdicoes'
 
-const conexao = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao }))
+const conexao = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao, fuso: undefined as string | undefined }))
 
 vi.mock('../../../offline', async (importarOriginal) => ({
   ...(await importarOriginal<typeof import('../../../offline')>()),
   useConexao: () => ({ modo: conexao.modo }),
+  usePacote: () => ({ pacote: conexao.fuso ? { clube: { fuso: conexao.fuso } } : undefined }),
 }))
 
 beforeEach(() => {
   conexao.modo = 'ONLINE'
+  conexao.fuso = undefined
 })
 
 interface Gravacao { metodo: string; caminho: string; corpo: unknown }
@@ -419,6 +421,17 @@ describe('Etapa 2 — gravação dos grupos', () => {
       { id: NOVO_GRUPO_ID, nome: 'Grupo Rute', unidadeIds: [] },
     ])
     expect(put.corpos[1].grupos.some((g) => g.id === GRUPO_ESTER_ID)).toBe(false)
+  })
+
+  it('gravar os grupos invalida o painel da edição, para o "voltar à edição" não mostrar nomes antigos', async () => {
+    const usuario = userEvent.setup()
+    let leiturasDoPainel = 0
+    abrir(`/adm/classe-biblica/${EDICAO_CB_ID}/etapa/2`, {}, http.get('/api/classe-biblica/edicoes/:id', () => {
+      leiturasDoPainel += 1
+      return HttpResponse.json(criarPainel({ edicao: RASCUNHO }))
+    }))
+    await usuario.click(await waitFor(() => grupo('Grupo 2').getByRole('checkbox', { name: /^Tigres/ })))
+    await waitFor(() => expect(leiturasDoPainel).toBe(2))
   })
 
   it('o título de cada grupo leva o total de DBVs das unidades marcadas', async () => {
