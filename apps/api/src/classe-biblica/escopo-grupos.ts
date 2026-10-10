@@ -15,8 +15,8 @@ export interface AcessoAoPainel {
   podeFazerChamada: boolean
   /** Grupos não removidos da edição que a pessoa vê, na ordem da edição. */
   grupoIds: string[]
-  /** null = vê todos os desbravadores; senão, só estes (regra 9). */
-  dbvsVisiveis: ((dbvIds: string[]) => Promise<Set<string>>) | null
+  /** null = vê todos os desbravadores; senão, só estes (regra 9). Com `data`, vale também a unidade naquele dia. */
+  dbvsVisiveis: ((dbvIds: string[], data?: Date) => Promise<Set<string>>) | null
 }
 
 /** Escopo da Classe Bíblica (regra 9): o Adm vê tudo; Conselheiro pelas unidades; Instrutor pelos CURSANDO das classes dele. */
@@ -46,11 +46,14 @@ export class ServicoEscopoGrupos {
     return grupos.map((grupo) => grupo.id)
   }
 
-  /** Dos desbravadores dados, os que a sessão alcança na chamada (regra 9). */
-  async dbvsNoEscopo(sessao: SessaoLogada, dbvIds: string[]): Promise<Set<string>> {
+  /**
+   * Dos desbravadores dados, os que a sessão alcança na chamada (regra 9). Com `data` (a do encontro),
+   * o Conselheiro alcança também quem estava numa unidade dele naquele dia, não só quem está nela hoje.
+   */
+  async dbvsNoEscopo(sessao: SessaoLogada, dbvIds: string[], data?: Date): Promise<Set<string>> {
     if (dbvIds.length === 0) return new Set()
     const { gerenciar } = await this.permissoes(sessao)
-    const filtro = gerenciar || sessao.papel === 'ADM' ? {} : await this.filtroDeDbv(sessao)
+    const filtro = gerenciar || sessao.papel === 'ADM' ? {} : await this.filtroDeDbv(sessao, data)
     if (filtro === null) return new Set()
     const dbvs = await this.prisma.desbravador.findMany({
       where: { clubeId: sessao.clubeId, id: { in: dbvIds }, ...filtro },
@@ -78,7 +81,7 @@ export class ServicoEscopoGrupos {
       podeGerenciar: gerenciar,
       podeFazerChamada: chamada,
       grupoIds,
-      dbvsVisiveis: veTudo ? null : (dbvIds) => this.dbvsNoEscopo(sessao, dbvIds),
+      dbvsVisiveis: veTudo ? null : (dbvIds, data) => this.dbvsNoEscopo(sessao, dbvIds, data),
     }
   }
 
@@ -105,11 +108,12 @@ export class ServicoEscopoGrupos {
     return { unidades: { some: { clubeId, unidade: { membros: { some: { clubeId, fim: null, dbv: { clubeId, ativo: true, ...dbv } } } } } } }
   }
 
-  private async filtroDeDbv(sessao: SessaoLogada): Promise<Prisma.DesbravadorWhereInput | null> {
+  private async filtroDeDbv(sessao: SessaoLogada, data?: Date): Promise<Prisma.DesbravadorWhereInput | null> {
     const { clubeId } = sessao
     if (sessao.papel === 'CONSELHEIRO') {
       const unidadeIds = await this.escopo.unidadesDoConselheiro(sessao)
-      return { membros: { some: { clubeId, unidadeId: { in: unidadeIds }, fim: null } } }
+      const naData = data ? [{ inicio: { lte: data }, fim: { gt: data } }] : []
+      return { membros: { some: { clubeId, unidadeId: { in: unidadeIds }, OR: [{ fim: null }, ...naData] } } }
     }
     if (sessao.papel === 'INSTRUTOR') {
       const [classeIds, relogio] = await Promise.all([this.escopo.classesDoInstrutor(sessao), this.escopo.relogio(clubeId)])

@@ -103,6 +103,15 @@ describe('classe bíblica: remarcar, cancelar e desfazer (regra 7)', () => {
       expect(segunda.dados).toMatchObject({ data: dia(8), horario: '15:30', dataOriginal: dia(7) })
     })
 
+    it('remarcar de volta para a data original limpa a data original', async () => {
+      const { adm, e1 } = await cenario()
+      await api.post(`${BASE}/${e1.id}/remarcar`, adm.autorizacao, { data: dia(9) }).expect(201)
+      const deVolta = corpo<ComAvisos>(await api.post(`${BASE}/${e1.id}/remarcar`, adm.autorizacao, { data: dia(7) }).expect(201))
+      expect(deVolta.dados).toMatchObject({ data: dia(7), dataOriginal: null })
+      const gravado = await prismaDeTeste().encontroClasseBiblica.findUniqueOrThrow({ where: { id: e1.id } })
+      expect(gravado.dataOriginal).toBeNull()
+    })
+
     it('data em feriado avisa e deixa seguir', async () => {
       const { clube, adm, e1 } = await cenario()
       const feriado = await criarEvento({ clubeId: clube.id, tipo: 'FERIADO', inicio: dia(9) })

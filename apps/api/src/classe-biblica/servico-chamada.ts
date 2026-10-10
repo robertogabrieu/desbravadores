@@ -9,6 +9,7 @@ import { Prisma } from '../generated/prisma/client.js'
 import type { EncontroClasseBiblica } from '../generated/prisma/client.js'
 import { ServicoPontos, type PontoDevido } from '../pontos/servico-pontos'
 import { diaEMes } from '../progresso/conclusoes'
+import { linhaDoEncontro, membrosDaChamada, SELECAO_LINHA, SELECAO_VINCULO, vinculo, type MembroDaChamada } from './composicao'
 import { garantirCriterios } from './criterios'
 import { ServicoEscopoGrupos, type AcessoAoPainel } from './escopo-grupos'
 import { ENCONTRO_NAO_ENCONTRADO, hojeDoClube } from './servico-encontros'
@@ -22,15 +23,6 @@ type Nomeado = { dbvId: string; nome: string }
 
 const TEMPO_DA_TRANSACAO_MS = 20_000
 const CODIGOS_DE_CORRIDA = ['P2002', 'P2034']
-
-/** Um desbravador da lista: ativo e com a unidade do grupo na data (regra 8), já cortado pelo escopo (regra 9). */
-interface MembroDaData {
-  dbvId: string
-  nome: string
-  unidadeId: string
-  unidadeNome: string
-  inicio: Date
-}
 
 function ehCorrida(erro: unknown): boolean {
   return erro instanceof Prisma.PrismaClientKnownRequestError && CODIGOS_DE_CORRIDA.includes(erro.code)
@@ -62,7 +54,7 @@ export class ServicoChamada {
       where: { clubeId, id: grupo.edicaoId },
       select: { nome: true, inicio: true },
     })
-    const membros = await membrosNaData(this.prisma, clubeId, grupo.id, encontro.data, acesso)
+    const membros = await membrosNaData(this.prisma, clubeId, grupo.id, encontro, acesso)
     const [presencas, chamada] = await Promise.all([
       this.prisma.presencaClasseBiblica.findMany({
         where: { clubeId, encontroId: encontro.id, dbvId: { in: membros.map((m) => m.dbvId) } },
@@ -79,7 +71,7 @@ export class ServicoChamada {
       unidade.desbravadores.push({
         dbvId: membro.dbvId,
         nome: membro.nome,
-        entrouEm: edicao.inicio && membro.inicio > edicao.inicio ? paraDataCivil(membro.inicio) : null,
+        entrouEm: edicao.inicio && membro.inicio && membro.inicio > edicao.inicio ? paraDataCivil(membro.inicio) : null,
         presente: gravada?.presente ?? true,
         participou: gravada?.participou ?? false,
         versao: gravada ? gravada.versao.toISOString() : null,
@@ -135,7 +127,8 @@ export class ServicoChamada {
     const encontro = await encontroDoGrupo(tx, clubeId, encontroId, grupo.edicaoId)
     exigirAberto(encontro, await hojeDoClube(tx, clubeId, agora))
 
-    const membros = await membrosNaData(tx, clubeId, grupo.id, encontro.data, acesso)
+    // Quem já tem linha em outro grupo neste encontro não está na lista e volta em ignorados: a linha não muda de grupo.
+    const membros = await membrosNaData(tx, clubeId, grupo.id, encontro, acesso)
     const daLista = new Map(membros.map((membro) => [membro.dbvId, membro]))
     const foraIds = envio.linhas.map((linha) => linha.dbvId).filter((dbvId) => !daLista.has(dbvId))
     const conhecidos = await tx.desbravador.findMany({ where: { clubeId, id: { in: foraIds } }, select: { id: true, nome: true } })
@@ -157,17 +150,15 @@ export class ServicoChamada {
       const presente = linha.presente
       const participou = presente && linha.participou
       const gravada = antes.get(linha.dbvId)
-      const identica =
-        gravada?.presente === presente && gravada.participou === participou && gravada.grupoId === grupo.id && gravada.unidadeId === membro.unidadeId
-      if (identica) continue
+      if (gravada?.presente === presente && gravada.participou === participou) continue
       if (gravada && (linha.versaoVista === null || Date.parse(linha.versaoVista) !== gravada.versao.getTime())) {
         conflitos.push({ dbvId: membro.dbvId, nome: membro.nome })
       }
-      const dados = { grupoId: grupo.id, unidadeId: membro.unidadeId, presente, participou, versao, alteradaPorId: sessao.usuarioId, envioId: envio.envioId }
+      const marcas = { presente, participou, versao, alteradaPorId: sessao.usuarioId, envioId: envio.envioId }
       await tx.presencaClasseBiblica.upsert({
         where: { encontroId_dbvId: { encontroId: encontro.id, dbvId: membro.dbvId }, clubeId },
-        create: { clubeId, encontroId: encontro.id, dbvId: membro.dbvId, ...dados },
-        update: dados,
+        create: { clubeId, encontroId: encontro.id, dbvId: membro.dbvId, grupoId: grupo.id, unidadeId: membro.unidadeId, ...marcas },
+        update: marcas,
       })
       gravadas.push({ dbvId: membro.dbvId, presente, participou })
     }
@@ -239,23 +230,33 @@ async function envioProcessado(tx: Tx, clubeId: string, envioId: string): Promis
   return tx.envioClasseBiblicaProcessado.findFirst({ where: { clubeId, envioId }, select: { encontroId: true, grupoId: true } })
 }
 
-/** Ativos com a unidade do grupo na data (`inicio <= data < fim`, como a reunião), cortados pelo escopo. */
-async function membrosNaData(db: Banco, clubeId: string, grupoId: string, data: Date, acesso: AcessoAoPainel): Promise<MembroDaData[]> {
-  const unidades = await db.grupoUnidadeClasseBiblica.findMany({ where: { clubeId, grupoId }, select: { unidadeId: true } })
-  const membros = await db.membroUnidade.findMany({
+/** A lista do grupo no encontro (regras 8 e 14, ver `membrosDaChamada`), cortada pelo escopo na data do encontro (regra 9). */
+async function membrosNaData(
+  db: Banco,
+  clubeId: string,
+  grupoId: string,
+  encontro: { id: string; data: Date },
+  acesso: AcessoAoPainel,
+): Promise<MembroDaChamada[]> {
+  const { data } = encontro
+  const [ligacoes, linhas] = await Promise.all([
+    db.grupoUnidadeClasseBiblica.findMany({ where: { clubeId, grupoId }, select: { unidadeId: true } }),
+    db.presencaClasseBiblica.findMany({ where: { clubeId, encontroId: encontro.id }, select: SELECAO_LINHA }),
+  ])
+  const unidadeIds = ligacoes.map((ligacao) => ligacao.unidadeId)
+  const gravadosDoGrupo = linhas.filter((linha) => linha.grupoId === grupoId).map((linha) => linha.dbvId)
+  const vinculos = await db.membroUnidade.findMany({
     where: {
       clubeId,
-      unidadeId: { in: unidades.map((unidade) => unidade.unidadeId) },
       inicio: { lte: data },
-      OR: [{ fim: null }, { fim: { gt: data } }],
+      AND: [{ OR: [{ unidadeId: { in: unidadeIds } }, { dbvId: { in: gravadosDoGrupo } }] }, { OR: [{ fim: null }, { fim: { gt: data } }] }],
       dbv: { clubeId, ativo: true },
     },
-    select: { dbvId: true, unidadeId: true, inicio: true, dbv: { select: { nome: true } }, unidade: { select: { nome: true } } },
+    select: SELECAO_VINCULO,
   })
-  const visiveis = acesso.dbvsVisiveis ? await acesso.dbvsVisiveis(membros.map((membro) => membro.dbvId)) : null
-  return membros
-    .filter((membro) => visiveis === null || visiveis.has(membro.dbvId))
-    .map((membro) => ({ dbvId: membro.dbvId, nome: membro.dbv.nome, unidadeId: membro.unidadeId, unidadeNome: membro.unidade.nome, inicio: membro.inicio }))
+  const membros = membrosDaChamada(grupoId, new Set(unidadeIds), data, linhas.map(linhaDoEncontro), vinculos.map(vinculo))
+  const visiveis = acesso.dbvsVisiveis ? await acesso.dbvsVisiveis(membros.map((membro) => membro.dbvId), data) : null
+  return membros.filter((membro) => visiveis === null || visiveis.has(membro.dbvId))
 }
 
 async function montarSaida(
@@ -267,12 +268,15 @@ async function montarSaida(
   conflitos: Nomeado[],
   ignorados: Nomeado[],
 ): Promise<Saida> {
-  const linhas = await tx.presencaClasseBiblica.findMany({
-    where: { clubeId, encontroId, grupoId },
-    select: { dbvId: true, presente: true, participou: true, versao: true },
-    orderBy: { dbvId: 'asc' },
-  })
-  const visiveis = acesso.dbvsVisiveis ? await acesso.dbvsVisiveis(linhas.map((linha) => linha.dbvId)) : null
+  const [linhas, encontro] = await Promise.all([
+    tx.presencaClasseBiblica.findMany({
+      where: { clubeId, encontroId, grupoId },
+      select: { dbvId: true, presente: true, participou: true, versao: true },
+      orderBy: { dbvId: 'asc' },
+    }),
+    tx.encontroClasseBiblica.findFirstOrThrow({ where: { clubeId, id: encontroId }, select: { data: true } }),
+  ])
+  const visiveis = acesso.dbvsVisiveis ? await acesso.dbvsVisiveis(linhas.map((linha) => linha.dbvId), encontro.data) : null
   const doEscopo = linhas.filter((linha) => visiveis === null || visiveis.has(linha.dbvId))
   return {
     linhas: doEscopo.map((linha) => ({ dbvId: linha.dbvId, presente: linha.presente, participou: linha.participou, versao: linha.versao.toISOString() })),

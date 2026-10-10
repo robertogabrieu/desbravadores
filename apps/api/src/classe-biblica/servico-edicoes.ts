@@ -24,10 +24,11 @@ import { PrismaService } from '../comum/prisma/prisma.service'
 import { gerarUuidV7 } from '../comum/uuid-v7'
 import { daDataCivil, paraDataCivil } from '../desbravadores/apoio'
 import { ServicoEscopo } from '../desbravadores/escopo.service'
-import type { EdicaoClasseBiblica, Prisma, TipoEvento } from '../generated/prisma/client.js'
+import type { EdicaoClasseBiblica, Prisma } from '../generated/prisma/client.js'
 import type { ArquivoEmDisco } from '../materiais/materiais.service'
 import { conteudoConfereComExtensao } from '../materiais/conferencia-de-documento'
 import { garantirCriterios } from './criterios'
+import { ROTULO_DO_IMPEDIMENTO, TIPOS_QUE_IMPEDEM } from './datas'
 import { EDICAO_NAO_ENCONTRADA, GRUPO_NAO_ENCONTRADO } from './escopo-grupos'
 
 type Edicao = z.infer<typeof EdicaoSaida>
@@ -38,10 +39,6 @@ type Banco = Prisma.TransactionClient | PrismaService
 const TEMPO_DA_TRANSACAO_MS = 20_000
 const CONFIRA = 'Confira os campos informados.'
 const TRAVADOS_DEPOIS_DE_TERMINAR = 'Início, fim e dia da semana não mudam depois que os encontros foram criados.'
-
-/** Tipos de evento que fazem a data vir desmarcada (regra 4), com o rótulo do calendário. */
-const ROTULO_DO_IMPEDIMENTO: Partial<Record<TipoEvento, string>> = { FERIAS: 'Férias', FERIADO: 'Feriado', SEM_REUNIAO: 'Sem reunião' }
-const TIPOS_QUE_IMPEDEM = Object.keys(ROTULO_DO_IMPEDIMENTO) as TipoEvento[]
 
 /** Campos de grupo que montam o `GrupoCB` e o material. */
 export const SELECAO_GRUPO = {
@@ -188,23 +185,25 @@ export class ServicoEdicoes {
   /** Salva o que veio; em edição terminada, horário e local descem aos encontros futuros sem chamada (regra 14). */
   async editar(sessao: SessaoLogada, id: string, entrada: z.infer<typeof EdicaoRascunhoEntrada>): Promise<Edicao> {
     const { clubeId } = sessao
-    const atual = await exigirEdicao(this.prisma, clubeId, id)
-    const terminada = atual.terminadaEm !== null
-    if (terminada) {
-      const mudou = (novo: string | number | null | undefined, antigo: Date | number | null): boolean =>
-        novo !== undefined && novo !== (antigo instanceof Date ? paraDataCivil(antigo) : antigo)
-      if (mudou(entrada.inicio, atual.inicio) || mudou(entrada.fim, atual.fim) || mudou(entrada.diaSemana, atual.diaSemana)) {
-        throw new ErroApp('REGRA', TRAVADOS_DEPOIS_DE_TERMINAR)
-      }
-      if (entrada.horario === null) throw new ErroApp('VALIDACAO', CONFIRA, { horario: 'Informe o horário.' })
-      if (entrada.nome === '') throw new ErroApp('VALIDACAO', CONFIRA, { nome: 'Informe o nome.' })
-    }
-    const inicio = entrada.inicio !== undefined ? entrada.inicio : atual.inicio && paraDataCivil(atual.inicio)
-    const fim = entrada.fim !== undefined ? entrada.fim : atual.fim && paraDataCivil(atual.fim)
-    exigirPeriodo(inicio, fim)
     const { hoje } = await this.escopo.relogio(clubeId)
-
     const editada = await this.prisma.$transaction(async (tx) => {
+      // Sob a trava do terminar: quem decide o que está travado lê a edição já terminada, se o terminar veio antes.
+      await travarClube(tx, clubeId)
+      const atual = await exigirEdicao(tx, clubeId, id)
+      const terminada = atual.terminadaEm !== null
+      if (terminada) {
+        const mudou = (novo: string | number | null | undefined, antigo: Date | number | null): boolean =>
+          novo !== undefined && novo !== (antigo instanceof Date ? paraDataCivil(antigo) : antigo)
+        if (mudou(entrada.inicio, atual.inicio) || mudou(entrada.fim, atual.fim) || mudou(entrada.diaSemana, atual.diaSemana)) {
+          throw new ErroApp('REGRA', TRAVADOS_DEPOIS_DE_TERMINAR)
+        }
+        if (entrada.horario === null) throw new ErroApp('VALIDACAO', CONFIRA, { horario: 'Informe o horário.' })
+        if (entrada.nome === '') throw new ErroApp('VALIDACAO', CONFIRA, { nome: 'Informe o nome.' })
+      }
+      const inicio = entrada.inicio !== undefined ? entrada.inicio : atual.inicio && paraDataCivil(atual.inicio)
+      const fim = entrada.fim !== undefined ? entrada.fim : atual.fim && paraDataCivil(atual.fim)
+      exigirPeriodo(inicio, fim)
+
       const gravada = await tx.edicaoClasseBiblica.update({
         where: { clubeId_id: { clubeId, id } },
         data: {
@@ -219,7 +218,7 @@ export class ServicoEdicoes {
       })
       if (terminada) await propagarAosEncontros(tx, clubeId, atual, gravada, hoje)
       return gravada
-    })
+    }, { timeout: TEMPO_DA_TRANSACAO_MS })
     return saidaDaEdicao(editada, hoje)
   }
 
@@ -277,6 +276,9 @@ export class ServicoEdicoes {
         }
         if (edicao.terminadaEm && entrada.grupos.some((grupo) => grupo.nome === '')) {
           throw new ErroApp('VALIDACAO', CONFIRA, { grupos: 'Dê um nome a cada grupo.' })
+        }
+        if (edicao.terminadaEm && entrada.grupos.some((grupo) => grupo.unidadeIds.length === 0)) {
+          throw new ErroApp('VALIDACAO', CONFIRA, { grupos: 'Cada grupo precisa de ao menos uma unidade.' })
         }
 
         const existentes = await tx.grupoClasseBiblica.findMany({

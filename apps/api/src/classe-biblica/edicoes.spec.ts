@@ -318,6 +318,18 @@ describe('classe bíblica: edição', () => {
         ['Presença na Classe Bíblica (Classe Bíblica)', 21],
       ])
     })
+
+    it('nome alternativo também tomado ganha sufixo numérico até achar um livre', async () => {
+      const clube = await criarClube()
+      const prisma = prismaDeTeste()
+      const tomados = [NOMES[0] ?? '', `${NOMES[0] ?? ''} (Classe Bíblica)`, `${NOMES[0] ?? ''} (Classe Bíblica) 2`]
+      for (const [ordem, nome] of tomados.entries()) {
+        await prisma.criterioRanking.create({ data: { clubeId: clube.id, nome, pontos: 1, ordem: 20 + ordem, gatilho: 'MANUAL', lancadoPor: 'ADM', padrao: false } })
+      }
+      await prisma.$transaction((tx) => garantirCriterios(tx, clube.id))
+      const criado = await prisma.criterioRanking.findFirstOrThrow({ where: { clubeId: clube.id, gatilho: 'CLASSE_BIBLICA_PRESENCA', padrao: true } })
+      expect(criado.nome).toBe(`${NOMES[0] ?? ''} (Classe Bíblica) 3`)
+    })
   })
 
   describe('edição terminada', () => {
@@ -369,6 +381,15 @@ describe('classe bíblica: edição', () => {
       const removido = await prismaDeTeste().grupoClasseBiblica.findUniqueOrThrow({ where: { id: semChamada.id } })
       expect(removido.removidoEm).not.toBeNull()
       expect(await prismaDeTeste().grupoUnidadeClasseBiblica.count({ where: { grupoId: semChamada.id } })).toBe(0)
+    })
+
+    it('grupo sem unidade é recusado, como no terminar', async () => {
+      const { adm, edicao, comChamada, semChamada, aguias } = await terminada()
+      const recusa = await api.put(`${BASE}/edicoes/${edicao.id}/grupos`, adm.autorizacao, {
+        grupos: [{ id: comChamada.id, nome: 'Daniel', unidadeIds: [aguias.id] }, { id: semChamada.id, nome: 'Ester', unidadeIds: [] }],
+      }).expect(400)
+      expect(corpo<Erro>(recusa)).toMatchObject({ codigo: 'VALIDACAO', campos: { grupos: 'Cada grupo precisa de ao menos uma unidade.' } })
+      expect(await prismaDeTeste().grupoUnidadeClasseBiblica.count({ where: { grupoId: semChamada.id } })).toBe(1)
     })
   })
 

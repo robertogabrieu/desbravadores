@@ -259,6 +259,61 @@ describe('classe bíblica: chamada (regras 8–12)', () => {
     })
   })
 
+  describe('grupo e unidade do dia (regras 8 e 14)', () => {
+    /** Chamada do Daniel em hoje−7 com Ana, Bia e Rui (Águias) e Caio (Leões); depois Águias passa para o Ester. */
+    async function aguiasMudaDeGrupo() {
+      const base = await cenario()
+      const { clube, adm, edicao, daniel, ester, aguias, ana, bia, rui, caio } = base
+      const passado = await criarEncontroCB({ clubeId: clube.id, edicaoId: edicao.id, data: dia(-7) })
+      await api.put(urlEnvio(passado.id, daniel.id), adm.autorizacao, envio([
+        { dbvId: ana.id, presente: true, participou: true },
+        { dbvId: bia.id, presente: false, participou: false },
+        { dbvId: rui.id, presente: true, participou: false },
+        { dbvId: caio.id, presente: true, participou: false },
+      ])).expect(200)
+      await prismaDeTeste().grupoUnidadeClasseBiblica.deleteMany({ where: { grupoId: daniel.id, unidadeId: aguias.id } })
+      await prismaDeTeste().grupoUnidadeClasseBiblica.create({ data: { clubeId: clube.id, edicaoId: edicao.id, grupoId: ester.id, unidadeId: aguias.id } })
+      return { ...base, passado }
+    }
+    const porUnidade = (chamada: Chamada) => chamada.unidades.map((u) => [u.nome, u.desbravadores.map((d) => [d.nome, d.presente])])
+
+    it('a chamada passada do Daniel continua com os de Águias e as marcas; a do Ester não os lista', async () => {
+      const { adm, passado, daniel, ester } = await aguiasMudaDeGrupo()
+      const doDaniel = corpo<Chamada>(await api.get(urlChamada(passado.id, daniel.id), adm.autorizacao).expect(200))
+      expect(porUnidade(doDaniel)).toEqual([
+        ['Águias', [['Ana Lima', true], ['Bia Souza', false], ['Rui Paz', true]]],
+        ['Leões', [['Caio Reis', true]]],
+      ])
+      const doEster = corpo<Chamada>(await api.get(urlChamada(passado.id, ester.id), adm.autorizacao).expect(200))
+      expect(porUnidade(doEster)).toEqual([['Gaviões', [['Duda Melo', true]]]])
+    })
+
+    it('encontro sem linha segue a composição nova', async () => {
+      const { adm, encontro, daniel, ester } = await aguiasMudaDeGrupo()
+      const doEster = corpo<Chamada>(await api.get(urlChamada(encontro.id, ester.id), adm.autorizacao).expect(200))
+      expect(doEster.unidades.map((u) => u.nome)).toEqual(['Águias', 'Gaviões'])
+      const doDaniel = corpo<Chamada>(await api.get(urlChamada(encontro.id, daniel.id), adm.autorizacao).expect(200))
+      expect(doDaniel.unidades.map((u) => u.nome)).toEqual(['Leões'])
+    })
+
+    it('corrigir a do Daniel funciona e mantém grupo e unidade; enviar pelo Ester ignora quem já tem linha', async () => {
+      const { adm, passado, daniel, ester, aguias, ana } = await aguiasMudaDeGrupo()
+      const lista = corpo<Chamada>(await api.get(urlChamada(passado.id, daniel.id), adm.autorizacao).expect(200))
+      const versao = lista.unidades[0]?.desbravadores[0]?.versao ?? null
+      const corrigida = corpo<Saida>(
+        await api.put(urlEnvio(passado.id, daniel.id), adm.autorizacao, envio([{ dbvId: ana.id, presente: false, participou: false, versaoVista: versao }])).expect(200),
+      )
+      expect(corrigida.conflitos).toEqual([])
+      expect(corrigida.ignorados).toEqual([])
+      const peloEster = corpo<Saida>(
+        await api.put(urlEnvio(passado.id, ester.id), adm.autorizacao, envio([{ dbvId: ana.id, presente: true, participou: true }])).expect(200),
+      )
+      expect(peloEster.ignorados).toEqual([{ dbvId: ana.id, nome: 'Ana Lima' }])
+      const linha = await prismaDeTeste().presencaClasseBiblica.findUniqueOrThrow({ where: { encontroId_dbvId: { encontroId: passado.id, dbvId: ana.id } } })
+      expect(linha).toMatchObject({ grupoId: daniel.id, unidadeId: aguias.id, presente: false, participou: false })
+    })
+  })
+
   describe('recusas contra o estado do servidor (regra 12)', () => {
     it('encontro cancelado: recusa com o texto e nada é gravado', async () => {
       const { clube, adm, edicao, daniel, ana } = await cenario()
@@ -325,6 +380,20 @@ describe('classe bíblica: chamada (regras 8–12)', () => {
       )
       expect(saida.linhas.map((l) => l.dbvId)).toEqual([ana.id])
       expect(saida.ignorados).toEqual([{ dbvId: caio.id, nome: 'Caio Reis' }])
+    })
+
+    it('Conselheiro alcança quem estava numa unidade dele na data do encontro, na lista e no envio', async () => {
+      const { clube, edicao, daniel, aguias, rui } = await cenario()
+      const passado = await criarEncontroCB({ clubeId: clube.id, edicaoId: edicao.id, data: dia(-7) })
+      const conselheiro = await criarAcesso({ clubeId: clube.id, papel: 'CONSELHEIRO', unidadeIds: [aguias.id] })
+      await ajustarPermissao(conselheiro.vinculo.id, 'classebiblica.chamada', true)
+      const lista = corpo<Chamada>(await api.get(urlChamada(passado.id, daniel.id), conselheiro.autorizacao).expect(200))
+      expect(lista.unidades.flatMap((u) => u.desbravadores.map((d) => d.dbvId))).toContain(rui.id)
+      const saida = corpo<Saida>(
+        await api.put(urlEnvio(passado.id, daniel.id), conselheiro.autorizacao, envio([{ dbvId: rui.id, presente: true, participou: false }])).expect(200),
+      )
+      expect(saida.ignorados).toEqual([])
+      expect(saida.linhas.map((l) => l.dbvId)).toEqual([rui.id])
     })
 
     it('Instrutor vê só os CURSANDO numa classe dele no ano corrente', async () => {

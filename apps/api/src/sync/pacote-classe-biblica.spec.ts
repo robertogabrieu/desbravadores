@@ -14,6 +14,7 @@ import {
   criarMembro,
   criarUnidade,
   desconectarPrismaDeTeste,
+  prismaDeTeste,
 } from '../../test/fabricas'
 import { ajustarPermissao, anoCorrente, clienteHttp, corpo, criarClasseDoClube } from '../../test/p6'
 
@@ -116,14 +117,17 @@ describe('GET /api/sync/pacote: classe bíblica', () => {
   })
 
   it('Conselheiro sem a permissão recebe null; com ela, só os grupos e desbravadores das unidades dele', async () => {
-    const { clube, aguias, daniel, ana, passado } = await cenario()
+    const { clube, aguias, daniel, ana, rui, passado } = await cenario()
     const conselheiro = await criarAcesso({ clubeId: clube.id, papel: 'CONSELHEIRO', unidadeIds: [aguias.id] })
     expect((await baixar(conselheiro.autorizacao)).classeBiblica).toBeNull()
     await ajustarPermissao(conselheiro.vinculo.id, 'classebiblica.chamada', true)
     const cb = (await baixar(conselheiro.autorizacao)).classeBiblica
     expect(cb?.grupos.map((g) => g.id)).toEqual([daniel.id])
     expect(cb?.grupos[0]?.unidades).toEqual([
-      { id: aguias.id, nome: 'Águias', membros: [{ dbvId: ana.id, nome: 'Ana Lima', inicio: dia(-90), fim: null }] },
+      { id: aguias.id, nome: 'Águias', membros: [
+        { dbvId: ana.id, nome: 'Ana Lima', inicio: dia(-90), fim: null },
+        { dbvId: rui.id, nome: 'Rui Paz', inicio: dia(-90), fim: dia(-1) },
+      ] },
     ])
     expect(cb?.presencas.map((p) => p.dbvId)).toEqual([ana.id])
     expect(cb?.chamadasRegistradas).toEqual([{ encontroId: passado.id, grupoId: daniel.id }])
@@ -141,6 +145,35 @@ describe('GET /api/sync/pacote: classe bíblica', () => {
     expect(cb?.grupos[0]?.unidades.flatMap((u) => u.membros.map((m) => m.dbvId))).toEqual([caio.id])
     expect(cb?.presencas.map((p) => p.dbvId)).toEqual([caio.id])
     void ana
+  })
+
+  /** A lista que o aparelho monta do pacote: membros da unidade com `inicio <= data < fim`, unidades vazias de fora. */
+  function listaNoAparelho(cb: Pacote['classeBiblica'], encontroId: string, grupoId: string): [string, string[]][] {
+    const data = cb?.encontros.find((e) => e.id === encontroId)?.data ?? ''
+    const grupo = cb?.grupos.find((g) => g.id === grupoId && g.encontroIds.includes(encontroId))
+    return (grupo?.unidades ?? [])
+      .map((u): [string, string[]] => [u.nome, u.membros.filter((m) => m.inicio <= data && (m.fim === null || m.fim > data)).map((m) => m.nome)])
+      .filter(([, nomes]) => nomes.length > 0)
+  }
+
+  it('Águias muda do Daniel para o Ester: o encontro com chamada fica como foi, os outros seguem a composição nova', async () => {
+    const { clube, adm, edicao, daniel, ester, aguias, passado, deHoje } = await cenario()
+    await prismaDeTeste().grupoUnidadeClasseBiblica.deleteMany({ where: { grupoId: daniel.id, unidadeId: aguias.id } })
+    await prismaDeTeste().grupoUnidadeClasseBiblica.create({ data: { clubeId: clube.id, edicaoId: edicao.id, grupoId: ester.id, unidadeId: aguias.id } })
+    const cb = (await baixar(adm.autorizacao)).classeBiblica
+    expect(listaNoAparelho(cb, passado.id, daniel.id)).toEqual([['Águias', ['Ana Lima']], ['Leões', ['Caio Reis']]])
+    expect(listaNoAparelho(cb, passado.id, ester.id)).toEqual([['Águias', ['Rui Paz']], ['Gaviões', ['Duda Melo']]])
+    expect(listaNoAparelho(cb, deHoje.id, daniel.id)).toEqual([['Leões', ['Caio Reis']]])
+    expect(listaNoAparelho(cb, deHoje.id, ester.id)).toEqual([['Águias', ['Ana Lima']], ['Gaviões', ['Duda Melo']]])
+  })
+
+  it('Conselheiro leva quem estava numa unidade dele na data de um encontro da janela', async () => {
+    const { clube, aguias, daniel, passado, deHoje } = await cenario()
+    const conselheiro = await criarAcesso({ clubeId: clube.id, papel: 'CONSELHEIRO', unidadeIds: [aguias.id] })
+    await ajustarPermissao(conselheiro.vinculo.id, 'classebiblica.chamada', true)
+    const cb = (await baixar(conselheiro.autorizacao)).classeBiblica
+    expect(listaNoAparelho(cb, passado.id, daniel.id)).toEqual([['Águias', ['Ana Lima', 'Rui Paz']]])
+    expect(listaNoAparelho(cb, deHoje.id, daniel.id)).toEqual([['Águias', ['Ana Lima']]])
   })
 
   it('nada de outro clube entra no pacote', async () => {

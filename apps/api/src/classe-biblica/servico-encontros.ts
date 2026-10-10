@@ -12,8 +12,9 @@ import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { daDataCivil, paraDataCivil } from '../desbravadores/apoio'
-import type { EncontroClasseBiblica, Prisma, TipoEvento } from '../generated/prisma/client.js'
+import type { EncontroClasseBiblica, Prisma } from '../generated/prisma/client.js'
 import { diaEMes } from '../progresso/conclusoes'
+import { ROTULO_DO_IMPEDIMENTO, somarDias, TIPOS_QUE_IMPEDEM } from './datas'
 
 type Aviso = z.infer<typeof AvisoContrato>
 type Encontro = z.infer<typeof EncontroSaida>
@@ -25,14 +26,6 @@ const TEMPO_DA_TRANSACAO_MS = 20_000
 const CONFIRA = 'Confira os campos informados.'
 export const ENCONTRO_NAO_ENCONTRADO = 'Encontro não encontrado.'
 const JA_TEM_CHAMADA = 'Este encontro já tem chamada feita, por isso não dá para remarcar nem cancelar.'
-
-/** Tipos de evento que fazem a data nova avisar (regra 7), com o rótulo do calendário. */
-const ROTULO_DO_AVISO: Partial<Record<TipoEvento, string>> = { FERIAS: 'Férias', FERIADO: 'Feriado', SEM_REUNIAO: 'Sem reunião' }
-const TIPOS_QUE_AVISAM = Object.keys(ROTULO_DO_AVISO) as TipoEvento[]
-
-function somarDias(data: string, dias: number): string {
-  return paraDataCivil(new Date(daDataCivil(data).getTime() + dias * 86_400_000))
-}
 
 /** Remarcar, cancelar e desfazer o cancelamento (regra 7), sempre com o evento do calendário junto. */
 @Injectable()
@@ -93,10 +86,10 @@ export class ServicoEncontros {
       }
 
       const horario = entrada.horario ?? encontro.horario
-      const mudouData = data !== paraDataCivil(encontro.data)
+      const original = encontro.dataOriginal ?? encontro.data
       const atualizado = await tx.encontroClasseBiblica.update({
         where: { clubeId_id: { clubeId, id: encontro.id } },
-        data: { data: daDataCivil(data), horario, ...(mudouData && !encontro.dataOriginal ? { dataOriginal: encontro.data } : {}) },
+        data: { data: daDataCivil(data), horario, dataOriginal: data === paraDataCivil(original) ? null : original },
       })
       await tx.eventoCalendario.update({
         where: { clubeId_id: { clubeId, id: encontro.eventoId } },
@@ -183,14 +176,14 @@ async function outroNaData(db: Banco, clubeId: string, encontro: EncontroClasseB
 
 async function eventosQueAvisam(db: Banco, clubeId: string, inicio: string, fim: string): Promise<{ inicio: string; fim: string; motivo: string }[]> {
   const eventos = await db.eventoCalendario.findMany({
-    where: { clubeId, removidoEm: null, tipo: { in: TIPOS_QUE_AVISAM }, inicio: { lte: daDataCivil(fim) }, fim: { gte: daDataCivil(inicio) } },
+    where: { clubeId, removidoEm: null, tipo: { in: TIPOS_QUE_IMPEDEM }, inicio: { lte: daDataCivil(fim) }, fim: { gte: daDataCivil(inicio) } },
     select: { nome: true, tipo: true, inicio: true, fim: true },
     orderBy: [{ inicio: 'asc' }, { id: 'asc' }],
   })
   return eventos.map((evento) => ({
     inicio: paraDataCivil(evento.inicio),
     fim: paraDataCivil(evento.fim),
-    motivo: `${ROTULO_DO_AVISO[evento.tipo] ?? ''}: ${evento.nome}`,
+    motivo: `${ROTULO_DO_IMPEDIMENTO[evento.tipo] ?? ''}: ${evento.nome}`,
   }))
 }
 
