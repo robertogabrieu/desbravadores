@@ -360,7 +360,8 @@ describe('Regular e avançada · classe dada por lado', () => {
 
   it('computador: conflito que vem só da avançada aparece na linha', async () => {
     const datas = [criarDataMontagem('2026-10-25', { situacao: situacaoDoDia('2026-10-25', [{ nome: 'Ensaio da investidura', tipo: 'EVENTO' }]) })]
-    const avancada = criarAvancadaMontagem([AN6], datas)
+    const base = criarAvancadaMontagem([AN6], datas)
+    const avancada = { ...base, datas: base.datas.map((dado) => ({ ...dado, conflito: true })) }
     abrirAdm(criarMontagem({ requisitos: [R1], datas, avancada }))
     await screen.findByRole('heading', { name: 'Requisitos' })
     expect(within(linha('2026-10-25')).getByText(/Conflito:/)).toBeInTheDocument()

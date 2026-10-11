@@ -86,7 +86,7 @@ interface PropriedadesMover {
 
 /** Folha do "Mover": as datas que aceitam aula (não bloqueadas, sem aula dada). */
 export function FolhaMover({ titulo, requisito, datas, desabilitado, aoEscolher, aoFechar }: PropriedadesMover) {
-  const destinos = datas.filter((dado) => !dataBloqueada(dado) && !dado.lados[requisito.lado].aulaDada && dado.data !== requisito.data)
+  const destinos = datas.filter((dado) => !dataBloqueada(dado, requisito.lado) && !dado.lados[requisito.lado].aulaDada && dado.data !== requisito.data)
 
   async function escolher(data: string) {
     await aoEscolher(data)

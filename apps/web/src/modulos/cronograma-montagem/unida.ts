@@ -1,4 +1,3 @@
-import { emConflito } from '@desbravadores/shared'
 import type { DataDaMontagem, Montagem, RequisitoDaMontagem } from '../../api/montagem'
 import { dataBloqueada } from './datas'
 
@@ -12,8 +11,12 @@ export interface RequisitoUnido extends RequisitoDaMontagem {
 
 /** O que cada classe tem numa data: a aula já dada e o conflito valem por classe, não pela data inteira. */
 export interface SituacaoDoLado {
+  /** A aula planejada da classe nesta data, se existir. */
+  aulaId: string | null
   aulaDada: boolean
   conflito: boolean
+  /** Quantos requisitos da classe estão nesta data. */
+  quantidade: number
 }
 
 /**
@@ -46,34 +49,26 @@ export function unirMontagem(montagem: Montagem): VistaUnida {
   const avancadaPorData = new Map((avancada?.datas ?? []).map((dado) => [dado.data, dado]))
   const datas = montagem.datas.map((dado): DataUnida => {
     const daAvancada = avancadaPorData.get(dado.data)
-    const aulaDadaDaAvancada = daAvancada?.aulaDada ?? false
-    const avancadaTemRequisitos = (daAvancada?.requisitoIds.length ?? 0) > 0
-    // O servidor só informa o conflito da regular. Com requisito da regular na data, ele vale para as duas (mesma data,
-    // mesmo "hoje"); sem, o da avançada sai da mesma regra (`emConflito`), sem corte por "hoje".
-    const regularDecide = dado.requisitoIds.length > 0 && !dado.aulaDada
-    const conflitoDaAvancada =
-      avancadaTemRequisitos &&
-      !aulaDadaDaAvancada &&
-      (regularDecide
-        ? dado.conflito
-        : emConflito({
-            trilha: 'INDIVIDUAL',
-            temRequisitos: true,
-            temRegistro: false,
-            data: dado.data,
-            hoje: dado.data,
-            situacaoDaData: dado.situacao,
-          }))
-    const doLadoRegular: SituacaoDoLado = { aulaDada: dado.aulaDada, conflito: dado.conflito }
+    const doLadoRegular: SituacaoDoLado = {
+      aulaId: dado.aulaId,
+      aulaDada: dado.aulaDada,
+      conflito: dado.conflito,
+      quantidade: dado.requisitoIds.length,
+    }
+    // Sem avançada, o lado dela espelha o da regular: nenhuma checagem "de qualquer lado" aceita o que a regular recusa.
+    const doLadoAvancada: SituacaoDoLado = daAvancada
+      ? {
+          aulaId: daAvancada.aulaId,
+          aulaDada: daAvancada.aulaDada,
+          conflito: daAvancada.conflito,
+          quantidade: daAvancada.requisitoIds.length,
+        }
+      : doLadoRegular
     return {
       ...dado,
-      conflito: dado.conflito || conflitoDaAvancada,
+      conflito: dado.conflito || doLadoAvancada.conflito,
       requisitoIds: [...dado.requisitoIds, ...(daAvancada?.requisitoIds ?? [])],
-      lados: {
-        REGULAR: doLadoRegular,
-        // Sem avançada, o lado dela espelha o da regular: nenhuma checagem "de qualquer lado" aceita o que a regular recusa.
-        AVANCADA: daAvancada ? { aulaDada: aulaDadaDaAvancada, conflito: conflitoDaAvancada } : doLadoRegular,
-      },
+      lados: { REGULAR: doLadoRegular, AVANCADA: doLadoAvancada },
     }
   })
   return {
@@ -85,6 +80,18 @@ export function unirMontagem(montagem: Montagem): VistaUnida {
     datas,
     ladoPorId,
   }
+}
+
+/** As aulas planejadas desta data, uma por classe que tem: o dia da linha é o encontro das duas. */
+export function aulasDaData(dado: DataUnida): string[] {
+  const ids = [dado.lados.REGULAR.aulaId, dado.lados.AVANCADA.aulaId].filter((id): id is string => id !== null)
+  return [...new Set(ids)]
+}
+
+/** Editar ou remover o dia: há aula e nenhuma das que existem já foi dada. */
+export function diaPodeMudar(dado: DataUnida): boolean {
+  const lados = [dado.lados.REGULAR, dado.lados.AVANCADA]
+  return lados.some((lado) => lado.aulaId !== null) && lados.every((lado) => lado.aulaId === null || !lado.aulaDada)
 }
 
 /** Quantos requisitos de cada classe estão numa data. */

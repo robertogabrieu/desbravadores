@@ -151,6 +151,15 @@ describe('A5 · classes · lista e detalhe', () => {
     expect(screen.getByRole('button', { name: /^Amigo10/ })).toHaveAttribute('aria-pressed', 'true')
   })
 
+  it('avançada com o par inativo (regular nula) mostra o próprio "Quem monta", editável, no lugar do cartão do par', async () => {
+    abrirClasses(`/adm/classes?classe=${avancada.id}`)
+    servidor.use(handlerDetalheDaClasse(criarDetalhe({ ...avancada, regular: null, quemMontaCronograma: 'INSTRUTOR', secoes: [] })))
+    const quemMonta = await screen.findByRole('radiogroup', { name: 'Quem monta o cronograma' })
+    expect(within(quemMonta).getByRole('radio', { name: 'Instrutores da classe' })).toBeChecked()
+    expect(within(quemMonta).getByRole('radio', { name: 'Adm' })).toBeEnabled()
+    expect(screen.queryByText(/Anda junto com/)).not.toBeInTheDocument()
+  })
+
   it('a regular com avançada diz "Vale para …" sob o Quem monta; sem avançada não diz', async () => {
     abrirClasses()
     expect(await screen.findByRole('radiogroup', { name: 'Quem monta o cronograma' })).toBeInTheDocument()

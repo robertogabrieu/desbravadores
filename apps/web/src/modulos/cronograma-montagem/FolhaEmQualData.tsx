@@ -71,7 +71,7 @@ interface Recusa {
 function recusa(requisito: RequisitoUnido, dado: DataUnida, datasLivres: boolean): Recusa | null {
   if (requisito.data === dado.data) return { curta: 'o requisito já está nesta data', longa: 'O requisito já está nesta data.' }
   if (aceitaRequisitoNovo({ datasLivres }, dado, requisito.lado)) return null
-  if (dataBloqueada(dado)) {
+  if (dataBloqueada(dado, requisito.lado)) {
     const eventos = dado.situacao.eventos.join(', ')
     return eventos
       ? { curta: `sem classe (${eventos})`, longa: `Sem classe: ${eventos}. ${NAO_DA}` }
@@ -128,7 +128,7 @@ export function FolhaEmQualData({ requisito, vista, datas, datasLivres, desabili
   const proxima = avaliadas.find((avaliada) => avaliada.recusa === null && avaliada.dado.requisitoIds.length === 0)?.dado.data
   const nenhumaAceita = esconderRecusadas && avaliadas.length > 0 && avaliadas.every((avaliada) => avaliada.recusa !== null)
   const diaDeOrigem = datas.find((dado) => dado.data === requisito.data)
-  const diaQueSome = diaDeOrigem && diaComDadosSomeAoTirar({ datasLivres }, diaDeOrigem) ? diaDeOrigem : undefined
+  const diaQueSome = diaDeOrigem && diaComDadosSomeAoTirar({ datasLivres }, diaDeOrigem, requisito.lado) ? diaDeOrigem : undefined
   const idDoMes = (chave: string) => `${prefixo}-mes-${chave}`
 
   function irParaOMes(chave: string) {

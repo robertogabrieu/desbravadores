@@ -11,12 +11,11 @@ import { EtiquetaCampo } from './EtiquetaCampo'
 import { EtiquetaDoLado } from './EtiquetaDoLado'
 import { FaixaDeMontagem } from './FaixaDeMontagem'
 import { FolhaAdicionar, FolhaMover } from './FolhasDoInstrutor'
-import { FormularioAula } from './FormularioAula'
-import type { AulaEmEdicao } from './FormularioAula'
+import { AULA_NOVA, FormularioAula, aulaEmEdicaoDaData, type AulaEmEdicao } from './FormularioAula'
 import { LinhaData } from './LinhaData'
 import { OrdemDasDatas } from './OrdemDasDatas'
 import { aceitaRequisitoNovo } from './datas'
-import { ordenarPorVazias, unirMontagem } from './unida'
+import { aulasDaData, ordenarPorVazias, unirMontagem } from './unida'
 import type { DataUnida, RequisitoUnido } from './unida'
 import { useAcoesDeMontagem } from './useAcoesDeMontagem'
 
@@ -26,8 +25,6 @@ interface Propriedades {
   ano: number | undefined
   aoAtualizar: () => void
 }
-
-const AULA_VAZIA: AulaEmEdicao = { data: null, aulaId: null, dados: { horario: null, local: null, titulo: null } }
 
 /** I3b com cronograma: abas Por data / Sem data; "Adicionar requisito" numa data ou o toque num requisito sem data agendam, cada ação grava. */
 export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Propriedades) {
@@ -62,7 +59,7 @@ export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Prop
   }
 
   async function salvarAula(aula: AulaEmEdicao, data: string): Promise<boolean> {
-    return aula.aulaId ? acoes.editarAula(aula.aulaId, aula.dados) : acoes.criarAula(data, aula.dados)
+    return aula.aulaIds.length > 0 ? acoes.editarAulas(aula.aulaIds, aula.dados) : acoes.criarAula(data, aula.dados)
   }
 
   return (
@@ -106,7 +103,7 @@ export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Prop
             </>
           )}
           {montagem.datasLivres && (
-            <Botao variante="secundario" onClick={() => setAulaEmEdicao(AULA_VAZIA)}>
+            <Botao variante="secundario" onClick={() => setAulaEmEdicao(AULA_NOVA)}>
               + Novo dia de classe
             </Botao>
           )}
@@ -123,11 +120,9 @@ export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Prop
                   destaqueCampo={dado.situacao.bomParaCampo}
                   desabilitada={acoes.ocupada}
                   aoTirar={(requisito) => void acoes.tirar(requisito.id)}
-                  aoRemoverAula={(aula) => aula.aulaId && void acoes.removerAula(aula.aulaId)}
+                  aoRemoverAula={(aula) => void acoes.removerAulas(aulasDaData(aula))}
                   aoMover={setEmMovimento}
-                  aoEditar={(aula) =>
-                    setAulaEmEdicao({ data: aula.data, aulaId: aula.aulaId, dados: { horario: aula.horario, local: aula.local, titulo: aula.titulo } })
-                  }
+                  aoEditar={(aula) => setAulaEmEdicao(aulaEmEdicaoDaData(aula))}
                   acaoDaData={
                     aceitaRequisitoNovo(montagem, dado) && (
                       <button

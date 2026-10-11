@@ -6,7 +6,7 @@ import { Selo } from '../../ui/Selo'
 import { cn } from '../../ui/cn'
 import { EtiquetaDoLado } from './EtiquetaDoLado'
 import { MedidorDeOcupacao } from './MedidorDeOcupacao'
-import type { DataUnida, RequisitoUnido } from './unida'
+import { diaPodeMudar, type DataUnida, type RequisitoUnido } from './unida'
 import { dataBloqueada, detalheDaAula, diaDaSemanaEData, textoDaData } from './datas'
 
 interface Propriedades {
@@ -29,7 +29,7 @@ export function CartaoDaDataCelular({ dado, requisitos, comAvancada = false, des
   const texto = textoDaData(dado) || 'Dia de classe'
   const detalhe = detalheDaAula(dado)
   const bloqueada = dataBloqueada(dado)
-  const podeEditar = dado.aulaId !== null && !dado.lados.REGULAR.aulaDada
+  const podeEditar = diaPodeMudar(dado)
   // Classe dada só em uma das duas: o selo vai nos requisitos dela; nos dois lados, na data.
   const dadaNosDois = dado.lados.REGULAR.aulaDada && (!comAvancada || dado.lados.AVANCADA.aulaDada)
 
@@ -128,7 +128,7 @@ export function CartaoDaDataCelular({ dado, requisitos, comAvancada = false, des
         }}
         aoCancelar={() => setConfirmandoRemocao(false)}
       >
-        Os requisitos deste dia de classe voltam a ficar sem data.
+        {comAvancada ? 'Os requisitos das duas classes neste dia voltam a ficar sem data.' : 'Os requisitos deste dia de classe voltam a ficar sem data.'}
       </Confirmacao>
     </li>
   )

@@ -86,6 +86,7 @@ export function criarAvancadaMontagem(
       data: dado.data,
       aulaId: null,
       aulaDada: dado.aulaDada,
+      conflito: false,
       requisitoIds: requisitos.filter((requisito) => requisito.data === dado.data).map((requisito) => requisito.id),
     })),
     ...parcial,

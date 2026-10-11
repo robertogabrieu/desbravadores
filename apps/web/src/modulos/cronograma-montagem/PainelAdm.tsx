@@ -14,14 +14,13 @@ import { EtiquetaCampo } from './EtiquetaCampo'
 import { EtiquetaDoLado } from './EtiquetaDoLado'
 import { FaixaDeMontagem } from './FaixaDeMontagem'
 import { ConfirmarPublicacao } from './ConfirmarPublicacao'
-import { FormularioAula } from './FormularioAula'
-import type { AulaEmEdicao } from './FormularioAula'
+import { AULA_NOVA, FormularioAula, aulaEmEdicaoDaData, type AulaEmEdicao } from './FormularioAula'
 import { LinhaData } from './LinhaData'
 import { OrdemDasDatas } from './OrdemDasDatas'
 import { PainelAdmCelular } from './PainelAdmCelular'
 import { SeloDoCronograma } from './SeloDoCronograma'
 import { aceitaRequisitoNovo, diaMes } from './datas'
-import { ROTULO_DO_LADO, ordenarPorVazias, unirMontagem } from './unida'
+import { ROTULO_DO_LADO, aulasDaData, ordenarPorVazias, unirMontagem } from './unida'
 import type { Lado, RequisitoUnido } from './unida'
 import { useAcoesDeMontagem } from './useAcoesDeMontagem'
 
@@ -78,7 +77,7 @@ function PainelAdmComputador({ montagem, cronograma, classe, ano, aoAtualizar }:
   const faixaDeErro = acoes.erro && <FaixaDeMontagem erro={acoes.erro} aoAtualizar={() => { acoes.limparErro(); aoAtualizar() }} />
 
   async function salvarAula(aula: AulaEmEdicao, data: string): Promise<boolean> {
-    return aula.aulaId ? acoes.editarAula(aula.aulaId, aula.dados) : acoes.criarAula(data, aula.dados)
+    return aula.aulaIds.length > 0 ? acoes.editarAulas(aula.aulaIds, aula.dados) : acoes.criarAula(data, aula.dados)
   }
 
   function cartaoDoRequisito(requisito: RequisitoUnido) {
@@ -163,7 +162,7 @@ function PainelAdmComputador({ montagem, cronograma, classe, ano, aoAtualizar }:
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-titulo text-lg font-bold text-texto">Datas</h2>
             {montagem.datasLivres && (
-              <Botao variante="secundario" onClick={() => setAulaEmEdicao({ data: null, aulaId: null, dados: { horario: null, local: null, titulo: null } })}>
+              <Botao variante="secundario" onClick={() => setAulaEmEdicao(AULA_NOVA)}>
                 + Novo dia de classe
               </Botao>
             )}
@@ -195,10 +194,8 @@ function PainelAdmComputador({ montagem, cronograma, classe, ano, aoAtualizar }:
                   destaqueCampo={Boolean(selecionado?.campo) && dado.situacao.bomParaCampo}
                   desabilitada={acoes.ocupada}
                   aoTirar={(requisito) => void acoes.tirar(requisito.id)}
-                  aoRemoverAula={(aula) => aula.aulaId && void acoes.removerAula(aula.aulaId)}
-                  aoEditar={(aula) =>
-                    setAulaEmEdicao({ data: aula.data, aulaId: aula.aulaId, dados: { horario: aula.horario, local: aula.local, titulo: aula.titulo } })
-                  }
+                  aoRemoverAula={(aula) => void acoes.removerAulas(aulasDaData(aula))}
+                  aoEditar={(aula) => setAulaEmEdicao(aulaEmEdicaoDaData(aula))}
                   acaoDaData={
                     aceitaRequisitoNovo(montagem, dado, selecionado?.lado) && selecionado?.data !== dado.data && (
                       <Botao

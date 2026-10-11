@@ -12,11 +12,10 @@ import { EtiquetaCampo } from './EtiquetaCampo'
 import { EtiquetaDoLado } from './EtiquetaDoLado'
 import { FaixaDeMontagem } from './FaixaDeMontagem'
 import { FolhaEmQualData } from './FolhaEmQualData'
-import { FormularioAula } from './FormularioAula'
-import type { AulaEmEdicao } from './FormularioAula'
+import { AULA_NOVA, FormularioAula, aulaEmEdicaoDaData, type AulaEmEdicao } from './FormularioAula'
 import { SeloDoCronograma } from './SeloDoCronograma'
 import { aceitaRequisitoNovo, chaveDoMes, diaComDadosSomeAoTirar, diaMes, mesPorExtenso } from './datas'
-import { progressoDoLado, unirMontagem } from './unida'
+import { aulasDaData, progressoDoLado, unirMontagem } from './unida'
 import type { DataUnida, RequisitoUnido } from './unida'
 import { useAcoesDeMontagem } from './useAcoesDeMontagem'
 
@@ -99,7 +98,7 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
   function desfazerSeguro(requisito: RequisitoUnido, anterior: string | null): boolean {
     if (anterior === null) return true
     const dado = unida.datas.find((item) => item.data === anterior)
-    return dado !== undefined && aceitaRequisitoNovo(montagem, dado, requisito.lado) && !diaComDadosSomeAoTirar(montagem, dado)
+    return dado !== undefined && aceitaRequisitoNovo(montagem, dado, requisito.lado) && !diaComDadosSomeAoTirar(montagem, dado, requisito.lado)
   }
 
   async function colocarPelaFolha(data: string) {
@@ -112,7 +111,7 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
   }
 
   function novoDiaDeClasse() {
-    setAulaEmEdicao({ data: null, aulaId: null, dados: { horario: null, local: null, titulo: null } })
+    setAulaEmEdicao(AULA_NOVA)
   }
 
   async function desfazer() {
@@ -130,7 +129,7 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
   }
 
   async function removerAula(dado: DataUnida) {
-    if (dado.aulaId && (await acoes.removerAula(dado.aulaId))) setColocacao(null)
+    if (await acoes.removerAulas(aulasDaData(dado))) setColocacao(null)
   }
 
   async function publicar() {
@@ -141,7 +140,7 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
   }
 
   async function salvarAula(aula: AulaEmEdicao, data: string): Promise<boolean> {
-    return aula.aulaId ? acoes.editarAula(aula.aulaId, aula.dados) : acoes.criarAula(data, aula.dados)
+    return aula.aulaIds.length > 0 ? acoes.editarAulas(aula.aulaIds, aula.dados) : acoes.criarAula(data, aula.dados)
   }
 
   function atualizarDepoisDoErro() {
@@ -218,9 +217,7 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
                     desabilitada={acoes.ocupada}
                     aoEscolherData={abrirFolha}
                     aoTirar={(requisito) => void tirar(requisito)}
-                    aoEditar={(aula) =>
-                      setAulaEmEdicao({ data: aula.data, aulaId: aula.aulaId, dados: { horario: aula.horario, local: aula.local, titulo: aula.titulo } })
-                    }
+                    aoEditar={(aula) => setAulaEmEdicao(aulaEmEdicaoDaData(aula))}
                     aoRemoverAula={(aula) => void removerAula(aula)}
                   />
                 ))}

@@ -104,8 +104,14 @@ export function useAcoesDeMontagem(classeId: string, ano: number | undefined, cr
     tirar: (requisitoId: string) =>
       tentar(async () => tirarMutacao.mutateAsync({ cronogramaId: await cronogramaDoRequisito(requisitoId), requisitoId })),
     criarAula: (data: string, dados: DadosDaAula) => tentar(() => criarAulaMutacao.mutateAsync({ data, ...dados })),
-    editarAula: (aulaId: string, dados: DadosDaAula) => tentar(() => editarMutacao.mutateAsync({ aulaId, ...dados })),
-    removerAula: (aulaId: string) => tentar(() => removerAulaMutacao.mutateAsync(aulaId)),
+    editarAulas: (aulaIds: string[], dados: DadosDaAula) =>
+      tentar(async () => {
+        for (const aulaId of aulaIds) await editarMutacao.mutateAsync({ aulaId, ...dados })
+      }),
+    removerAulas: (aulaIds: string[]) =>
+      tentar(async () => {
+        for (const aulaId of aulaIds) await removerAulaMutacao.mutateAsync(aulaId)
+      }),
     enviar: () => tentar(() => enviarMutacao.mutateAsync(atualizadoEmVisto)),
     publicar: () => tentar(() => publicarMutacao.mutateAsync(atualizadoEmVisto)),
   }

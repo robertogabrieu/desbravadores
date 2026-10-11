@@ -6,7 +6,7 @@ export interface ParDeClasses {
 }
 
 /**
- * A classe regular e a avançada dela, quando as duas existem; a avançada aponta para a regular por `classeBaseId`.
+ * A classe regular e a avançada dela, quando as duas existem na trilha INDIVIDUAL; a avançada aponta para a regular por `classeBaseId`.
  * O par só existe com as duas ativas; a lista de Classes passa `incluirInativa` para enxergar também a desativada.
  */
 export function parDaClasse(classes: Classe[], classeId: string | undefined, incluirInativa = false): ParDeClasses | null {
@@ -16,6 +16,8 @@ export function parDaClasse(classes: Classe[], classeId: string | undefined, inc
   const avancada =
     atual.tipo === 'AVANCADA' ? atual : classes.find((classe) => (incluirInativa || classe.ativa) && classe.tipo === 'AVANCADA' && classe.classeBaseId === atual.id)
   if (!regular || !avancada) return null
+  // Agrupadas tem avançada, mas sem par: o cronograma de cada uma se monta sozinho.
+  if (regular.trilha !== 'INDIVIDUAL' || avancada.trilha !== 'INDIVIDUAL') return null
   return incluirInativa || regular.ativa ? { regular, avancada } : null
 }
 
