@@ -72,18 +72,13 @@ export class ServicoMontagemLeitura {
     return (await regularDoPar(this.prisma, clubeId, classe.id)) ?? classe.id
   }
 
-  /** A avançada da regular neste clube, com o par ativo (as duas ativas no sistema e no clube); `null` se não há. */
-  avancadaAtivaDa(clubeId: string, regularId: string, db: Pick<Prisma.TransactionClient, 'classe'> = this.prisma) {
-    return avancadaPareadaDe(db, clubeId, regularId)
-  }
-
   /** As classes do par: a dona do cronograma e, sendo regular com par ativo, a avançada. Só elas aceitam requisito novo. */
   async classesDoPar(
     clubeId: string,
     cronograma: { classeId: string },
     db: Pick<Prisma.TransactionClient, 'classe'> = this.prisma,
   ): Promise<string[]> {
-    const avancada = await this.avancadaAtivaDa(clubeId, cronograma.classeId, db)
+    const avancada = await avancadaPareadaDe(db, clubeId, cronograma.classeId)
     return avancada ? [cronograma.classeId, avancada.id] : [cronograma.classeId]
   }
 
@@ -115,7 +110,7 @@ export class ServicoMontagemLeitura {
       select: { id: true },
     })
     if (!cronograma) {
-      const avancada = dona.trilha === 'INDIVIDUAL' && dona.tipo === 'REGULAR' ? await this.avancadaAtivaDa(clubeId, dona.id) : null
+      const avancada = dona.trilha === 'INDIVIDUAL' && dona.tipo === 'REGULAR' ? await avancadaPareadaDe(this.prisma, clubeId, dona.id) : null
       return {
         cronograma: null,
         classe: refClasse(dona),
@@ -135,7 +130,7 @@ export class ServicoMontagemLeitura {
       include: { enviadoPor: { select: { nome: true } }, classe: { select: SELECAO_REF_CLASSE } },
     })
     const { classe } = cronograma
-    const avancada = classe.tipo === 'REGULAR' && classe.trilha === 'INDIVIDUAL' ? await this.avancadaAtivaDa(clubeId, classe.id) : null
+    const avancada = classe.tipo === 'REGULAR' && classe.trilha === 'INDIVIDUAL' ? await avancadaPareadaDe(this.prisma, clubeId, classe.id) : null
     const classeIdsDoPar = avancada ? [classe.id, avancada.id] : [classe.id]
     const [aulas, ligacoes, configuracao, relogio] = await Promise.all([
       this.prisma.aulaPlanejada.findMany({ where: { clubeId, cronogramaId, removidaEm: null } }),

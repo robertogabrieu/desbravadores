@@ -37,7 +37,7 @@ export function MontagemAdm() {
   )
   const classeId = regularDaClasse(classes.data ?? [], busca.get('classe') ?? undefined) ?? escolhaveis[0]?.id
   const classe = classes.data?.find((item) => item.id === classeId)
-  const montagem = useMontagem(classeId, ano, online && ano !== undefined)
+  const montagem = useMontagem(classeId, ano, online && ano !== undefined && !classes.isPending)
   const escolherClasse = (id: string) => definirBusca({ classe: id }, { replace: true })
   const anos = anoAtual === undefined ? [] : [anoAtual - 1, anoAtual, anoAtual + 1]
 
@@ -53,7 +53,7 @@ export function MontagemAdm() {
           dados.cronograma === null ? (
             <CriarCronograma classeId={dados.classe.id} nomeDaClasse={classe ? nomeDoParDe(classes.data ?? [], classe) : dados.classe.nome} ano={ano} />
           ) : (
-            <PainelAdm montagem={dados} cronograma={dados.cronograma} classe={classe} ano={ano} aoAtualizar={() => void montagem.refetch()} />
+            <PainelAdm montagem={dados} classeConsultada={classeId} cronograma={dados.cronograma} classe={classe} ano={ano} aoAtualizar={() => void montagem.refetch()} />
           )
         }
       </ResultadoConsulta>

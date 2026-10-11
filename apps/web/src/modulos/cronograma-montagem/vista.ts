@@ -1,7 +1,7 @@
+import { nomeDoPar } from '@desbravadores/shared'
 import type { DataDaMontagem, Montagem, RequisitoDaMontagem } from '../../api/montagem'
 import type { Classe } from '../../api/leitura'
 import { dataBloqueada } from './datas'
-import { nomeDoPar } from './classes'
 
 export type Lado = 'REGULAR' | 'AVANCADA'
 
@@ -11,6 +11,8 @@ export interface RequisitoComLado extends RequisitoDaMontagem {
   lado: Lado
   /** Só no requisito de uma avançada que já não anda com a regular (par desfeito): o nome da classe dele. */
   nomeDaClasse: string | null
+  /** O requisito é de uma classe que já não anda com a regular: só dá para tirá-lo, não para colocá-lo ou movê-lo. */
+  foraDoPar: boolean
 }
 
 /** O que a tela mostra: o cronograma único, com os requisitos das duas classes (quando há avançada) já marcados com o lado. */
@@ -36,7 +38,7 @@ export function montarVista(montagem: Montagem, classes: Classe[] = []): VistaDo
   const requisitos = montagem.requisitos.map((requisito): RequisitoComLado => {
     const lado: Lado = requisito.classeId === donaId ? 'REGULAR' : 'AVANCADA'
     const foraDoPar = lado === 'AVANCADA' && requisito.classeId !== avancada?.id
-    return { ...requisito, lado, nomeDaClasse: foraDoPar ? (classes.find((classe) => classe.id === requisito.classeId)?.nome ?? null) : null }
+    return { ...requisito, lado, foraDoPar, nomeDaClasse: foraDoPar ? (classes.find((classe) => classe.id === requisito.classeId)?.nome ?? null) : null }
   })
   const classeFora = requisitos.find((requisito) => requisito.lado === 'AVANCADA' && requisito.classeId !== avancada?.id)
   const temAvancada = avancada !== null || classeFora !== undefined

@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common'
-import { datasDeClasse, type MontagemSaida } from '@desbravadores/shared'
+import { datasDeClasse, nomeDoPar, type MontagemSaida } from '@desbravadores/shared'
 import type { z } from 'zod'
 import type { SessaoLogada } from '../../comum/decorators/sessao.decorator'
 import { ErroApp } from '../../comum/erros'
 import { PrismaService } from '../../comum/prisma/prisma.service'
 import { ServicoAtividade } from '../../atividades/servico-atividade'
+import { avancadaPareadaDe } from '../../classes/par-regular-avancada'
 import { daDataCivil, paraDataCivil } from '../../desbravadores/apoio'
 import { Prisma, type Cronograma } from '../../generated/prisma/client.js'
 import { ServicoNotificacoes } from '../../notificacoes/servico-notificacoes'
@@ -51,7 +52,7 @@ export class ServicoMontagem {
 
   /**
    * Cria o cronograma da classe. Com o par ativo há um só, o da regular: pedir pela avançada cria o da regular.
-   * Já existindo o do ano, é conflito.
+   * Já existindo o do ano, a unicidade do banco recusa e vira conflito.
    */
   async criar(sessao: SessaoLogada, entrada: { classeId: string; anoClube: number; inicio: string; fim: string }): Promise<Saida> {
     const pedida = await this.leitura.classeQueMonta(sessao, entrada.classeId)
@@ -60,8 +61,6 @@ export class ServicoMontagem {
     await this.exigirClasseAtiva(clubeId, classeId)
     try {
       const cronogramaId = await this.prisma.$transaction(async (tx) => {
-        const existente = await tx.cronograma.findFirst({ where: { clubeId, classeId, anoClube: entrada.anoClube }, select: { id: true } })
-        if (existente) throw new ErroApp('CONFLITO', 'Já existe um cronograma desta classe neste ano.')
         const criado = await tx.cronograma.create({
           data: { clubeId, classeId, anoClube: entrada.anoClube, inicio: daDataCivil(entrada.inicio), fim: daDataCivil(entrada.fim) },
           select: { id: true },
@@ -226,10 +225,12 @@ export class ServicoMontagem {
 
   enviar(sessao: SessaoLogada, cronogramaId: string, atualizadoEmVisto: string): Promise<Saida> {
     return this.executar(sessao, cronogramaId, 'ENVIAR', async (contexto) => {
-      const { tx, cronograma, classeNome } = contexto
+      const { tx, cronograma } = contexto
       exigirNaoDesatualizado(cronograma, atualizadoEmVisto)
       if (cronograma.status !== 'RASCUNHO') throw regra('Só o cronograma em rascunho pode ser enviado.')
       const { clubeId } = cronograma
+      const avancada = await avancadaPareadaDe(tx, clubeId, cronograma.classeId)
+      const classeNome = nomeDoPar(contexto.classeNome, avancada?.nome)
       const autor = await tx.usuario.findUniqueOrThrow({ where: { id: contexto.sessao.usuarioId }, select: { nome: true } })
       const adms = await tx.vinculo.findMany({ where: { clubeId, papel: 'ADM', ativo: true }, select: { usuarioId: true } })
       const link = `/cronograma/montar?classe=${cronograma.classeId}`
@@ -253,14 +254,16 @@ export class ServicoMontagem {
 
   publicar(sessao: SessaoLogada, cronogramaId: string, atualizadoEmVisto: string): Promise<Saida> {
     return this.executar(sessao, cronogramaId, 'PUBLICAR', async (contexto) => {
-      const { tx, cronograma, classeNome } = contexto
+      const { tx, cronograma } = contexto
       exigirNaoDesatualizado(cronograma, atualizadoEmVisto)
       if (cronograma.status === 'PUBLICADO') throw regra('Este cronograma já está publicado.')
       const { clubeId } = cronograma
+      const avancada = await avancadaPareadaDe(tx, clubeId, cronograma.classeId)
+      const classeNome = nomeDoPar(contexto.classeNome, avancada?.nome)
       await tx.cronogramaPublicacao.create({
         data: { clubeId, cronogramaId: cronograma.id, conteudo: await this.retrato(tx, cronograma), publicadoPorId: contexto.sessao.usuarioId },
       })
-      const instrutores = await this.instrutoresDaClasse(tx, clubeId, cronograma.classeId)
+      const instrutores = await this.instrutoresDaClasse(tx, clubeId, avancada ? [cronograma.classeId, avancada.id] : [cronograma.classeId])
       const quemMonta = await tx.classeClube.findUnique({
         where: { clubeId_classeId: { clubeId, classeId: cronograma.classeId } },
         select: { quemMontaCronograma: true },
@@ -411,14 +414,14 @@ export class ServicoMontagem {
     return tx.aulaPlanejada.findFirstOrThrow({ where: { clubeId: cronograma.clubeId, id: ligacao.aulaPlanejadaId } })
   }
 
-  /** Instrutores ativos do clube ligados à classe (a mesma regra de `ServicoCronograma.instrutoresDaClasse`, pela `tx`). */
-  private async instrutoresDaClasse(tx: Tx, clubeId: string, classeId: string): Promise<{ usuarioId: string }[]> {
+  /** Instrutores ativos do clube ligados a alguma das classes, cada um uma vez (quem instrui as duas do par não repete). */
+  private async instrutoresDaClasse(tx: Tx, clubeId: string, classeIds: string[]): Promise<{ usuarioId: string }[]> {
     const vinculos = await tx.vinculo.findMany({
-      where: { clubeId, papel: 'INSTRUTOR', ativo: true, classes: { some: { classeId } } },
+      where: { clubeId, papel: 'INSTRUTOR', ativo: true, classes: { some: { classeId: { in: classeIds } } } },
       select: { usuario: { select: { id: true } } },
       orderBy: { usuario: { nome: 'asc' } },
     })
-    return vinculos.map((vinculo) => ({ usuarioId: vinculo.usuario.id }))
+    return [...new Set(vinculos.map((vinculo) => vinculo.usuario.id))].map((usuarioId) => ({ usuarioId }))
   }
 
   /**

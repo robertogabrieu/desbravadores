@@ -156,7 +156,7 @@ export function PainelInstrutor({ montagem, classeConsultada, cronograma, ano, a
             <button
               key={requisito.id}
               type="button"
-              disabled={acoes.ocupada}
+              disabled={acoes.ocupada || requisito.foraDoPar}
               onClick={() => setAAgendar(requisito)}
               className="flex min-h-[var(--touch-min)] items-center gap-3 rounded-controle border border-divisor bg-superficie p-3 text-left focus-visible:outline-2 focus-visible:outline-marca disabled:opacity-50"
             >
@@ -192,7 +192,7 @@ export function PainelInstrutor({ montagem, classeConsultada, cronograma, ano, a
       {dataAberta && (
         <FolhaAdicionar
           dado={dataAberta}
-          livres={semData.filter((requisito) => aceitaRequisitoNovo(montagem, dataAberta, [requisito.classeId]))}
+          livres={semData.filter((requisito) => !requisito.foraDoPar && aceitaRequisitoNovo(montagem, dataAberta, [requisito.classeId]))}
           comAvancada={par}
           desabilitado={acoes.ocupada}
           aoConfirmar={colocarVarios}

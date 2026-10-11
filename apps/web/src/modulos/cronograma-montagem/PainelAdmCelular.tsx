@@ -23,6 +23,8 @@ interface Propriedades {
   montagem: Montagem
   cronograma: CronogramaDaMontagem
   classe: Classe | undefined
+  /** A classe com que a consulta foi feita: a mesma chave de cache das gravações. */
+  classeConsultada: string
   ano: number
   aoAtualizar: () => void
 }
@@ -59,8 +61,8 @@ function agruparPorMes(datas: DataDaMontagem[]): { chave: string; datas: DataDaM
  * A7 no celular: a lista de requisitos sem data é o começo; tocar num requisito abre "Em qual data?", e depois
  * de colocar a tela já oferece o próximo sem data. "Por data" reúne as datas e o rodapé publica.
  */
-export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualizar }: Propriedades) {
-  const acoes = useAcoesDeMontagem(montagem.classe.id, ano, cronograma.id, montagem)
+export function PainelAdmCelular({ montagem, cronograma, classe, classeConsultada, ano, aoAtualizar }: Propriedades) {
+  const acoes = useAcoesDeMontagem(classeConsultada, ano, cronograma.id, montagem)
   const [vista, setVista] = useState<Vista>('sem-data')
   const [folhaParaId, setFolhaParaId] = useState<string | null>(null)
   const [colocacao, setColocacao] = useState<Colocacao | null>(null)
@@ -86,7 +88,7 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
   const regular = progressoDoLado(unida, 'REGULAR')
   const avancada = progressoDoLado(unida, 'AVANCADA')
   const conflitos = unida.datas.filter((dado) => dado.conflito).length
-  const proximo = semData.find((requisito) => requisito.id !== colocacao?.requisitoId) ?? null
+  const proximo = semData.find((requisito) => requisito.id !== colocacao?.requisitoId && !requisito.foraDoPar) ?? null
   const publicado = cronograma.status === 'PUBLICADO'
 
   function abrirFolha(requisito: RequisitoComLado) {
@@ -167,7 +169,7 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
           <button
             key={requisito.id}
             type="button"
-            disabled={acoes.ocupada}
+            disabled={acoes.ocupada || requisito.foraDoPar}
             onClick={() => abrirFolha(requisito)}
             className="flex min-h-[var(--touch-min)] items-start gap-3 rounded-controle border border-divisor bg-superficie p-3 text-left hover:bg-superficie-suave focus-visible:outline-2 focus-visible:outline-marca disabled:opacity-50"
           >

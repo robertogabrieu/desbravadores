@@ -655,6 +655,23 @@ describe('Montagem do cronograma', () => {
       expect(saida).not.toHaveProperty('avancada.datas')
     })
 
+    it('enviar e publicar usam o nome do par; a publicação avisa também quem só instrui a avançada, sem repetir quem instrui as duas', async () => {
+      const { clube, amigo, adm, instrutor, avancada, requisitos, cronograma } = await cenarioPar()
+      const soDaAvancada = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [avancada.id] })
+      await admDefinirClasseClube({ clubeId: clube.id, classeId: amigo.id, quemMontaCronograma: 'INSTRUTOR' })
+      const nomeDoPar = `Amigo + ${avancada.nome}`
+      await colocar(cronograma.id, requisitos[0], DOMINGO_A, instrutor.autorizacao)
+
+      expect((await http.post(`/api/cronogramas/${cronograma.id}/enviar`, instrutor.autorizacao, { atualizadoEmVisto: await visto(cronograma.id) })).status).toBe(200)
+      const enviados = await prismaDeTeste().notificacao.findMany({ where: { clubeId: clube.id, tipo: 'CRONOGRAMA_ENVIADO' } })
+      expect(enviados.map((aviso) => aviso.titulo)).toEqual([`Cronograma enviado: ${nomeDoPar}`])
+
+      expect((await http.post(`/api/cronogramas/${cronograma.id}/publicar`, adm.autorizacao, { atualizadoEmVisto: await visto(cronograma.id) })).status).toBe(200)
+      const publicados = await prismaDeTeste().notificacao.findMany({ where: { clubeId: clube.id, tipo: 'CRONOGRAMA_PUBLICADO' } })
+      expect(publicados.map((aviso) => aviso.titulo)).toEqual([`Cronograma publicado: ${nomeDoPar}`, `Cronograma publicado: ${nomeDoPar}`])
+      expect(publicados.map((aviso) => aviso.usuarioId).sort()).toEqual([instrutor.usuario.id, soDaAvancada.usuario.id].sort())
+    })
+
     it('a leitura pelo id da avançada responde a montagem da regular; sem cronograma, cronograma nulo e a avançada identificada', async () => {
       const { amigo, adm, requisitosAvancada, avancada, cronograma } = await cenarioPar()
       await colocar(cronograma.id, requisitosAvancada[0], DOMINGO_A, adm.autorizacao)

@@ -107,6 +107,23 @@ describe('Regular e avançada · seletor de classe', () => {
     await screen.findByRole('heading', { name: 'Requisitos' })
     expect(registro.classesLidas).toEqual([uuid(100)])
   })
+
+  it('abrir pela avançada, colocar um requisito e ver a data nova, sem ler de novo', async () => {
+    const colocado = criarRequisitoAvancada(1, { aulaId: uuid(2003), data: '2026-10-18' })
+    const registro = abrirAdm(criarPar(), `/adm/cronogramas?classe=${CLASSE_AVANCADA.id}`)
+    const usuario = userEvent.setup()
+    await screen.findByRole('heading', { name: 'Requisitos' })
+    registro.responder(
+      criarPar({
+        requisitos: [R1, R3, colocado, AN2, AN3, AN4, AN5, AN6],
+        datas: DATAS.map((dado) => (dado.data === '2026-10-18' ? { ...dado, aulaId: uuid(2003), requisitoIds: [colocado.id] } : dado)),
+      }),
+    )
+    await usuario.click(screen.getByRole('button', { name: new RegExp(AN1.texto) }))
+    await usuario.click(within(linha('2026-10-18')).getByRole('button', { name: 'Colocar aqui em 18/10' }))
+    expect(await within(linha('2026-10-18')).findByText(`${AN1.codigo} · ${AN1.texto}`)).toBeInTheDocument()
+    expect(registro.classesLidas).toEqual([uuid(100)])
+  })
 })
 
 describe('Regular e avançada · regular inativa', () => {

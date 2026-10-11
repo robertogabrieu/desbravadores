@@ -144,4 +144,18 @@ describe('configuracao do clube', () => {
     resposta = await api.patch('/api/clube/configuracao', adm.autorizacao, { diaReuniao: 5 }).expect(422)
     expect((resposta.body as { mensagem: string }).mensagem).toBe(`Há classes marcadas no dia atual de reunião: Amigo + ${avancada.nome}. Mova-as antes.`)
   })
+
+  it('G9: no par com duas aulas de domingo e só uma com requisito da avançada, a classe aparece uma vez, com o nome do par', async () => {
+    const { clube, adm, amigo } = await cenario()
+    const avancada = await avancadaOficial(amigo.id)
+    const [a1] = await requisitosDe(avancada.id, 1)
+    const [r1] = await requisitosDe(amigo.id, 1)
+    await criarCronograma({
+      clubeId: clube.id,
+      classeId: amigo.id,
+      aulas: [{ data: '2026-06-21', requisitoIds: [r1 ?? ''] }, { data: '2026-06-28', requisitoIds: [a1 ?? ''] }],
+    })
+    const resposta = await api.patch('/api/clube/configuracao', adm.autorizacao, { diaReuniao: 5 }).expect(422)
+    expect((resposta.body as { mensagem: string }).mensagem).toBe(`Há classes marcadas no dia atual de reunião: Amigo + ${avancada.nome}. Mova-as antes.`)
+  })
 })

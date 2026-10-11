@@ -1,3 +1,4 @@
+import { nomeDoPar } from '@desbravadores/shared'
 import type { Classe } from '../../api/leitura'
 
 export interface ParDeClasses {
@@ -26,11 +27,6 @@ export function parDaClasse(classes: Classe[], classeId: string | undefined): Pa
 export function regularDaClasse(classes: Classe[], classeId: string | undefined): string | undefined {
   const par = parDaClasse(classes, classeId)
   return par && par.avancada.id === classeId ? par.regular.id : classeId
-}
-
-/** "Amigo + Amigo da Natureza" quando há avançada no par; senão só o nome da regular. */
-export function nomeDoPar(regular: string, avancada: string | null | undefined): string {
-  return avancada ? `${regular} + ${avancada}` : regular
 }
 
 /** O nome do par da regular, procurando a avançada pareada na lista de classes. */

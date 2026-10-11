@@ -80,7 +80,7 @@ export function LinhaData({ dado, requisitos, comAvancada = false, destaqueCampo
               {requisito.codigo} · {requisito.texto}
             </span>
             {dada && !dadaNosDois && <Selo>Classe dada</Selo>}
-            {aoMover && dado.conflito && !dada && (
+            {aoMover && dado.conflito && !dada && !requisito.foraDoPar && (
               <Botao variante="secundario" className="px-3 text-sm" disabled={desabilitada} onClick={() => aoMover(requisito)}>
                 Mover
               </Botao>

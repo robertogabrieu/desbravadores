@@ -3,6 +3,7 @@ import { mediaTurma, type InicioInstrutorSaida } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { devedoresPorItem } from '../aulas/tarefas-leitura'
 import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
+import { regularDoPar } from '../classes/par-regular-avancada'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
@@ -92,16 +93,18 @@ export class InstrutorService {
     if (!(await this.escopo.classesDoInstrutor(sessao)).includes(classeId)) {
       throw new ErroApp('NAO_ENCONTRADO', 'Classe não encontrada.')
     }
-    const ajuste = await this.prisma.classeClube.findUnique({ where: { clubeId_classeId: { clubeId, classeId } } })
+    // O par tem um cronograma só, o da regular: quem monta e o link do pedido são os dela.
+    const donaId = (await regularDoPar(this.prisma, clubeId, classeId)) ?? classeId
+    const ajuste = await this.prisma.classeClube.findUnique({ where: { clubeId_classeId: { clubeId, classeId: donaId } } })
     if (ajuste?.quemMontaCronograma === 'INSTRUTOR') {
       throw new ErroApp('REGRA', 'Você já pode montar o cronograma desta classe.')
     }
 
-    const link = `/adm/classes?classe=${classeId}`
+    const link = `/adm/classes?classe=${donaId}`
     const tipo = 'PEDIDO_LIBERAR_CRONOGRAMA'
     await this.prisma.$transaction(async (tx) => {
       // Serializa pedidos da mesma classe no clube: o segundo já enxerga a notificação do primeiro.
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`pedido-liberacao:${clubeId}:${classeId}`}, 0))`
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`pedido-liberacao:${clubeId}:${donaId}`}, 0))`
       const recente = await tx.notificacao.findFirst({
         where: { clubeId, tipo, link, criadaEm: { gte: new Date(Date.now() - VINTE_E_QUATRO_HORAS) } },
         select: { id: true },

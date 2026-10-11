@@ -57,11 +57,20 @@ export async function temParAtivo(db: Cliente, clubeId: string, avancadaId: stri
   return (await regularDoPar(db, clubeId, avancadaId)) !== null
 }
 
-/** A lista recebida mais a avancada pareada de cada regular dela. */
-export async function comAvancadasPareadas(db: Cliente, clubeId: string, classeIds: string[]): Promise<string[]> {
-  const recebidas = [...new Set(classeIds)]
-  const pareadas = await avancadasPareadas(db, clubeId, recebidas)
-  return [...new Set([...recebidas, ...[...pareadas.values()].map((avancada) => avancada.id)])]
+/** A outra classe do par de cada classe recebida (regular -> avançada e avançada -> regular), só dos pares ativos. */
+async function parceirasDe(db: Cliente, clubeId: string, classeIds: string[]): Promise<Map<string, string>> {
+  const parceiras = new Map<string, string>()
+  if (classeIds.length === 0) return parceiras
+  const candidatas = await db.classe.findMany({
+    where: { ...avancadaComParAtivo(clubeId), id: { in: classeIds } },
+    select: { id: true, classeBaseId: true },
+  })
+  const regulares = [...new Set([...classeIds, ...candidatas.flatMap((avancada) => (avancada.classeBaseId ? [avancada.classeBaseId] : []))])]
+  for (const [regularId, avancada] of await avancadasPareadas(db, clubeId, regulares)) {
+    parceiras.set(regularId, avancada.id)
+    parceiras.set(avancada.id, regularId)
+  }
+  return parceiras
 }
 
 /**
@@ -71,14 +80,27 @@ export async function comAvancadasPareadas(db: Cliente, clubeId: string, classeI
  */
 export async function comParDeClasses(db: Cliente, clubeId: string, classeIds: string[]): Promise<string[]> {
   const recebidas = [...new Set(classeIds)]
-  if (recebidas.length === 0) return recebidas
-  const candidatas = await db.classe.findMany({
-    where: { ...avancadaComParAtivo(clubeId), id: { in: recebidas } },
-    select: { id: true, classeBaseId: true },
+  const parceiras = await parceirasDe(db, clubeId, recebidas)
+  return [...new Set([...recebidas, ...recebidas.flatMap((id) => parceiras.get(id) ?? [])])]
+}
+
+type ClienteDeVinculos = Pick<Prisma.TransactionClient, 'classe' | 'vinculo' | 'vinculoClasse'>
+
+/**
+ * O vínculo do instrutor guarda as duas classes do par (o escopo confia no vínculo gravado): quem instrui um lado
+ * ganha o outro. Lê o par uma vez e grava tudo num `createMany`. Sem `classeIds`, completa todos os instrutores do
+ * clube; com `classeIds`, só os que instruem alguma dessas classes.
+ */
+export async function completarVinculosDoPar(db: ClienteDeVinculos, clubeId: string, classeIds?: string[]): Promise<void> {
+  const vinculos = await db.vinculo.findMany({
+    where: { clubeId, papel: 'INSTRUTOR', classes: classeIds ? { some: { classeId: { in: classeIds } } } : { some: {} } },
+    select: { id: true, classes: { select: { classeId: true } } },
   })
-  const pareadas = await avancadasPareadas(db, clubeId, candidatas.flatMap((avancada) => (avancada.classeBaseId ? [avancada.classeBaseId] : [])))
-  const regulares = candidatas.flatMap((avancada) =>
-    avancada.classeBaseId && pareadas.get(avancada.classeBaseId)?.id === avancada.id ? [avancada.classeBaseId] : [],
-  )
-  return comAvancadasPareadas(db, clubeId, [...recebidas, ...regulares])
+  const parceiras = await parceirasDe(db, clubeId, [...new Set(vinculos.flatMap((vinculo) => vinculo.classes.map((ligacao) => ligacao.classeId)))])
+  const faltam = vinculos.flatMap((vinculo) => {
+    const gravadas = new Set(vinculo.classes.map((ligacao) => ligacao.classeId))
+    const completas = new Set([...gravadas].flatMap((id) => parceiras.get(id) ?? []))
+    return [...completas].filter((id) => !gravadas.has(id)).map((classeId) => ({ vinculoId: vinculo.id, classeId }))
+  })
+  if (faltam.length > 0) await db.vinculoClasse.createMany({ data: faltam, skipDuplicates: true })
 }

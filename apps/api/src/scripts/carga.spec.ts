@@ -163,6 +163,23 @@ describe('carga oficial (SPEC 5.3)', () => {
     expect((await executarCarga(banco.prisma, { dir })).classesClube.criados).toBe(0)
   })
 
+  it('completa o vínculo do instrutor que só tinha um lado do par, e não repete na segunda execução', async () => {
+    await executarCarga(banco.prisma, { dir })
+    const clube = await banco.prisma.clube.create({ data: { nome: 'Com instrutor', slug: `par-${Date.now()}` } })
+    const usuario = await banco.prisma.usuario.create({ data: { nome: 'Instrutor', email: `par-${Date.now()}@teste.dev` } })
+    const vinculo = await banco.prisma.vinculo.create({ data: { usuarioId: usuario.id, clubeId: clube.id, papel: 'INSTRUTOR' } })
+    const amigo = await banco.prisma.classe.findFirstOrThrow({ where: { nome: 'Amigo', trilha: 'INDIVIDUAL', clubeId: null }, select: { id: true } })
+    const avancada = await banco.prisma.classe.findFirstOrThrow({ where: { nome: 'Amigo da Natureza', clubeId: null }, select: { id: true } })
+    await banco.prisma.vinculoClasse.create({ data: { vinculoId: vinculo.id, classeId: amigo.id } })
+
+    await executarCarga(banco.prisma, { dir })
+    const gravadas = async () => (await banco.prisma.vinculoClasse.findMany({ where: { vinculoId: vinculo.id } })).map((ligacao) => ligacao.classeId).sort()
+    expect(await gravadas()).toEqual([amigo.id, avancada.id].sort())
+
+    await executarCarga(banco.prisma, { dir })
+    expect(await gravadas()).toEqual([amigo.id, avancada.id].sort())
+  })
+
   describe('categorias iniciais da biblioteca', () => {
     const INICIAIS = [
       { nome: 'Cadernos de Classes', ordem: 1 },

@@ -1,3 +1,4 @@
+import { nomeDoPar } from '@desbravadores/shared'
 import { ChevronLeft } from 'lucide-react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { ErroDaApi } from '../../api/cliente'
@@ -12,7 +13,7 @@ import { Selecao } from '../../ui/Selecao'
 import { ResultadoConsulta } from '../galeria/ResultadoConsulta'
 import { PainelInstrutor } from './PainelInstrutor'
 import { SeloDoCronograma } from './SeloDoCronograma'
-import { nomeDoPar, parDaClasse, regularDaClasse } from './classes'
+import { parDaClasse, regularDaClasse } from './classes'
 
 /** I3b: o instrutor liberado monta o cronograma da classe no celular. */
 export function MontagemInstrutor() {

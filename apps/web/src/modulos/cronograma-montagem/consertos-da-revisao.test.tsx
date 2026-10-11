@@ -235,6 +235,43 @@ describe('Par desfeito: o cronograma ainda guarda requisitos da avançada', () =
   })
 })
 
+describe('Par desfeito: requisito de classe fora do par não vai para outra data', () => {
+  const R1 = criarRequisitoMontagem(1)
+  const AN1 = criarRequisitoAvancada(1)
+  const AN2 = criarRequisitoAvancada(2, { aulaId: AULA, data: '2026-10-04' })
+  const datas = [criarDataMontagem('2026-10-04', { aulaId: AULA, requisitoIds: [AN2.id] }), criarDataMontagem('2026-10-18')]
+  const desfeito = criarMontagem({ requisitos: [R1, AN1, AN2], datas, avancada: null })
+
+  it('marca como fora do par só o requisito da avançada que já não anda com a regular', () => {
+    expect(montarVista(desfeito).requisitos.map((requisito) => requisito.foraDoPar)).toEqual([false, true, true])
+    expect(montarVista(criarMontagem({ requisitos: [R1, AN1], datas, avancada: AVANCADA_MONTAGEM })).requisitos.map((requisito) => requisito.foraDoPar)).toEqual([false, false])
+  })
+
+  it('computador: escolher o da avançada não oferece "Colocar aqui"; o da regular oferece; tirar continua', async () => {
+    abrirAdm(desfeito)
+    const usuario = userEvent.setup()
+    await screen.findByRole('heading', { name: 'Requisitos' })
+    await usuario.click(screen.getByRole('button', { name: new RegExp(AN1.texto) }))
+    expect(within(linha('2026-10-18')).queryByRole('button', { name: 'Colocar aqui em 18/10' })).not.toBeInTheDocument()
+    expect(within(linha('2026-10-04')).getByRole('button', { name: `remover ${AN2.codigo} desta data` })).toBeInTheDocument()
+    await usuario.click(screen.getByRole('button', { name: new RegExp(R1.texto) }))
+    expect(within(linha('2026-10-18')).getByRole('button', { name: 'Colocar aqui em 18/10' })).toBeInTheDocument()
+  })
+
+  it('celular: o da avançada sem data não abre a folha de datas e o da data só pode ser tirado', async () => {
+    simularLargura(390)
+    abrirAdm(desfeito)
+    const usuario = userEvent.setup()
+    await screen.findByRole('tab', { name: 'Por data' })
+    expect(screen.getByRole('button', { name: new RegExp(AN1.texto) })).toBeDisabled()
+    expect(screen.getByRole('button', { name: new RegExp(R1.texto) })).toBeEnabled()
+    await usuario.click(screen.getByRole('tab', { name: 'Por data' }))
+    const dia = within(linha('2026-10-04'))
+    expect(dia.queryByRole('button', { name: `Trocar data do ${AN2.codigo}` })).not.toBeInTheDocument()
+    expect(dia.getByRole('button', { name: `Tirar ${AN2.codigo} da data` })).toBeInTheDocument()
+  })
+})
+
 describe('O par vem da API', () => {
   const segunda = criarClasse({ id: uuid(120), nome: 'Segunda avançada', tipo: 'AVANCADA', classeBaseId: uuid(100), ordem: 9 })
   const lista = [CLASSE_REGULAR, CLASSE_AVANCADA, segunda]

@@ -28,6 +28,8 @@ interface Propriedades {
   montagem: Montagem
   cronograma: CronogramaDaMontagem
   classe: Classe | undefined
+  /** A classe com que a consulta foi feita: a mesma chave de cache das gravações. */
+  classeConsultada: string
   ano: number
   aoAtualizar: () => void
 }
@@ -43,8 +45,8 @@ export function PainelAdm(propriedades: Propriedades) {
 }
 
 /** Computador: requisitos à esquerda, datas à direita; escolhe um requisito e "Colocar aqui" numa data. */
-function PainelAdmComputador({ montagem, cronograma, classe, ano, aoAtualizar }: Propriedades) {
-  const acoes = useAcoesDeMontagem(montagem.classe.id, ano, cronograma.id, montagem)
+function PainelAdmComputador({ montagem, cronograma, classe, classeConsultada, ano, aoAtualizar }: Propriedades) {
+  const acoes = useAcoesDeMontagem(classeConsultada, ano, cronograma.id, montagem)
   const vista = montarVista(montagem)
   const par = vista.temAvancada
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null)
@@ -201,7 +203,9 @@ function PainelAdmComputador({ montagem, cronograma, classe, ano, aoAtualizar }:
                   aoRemoverAula={(aula) => void removerAula(aula)}
                   aoEditar={(aula) => setAulaEmEdicao(aulaEmEdicaoDaData(aula))}
                   acaoDaData={
-                    aceitaRequisitoNovo(montagem, dado, selecionado ? [selecionado.classeId] : vista.classeIds) && selecionado?.data !== dado.data && (
+                    aceitaRequisitoNovo(montagem, dado, selecionado ? [selecionado.classeId] : vista.classeIds) &&
+                    !selecionado?.foraDoPar &&
+                    selecionado?.data !== dado.data && (
                       <Botao
                         variante="secundario"
                         aria-label={`Colocar aqui em ${diaMes(dado.data)}`}

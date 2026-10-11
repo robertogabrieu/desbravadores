@@ -4,6 +4,7 @@ import {
   frequencia,
   hojeNoFuso,
   mediaTurma,
+  nomeDoPar,
   percentualClasse,
   type SituacaoChamada,
   type VisaoGeralSaida,
@@ -14,7 +15,6 @@ import { nomeDoAutor } from '../comum/nome-do-autor'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { avancadasPareadas } from '../classes/par-regular-avancada'
 import { ServicoCronograma } from '../cronogramas/servico-cronograma'
-import { nomeDoPar } from '../cronogramas/servico-cronograma-par'
 import { daDataCivil, paraDataCivil } from '../desbravadores/apoio'
 
 type Visao = z.infer<typeof VisaoGeralSaida>

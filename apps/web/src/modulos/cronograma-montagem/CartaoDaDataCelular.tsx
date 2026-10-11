@@ -69,7 +69,17 @@ export function CartaoDaDataCelular({ dado, requisitos, comAvancada = false, des
                 {dada && !dadaNosDois && <Selo>Classe dada</Selo>}
               </p>
               {!dada &&
-                (dado.conflito ? (
+                (requisito.foraDoPar ? (
+                  <Botao
+                    variante="texto"
+                    className="self-start"
+                    aria-label={`Tirar ${requisito.codigo} da data`}
+                    disabled={desabilitada}
+                    onClick={() => aoTirar(requisito)}
+                  >
+                    Tirar da data
+                  </Botao>
+                ) : dado.conflito ? (
                   <Botao
                     variante="secundario"
                     className="self-start"

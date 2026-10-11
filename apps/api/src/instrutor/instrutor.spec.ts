@@ -293,6 +293,24 @@ describe('instrutor: inicio e pedido de liberacao', () => {
       expect(admDeFora.usuario.id).not.toBe(adm.usuario.id)
     })
 
+    it('numa avançada de par ativo, quem monta e o link são os da regular', async () => {
+      const { clube, amigo, adm } = await cenario()
+      const avancada = await avancadaOficial(amigo.id)
+      const instrutorDaAvancada = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [avancada.id] })
+      const pedir = () => api.post(`/api/classes/${avancada.id}/pedir-liberacao`, instrutorDaAvancada.autorizacao)
+
+      await pedir().expect(204)
+      const enviados = await pedidos(clube.id)
+      expect(enviados).toHaveLength(1)
+      expect(enviados[0]).toMatchObject({ usuarioId: adm.usuario.id, link: `/adm/classes?classe=${amigo.id}` })
+
+      await prismaDeTeste().classeClube.update({
+        where: { clubeId_classeId: { clubeId: clube.id, classeId: amigo.id } },
+        data: { quemMontaCronograma: 'INSTRUTOR' },
+      })
+      await pedir().expect(422)
+    })
+
     it('depois de 24 h notifica de novo', async () => {
       const { clube, amigo, instrutor, adm } = await cenario()
       await criarNotificacao({
