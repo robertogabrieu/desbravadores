@@ -63,13 +63,13 @@ function ListaDeClasses({
   )
 }
 
-/** Cada regular seguida da avançada dela; avançada sem regular na lista fica no fim, para não sumir. */
+/** Cada regular seguida da avançada dela (mesmo desativada, para poder reativá-la); avançada sem regular na lista fica no fim, para não sumir. */
 function linhasDosPares(individuais: Classe[]): LinhaDaLista[] {
   const regulares = individuais.filter((classe) => classe.tipo === 'REGULAR')
-  const soltas = individuais.filter((classe) => classe.tipo !== 'REGULAR' && !parDaClasse(individuais, classe.id))
+  const soltas = individuais.filter((classe) => classe.tipo !== 'REGULAR' && !parDaClasse(individuais, classe.id, true))
   return [
     ...regulares.flatMap((regular): LinhaDaLista[] => {
-      const avancada = parDaClasse(individuais, regular.id)?.avancada
+      const avancada = parDaClasse(individuais, regular.id, true)?.avancada
       return [{ classe: regular, avancada: false }, ...(avancada ? [{ classe: avancada, avancada: true }] : [])]
     }),
     ...soltas.map((classe) => ({ classe, avancada: true })),

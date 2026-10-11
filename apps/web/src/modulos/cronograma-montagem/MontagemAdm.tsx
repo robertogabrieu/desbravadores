@@ -14,7 +14,7 @@ import { Selecao } from '../../ui/Selecao'
 import { ResultadoConsulta } from '../galeria/ResultadoConsulta'
 import { CriarCronograma } from './CriarCronograma'
 import { PainelAdm } from './PainelAdm'
-import { nomeDoPar, regularDaClasse } from './classes'
+import { nomeDoPar, parDaClasse, regularDaClasse } from './classes'
 
 /** A7: o Adm escolhe a classe e o ano e monta o cronograma; no celular a escolha fica atrás de um botão de contexto. */
 export function MontagemAdm() {
@@ -31,8 +31,11 @@ export function MontagemAdm() {
   const celular = useLarguraMenorQue(LARGURA_DO_CELULAR)
   const ano = anoEscolhido ?? anoAtual
 
-  const regulares = (classes.data ?? []).filter((classe) => classe.ativa && classe.tipo === 'REGULAR')
-  const classeId = regularDaClasse(classes.data ?? [], busca.get('classe') ?? undefined) ?? regulares[0]?.id
+  // Cada regular ativa (com a avançada junto, quando ela anda em par) e a avançada ativa cuja regular está inativa.
+  const escolhaveis = (classes.data ?? []).filter(
+    (classe) => classe.ativa && (classe.tipo === 'REGULAR' || parDaClasse(classes.data ?? [], classe.id) === null),
+  )
+  const classeId = regularDaClasse(classes.data ?? [], busca.get('classe') ?? undefined) ?? escolhaveis[0]?.id
   const classe = classes.data?.find((item) => item.id === classeId)
   const montagem = useMontagem(classeId, ano, online && ano !== undefined)
   const escolherClasse = (id: string) => definirBusca({ classe: id }, { replace: true })
@@ -60,7 +63,7 @@ export function MontagemAdm() {
   const seletores = (
     <>
       <Selecao rotulo="Classe" value={classeId ?? ''} onChange={(evento) => escolherClasse(evento.target.value)}>
-        {regulares.map((item) => (
+        {escolhaveis.map((item) => (
           <option key={item.id} value={item.id}>
             {nomeDoPar(classes.data ?? [], item)}
           </option>

@@ -31,9 +31,10 @@ export function MontagemInstrutor() {
   const classeId = doInstrutor(base) ? base : candidata
   const montagem = useMontagem(classeId, undefined, online && !todas.isPending)
 
+  // A avançada que anda em par com uma regular do instrutor vai dentro da opção da regular; sem par, vale sozinha.
   const escolhaveis = classesDoInstrutor.filter((classe) => {
-    const baseId = todas.data?.find((item) => item.id === classe.id)?.classeBaseId
-    return !(classe.tipo === 'AVANCADA' && baseId && doInstrutor(baseId))
+    const par = parDaClasse(todas.data ?? [], classe.id)
+    return !(classe.tipo === 'AVANCADA' && par && doInstrutor(par.regular.id))
   })
   const nomeDaOpcao = (id: string, nome: string) => {
     const par = parDaClasse(todas.data ?? [], id)

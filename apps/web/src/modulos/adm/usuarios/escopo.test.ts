@@ -51,6 +51,15 @@ describe('classes do par', () => {
     ])
   })
 
+  it('avançada ativa cuja regular está inativa no papel vira item próprio em Avançadas, sem par', () => {
+    const regularInativa = { id: amigo.id, nome: 'Amigo', tipo: amigo.tipo, trilha: amigo.trilha, corToken: amigo.corToken }
+    const grupos = gruposDeClasses([{ ...amigo, ativa: false }, amigoDaNatureza], [regularInativa])
+    expect(grupos.map((g) => [g.titulo, g.opcoes.map((o) => [o.nome, o.inativa, o.avancada])])).toEqual([
+      ['Regulares', [['Amigo', true, undefined]]],
+      ['Avançadas', [['Amigo da Natureza', false, undefined]]],
+    ])
+  })
+
   it('marcar a regular grava os dois ids; vínculo só com a avançada também aparece marcado', () => {
     const [opcao] = gruposDeClasses([amigo, amigoDaNatureza], [])[0]?.opcoes ?? []
     expect(opcao && idsDaOpcao(opcao)).toEqual([amigo.id, amigoDaNatureza.id])

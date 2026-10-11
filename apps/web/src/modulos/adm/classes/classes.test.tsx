@@ -113,6 +113,17 @@ describe('A5 · classes · lista e detalhe', () => {
     expect(within(screen.getByRole('region', { name: 'Descoberta espiritual' })).getByText('1 requisito')).toBeInTheDocument()
   })
 
+  it('avançada inativa continua sob a regular, marcada "Inativa", e abre para reativar', async () => {
+    const inativa = { ...avancada, ativa: false }
+    servidor.use(handlerClasses([amigo, inativa]), handlerDetalheDaClasse(criarDetalhe({ ...inativa, regular: regularDeAmigo, quemMontaCronograma: 'INSTRUTOR', secoes: [] })))
+    renderizarRotas(rotasAdmClasses, '/adm/classes')
+    const nav = within(await screen.findByRole('navigation', { name: 'Classes' }))
+    expect(nav.getAllByRole('button').map((b) => b.textContent)).toEqual(['Amigo10 anos', 'Amigo da NaturezaInativa'])
+    await userEvent.click(nav.getByRole('button', { name: /Amigo da Natureza/ }))
+    expect(await screen.findByRole('heading', { name: 'Amigo da Natureza', level: 2 })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Ativa' })).not.toBeChecked()
+  })
+
   it('a avançada abre com "Avançada de …", o cartão do par com os três dados e o link, e sem o seletor Quem monta', async () => {
     abrirClasses(`/adm/classes?classe=${avancada.id}`)
     servidor.use(handlerDetalheDaClasse(detalheDaAvancada))

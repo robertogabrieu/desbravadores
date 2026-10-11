@@ -48,6 +48,7 @@ export function criarMontagem(parcial: Partial<Montagem> = {}): Montagem {
     cronograma: {
       id: CRONOGRAMA_ID,
       status: 'RASCUNHO',
+      anoClube: 2026,
       inicio: '2026-01-01',
       fim: '2026-12-31',
       enviadoEm: null,

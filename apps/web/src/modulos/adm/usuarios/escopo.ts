@@ -50,7 +50,8 @@ export function gruposDeClasses(classes: Classe[], doPapel: RefClasse[]): GrupoD
   const regulares = individuais
     .filter((classe) => classe.tipo === 'REGULAR')
     .map((regular): OpcaoDeEscopo => {
-      const avancada = individuais.find((classe) => classe.tipo !== 'REGULAR' && !classe.inativa && classe.classeBaseId === regular.id)
+      // Regular inativa não leva a avançada: ela vale sozinha e aparece como item próprio.
+      const avancada = regular.inativa ? undefined : individuais.find((classe) => classe.tipo !== 'REGULAR' && !classe.inativa && classe.classeBaseId === regular.id)
       if (!avancada) return comoOpcao(regular.inativa)(regular)
       avancadasLigadas.add(avancada.id)
       return { ...comoOpcao(regular.inativa)(regular), avancada: { id: avancada.id, nome: avancada.nome } }

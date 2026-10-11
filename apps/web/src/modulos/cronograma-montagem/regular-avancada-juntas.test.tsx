@@ -109,6 +109,38 @@ describe('Regular e avançada · seletor de classe', () => {
   })
 })
 
+describe('Regular e avançada · regular inativa', () => {
+  const REGULAR_INATIVA = criarClasse({ ativa: false })
+  const montagemDaAvancada = criarMontagem({ classe: AVANCADA_MONTAGEM, requisitos: [AN1], datas: DATAS })
+
+  it('Adm: a avançada vale sozinha — aparece no seletor pelo próprio nome, e a regular inativa não', async () => {
+    abrirAdm(montagemDaAvancada, '/adm/cronogramas', [REGULAR_INATIVA, CLASSE_AVANCADA])
+    const seletor = await screen.findByRole('combobox', { name: 'Classe' })
+    expect(await within(seletor).findByRole('option', { name: 'Amigo da Natureza' })).toBeInTheDocument()
+    expect(within(seletor).getAllByRole('option')).toHaveLength(1)
+  })
+
+  it('Adm: ?classe=<avançada> abre a montagem da própria avançada, sem ir para a regular inativa', async () => {
+    const registro = abrirAdm(montagemDaAvancada, `/adm/cronogramas?classe=${CLASSE_AVANCADA.id}`, [REGULAR_INATIVA, CLASSE_AVANCADA])
+    await screen.findByRole('heading', { name: 'Requisitos da classe' })
+    expect(registro.classesLidas).toEqual([CLASSE_AVANCADA.id])
+  })
+
+  it('instrutor: ?classe=<avançada> abre a avançada e o seletor oferece as duas como itens próprios', async () => {
+    const { handlers, registro } = handlersMontagem(montagemDaAvancada)
+    servidor.use(
+      ...handlersSessao([criarVinculo('INSTRUTOR', 1, { classes: [CLASSE_MONTAGEM, AVANCADA_MONTAGEM] })]),
+      handlerClasses([REGULAR_INATIVA, CLASSE_AVANCADA]),
+      ...handlers,
+    )
+    renderizarRotas(rotasInstrutor, `/cronograma/montar?classe=${CLASSE_AVANCADA.id}`)
+    const seletor = await screen.findByRole('combobox', { name: 'Classe' })
+    expect(within(seletor).getAllByRole('option').map((opcao) => opcao.textContent)).toEqual(['Amigo', 'Amigo da Natureza'])
+    await waitFor(() => expect(registro.classesLidas).not.toHaveLength(0))
+    expect(registro.classesLidas).toEqual([CLASSE_AVANCADA.id])
+  })
+})
+
 describe('Regular e avançada · requisitos no computador', () => {
   it('um cartão "Requisitos" com duas barras, cada uma escrita com o nome e a contagem', async () => {
     abrirAdm()
@@ -280,6 +312,111 @@ describe('Regular e avançada · topo e publicação', () => {
       caminho: `/api/cronogramas/${CRONOGRAMA_AVANCADA_ID}/requisitos/${AN1.id}`,
     })
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+})
+
+/** O par com a classe dada em só um dos lados na data 04/10 (regular: R3; avançada: AN2, AN3, AN4). */
+function parComClasseDadaSo(lado: 'REGULAR' | 'AVANCADA'): Montagem {
+  const datas = DATAS.map((dado) => (dado.data === '2026-10-04' && lado === 'REGULAR' ? { ...dado, aulaDada: true } : dado))
+  const avancada = criarAvancadaMontagem([AN1, AN2, AN3, AN4, AN5, AN6], DATAS)
+  if (lado === 'AVANCADA') avancada.datas = avancada.datas.map((dado) => (dado.data === '2026-10-04' ? { ...dado, aulaDada: true } : dado))
+  return criarMontagem({ requisitos: [R1, R3], datas, avancada })
+}
+
+describe('Regular e avançada · classe dada por lado', () => {
+  it('computador: só a avançada deu aula em 04/10 — chips dela com "Classe dada" e sem remover; o da regular segue livre', async () => {
+    abrirAdm(parComClasseDadaSo('AVANCADA'))
+    await screen.findByRole('heading', { name: 'Requisitos' })
+    const dia = within(linha('2026-10-04'))
+    expect(dia.getAllByText('Classe dada')).toHaveLength(3)
+    expect(dia.queryByRole('button', { name: `remover ${AN2.codigo} desta data` })).not.toBeInTheDocument()
+    expect(dia.getByRole('button', { name: `remover ${R3.codigo} desta data` })).toBeInTheDocument()
+  })
+
+  it('computador: só a avançada deu aula — não oferece "Colocar aqui" para requisito da avançada, mas oferece para o da regular', async () => {
+    abrirAdm(parComClasseDadaSo('AVANCADA'))
+    const usuario = userEvent.setup()
+    await screen.findByRole('heading', { name: 'Requisitos' })
+    await usuario.click(screen.getByRole('button', { name: new RegExp(AN1.texto) }))
+    expect(within(linha('2026-10-04')).queryByRole('button', { name: 'Colocar aqui em 04/10' })).not.toBeInTheDocument()
+    expect(within(linha('2026-10-18')).getByRole('button', { name: 'Colocar aqui em 18/10' })).toBeInTheDocument()
+    await usuario.click(screen.getByRole('button', { name: new RegExp(R1.texto) }))
+    expect(within(linha('2026-10-04')).getByRole('button', { name: 'Colocar aqui em 04/10' })).toBeInTheDocument()
+  })
+
+  it('computador: só a regular deu aula — o inverso: chip da regular travado, da avançada livre', async () => {
+    abrirAdm(parComClasseDadaSo('REGULAR'))
+    const usuario = userEvent.setup()
+    await screen.findByRole('heading', { name: 'Requisitos' })
+    const dia = within(linha('2026-10-04'))
+    expect(dia.getAllByText('Classe dada')).toHaveLength(1)
+    expect(dia.queryByRole('button', { name: `remover ${R3.codigo} desta data` })).not.toBeInTheDocument()
+    expect(dia.getByRole('button', { name: `remover ${AN2.codigo} desta data` })).toBeInTheDocument()
+    await usuario.click(screen.getByRole('button', { name: new RegExp(R1.texto) }))
+    expect(within(linha('2026-10-04')).queryByRole('button', { name: 'Colocar aqui em 04/10' })).not.toBeInTheDocument()
+    await usuario.click(screen.getByRole('button', { name: new RegExp(AN1.texto) }))
+    expect(within(linha('2026-10-04')).getByRole('button', { name: 'Colocar aqui em 04/10' })).toBeInTheDocument()
+  })
+
+  it('computador: conflito que vem só da avançada aparece na linha', async () => {
+    const datas = [criarDataMontagem('2026-10-25', { situacao: situacaoDoDia('2026-10-25', [{ nome: 'Ensaio da investidura', tipo: 'EVENTO' }]) })]
+    const avancada = criarAvancadaMontagem([AN6], datas)
+    abrirAdm(criarMontagem({ requisitos: [R1], datas, avancada }))
+    await screen.findByRole('heading', { name: 'Requisitos' })
+    expect(within(linha('2026-10-25')).getByText(/Conflito:/)).toBeInTheDocument()
+  })
+
+  it('instrutor: só a avançada deu aula — sem remover nos chips dela e a folha "Adicionar" só lista a regular', async () => {
+    abrirInstrutor(parComClasseDadaSo('AVANCADA'))
+    const usuario = userEvent.setup()
+    await screen.findByRole('progressbar', { name: /Regular/ })
+    expect(within(linha('2026-10-04')).getAllByText('Classe dada')).toHaveLength(3)
+    expect(within(linha('2026-10-04')).queryByRole('button', { name: `remover ${AN2.codigo} desta data` })).not.toBeInTheDocument()
+    await usuario.click(within(linha('2026-10-04')).getByRole('button', { name: 'Adicionar requisito nesta data' }))
+    const folha = within(screen.getByRole('dialog'))
+    expect(folha.getByRole('button', { name: new RegExp(R1.texto) })).toBeInTheDocument()
+    expect(folha.queryByRole('button', { name: new RegExp(AN1.texto) })).not.toBeInTheDocument()
+  })
+
+  it('celular: a folha "Em qual data?" não oferece a data onde só a avançada deu aula para requisito da avançada', async () => {
+    simularLargura(390)
+    abrirAdm(parComClasseDadaSo('AVANCADA'))
+    const usuario = userEvent.setup()
+    await screen.findByText('Regular 1/2 · Avançada 4/6')
+    await usuario.click(within(screen.getByRole('tabpanel')).getByRole('button', { name: new RegExp(AN1.texto) }))
+    const folha = within(screen.getByRole('dialog', { name: 'Em qual data?' }))
+    expect(folha.queryByRole('button', { name: /04\/10/ })).not.toBeInTheDocument()
+    expect(folha.getByText(/04\/10 não aceita: classe já dada/)).toBeInTheDocument()
+  })
+
+  it('celular: no cartão "Por data" o selo vai só nos requisitos do lado que deu aula', async () => {
+    simularLargura(390)
+    abrirAdm(parComClasseDadaSo('AVANCADA'))
+    const usuario = userEvent.setup()
+    await screen.findByText('Regular 1/2 · Avançada 4/6')
+    await usuario.click(screen.getByRole('tab', { name: 'Por data' }))
+    expect(within(linha('2026-10-04')).getAllByText('Classe dada')).toHaveLength(3)
+  })
+})
+
+describe('Regular e avançada · completar o par', () => {
+  it('colocar vários da avançada de uma vez cria o par uma vez, com o ano do clube, e grava todos no id devolvido', async () => {
+    const regularComAno = { ...criarMontagem().cronograma!, anoClube: 2031 }
+    const semAvancada = criarPar({ cronograma: regularComAno, avancada: criarAvancadaMontagem([AN1, AN5], DATAS, { cronograma: null }) })
+    const registro = abrirInstrutor(semAvancada)
+    const usuario = userEvent.setup()
+    await screen.findByRole('progressbar', { name: /Regular/ })
+    registro.responder(criarPar({ cronograma: regularComAno, avancada: criarAvancadaMontagem([AN1, AN5], DATAS) }))
+    await usuario.click(within(linha('2026-10-18')).getByRole('button', { name: 'Adicionar requisito nesta data' }))
+    const folha = within(screen.getByRole('dialog'))
+    await usuario.click(folha.getByRole('button', { name: new RegExp(AN1.texto) }))
+    await usuario.click(folha.getByRole('button', { name: new RegExp(AN5.texto) }))
+    await usuario.click(folha.getByRole('button', { name: 'Adicionar 2 requisitos' }))
+    await waitFor(() => expect(registro.chamadas).toHaveLength(3))
+    expect(registro.chamadas.filter((chamada) => chamada.metodo === 'POST')).toHaveLength(1)
+    expect(registro.chamadas[0]).toMatchObject({ metodo: 'POST', caminho: '/api/cronogramas', corpo: { anoClube: 2031, inicio: '2026-01-01', fim: '2026-12-31' } })
+    expect(registro.chamadas[1]).toMatchObject({ caminho: `/api/cronogramas/${CRONOGRAMA_AVANCADA_ID}/requisitos/${AN1.id}` })
+    expect(registro.chamadas[2]).toMatchObject({ caminho: `/api/cronogramas/${CRONOGRAMA_AVANCADA_ID}/requisitos/${AN5.id}` })
   })
 })
 
