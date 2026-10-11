@@ -239,8 +239,9 @@ export class UsuariosService {
         data: [...new Set(relacoes.unidadeIds)].map((unidadeId) => ({ clubeId, vinculoId: ativo.id, unidadeId })),
         skipDuplicates: true,
       })
+      const classeIds = await comParDeClasses(tx, clubeId, relacoes.classeIds)
       await tx.vinculoClasse.createMany({
-        data: [...new Set(relacoes.classeIds)].map((classeId) => ({ vinculoId: ativo.id, classeId })),
+        data: classeIds.map((classeId) => ({ vinculoId: ativo.id, classeId })),
         skipDuplicates: true,
       })
     } else {

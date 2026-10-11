@@ -697,4 +697,42 @@ describe('usuarios e vinculos', () => {
       esperado: { tipo: 'NAO_ENCONTRADO' },
     })
   })
+
+  describe('acrescentarPapel (convite por link)', () => {
+    async function paresDeAmigo() {
+      const regular = await classeOficial('Amigo')
+      const avancada = await prismaDeTeste().classe.findFirstOrThrow({
+        where: { tipo: 'AVANCADA', classeBaseId: regular.id, clubeId: null },
+        select: { id: true },
+      })
+      return { regular, avancada }
+    }
+    const classesDoVinculo = async (vinculoId: string) =>
+      (await prismaDeTeste().vinculoClasse.findMany({ where: { vinculoId }, select: { classeId: true } })).map((c) => c.classeId).sort()
+
+    it('papel que já está ativo: o convite com a regular acrescenta também a avançada', async () => {
+      const clube = await criarClube()
+      const { regular, avancada } = await paresDeAmigo()
+      const instrutor = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR' })
+      await app.get(UsuariosService).acrescentarPapel(prismaDeTeste(), clube.id, instrutor.usuario.id, 'INSTRUTOR', { unidadeIds: [], classeIds: [regular.id] })
+      expect(await classesDoVinculo(instrutor.vinculo.id)).toEqual([regular.id, avancada.id].sort())
+    })
+
+    it('papel novo: o convite com a avançada grava as duas', async () => {
+      const clube = await criarClube()
+      const { regular, avancada } = await paresDeAmigo()
+      const conta = await criarAcesso({ clubeId: clube.id, papel: 'CONSELHEIRO' })
+      await app.get(UsuariosService).acrescentarPapel(prismaDeTeste(), clube.id, conta.usuario.id, 'INSTRUTOR', { unidadeIds: [], classeIds: [avancada.id] })
+      const vinculo = await prismaDeTeste().vinculo.findFirstOrThrow({ where: { clubeId: clube.id, usuarioId: conta.usuario.id, papel: 'INSTRUTOR' } })
+      expect(await classesDoVinculo(vinculo.id)).toEqual([regular.id, avancada.id].sort())
+    })
+
+    it('classe agrupada fica sem par', async () => {
+      const clube = await criarClube()
+      const agrupada = await classeOficial('Agrupadas (Amigo a Guia)', 'AGRUPADAS')
+      const instrutor = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR' })
+      await app.get(UsuariosService).acrescentarPapel(prismaDeTeste(), clube.id, instrutor.usuario.id, 'INSTRUTOR', { unidadeIds: [], classeIds: [agrupada.id] })
+      expect(await classesDoVinculo(instrutor.vinculo.id)).toEqual([agrupada.id])
+    })
+  })
 })

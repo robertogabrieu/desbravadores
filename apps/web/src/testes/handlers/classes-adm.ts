@@ -9,6 +9,7 @@ export function criarRequisito(parcial: Partial<RequisitoDetalhe> = {}): Requisi
 export function criarDetalhe(parcial: Partial<ClasseDetalhe> = {}): ClasseDetalhe {
   return {
     ...criarClasse(),
+    regular: null,
     secoes: [{ id: '018f0000-0000-7000-8000-000000000401', codigo: 'G', nome: 'Gerais', ordem: 1, requisitos: [criarRequisito()] }],
     ...parcial,
   }

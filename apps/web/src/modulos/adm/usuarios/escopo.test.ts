@@ -1,21 +1,22 @@
 import { describe, expect, it } from 'vitest'
 import { criarClasse, criarUnidade } from '../../../testes/handlers/leitura'
 import { uuid } from '../../../testes/handlers/sessao'
-import { filtrarGrupos, gruposDeClasses, gruposDeUnidades } from './escopo'
+import { contarMarcadas, filtrarGrupos, gruposDeClasses, gruposDeUnidades, idsDaOpcao, opcaoMarcada, resumoDasClasses } from './escopo'
 
 const amigo = criarClasse({ id: uuid(101), nome: 'Amigo', tipo: 'REGULAR', trilha: 'INDIVIDUAL' })
-const amigoDaNatureza = criarClasse({ id: uuid(102), nome: 'Amigo da Natureza', tipo: 'AVANCADA', trilha: 'INDIVIDUAL' })
+const amigoDaNatureza = criarClasse({ id: uuid(102), nome: 'Amigo da Natureza', tipo: 'AVANCADA', trilha: 'INDIVIDUAL', classeBaseId: uuid(101) })
 const agrupadas = criarClasse({ id: uuid(103), nome: 'Agrupadas (Amigo a Guia)', tipo: 'REGULAR', trilha: 'AGRUPADAS' })
 const agrupadasAvancada = criarClasse({ id: uuid(104), nome: 'Agrupadas — avançada', tipo: 'AVANCADA', trilha: 'AGRUPADAS' })
 
 describe('gruposDeClasses', () => {
-  it('separa em Regulares, Avançadas e Agrupadas, e o grupo vazio some', () => {
+  it('a avançada vai embaixo da regular dela; as agrupadas ficam à parte, sem par, e o grupo vazio some', () => {
     const grupos = gruposDeClasses([amigo, amigoDaNatureza, agrupadas, agrupadasAvancada], [])
     expect(grupos.map((g) => [g.titulo, g.opcoes.map((o) => o.nome)])).toEqual([
       ['Regulares', ['Amigo']],
-      ['Avançadas', ['Amigo da Natureza']],
       ['Agrupadas', ['Agrupadas (Amigo a Guia)', 'Agrupadas — avançada']],
     ])
+    expect(grupos[0]?.opcoes[0]?.avancada).toEqual({ id: amigoDaNatureza.id, nome: 'Amigo da Natureza' })
+    expect(grupos[1]?.opcoes.every((o) => o.avancada === undefined)).toBe(true)
     expect(gruposDeClasses([amigo], []).map((g) => g.titulo)).toEqual(['Regulares'])
   })
 
@@ -38,6 +39,31 @@ describe('gruposDeClasses', () => {
   it('classe do papel que nem veio na lista também entra, pelo nome que o papel traz', () => {
     const doPapel = [{ id: uuid(107), nome: 'Sumida', tipo: 'AVANCADA' as const, trilha: 'INDIVIDUAL' as const, corToken: '--x' }]
     expect(gruposDeClasses([amigo], doPapel)[1]).toEqual({ titulo: 'Avançadas', opcoes: [{ id: uuid(107), nome: 'Sumida', inativa: true }] })
+  })
+})
+
+describe('classes do par', () => {
+  it('avançada sem regular na lista continua visível, no grupo Avançadas', () => {
+    const solta = criarClasse({ id: uuid(108), nome: 'Solta', tipo: 'AVANCADA', classeBaseId: uuid(999) })
+    expect(gruposDeClasses([amigo, solta], []).map((g) => [g.titulo, g.opcoes.map((o) => o.nome)])).toEqual([
+      ['Regulares', ['Amigo']],
+      ['Avançadas', ['Solta']],
+    ])
+  })
+
+  it('marcar a regular grava os dois ids; vínculo só com a avançada também aparece marcado', () => {
+    const [opcao] = gruposDeClasses([amigo, amigoDaNatureza], [])[0]?.opcoes ?? []
+    expect(opcao && idsDaOpcao(opcao)).toEqual([amigo.id, amigoDaNatureza.id])
+    expect(opcao && opcaoMarcada(opcao, [amigoDaNatureza.id])).toBe(true)
+    expect(opcao && opcaoMarcada(opcao, [])).toBe(false)
+  })
+
+  it('resumo nomeia as duas; sem marcação não há resumo', () => {
+    const grupos = gruposDeClasses([amigo, amigoDaNatureza, agrupadas], [])
+    expect(resumoDasClasses('Maria', grupos, [amigo.id, amigoDaNatureza.id])).toBe('Maria vai instruir Amigo e Amigo da Natureza.')
+    expect(resumoDasClasses('Maria', grupos, [amigo.id, agrupadas.id])).toBe('Maria vai instruir Amigo, Amigo da Natureza e Agrupadas (Amigo a Guia).')
+    expect(resumoDasClasses('Maria', grupos, [])).toBeNull()
+    expect(contarMarcadas(grupos, [amigo.id, amigoDaNatureza.id])).toBe(1)
   })
 })
 
@@ -68,6 +94,6 @@ describe('filtrarGrupos', () => {
     expect(filtrarGrupos(grupos, 'zzz')).toEqual([])
     expect(filtrarGrupos(grupos, '  ')).toEqual(grupos)
     const classes = gruposDeClasses([amigo, amigoDaNatureza], [])
-    expect(filtrarGrupos(classes, 'natureza').map((g) => g.titulo)).toEqual(['Avançadas'])
+    expect(filtrarGrupos(classes, 'natureza')[0]?.opcoes.map((o) => o.nome)).toEqual(['Amigo'])
   })
 })

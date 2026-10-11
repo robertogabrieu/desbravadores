@@ -1,9 +1,10 @@
 import { ChevronRight } from 'lucide-react'
 import { useId, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAjustarRequisito, useClasseDetalhe, useEditarClasse } from '../../../api/classes-adm'
 import type { ClasseDetalhe, RequisitoDetalhe } from '../../../api/classes-adm'
 import type { Classe } from '../../../api/leitura'
-import { Botao } from '../../../ui/Botao'
+import { Botao, estiloDoBotao } from '../../../ui/Botao'
 import { CaixaMarcacao } from '../../../ui/CaixaMarcacao'
 import { Cartao } from '../../../ui/Cartao'
 import { cn } from '../../../ui/cn'
@@ -200,12 +201,43 @@ function QuemMonta({ detalhe }: { detalhe: ClasseDetalhe }) {
   )
 }
 
-function Corpo({ detalhe }: { detalhe: ClasseDetalhe }) {
+const QUEM_MONTA = { ADM: 'Adm', INSTRUTOR: 'Instrutores da classe' } as const
+
+/** A avançada não tem instrutor, alunos nem "quem monta" próprios: mostra os da regular e leva até ela. */
+function CartaoDoPar({ regular }: { regular: NonNullable<ClasseDetalhe['regular']> }) {
+  const dados = [
+    { rotulo: 'Instrutores', valor: regular.instrutores.length === 0 ? 'Nenhum instrutor ainda' : regular.instrutores.join(', ') },
+    { rotulo: 'Quem monta o cronograma', valor: QUEM_MONTA[regular.quemMontaCronograma] },
+    { rotulo: 'Alunos', valor: String(regular.totalAlunos) },
+  ]
+  return (
+    <Cartao className="flex flex-col gap-3">
+      <h3 className="font-titulo text-lg font-bold text-texto">Anda junto com {regular.nome}</h3>
+      <p className="text-base text-texto-2">
+        Instrutores, alunos, cronograma e quem monta são os mesmos de {regular.nome}. Para mudar qualquer um deles, abra {regular.nome}.
+      </p>
+      <dl className="grid gap-3 sm:grid-cols-3">
+        {dados.map((dado) => (
+          <div key={dado.rotulo} className="flex flex-col gap-0.5">
+            <dt className="text-sm text-texto-2">{dado.rotulo}</dt>
+            <dd className="text-base font-semibold text-texto">{dado.valor}</dd>
+          </div>
+        ))}
+      </dl>
+      <Link to={{ search: `?classe=${regular.id}` }} className={cn(estiloDoBotao({ variante: 'secundario' }), 'self-start')}>
+        Abrir {regular.nome}
+      </Link>
+    </Cartao>
+  )
+}
+
+function Corpo({ detalhe, avancada }: { detalhe: ClasseDetalhe; avancada?: Classe }) {
   const editar = useEditarClasse()
   const todos = detalhe.secoes.flatMap((secao) => secao.requisitos)
   const ativos = todos.filter((r) => r.ativo).length
   const ajustados = ajustadosEm(todos)
-  const tipo = detalhe.tipo === 'REGULAR' ? 'Classe regular' : 'Classe avançada'
+  const regularDaAvancada = detalhe.regular ?? null
+  const tipo = regularDaAvancada ? `Avançada de ${regularDaAvancada.nome}` : detalhe.tipo === 'REGULAR' ? 'Classe regular' : 'Classe avançada'
   const idade =
     detalhe.idade === null
       ? ''
@@ -256,10 +288,17 @@ function Corpo({ detalhe }: { detalhe: ClasseDetalhe }) {
                 </p>
               )}
             </div>
-            <QuemMonta detalhe={detalhe} />
+            {!regularDaAvancada && (
+              <div className="flex flex-col gap-1.5">
+                <QuemMonta detalhe={detalhe} />
+                {avancada && <p className="text-sm text-texto-2">Vale para {detalhe.nome} e {avancada.nome}.</p>}
+              </div>
+            )}
           </div>
         </div>
       </Cartao>
+
+      {regularDaAvancada && <CartaoDoPar regular={regularDaAvancada} />}
 
       <CartaoSubstituto alvo={{ tipo: 'classe', id: detalhe.id, nome: detalhe.nome }} ativo={detalhe.ativa} nivelDoTitulo={3} />
 
@@ -280,11 +319,12 @@ function Corpo({ detalhe }: { detalhe: ClasseDetalhe }) {
   )
 }
 
-export function DetalheDaClasse({ classe }: { classe: Classe }) {
+/** `avancada`: a avançada que anda com esta classe, quando ela é uma regular com par. */
+export function DetalheDaClasse({ classe, avancada }: { classe: Classe; avancada?: Classe }) {
   const detalhe = useClasseDetalhe(classe.id)
   return (
     <CorpoDaConsulta consulta={detalhe} rotuloDeCarga={`Carregando ${classe.nome}`}>
-      {(dados) => <Corpo detalhe={dados} />}
+      {(dados) => <Corpo detalhe={dados} avancada={avancada} />}
     </CorpoDaConsulta>
   )
 }

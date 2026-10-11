@@ -33,8 +33,8 @@ export const ClasseRegularResumo = z.object({
   totalAlunos: z.number().int(),      // matriculados na regular no ano corrente do clube (sem os que desistiram)
 })
 export const ClasseDetalheSaida = ClasseSaida.extend({
-  /** Preenchido só na avançada; `null` nas demais classes (ausente em respostas que não o calculam). */
-  regular: ClasseRegularResumo.nullable().optional(),
+  /** Preenchido só na avançada; `null` nas demais classes. */
+  regular: ClasseRegularResumo.nullable(),
   secoes: z.array(z.object({
     id: Uuid, codigo: z.string(), nome: z.string(), ordem: z.number().int(),
     requisitos: z.array(RequisitoSaida),
