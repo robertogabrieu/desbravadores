@@ -153,6 +153,10 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar, esco
 
   const ehFerias = tipo === 'FERIAS'
   const ehExtra = tipo === 'REUNIAO_EXTRA'
+  const ehSemReuniao = tipo === 'SEM_REUNIAO'
+  /** Férias não têm hora nem lugar; um dia sem reunião não tem lugar. */
+  const pedeHorario = !ehFerias
+  const pedeLocal = !ehFerias && !ehSemReuniao
   const ehEspecial = tipo === 'EVENTO_ESPECIAL'
   const lista = evento?.lista
   const listaComecada = !!lista && (lista.concluidaEm !== null || lista.foram > 0)
@@ -194,6 +198,16 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar, esco
     if (ehExtra) setFim(data)
   }
 
+  /** O fim nunca fica antes do início: quem passa do outro lado leva o par junto. */
+  function mudarInicio(data: string) {
+    setInicio(data)
+    if (data !== '' && fim !== '' && fim < data) setFim(data)
+  }
+
+  function mudarFim(data: string) {
+    setFim(data !== '' && inicio !== '' && data < inicio ? inicio : data)
+  }
+
   function digitarPontos(campo: 'pontosParticipacao' | 'pontosUniforme', texto: string) {
     if (campo === 'pontosParticipacao') setPontosDeIr(texto)
     else setPontosDoUniforme(texto)
@@ -205,9 +219,10 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar, esco
     setErrosAoSair((atuais) => ({ ...atuais, [campo]: mensagemDosPontos(campo, texto, inicio) }))
   }
 
-  /** O que o tipo esconde não vale: Férias leva o padrão e a extra nunca é de campo. */
+  /** O que o tipo esconde não vale: Férias e Sem reunião levam o padrão e a extra nunca é de campo. */
   function marcacoesDoTipo(): Marcacoes {
     if (ehFerias) return { ...MARCACOES_PADRAO['FERIAS'] }
+    if (ehSemReuniao) return { ...MARCACOES_PADRAO['SEM_REUNIAO'] }
     if (ehExtra) return { ...marcacoes, bomParaCampo: false }
     return marcacoes
   }
@@ -238,8 +253,8 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar, esco
       tipo,
       inicio,
       fim: ehExtra ? inicio : fim,
-      horario: horario.trim() || null,
-      local: local.trim() || null,
+      horario: pedeHorario ? horario.trim() || null : null,
+      local: pedeLocal ? local.trim() || null : null,
       ...marcacoesDoTipo(),
       ...(ehEspecial && { uniforme, pontosParticipacao: pontosDoTexto(pontosDeIr), pontosUniforme: pontosDoTexto(pontosDoUniforme) }),
     }
@@ -299,14 +314,16 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar, esco
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          <CampoData rotulo="Início" value={inicio} erro={erros['inicio']} onChange={(e) => setInicio(e.target.value)} />
-          <CampoData rotulo="Fim" value={fim} erro={erros['fim']} onChange={(e) => setFim(e.target.value)} />
+          <CampoData rotulo="Início" value={inicio} erro={erros['inicio']} onChange={(e) => mudarInicio(e.target.value)} />
+          <CampoData rotulo="Fim" value={fim} erro={erros['fim']} onChange={(e) => mudarFim(e.target.value)} />
         </div>
       )}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Campo rotulo="Horário" type="time" value={horario} erro={erros['horario']} onChange={(e) => setHorario(e.target.value)} />
-        <Campo rotulo="Local" value={local} erro={erros['local']} onChange={(e) => setLocal(e.target.value)} />
-      </div>
+      {(pedeHorario || pedeLocal) && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {pedeHorario && <Campo rotulo="Horário" type="time" value={horario} erro={erros['horario']} onChange={(e) => setHorario(e.target.value)} />}
+          {pedeLocal && <Campo rotulo="Local" value={local} erro={erros['local']} onChange={(e) => setLocal(e.target.value)} />}
+        </div>
+      )}
       {ehEspecial && (
         <fieldset className="m-0 flex flex-col gap-4 border-0 p-0">
           <legend className="mb-3 p-0 font-titulo text-lg font-bold text-texto">Uniforme e pontos</legend>
@@ -349,7 +366,7 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar, esco
           )}
         </fieldset>
       )}
-      {!ehFerias && (
+      {!ehFerias && !ehSemReuniao && (
         <fieldset
           id={idDoGrupo}
           data-com-erro={erroDoGrupo ? true : undefined}

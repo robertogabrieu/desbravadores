@@ -199,19 +199,16 @@ describe('A6 · criar', () => {
     expect(await screen.findByLabelText('Início')).toHaveValue('2026-10-05')
   })
 
-  it('valida nome e fim antes do início sem chamar a API', async () => {
+  it('valida o nome sem chamar a API, e um fim antes do início vira o próprio início', async () => {
     let chamadas = 0
     await abrirNovoEvento(handlerCalendario(), handlerCriarEvento([], () => chamadas++))
 
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     expect(screen.getByText('Informe o nome do evento')).toBeInTheDocument()
-
-    await userEvent.type(screen.getByLabelText('Nome'), 'Feriado')
-    await userEvent.clear(screen.getByLabelText('Fim'))
-    await userEvent.type(screen.getByLabelText('Fim'), '2026-09-30')
-    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
-    expect(await screen.findByText('O fim não pode ser antes do início')).toBeInTheDocument()
     expect(chamadas).toBe(0)
+
+    fireEvent.change(screen.getByLabelText('Fim'), { target: { value: '2000-01-01' } })
+    expect(screen.getByLabelText('Fim')).toHaveValue(screen.getByLabelText<HTMLInputElement>('Início').value)
   })
 
   it('422 da API aparece na tela, que continua aberta', async () => {
@@ -263,7 +260,7 @@ describe('A6 · editar', () => {
   })
 })
 
-const TEXTO_EVENTO = 'Evento do clube: só marca a data no calendário; não vale pontos nem tem lista de quem foi. Para um período sem reuniões, escolha Férias; para uma reunião fora do domingo, Reunião extra; para um evento que vale pontos, Evento especial.'
+const TEXTO_EVENTO = 'Evento do clube: só marca a data no calendário; não vale pontos nem tem lista de quem foi.'
 const TEXTO_FERIAS = 'Férias: sem reunião e sem classe nos domingos do período; acampamentos continuam valendo.'
 const TEXTO_EXTRA = 'Reunião extra: uma data fora do domingo, com chamada da unidade, classe ou as duas.'
 const CAIXAS = ['Terá reunião', 'Terá classe', 'Terá atividade de campo']

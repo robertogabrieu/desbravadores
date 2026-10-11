@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { caixa } from '../../../testes/handlers/caixa'
@@ -43,7 +43,7 @@ describe('Novo evento · escolha do tipo', () => {
   it('com a configuração fora do ar, a frase cai em "dia de reunião"', async () => {
     servidor.use(handlerErroConfiguracao(), handlerCalendario())
     renderizarRotas(rotasAdmCalendario, ESCOLHA)
-    expect(await screen.findAllByText(/fora do dia de reunião/)).toHaveLength(2)
+    expect(await screen.findAllByText(/fora do dia de reunião/)).toHaveLength(1)
   })
 
   it('os cartões têm alvo de toque mínimo, nada fica preso à tela e o foco abre no título', async () => {
@@ -141,6 +141,47 @@ describe('Novo evento · formulário com o tipo escolhido', () => {
     await userEvent.click(await screen.findByLabelText('Terá classe'))
     await userEvent.click(screen.getByRole('link', { name: 'Trocar tipo' }))
     expect(await screen.findByRole('dialog', { name: 'Trocar o tipo do evento?' })).toBeInTheDocument()
+  })
+
+  it('Sem reunião não oferece reunião, classe nem atividade de campo: o tipo já diz que não há nenhuma', async () => {
+    abrir(ESCOLHA)
+    await userEvent.click(await screen.findByRole('link', { name: new RegExp(`^${ROTULOS_DO_TIPO.SEM_REUNIAO}`) }))
+    await screen.findByLabelText('Nome')
+
+    expect(screen.queryByLabelText('Terá reunião')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Terá classe')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Terá atividade de campo')).not.toBeInTheDocument()
+  })
+
+  it('Férias não pedem horário nem local, e Sem reunião não pede local', async () => {
+    abrir(ESCOLHA)
+    await userEvent.click(await screen.findByRole('link', { name: new RegExp(`^${ROTULOS_DO_TIPO.FERIAS}`) }))
+    await screen.findByLabelText('Nome')
+    expect(screen.queryByLabelText('Horário')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Local')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('link', { name: 'Trocar tipo' }))
+    await userEvent.click(await screen.findByRole('link', { name: new RegExp(`^${ROTULOS_DO_TIPO.SEM_REUNIAO}`) }))
+    await screen.findByLabelText('Nome')
+    expect(screen.getByLabelText('Horário')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Local')).not.toBeInTheDocument()
+  })
+
+  it('o fim acompanha o início quando ficaria antes dele', async () => {
+    abrir(ESCOLHA)
+    await userEvent.click(await screen.findByRole('link', { name: new RegExp(`^${ROTULOS_DO_TIPO.FERIAS}`) }))
+    await screen.findByLabelText('Nome')
+    const inicio = screen.getByLabelText('Início')
+    const fim = screen.getByLabelText('Fim')
+
+    fireEvent.change(inicio, { target: { value: '2026-10-20' } })
+    expect(fim).toHaveValue('2026-10-20')
+    fireEvent.change(fim, { target: { value: '2026-10-25' } })
+    expect(fim).toHaveValue('2026-10-25')
+    fireEvent.change(fim, { target: { value: '2026-10-18' } })
+    expect(fim).toHaveValue('2026-10-20')
+    fireEvent.change(inicio, { target: { value: '2026-10-30' } })
+    expect(fim).toHaveValue('2026-10-30')
   })
 
   it('o voltar do navegador volta à escolha', async () => {
