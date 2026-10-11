@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { DataCivil } from '@desbravadores/shared'
@@ -37,6 +38,7 @@ export function EditarEvento() {
   const local = useLocation()
   const estadoDeChegada: unknown = local.state
   const consulta = useEvento(id ?? '', editando)
+  const raiz = useRef<HTMLDivElement>(null)
   const { modo } = useConexao()
 
   const dataPedida = DataCivil.safeParse(parametros.get('data'))
@@ -63,6 +65,16 @@ export function EditarEvento() {
     const busca = restante.toString()
     return busca ? `${local.pathname}?${busca}` : local.pathname
   }
+
+  // O cartão da escolha desmonta ao abrir o formulário: o foco iria para o body.
+  const abriuComTipo = !editando && tipoEscolhido !== null
+  useEffect(() => {
+    if (!abriuComTipo) return
+    const titulo = raiz.current?.querySelector('h1')
+    titulo?.setAttribute('tabindex', '-1')
+    titulo?.classList.add('outline-none')
+    titulo?.focus()
+  }, [abriuComTipo])
 
   let corpo: ReactNode
   if (!editando && tipoEscolhido) {
@@ -97,7 +109,11 @@ export function EditarEvento() {
     )
   }
 
-  return <div className="flex flex-col gap-5 py-4">{corpo}</div>
+  return (
+    <div ref={raiz} className="flex flex-col gap-5 py-4">
+      {corpo}
+    </div>
+  )
 }
 
 interface PropriedadesDaEdicao {

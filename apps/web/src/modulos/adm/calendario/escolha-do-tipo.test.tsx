@@ -86,6 +86,13 @@ describe('Novo evento · formulário com o tipo escolhido', () => {
     expect(screen.getByRole('link', { name: 'Trocar tipo' })).toHaveClass('min-h-[var(--touch-min)]')
   })
 
+  it('ao abrir o formulário pelo cartão, o foco vai ao título e não ao body', async () => {
+    abrir(ESCOLHA)
+    await userEvent.click(await screen.findByRole('link', { name: new RegExp(ROTULOS_DO_TIPO.FERIADO) }))
+    const titulo = await screen.findByRole('heading', { level: 1, name: 'Novo evento' })
+    await waitFor(() => expect(titulo).toHaveFocus())
+  })
+
   it('cada tipo abre com as marcações dele', async () => {
     abrir(`${ESCOLHA}&tipo=ACAMPAMENTO`)
     await screen.findByLabelText('Nome')
@@ -147,7 +154,7 @@ describe('Novo evento · formulário com o tipo escolhido', () => {
 
 describe('Editar evento · sem escolha', () => {
   it('não mostra a escolha nem o selo; o seletor de tipo continua', async () => {
-    const evento = criarEvento(1, { nome: 'Acampamento do clube', tipo: 'ACAMPAMENTO', inicio: '2026-10-16', fim: '2026-10-18' })
+    const evento = criarEvento(1, { nome: 'Acampamento do clube', tipo: 'ACAMPAMENTO', inicio: '2026-10-16', fim: '2026-10-18', temReuniao: false, temClasse: true, bomParaCampo: true })
     abrir(`/adm/calendario/eventos/${evento.id}/editar`, handlerEvento(caixa(evento)))
 
     expect(await screen.findByLabelText('Tipo')).toHaveValue('ACAMPAMENTO')
@@ -159,5 +166,52 @@ describe('Editar evento · sem escolha', () => {
     const evento = criarEvento(2, { nome: 'Reunião especial', tipo: 'EVENTO' })
     abrir(`/adm/calendario/eventos/${evento.id}/editar?tipo=FERIAS`, handlerEvento(caixa(evento)))
     expect(await screen.findByLabelText('Tipo')).toHaveValue('EVENTO')
+  })
+
+  describe('trocar o tipo pelo seletor', () => {
+    const acampamento = () => criarEvento(3, { nome: 'Acampamento do clube', tipo: 'ACAMPAMENTO', inicio: '2026-10-16', fim: '2026-10-18', temReuniao: false, temClasse: true, bomParaCampo: true })
+
+    it('as marcações voltam ao padrão do tipo novo', async () => {
+      const evento = acampamento()
+      abrir(`/adm/calendario/eventos/${evento.id}/editar`, handlerEvento(caixa(evento)))
+      await userEvent.click(await screen.findByLabelText('Terá reunião'))
+      expect(screen.getByLabelText('Terá reunião')).toBeChecked()
+
+      await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'EVENTO')
+      expect(screen.getByLabelText('Terá reunião')).toBeChecked()
+      expect(screen.getByLabelText('Terá classe')).not.toBeChecked()
+      expect(screen.getByLabelText('Terá atividade de campo')).not.toBeChecked()
+
+      await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'ACAMPAMENTO')
+      expect(screen.getByLabelText('Terá reunião')).not.toBeChecked()
+      expect(screen.getByLabelText('Terá classe')).toBeChecked()
+      expect(screen.getByLabelText('Terá atividade de campo')).toBeChecked()
+    })
+
+    it('virar Reunião extra iguala o fim ao início', async () => {
+      const evento = acampamento()
+      abrir(`/adm/calendario/eventos/${evento.id}/editar`, handlerEvento(caixa(evento)))
+      await screen.findByLabelText('Fim')
+      expect(screen.getByLabelText('Fim')).toHaveValue('2026-10-18')
+
+      await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'REUNIAO_EXTRA')
+      expect(screen.getByLabelText('Data')).toHaveValue('2026-10-16')
+      expect(screen.queryByLabelText('Fim')).not.toBeInTheDocument()
+      await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'EVENTO')
+      expect(screen.getByLabelText('Fim')).toHaveValue('2026-10-16')
+    })
+
+    it('o grupo Uniforme e pontos aparece ao virar Evento especial e some ao sair dele', async () => {
+      const evento = acampamento()
+      abrir(`/adm/calendario/eventos/${evento.id}/editar`, handlerEvento(caixa(evento)))
+      await screen.findByLabelText('Tipo')
+      expect(screen.queryByRole('group', { name: 'Uniforme e pontos' })).not.toBeInTheDocument()
+
+      await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'EVENTO_ESPECIAL')
+      expect(screen.getByRole('group', { name: 'Uniforme e pontos' })).toBeInTheDocument()
+
+      await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'FERIADO')
+      expect(screen.queryByRole('group', { name: 'Uniforme e pontos' })).not.toBeInTheDocument()
+    })
   })
 })
