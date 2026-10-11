@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ModoConexao } from '../../offline'
 import { handlerConfiguracao } from '../../testes/handlers/clube'
 import { handlerClasses } from '../../testes/handlers/leitura'
-import { criarClasse } from '../../testes/handlers/leitura'
 import {
   ATUALIZADO_EM,
   CRONOGRAMA_ID,
@@ -335,18 +334,6 @@ describe('A7 · montar', () => {
       caminho: `/api/cronogramas/${CRONOGRAMA_ID}/aulas`,
       corpo: { data: '2026-12-20', horario: null, local: null, titulo: null },
     })
-  })
-
-  it('alternador: com regular e avançada, Avançada troca a classe da busca', async () => {
-    const avancada = criarClasse({ id: uuid(101), nome: 'Amigo avançada', tipo: 'AVANCADA', classeBaseId: uuid(100), ordem: 2 })
-    const { handlers, registro } = handlersMontagem(criarMontagemDeExemplo())
-    servidor.use(...handlersSessao([criarVinculo('ADM')]), handlerClasses([criarClasse(), avancada]), ...handlers)
-    renderizarRotas(rotasAdmCronogramas, '/adm/cronogramas')
-    const usuario = userEvent.setup()
-    await screen.findByText(/agendados/)
-    await usuario.click(screen.getByRole('radio', { name: 'Avançada' }))
-    await waitFor(() => expect(registro.leituras).toBe(2))
-    expect(screen.getByRole('radio', { name: 'Avançada' })).toBeChecked()
   })
 })
 

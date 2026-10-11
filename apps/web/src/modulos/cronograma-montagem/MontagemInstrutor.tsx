@@ -10,10 +10,9 @@ import { DisponivelComInternet } from '../../ui/EstadosDeCarga'
 import { FaixaAviso } from '../../ui/FaixaAviso'
 import { Selecao } from '../../ui/Selecao'
 import { ResultadoConsulta } from '../galeria/ResultadoConsulta'
-import { AlternadorDeClasse } from './AlternadorDeClasse'
 import { PainelInstrutor } from './PainelInstrutor'
 import { SeloDoCronograma } from './SeloDoCronograma'
-import { parDaClasse } from './classes'
+import { parDaClasse, regularDaClasse } from './classes'
 
 /** I3b: o instrutor liberado monta o cronograma da classe no celular. */
 export function MontagemInstrutor() {
@@ -24,17 +23,22 @@ export function MontagemInstrutor() {
   const classesDoInstrutor = vinculoAtivo?.classes ?? []
   const todas = useClasses()
 
-  const pedida = busca.get('classe')
-  const classeId = classesDoInstrutor.find((classe) => classe.id === pedida)?.id ?? classesDoInstrutor[0]?.id
-  const montagem = useMontagem(classeId, undefined, online)
+  const doInstrutor = (id: string | undefined) => id !== undefined && classesDoInstrutor.some((classe) => classe.id === id)
+  const pedida = busca.get('classe') ?? undefined
+  // Abrir pela avançada leva à regular, quando o instrutor tem as duas.
+  const candidata = doInstrutor(pedida) ? pedida : classesDoInstrutor[0]?.id
+  const base = regularDaClasse(todas.data ?? [], candidata)
+  const classeId = doInstrutor(base) ? base : candidata
+  const montagem = useMontagem(classeId, undefined, online && !todas.isPending)
 
-  const par = parDaClasse(todas.data ?? [], classeId)
-  const doInstrutor = (id: string) => classesDoInstrutor.some((classe) => classe.id === id)
-  const alternador = par && doInstrutor(par.regular.id) && doInstrutor(par.avancada.id) ? par : null
   const escolhaveis = classesDoInstrutor.filter((classe) => {
-    const base = todas.data?.find((item) => item.id === classe.id)?.classeBaseId
-    return !(classe.tipo === 'AVANCADA' && base && doInstrutor(base))
+    const baseId = todas.data?.find((item) => item.id === classe.id)?.classeBaseId
+    return !(classe.tipo === 'AVANCADA' && baseId && doInstrutor(baseId))
   })
+  const nomeDaOpcao = (id: string, nome: string) => {
+    const par = parDaClasse(todas.data ?? [], id)
+    return par && par.regular.id === id && doInstrutor(par.avancada.id) ? `${par.regular.nome} + ${par.avancada.nome}` : nome
+  }
   const escolherClasse = (id: string) => definirBusca({ classe: id }, { replace: true })
 
   if (classeId === undefined) {
@@ -55,15 +59,14 @@ export function MontagemInstrutor() {
       </header>
 
       {escolhaveis.length > 1 && (
-        <Selecao rotulo="Classe" value={alternador?.regular.id ?? classeId} onChange={(evento) => escolherClasse(evento.target.value)}>
+        <Selecao rotulo="Classe" value={classeId} onChange={(evento) => escolherClasse(evento.target.value)}>
           {escolhaveis.map((classe) => (
             <option key={classe.id} value={classe.id}>
-              {classe.nome}
+              {nomeDaOpcao(classe.id, classe.nome)}
             </option>
           ))}
         </Selecao>
       )}
-      {alternador && <AlternadorDeClasse par={alternador} atualId={classeId} aoMudar={escolherClasse} />}
       <FaixaAviso>Liberado pelo Adm. Você monta; o Adm revisa e publica.</FaixaAviso>
 
       {!online ? (

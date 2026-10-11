@@ -1,12 +1,16 @@
 import { useId, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import type { DataDaMontagem, RequisitoDaMontagem } from '../../api/montagem'
+import type { DataDaMontagem } from '../../api/montagem'
 import { Botao, estiloDoBotao } from '../../ui/Botao'
 import { CaixaMarcacao } from '../../ui/CaixaMarcacao'
 import { EstadoVazio } from '../../ui/EstadoVazio'
 import { FolhaLateral } from '../../ui/FolhaLateral'
 import { Selo } from '../../ui/Selo'
+import { EtiquetaDoLado } from './EtiquetaDoLado'
+import { MedidorDeOcupacao } from './MedidorDeOcupacao'
+import { contagemDaData } from './unida'
+import type { RequisitoUnido, VistaUnida } from './unida'
 import {
   aceitaRequisitoNovo,
   chaveDoMes,
@@ -20,7 +24,9 @@ import {
 } from './datas'
 
 interface Propriedades {
-  requisito: RequisitoDaMontagem
+  requisito: RequisitoUnido
+  /** Regular com avançada: a folha mostra a etiqueta do requisito e o que cada data já tem das duas classes. */
+  vista?: VistaUnida
   datas: DataDaMontagem[]
   datasLivres: boolean
   desabilitado: boolean
@@ -63,7 +69,7 @@ interface Recusa {
 }
 
 /** Por que o requisito não pode ir para esta data; `null` quando pode. Mesma regra do "Colocar aqui". */
-function recusa(requisito: RequisitoDaMontagem, dado: DataDaMontagem, datasLivres: boolean): Recusa | null {
+function recusa(requisito: RequisitoUnido, dado: DataDaMontagem, datasLivres: boolean): Recusa | null {
   if (requisito.data === dado.data) return { curta: 'o requisito já está nesta data', longa: 'O requisito já está nesta data.' }
   if (aceitaRequisitoNovo({ datasLivres }, dado)) return null
   if (dataBloqueada(dado)) {
@@ -79,6 +85,18 @@ function recusa(requisito: RequisitoDaMontagem, dado: DataDaMontagem, datasLivre
 function quantosRequisitos(quantidade: number): string {
   if (quantidade === 0) return 'nenhum requisito ainda'
   return quantidade === 1 ? 'já tem 1 requisito' : `já tem ${quantidade} requisitos`
+}
+
+/** Data que aceita o requisito, com regular e avançada somadas: medidor, texto de ocupação e o que cada classe já pôs. */
+function ResumoDaData({ dado, vista }: { dado: DataDaMontagem; vista: VistaUnida }) {
+  const { regular, avancada } = contagemDaData(vista, dado)
+  return (
+    <span className="flex flex-1 flex-col gap-1 text-sm text-texto-2">
+      <span>{textoDaData(dado) || 'Dia de classe'}</span>
+      <MedidorDeOcupacao quantidade={dado.requisitoIds.length} />
+      <span>{dado.requisitoIds.length === 0 ? 'Nenhum requisito ainda' : `${regular} da regular · ${avancada} da avançada`}</span>
+    </span>
+  )
 }
 
 interface DataAvaliada {
@@ -103,7 +121,7 @@ function agruparPorMes(datas: DataAvaliada[]): Mes[] {
 }
 
 /** Celular: o Adm tocou num requisito e escolhe aqui a data, sem rolar até a lista de datas. */
-export function FolhaEmQualData({ requisito, datas, datasLivres, desabilitado, aviso, aoEscolher, aoNovoDia, aoFechar }: Propriedades) {
+export function FolhaEmQualData({ requisito, vista, datas, datasLivres, desabilitado, aviso, aoEscolher, aoNovoDia, aoFechar }: Propriedades) {
   const [esconderRecusadas, setEsconderRecusadas] = useState(true)
   const prefixo = useId()
   const avaliadas = datas.map((dado) => ({ dado, recusa: recusa(requisito, dado, datasLivres) }))
@@ -123,8 +141,11 @@ export function FolhaEmQualData({ requisito, datas, datasLivres, desabilitado, a
     <FolhaLateral aberta titulo="Em qual data?" aoFechar={aoFechar}>
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
-          <p className="text-base text-texto">
-            <strong className="text-marca">{requisito.codigo}</strong> · {requisito.texto}
+          <p className="flex flex-wrap items-center gap-2 text-base text-texto">
+            {vista?.temAvancada && <EtiquetaDoLado lado={requisito.lado} />}
+            <span>
+              <strong className="text-marca">{requisito.codigo}</strong> · {requisito.texto}
+            </span>
           </p>
           <p className="text-sm font-semibold text-texto-2">{requisito.data ? `Hoje em ${diaMes(requisito.data)}` : 'Ainda sem data'}</p>
         </div>
@@ -179,9 +200,13 @@ export function FolhaEmQualData({ requisito, datas, datasLivres, desabilitado, a
                         className="flex min-h-[60px] w-full items-center gap-3 rounded-controle border border-borda-controle bg-superficie px-4 py-2 text-left text-base text-texto hover:bg-superficie-suave focus-visible:outline-2 focus-visible:outline-marca disabled:cursor-not-allowed disabled:border-divisor disabled:bg-superficie-suave disabled:hover:bg-superficie-suave"
                       >
                         <span className="min-w-[84px] font-bold">{diaDaSemanaEData(dado.data)}</span>
-                        <span className="flex-1 text-sm text-texto-2">
-                          {motivo?.longa ?? `${textoDaData(dado) || 'Dia de classe'} · ${quantosRequisitos(dado.requisitoIds.length)}`}
-                        </span>
+                        {motivo === null && vista?.temAvancada ? (
+                          <ResumoDaData dado={dado} vista={vista} />
+                        ) : (
+                          <span className="flex-1 text-sm text-texto-2">
+                            {motivo?.longa ?? `${textoDaData(dado) || 'Dia de classe'} · ${quantosRequisitos(dado.requisitoIds.length)}`}
+                          </span>
+                        )}
                         {dado.data === proxima && <Selo>Próxima</Selo>}
                       </button>
                     </li>

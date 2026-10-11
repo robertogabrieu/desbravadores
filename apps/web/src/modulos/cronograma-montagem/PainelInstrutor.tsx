@@ -1,18 +1,23 @@
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
-import type { CronogramaDaMontagem, DataDaMontagem, Montagem, RequisitoDaMontagem } from '../../api/montagem'
+import type { CronogramaDaMontagem, DataDaMontagem, Montagem } from '../../api/montagem'
 import { Abas } from '../../ui/Abas'
 import { BarraProgresso } from '../../ui/BarraProgresso'
 import { Botao } from '../../ui/Botao'
 import { Confirmacao } from '../../ui/Confirmacao'
 import { EstadoVazio } from '../../ui/EstadoVazio'
+import { BarrasDeProgresso } from './BarrasDeProgresso'
 import { EtiquetaCampo } from './EtiquetaCampo'
+import { EtiquetaDoLado } from './EtiquetaDoLado'
 import { FaixaDeMontagem } from './FaixaDeMontagem'
 import { FolhaAdicionar, FolhaMover } from './FolhasDoInstrutor'
 import { FormularioAula } from './FormularioAula'
 import type { AulaEmEdicao } from './FormularioAula'
 import { LinhaData } from './LinhaData'
+import { OrdemDasDatas } from './OrdemDasDatas'
 import { aceitaRequisitoNovo } from './datas'
+import { ordenarPorVazias, unirMontagem } from './unida'
+import type { RequisitoUnido } from './unida'
 import { useAcoesDeMontagem } from './useAcoesDeMontagem'
 
 interface Propriedades {
@@ -29,14 +34,18 @@ export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Prop
   const acoes = useAcoesDeMontagem(montagem.classe.id, ano, cronograma.id, montagem)
   const [aba, setAba] = useState('data')
   const [dataAberta, setDataAberta] = useState<DataDaMontagem | null>(null)
-  const [emMovimento, setEmMovimento] = useState<RequisitoDaMontagem | null>(null)
-  const [aAgendar, setAAgendar] = useState<RequisitoDaMontagem | null>(null)
+  const [emMovimento, setEmMovimento] = useState<RequisitoUnido | null>(null)
+  const [aAgendar, setAAgendar] = useState<RequisitoUnido | null>(null)
   const [aulaEmEdicao, setAulaEmEdicao] = useState<AulaEmEdicao | null>(null)
   const [confirmandoEnvio, setConfirmandoEnvio] = useState(false)
 
-  const semData = montagem.requisitos.filter((requisito) => requisito.data === null)
+  const vista = unirMontagem(montagem)
+  const par = vista.temAvancada
+  const [maisVazias, setMaisVazias] = useState(false)
+  const semData = vista.requisitos.filter((requisito) => requisito.data === null)
   const total = montagem.requisitos.length
-  const requisitoPorId = new Map(montagem.requisitos.map((requisito) => [requisito.id, requisito]))
+  const requisitoPorId = new Map(vista.requisitos.map((requisito) => [requisito.id, requisito]))
+  const datas = par && maisVazias ? ordenarPorVazias(vista.datas) : vista.datas
 
   async function colocarVarios(ids: string[]): Promise<boolean> {
     const alvo = dataAberta
@@ -58,15 +67,22 @@ export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Prop
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2">
-        <div className="flex items-baseline justify-between text-sm font-semibold text-texto-2">
-          <span>
-            {total - semData.length} de {total} requisitos com data
-          </span>
-          <span>{semData.length} sem data</span>
+      {par ? (
+        <div className="flex flex-col gap-2">
+          <BarrasDeProgresso vista={vista} />
+          <span className="text-sm font-semibold text-texto-2">{semData.length} sem data</span>
         </div>
-        <BarraProgresso valor={total === 0 ? 0 : ((total - semData.length) / total) * 100} rotulo="Requisitos com data" />
-      </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-baseline justify-between text-sm font-semibold text-texto-2">
+            <span>
+              {total - semData.length} de {total} requisitos com data
+            </span>
+            <span>{semData.length} sem data</span>
+          </div>
+          <BarraProgresso valor={total === 0 ? 0 : ((total - semData.length) / total) * 100} rotulo="Requisitos com data" />
+        </div>
+      )}
 
       <Abas
         rotulo="Visão"
@@ -83,19 +99,26 @@ export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Prop
       {aba === 'data' ? (
         <>
           <p className="text-sm text-texto-2">Toque em “Adicionar requisito” numa data para agendar.</p>
+          {par && (
+            <>
+              <p className="text-sm text-texto-2">Cada data mostra o que já está nela das duas classes.</p>
+              <OrdemDasDatas maisVazias={maisVazias} aoMudar={setMaisVazias} />
+            </>
+          )}
           {montagem.datasLivres && (
             <Botao variante="secundario" onClick={() => setAulaEmEdicao(AULA_VAZIA)}>
               + Novo dia de classe
             </Botao>
           )}
-          {montagem.datas.length === 0 ? (
+          {datas.length === 0 ? (
             <EstadoVazio titulo={montagem.datasLivres ? 'Nenhum dia de classe ainda' : 'Nenhuma data de classe neste período'} />
           ) : (
             <ul className="flex flex-col gap-2">
-              {montagem.datas.map((dado) => (
+              {datas.map((dado) => (
                 <LinhaData
                   key={dado.data}
                   dado={dado}
+                  comAvancada={par}
                   requisitos={dado.requisitoIds.flatMap((id) => requisitoPorId.get(id) ?? [])}
                   destaqueCampo={dado.situacao.bomParaCampo}
                   desabilitada={acoes.ocupada}
@@ -138,12 +161,14 @@ export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Prop
             >
               <span className="w-10 shrink-0 text-sm font-bold text-marca">{requisito.codigo}</span>
               <span className="min-w-0 flex-1 text-base text-texto">{requisito.texto}</span>
+              {par && <EtiquetaDoLado lado={requisito.lado} />}
               {requisito.campo && <EtiquetaCampo />}
             </button>
           ))}
         </div>
       )}
 
+      {par && <p className="text-sm text-texto-2">Envia a regular e a avançada juntas</p>}
       <Botao
         largura="total"
         carregando={acoes.ocupada}
@@ -167,6 +192,7 @@ export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Prop
         <FolhaAdicionar
           dado={dataAberta}
           livres={semData}
+          comAvancada={par}
           desabilitado={acoes.ocupada}
           aoConfirmar={colocarVarios}
           aoFechar={() => setDataAberta(null)}
@@ -175,7 +201,7 @@ export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Prop
       {emMovimento && (
         <FolhaMover
           requisito={emMovimento}
-          datas={montagem.datas}
+          datas={vista.datas}
           desabilitado={acoes.ocupada}
           aoEscolher={(data) => acoes.colocar(emMovimento.id, data)}
           aoFechar={() => setEmMovimento(null)}
@@ -185,7 +211,7 @@ export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Prop
         <FolhaMover
           titulo={`Agendar ${aAgendar.codigo} para`}
           requisito={aAgendar}
-          datas={montagem.datas.filter((dado) => aceitaRequisitoNovo(montagem, dado))}
+          datas={vista.datas.filter((dado) => aceitaRequisitoNovo(montagem, dado))}
           desabilitado={acoes.ocupada}
           aoEscolher={(data) => acoes.colocar(aAgendar.id, data)}
           aoFechar={() => setAAgendar(null)}

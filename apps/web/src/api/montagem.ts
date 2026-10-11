@@ -13,6 +13,7 @@ export type Montagem = z.infer<typeof MontagemSaida>
 export type DataDaMontagem = Montagem['datas'][number]
 export type RequisitoDaMontagem = Montagem['requisitos'][number]
 export type CronogramaDaMontagem = NonNullable<Montagem['cronograma']>
+export type AvancadaDaMontagem = NonNullable<Montagem['avancada']>
 
 export const chavesMontagem = {
   /** `ano` indefinido = o ano corrente do clube, escolhido pela API. */
@@ -53,20 +54,21 @@ function useGravacao<E>(classeId: string, ano: number | undefined, chamar: (entr
 
 const corpo = (metodo: 'POST' | 'PUT' | 'PATCH' | 'DELETE', dados?: unknown) => ({ metodo, corpo: dados })
 
-export function useCriarCronograma(classeId: string, ano: number) {
+export function useCriarCronograma(classeId: string, ano: number | undefined) {
   return useGravacao(classeId, ano, (entrada: z.infer<typeof CronogramaCriarEntrada>) =>
     requisitar('/api/cronogramas', MontagemSaida, corpo('POST', entrada)),
   )
 }
 
-export function useColocarRequisito(classeId: string, ano: number | undefined, cronogramaId: string) {
-  return useGravacao(classeId, ano, ({ requisitoId, data }: { requisitoId: string; data: string }) =>
+/** O cronograma vem na chamada: a tela grava na regular e na avançada pelo mesmo hook. */
+export function useColocarRequisito(classeId: string, ano: number | undefined) {
+  return useGravacao(classeId, ano, ({ cronogramaId, requisitoId, data }: { cronogramaId: string; requisitoId: string; data: string }) =>
     requisitar(`/api/cronogramas/${cronogramaId}/requisitos/${requisitoId}`, MontagemSaida, corpo('PUT', { data })),
   )
 }
 
-export function useTirarRequisito(classeId: string, ano: number | undefined, cronogramaId: string) {
-  return useGravacao(classeId, ano, (requisitoId: string) =>
+export function useTirarRequisito(classeId: string, ano: number | undefined) {
+  return useGravacao(classeId, ano, ({ cronogramaId, requisitoId }: { cronogramaId: string; requisitoId: string }) =>
     requisitar(`/api/cronogramas/${cronogramaId}/requisitos/${requisitoId}`, MontagemSaida, corpo('DELETE')),
   )
 }

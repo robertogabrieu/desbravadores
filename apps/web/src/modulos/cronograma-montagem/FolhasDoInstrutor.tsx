@@ -1,15 +1,19 @@
 import { useState } from 'react'
-import type { DataDaMontagem, RequisitoDaMontagem } from '../../api/montagem'
+import type { DataDaMontagem } from '../../api/montagem'
 import { Botao } from '../../ui/Botao'
 import { FolhaLateral } from '../../ui/FolhaLateral'
 import { cn } from '../../ui/cn'
 import { EtiquetaCampo } from './EtiquetaCampo'
+import { EtiquetaDoLado } from './EtiquetaDoLado'
+import type { RequisitoUnido } from './unida'
 import { dataBloqueada, diaMes, textoDaData } from './datas'
 
 interface PropriedadesAdicionar {
   dado: DataDaMontagem
   /** Requisitos sem data. */
-  livres: RequisitoDaMontagem[]
+  livres: RequisitoUnido[]
+  /** Regular com avançada: cada requisito mostra a etiqueta da classe. */
+  comAvancada?: boolean
   desabilitado: boolean
   /** Coloca um por um (cada um grava); devolve `false` na primeira recusa. */
   aoConfirmar: (requisitoIds: string[]) => Promise<boolean>
@@ -17,7 +21,7 @@ interface PropriedadesAdicionar {
 }
 
 /** Folha do "+": marca requisitos sem data para pôr na data. Em data de campo, os de campo vêm primeiro e sugeridos. */
-export function FolhaAdicionar({ dado, livres, desabilitado, aoConfirmar, aoFechar }: PropriedadesAdicionar) {
+export function FolhaAdicionar({ dado, livres, comAvancada = false, desabilitado, aoConfirmar, aoFechar }: PropriedadesAdicionar) {
   const [marcados, setMarcados] = useState<string[]>([])
   const dataDeCampo = dado.situacao.bomParaCampo
   const ordenados = dataDeCampo ? [...livres].sort((a, b) => Number(b.campo) - Number(a.campo)) : livres
@@ -54,6 +58,7 @@ export function FolhaAdicionar({ dado, livres, desabilitado, aoConfirmar, aoFech
                     {requisito.codigo} · {requisito.texto}
                   </span>
                   <span className="flex flex-wrap items-center gap-2">
+                    {comAvancada && <EtiquetaDoLado lado={requisito.lado} />}
                     {requisito.campo && <EtiquetaCampo />}
                     {dataDeCampo && requisito.campo && <span className="text-xs font-bold text-acampamento">Sugerido para este dia</span>}
                   </span>
@@ -73,7 +78,7 @@ export function FolhaAdicionar({ dado, livres, desabilitado, aoConfirmar, aoFech
 interface PropriedadesMover {
   /** Padrão "Mover <código> para"; quem agenda um requisito sem data troca o verbo. */
   titulo?: string
-  requisito: RequisitoDaMontagem
+  requisito: RequisitoUnido
   datas: DataDaMontagem[]
   desabilitado: boolean
   aoEscolher: (data: string) => Promise<boolean>

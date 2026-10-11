@@ -88,8 +88,8 @@ export const MontagemSaida = z.object({
   datas: z.array(DataMontagem),
   requisitos: z.array(RequisitoMontagem), // todos os ativos da classe (com ajuste do clube), ordem do caderno
   datasLivres: z.boolean(),               // true para Agrupadas
-  /** Só a regular com avançada ativa no clube traz o bloco; nos demais casos é null (opcional para não quebrar quem monta a resposta à mão). */
-  avancada: AvancadaMontagem.nullable().optional(),
+  /** Só a regular com avançada ativa no clube traz o bloco; nos demais casos é null (sempre presente na resposta). */
+  avancada: AvancadaMontagem.nullable(),
 })
 export const ColocarRequisitoEntrada = z.object({ data: DataCivil })
 export const EnviarPublicarEntrada = z.object({ atualizadoEmVisto: InstanteIso })

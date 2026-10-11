@@ -1,35 +1,40 @@
 import { Pencil, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import type { DataDaMontagem, RequisitoDaMontagem } from '../../api/montagem'
+import type { DataDaMontagem } from '../../api/montagem'
 import { Botao } from '../../ui/Botao'
 import { Confirmacao } from '../../ui/Confirmacao'
 import { Selo } from '../../ui/Selo'
 import { cn } from '../../ui/cn'
+import { EtiquetaDoLado } from './EtiquetaDoLado'
+import { MedidorDeOcupacao } from './MedidorDeOcupacao'
 import { dataBloqueada, detalheDaAula, partesDaData, textoDaData } from './datas'
+import type { RequisitoUnido } from './unida'
 
 const HACHURA =
   'bg-[repeating-linear-gradient(135deg,var(--color-surface-muted),var(--color-surface-muted)_8px,var(--color-divider)_8px,var(--color-divider)_16px)]'
 
 interface Propriedades {
   dado: DataDaMontagem
-  /** Requisitos que estão nesta data, na ordem do caderno. */
-  requisitos: RequisitoDaMontagem[]
+  /** Requisitos que estão nesta data (da regular e, no par, da avançada). */
+  requisitos: RequisitoUnido[]
+  /** Regular com avançada: cada requisito leva a etiqueta da classe e a data mostra o medidor de ocupação. */
+  comAvancada?: boolean
   /** Requisito de campo selecionado e data boa para campo: a linha fica verde. */
   destaqueCampo?: boolean
   /** Sem conexão ou gravando: nenhum botão age. */
   desabilitada: boolean
   /** "Colocar aqui" (A7) ou "+" (I3b): a tela decide se a data admite. */
   acaoDaData?: ReactNode
-  aoTirar: (requisito: RequisitoDaMontagem) => void
+  aoTirar: (requisito: RequisitoUnido) => void
   /** Só no celular: "Mover" ao lado de cada requisito de uma data em conflito. */
-  aoMover?: (requisito: RequisitoDaMontagem) => void
+  aoMover?: (requisito: RequisitoUnido) => void
   aoEditar: (dado: DataDaMontagem) => void
   /** "Remover aula" (com confirmação) nas aulas ainda não dadas. */
   aoRemoverAula: (dado: DataDaMontagem) => void
 }
 
-export function LinhaData({ dado, requisitos, destaqueCampo = false, desabilitada, acaoDaData, aoTirar, aoMover, aoEditar, aoRemoverAula }: Propriedades) {
+export function LinhaData({ dado, requisitos, comAvancada = false, destaqueCampo = false, desabilitada, acaoDaData, aoTirar, aoMover, aoEditar, aoRemoverAula }: Propriedades) {
   const [confirmandoRemocao, setConfirmandoRemocao] = useState(false)
   const { semana, dia, mes } = partesDaData(dado.data)
   const texto = textoDaData(dado)
@@ -61,10 +66,12 @@ export function LinhaData({ dado, requisitos, destaqueCampo = false, desabilitad
           <span className="text-sm font-bold text-perigo">Conflito: não há classe nesta data. Mova os requisitos.</span>
         )}
         {dado.aulaDada && <Selo className="self-start">Classe dada</Selo>}
+        {comAvancada && !bloqueada && <MedidorDeOcupacao quantidade={requisitos.length} />}
         {detalhe && <span className="text-sm text-texto-2">{detalhe}</span>}
 
         {requisitos.map((requisito) => (
           <div key={requisito.id} className="flex items-center gap-2 rounded-controle bg-marca-suave px-3 py-1.5 text-sm font-semibold text-marca">
+            {comAvancada && <EtiquetaDoLado lado={requisito.lado} />}
             <span className="min-w-0 flex-1">
               {requisito.codigo} · {requisito.texto}
             </span>

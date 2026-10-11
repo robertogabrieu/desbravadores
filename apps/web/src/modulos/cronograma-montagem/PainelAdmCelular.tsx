@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { Classe } from '../../api/leitura'
-import type { CronogramaDaMontagem, DataDaMontagem, Montagem, RequisitoDaMontagem } from '../../api/montagem'
+import type { CronogramaDaMontagem, DataDaMontagem, Montagem } from '../../api/montagem'
 import { Abas } from '../../ui/Abas'
 import { BarraProgresso } from '../../ui/BarraProgresso'
 import { Botao } from '../../ui/Botao'
@@ -9,12 +9,15 @@ import { EstadoVazio } from '../../ui/EstadoVazio'
 import { CartaoDaDataCelular } from './CartaoDaDataCelular'
 import { ConfirmarPublicacao } from './ConfirmarPublicacao'
 import { EtiquetaCampo } from './EtiquetaCampo'
+import { EtiquetaDoLado } from './EtiquetaDoLado'
 import { FaixaDeMontagem } from './FaixaDeMontagem'
 import { FolhaEmQualData } from './FolhaEmQualData'
 import { FormularioAula } from './FormularioAula'
 import type { AulaEmEdicao } from './FormularioAula'
 import { SeloDoCronograma } from './SeloDoCronograma'
 import { aceitaRequisitoNovo, chaveDoMes, diaComDadosSomeAoTirar, diaMes, mesPorExtenso } from './datas'
+import { progressoDoLado, unirMontagem } from './unida'
+import type { RequisitoUnido } from './unida'
 import { useAcoesDeMontagem } from './useAcoesDeMontagem'
 
 interface Propriedades {
@@ -74,16 +77,20 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
     if (colocacao) confirmacao.current?.focus()
   }, [colocacao])
 
-  const requisitoPorId = new Map(montagem.requisitos.map((requisito) => [requisito.id, requisito]))
+  const unida = unirMontagem(montagem)
+  const par = unida.temAvancada
+  const requisitoPorId = new Map(unida.requisitos.map((requisito) => [requisito.id, requisito]))
   const folhaPara = (folhaParaId && requisitoPorId.get(folhaParaId)) || null
-  const semData = montagem.requisitos.filter((requisito) => requisito.data === null)
-  const comData = montagem.requisitos.filter((requisito) => requisito.data !== null)
-  const total = montagem.requisitos.length
+  const semData = unida.requisitos.filter((requisito) => requisito.data === null)
+  const comData = unida.requisitos.filter((requisito) => requisito.data !== null)
+  const total = unida.requisitos.length
+  const regular = progressoDoLado(unida, 'REGULAR')
+  const avancada = progressoDoLado(unida, 'AVANCADA')
   const conflitos = montagem.datas.filter((dado) => dado.conflito).length
   const proximo = semData.find((requisito) => requisito.id !== colocacao?.requisitoId) ?? null
   const publicado = cronograma.status === 'PUBLICADO'
 
-  function abrirFolha(requisito: RequisitoDaMontagem) {
+  function abrirFolha(requisito: RequisitoUnido) {
     setDesfeito(null)
     setFolhaParaId(requisito.id)
   }
@@ -117,7 +124,7 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
     setDesfeito(anterior ? `${codigo} voltou para ${diaMes(anterior)}` : `${codigo} voltou a ficar sem data`)
   }
 
-  async function tirar(requisito: RequisitoDaMontagem) {
+  async function tirar(requisito: RequisitoUnido) {
     setDesfeito(null)
     if (await acoes.tirar(requisito.id)) setColocacao(null)
   }
@@ -146,7 +153,7 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
 
   const faixaDeErro = acoes.erro && <FaixaDeMontagem erro={acoes.erro} aoAtualizar={atualizarDepoisDoErro} />
 
-  function listaDeRequisitos(requisitos: RequisitoDaMontagem[]) {
+  function listaDeRequisitos(requisitos: RequisitoUnido[]) {
     if (requisitos.length === 0) {
       return vista === 'sem-data' ? (
         <EstadoVazio titulo="Todos os requisitos têm data" descricao="Confira as datas em “Por data” e publique quando quiser." />
@@ -168,7 +175,12 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
             <span className="w-10 shrink-0 text-sm font-bold text-marca">{requisito.codigo}</span>
             <span className="flex min-w-0 flex-1 flex-col gap-1">
               <span className="text-base text-texto">{requisito.texto}</span>
-              {requisito.campo && <EtiquetaCampo />}
+              {(par || requisito.campo) && (
+                <span className="flex flex-wrap items-center gap-2">
+                  {par && <EtiquetaDoLado lado={requisito.lado} />}
+                  {requisito.campo && <EtiquetaCampo />}
+                </span>
+              )}
             </span>
             <span className="shrink-0 self-center text-sm font-semibold text-marca underline">
               {requisito.data ? diaMes(requisito.data) : 'Data'}
@@ -187,13 +199,13 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
             + Novo dia de classe
           </Botao>
         )}
-        {montagem.datas.length === 0 ? (
+        {unida.datas.length === 0 ? (
           <EstadoVazio
             titulo={montagem.datasLivres ? 'Nenhum dia de classe ainda' : 'Nenhuma data de classe neste período'}
             descricao={montagem.datasLivres ? 'Crie um dia de classe para poder colocar requisitos nele.' : undefined}
           />
         ) : (
-          agruparPorMes(montagem.datas).map(({ chave, datas }) => (
+          agruparPorMes(unida.datas).map(({ chave, datas }) => (
             <section key={chave} className="flex flex-col gap-2">
               <h3 className="font-titulo text-lg font-bold text-texto">{mesPorExtenso(`${chave}-01`)}</h3>
               <ul className="flex flex-col gap-3">
@@ -201,6 +213,7 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
                   <CartaoDaDataCelular
                     key={dado.data}
                     dado={dado}
+                    comAvancada={par}
                     requisitos={dado.requisitoIds.flatMap((id) => requisitoPorId.get(id) ?? [])}
                     desabilitada={acoes.ocupada}
                     aoEscolherData={abrirFolha}
@@ -253,7 +266,9 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
           </span>
         </div>
         <p className="text-base font-semibold text-texto">
-          {comData.length} de {total} requisitos com data
+          {par
+            ? `Regular ${regular.comData}/${regular.total} · Avançada ${avancada.comData}/${avancada.total}`
+            : `${comData.length} de ${total} requisitos com data`}
         </p>
         <BarraProgresso valor={total === 0 ? 0 : (comData.length / total) * 100} rotulo="Requisitos com data" />
       </section>
@@ -337,7 +352,8 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
       {folhaPara && (
         <FolhaEmQualData
           requisito={folhaPara}
-          datas={montagem.datas}
+          vista={unida}
+          datas={unida.datas}
           datasLivres={montagem.datasLivres}
           desabilitado={acoes.ocupada}
           aviso={faixaDeErro}
@@ -356,7 +372,7 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
 
       {confirmandoPublicacao && (
         <ConfirmarPublicacao
-          nomeDaClasse={montagem.classe.nome}
+          nomeDaClasse={unida.nomeDoPar}
           semData={semData.length}
           ocupada={acoes.ocupada}
           aviso={faixaDeErro}

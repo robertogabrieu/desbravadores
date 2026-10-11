@@ -1,26 +1,31 @@
 import { Pencil, Trash2 } from 'lucide-react'
 import { useState } from 'react'
-import type { DataDaMontagem, RequisitoDaMontagem } from '../../api/montagem'
+import type { DataDaMontagem } from '../../api/montagem'
 import { Botao } from '../../ui/Botao'
 import { Confirmacao } from '../../ui/Confirmacao'
 import { Selo } from '../../ui/Selo'
 import { cn } from '../../ui/cn'
+import { EtiquetaDoLado } from './EtiquetaDoLado'
+import { MedidorDeOcupacao } from './MedidorDeOcupacao'
+import type { RequisitoUnido } from './unida'
 import { dataBloqueada, detalheDaAula, diaDaSemanaEData, textoDaData } from './datas'
 
 interface Propriedades {
   dado: DataDaMontagem
   /** Requisitos que estão nesta data, na ordem do caderno. */
-  requisitos: RequisitoDaMontagem[]
+  requisitos: RequisitoUnido[]
   desabilitada: boolean
+  /** Regular com avançada: etiqueta em cada requisito e medidor de ocupação na data. */
+  comAvancada?: boolean
   /** "Trocar data" e "Escolher outra data": abrem a folha "Em qual data?" para o requisito. */
-  aoEscolherData: (requisito: RequisitoDaMontagem) => void
-  aoTirar: (requisito: RequisitoDaMontagem) => void
+  aoEscolherData: (requisito: RequisitoUnido) => void
+  aoTirar: (requisito: RequisitoUnido) => void
   aoEditar: (dado: DataDaMontagem) => void
   aoRemoverAula: (dado: DataDaMontagem) => void
 }
 
 /** Vista "Por data" do Adm no celular: um cartão por data, com as ações de cada requisito nela. */
-export function CartaoDaDataCelular({ dado, requisitos, desabilitada, aoEscolherData, aoTirar, aoEditar, aoRemoverAula }: Propriedades) {
+export function CartaoDaDataCelular({ dado, requisitos, comAvancada = false, desabilitada, aoEscolherData, aoTirar, aoEditar, aoRemoverAula }: Propriedades) {
   const [confirmandoRemocao, setConfirmandoRemocao] = useState(false)
   const texto = textoDaData(dado) || 'Dia de classe'
   const detalhe = detalheDaAula(dado)
@@ -42,6 +47,7 @@ export function CartaoDaDataCelular({ dado, requisitos, desabilitada, aoEscolher
         <span className="text-sm font-semibold text-texto-2">{texto}</span>
         {dado.aulaDada && <Selo className="ml-auto">Classe dada</Selo>}
       </div>
+      {comAvancada && !bloqueada && <MedidorDeOcupacao quantidade={requisitos.length} />}
       {detalhe && <span className="text-sm text-texto-2">{detalhe}</span>}
       {dado.conflito && !dado.aulaDada && (
         <p className="text-sm font-bold text-perigo">Não haverá classe nesta data. Escolha outra para o requisito abaixo.</p>
@@ -51,8 +57,11 @@ export function CartaoDaDataCelular({ dado, requisitos, desabilitada, aoEscolher
         <ul className="flex flex-col gap-3">
           {requisitos.map((requisito) => (
             <li key={requisito.id} className="flex flex-col gap-2 border-t border-divisor pt-3 first:border-t-0 first:pt-0">
-              <p className="text-base text-texto">
-                <strong className="text-marca">{requisito.codigo}</strong> · {requisito.texto}
+              <p className="flex flex-wrap items-center gap-2 text-base text-texto">
+                {comAvancada && <EtiquetaDoLado lado={requisito.lado} />}
+                <span>
+                  <strong className="text-marca">{requisito.codigo}</strong> · {requisito.texto}
+                </span>
               </p>
               {!dado.aulaDada &&
                 (dado.conflito ? (
