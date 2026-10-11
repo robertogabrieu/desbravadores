@@ -193,7 +193,7 @@ describe('A6 · criar', () => {
 
   it('sem ?data= (ou inválida) o novo evento abre no dia de hoje', async () => {
     abrirEm('/adm/calendario/eventos/novo?data=xx', handlerCalendario())
-    expect(await screen.findByLabelText('Início')).toHaveValue('2026-10-05')
+    expect(await screen.findByLabelText('Início')).toHaveValue('05/10/2026')
   })
 
   it('valida nome e fim antes do início sem chamar a API', async () => {
@@ -205,7 +205,7 @@ describe('A6 · criar', () => {
 
     await userEvent.type(screen.getByLabelText('Nome'), 'Feriado')
     await userEvent.clear(screen.getByLabelText('Fim'))
-    await userEvent.type(screen.getByLabelText('Fim'), '2026-09-30')
+    await userEvent.type(screen.getByLabelText('Fim'), '30/09/2026')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     expect(await screen.findByText('O fim não pode ser antes do início')).toBeInTheDocument()
     expect(chamadas).toBe(0)
@@ -241,7 +241,7 @@ describe('A6 · editar', () => {
     )
 
     expect(await screen.findByLabelText('Nome')).toHaveValue('Acampamento do clube')
-    expect(screen.getByLabelText('Início')).toHaveValue('2026-10-16')
+    expect(screen.getByLabelText('Início')).toHaveValue('16/10/2026')
     await userEvent.type(screen.getByLabelText('Local'), 'Sítio')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
 
@@ -305,11 +305,11 @@ describe('P3 · formulário', () => {
     await userEvent.type(screen.getByLabelText('Nome'), 'Encontro')
     await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'REUNIAO_EXTRA')
     expect(await screen.findByText(TEXTO_EXTRA)).toBeInTheDocument()
-    expect(screen.getByLabelText('Data')).toHaveValue('2026-10-01')
+    expect(screen.getByLabelText('Data')).toHaveValue('01/10/2026')
     expect(screen.queryByLabelText('Início')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Fim')).not.toBeInTheDocument()
     expect(screen.getAllByRole('checkbox').map((c) => c.closest('label')?.textContent)).toEqual(CAIXAS.slice(0, 2))
-    fireEvent.change(screen.getByLabelText('Data'), { target: { value: '2026-10-21' } })
+    fireEvent.change(screen.getByLabelText('Data'), { target: { value: '21/10/2026' } })
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(corpo).toMatchObject({ tipo: 'REUNIAO_EXTRA', inicio: '2026-10-21', fim: '2026-10-21', temReuniao: true, temClasse: true, bomParaCampo: false }))
   })
@@ -346,9 +346,9 @@ describe('P3 · formulário', () => {
   it('extra no dia da reunião avisa sob a Data; fora dele, não', async () => {
     await abrirNovoEvento(handlerCalendario())
     await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'REUNIAO_EXTRA')
-    fireEvent.change(screen.getByLabelText('Data'), { target: { value: '2026-10-18' } })
+    fireEvent.change(screen.getByLabelText('Data'), { target: { value: '18/10/2026' } })
     expect(screen.getByLabelText('Data')).toHaveAccessibleDescription('Domingo já tem reunião: esta reunião extra só muda nome, horário e local.')
-    fireEvent.change(screen.getByLabelText('Data'), { target: { value: '2026-10-21' } })
+    fireEvent.change(screen.getByLabelText('Data'), { target: { value: '21/10/2026' } })
     expect(screen.queryByText(/já tem reunião/)).not.toBeInTheDocument()
   })
 

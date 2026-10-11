@@ -111,7 +111,7 @@ function Formulario({ detalhe }: { detalhe: DetalheDoEncontro }) {
                   max={edicao.fim}
                   value={data}
                   erro={erroDaData}
-                  onChange={(e) => { setData(e.target.value); setFaltaData(false) }}
+                  onChange={(iso) => { setData(iso); setFaltaData(false) }}
                 />
                 {leitura?.tipo === 'livre' && (
                   <p className="flex items-center gap-1.5 text-sm font-medium text-sucesso">

@@ -56,7 +56,7 @@ function abrir(dados: DadosClasseBiblica = {}, ...extras: RequestHandler[]) {
 async function escolherData(usuario: ReturnType<typeof userEvent.setup>, data: string) {
   const campo = await screen.findByLabelText('Nova data')
   await usuario.clear(campo)
-  await usuario.type(campo, data)
+  await usuario.type(campo, data.split('-').reverse().join('/'))
 }
 
 describe('Remarcar o encontro', () => {

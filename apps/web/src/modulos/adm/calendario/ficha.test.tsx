@@ -151,7 +151,7 @@ describe('ficha do evento', () => {
     const { roteador } = abrir('/adm/calendario?mes=2026-10', acampamento(), criado)
     await userEvent.click(await screen.findByRole('link', { name: 'Novo evento' }))
     expect(roteador.state.location.search).toBe('?data=2026-10-01')
-    expect(await screen.findByLabelText('Início')).toHaveValue('2026-10-01')
+    expect(await screen.findByLabelText('Início')).toHaveValue('01/10/2026')
     await userEvent.type(screen.getByLabelText('Nome'), 'Feriado municipal')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(roteador.state.location.pathname).toBe(`/adm/calendario/eventos/${uuid(899)}`))

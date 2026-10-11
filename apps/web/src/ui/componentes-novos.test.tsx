@@ -254,16 +254,15 @@ describe('AreaTexto', () => {
 })
 
 describe('CampoData', () => {
-  it('é um campo de data com rótulo e devolve o valor escolhido', async () => {
+  it('é um campo de data com rótulo e devolve o valor escolhido em ISO', async () => {
     const aoMudar = vi.fn()
-    render(<CampoData rotulo="Data" ajuda="Dia da reunião" onChange={aoMudar} />)
+    render(<CampoData rotulo="Data" ajuda="Dia da reunião" value="" onChange={aoMudar} />)
 
     const campo = screen.getByLabelText('Data')
-    expect(campo).toHaveAttribute('type', 'date')
+    expect(campo).toHaveAttribute('inputmode', 'numeric')
     expect(screen.getByText('Dia da reunião')).toBeInTheDocument()
 
-    await userEvent.type(campo, '2030-09-14')
-    expect(campo).toHaveValue('2030-09-14')
-    expect(aoMudar).toHaveBeenCalled()
+    await userEvent.type(campo, '14092030')
+    expect(aoMudar).toHaveBeenLastCalledWith('2030-09-14')
   })
 })

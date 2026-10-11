@@ -21,7 +21,7 @@ describe('Evento · erro à vista ao salvar', () => {
     abrirEm('/adm/calendario/eventos/novo?data=2026-10-10', handlerCriarEvento([], () => chamadas++))
     await screen.findByLabelText('Nome')
     await userEvent.clear(screen.getByLabelText('Fim'))
-    await userEvent.type(screen.getByLabelText('Fim'), '2026-10-01')
+    await userEvent.type(screen.getByLabelText('Fim'), '01/10/2026')
 
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
 

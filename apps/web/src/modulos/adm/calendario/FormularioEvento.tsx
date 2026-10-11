@@ -136,12 +136,12 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar }: Pr
           value={inicio}
           ajuda={extraNoDiaDaReuniao ? `${dosDiasDeReuniao(diaReuniao).nome.replace(/^./, (letra) => letra.toUpperCase())} já tem reunião: esta reunião extra só muda nome, horário e local.` : undefined}
           erro={erros['inicio'] ?? erros['fim']}
-          onChange={(e) => mudarData(e.target.value)}
+          onChange={mudarData}
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          <CampoData rotulo="Início" value={inicio} erro={erros['inicio']} onChange={(e) => setInicio(e.target.value)} />
-          <CampoData rotulo="Fim" value={fim} erro={erros['fim']} onChange={(e) => setFim(e.target.value)} />
+          <CampoData rotulo="Início" value={inicio} erro={erros['inicio']} onChange={setInicio} />
+          <CampoData rotulo="Fim" value={fim} erro={erros['fim']} onChange={setFim} />
         </div>
       )}
       <div className="grid gap-4 sm:grid-cols-2">
