@@ -48,6 +48,7 @@ export function ExcluirEdicao({ id, nome, contagens }: Propriedades) {
         titulo="Excluir a edição?"
         rotuloConfirmar="Excluir edição"
         textoEsperado={nomeExibido}
+        pedido="Para confirmar, digite o nome da edição"
         ocupada={excluir.isPending}
         erro={excluir.error ? lerErroDaApi(excluir.error).geral : null}
         aoConfirmar={confirmar}

@@ -18,6 +18,12 @@ describe('mascararHorario', () => {
     expect(mascararHorario('14:3', true)).toBe('14:3')
     expect(mascararHorario('', true)).toBe('')
   })
+  it('":" digitado após um dígito completa com zero', () => {
+    expect(mascararHorario('8:')).toBe('08:')
+    expect(mascararHorario('8:30')).toBe('08:30')
+    expect(mascararHorario(':')).toBe('')
+    expect(mascararHorario('14:30')).toBe('14:30')
+  })
   it('aceita colar 14:30 inteiro', () => {
     expect(mascararHorario('14:30')).toBe('14:30')
   })
@@ -60,6 +66,37 @@ describe('CampoHorario', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Horário inválido')
     fireEvent.change(campo, { target: { value: '2359' } })
     expect(screen.queryByRole('alert')).toBeNull()
+  })
+  it('escrever "8:30" vira 08:30', async () => {
+    render(<Exemplo />)
+    const campo = screen.getByLabelText('Horário')
+    await userEvent.type(campo, '8:30')
+    expect(campo).toHaveValue('08:30')
+  })
+  it('horário incompleto mostra erro ao sair do campo e some ao completar', async () => {
+    render(<Exemplo />)
+    const campo = screen.getByLabelText('Horário')
+    await userEvent.type(campo, '08:3')
+    expect(screen.queryByRole('alert')).toBeNull()
+    await userEvent.tab()
+    expect(screen.getByRole('alert')).toHaveTextContent('Horário inválido')
+    await userEvent.type(campo, '0')
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+  it('campo vazio ao sair não mostra erro', async () => {
+    render(<Exemplo />)
+    await userEvent.click(screen.getByLabelText('Horário'))
+    await userEvent.tab()
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+  it('inserir número no meio mantém o cursor onde estava', async () => {
+    render(<Exemplo />)
+    const campo = screen.getByLabelText('Horário') as HTMLInputElement
+    await userEvent.type(campo, '103')
+    campo.setSelectionRange(1, 1)
+    await userEvent.keyboard('2')
+    expect(campo).toHaveValue('12:03')
+    expect(campo.selectionStart).toBe(3)
   })
   it('tem teclado numérico e placeholder', () => {
     render(<Exemplo />)

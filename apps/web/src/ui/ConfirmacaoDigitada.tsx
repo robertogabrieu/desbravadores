@@ -9,6 +9,8 @@ interface Propriedades {
   rotuloConfirmar: string
   /** O texto exato que a pessoa precisa digitar para liberar o botão; espaços nas pontas e maiúsculas não contam. */
   textoEsperado: string
+  /** O pedido que antecede o texto esperado, sem os dois-pontos finais; ex.: "Para confirmar, digite o nome da edição". */
+  pedido: string
   aoConfirmar: () => void
   aoCancelar: () => void
   ocupada?: boolean
@@ -20,7 +22,7 @@ interface Propriedades {
 const normalizar = (texto: string): string => texto.trim().toLocaleLowerCase('pt-BR')
 
 /** Confirmação de ação que não se desfaz: o botão vermelho só libera depois de digitar o nome do que será apagado. */
-export function ConfirmacaoDigitada({ aberta, titulo, rotuloConfirmar, textoEsperado, aoConfirmar, aoCancelar, ocupada, erro, children }: Propriedades) {
+export function ConfirmacaoDigitada({ aberta, titulo, rotuloConfirmar, textoEsperado, pedido, aoConfirmar, aoCancelar, ocupada, erro, children }: Propriedades) {
   const [digitado, setDigitado] = useState('')
   const liberado = normalizar(digitado) === normalizar(textoEsperado)
 
@@ -44,7 +46,7 @@ export function ConfirmacaoDigitada({ aberta, titulo, rotuloConfirmar, textoEspe
       <div className="flex flex-col gap-3">
         <p>{children}</p>
         <p>
-          Para confirmar, digite o nome da edição: <strong className="text-texto">{textoEsperado}</strong>
+          {pedido}: <strong className="text-texto">{textoEsperado}</strong>
         </p>
         <Campo rotulo="Nome para confirmar" value={digitado} onChange={(evento) => setDigitado(evento.target.value)} autoComplete="off" />
       </div>

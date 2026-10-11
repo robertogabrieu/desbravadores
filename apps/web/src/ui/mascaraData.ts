@@ -1,9 +1,22 @@
-/** Deixa só os dígitos (até 8) e põe as barras de DD/MM/AAAA conforme a pessoa digita. */
+const TAMANHO_DOS_BLOCOS = [2, 2, 4]
+
+/** Põe as barras de DD/MM/AAAA conforme a pessoa digita; "/" digitado fecha o bloco, completando com zero ("1/" → "01/"). */
 export function mascararData(texto: string): string {
-  const digitos = texto.replace(/\D/g, '').slice(0, 8)
-  if (digitos.length <= 2) return digitos
-  if (digitos.length <= 4) return `${digitos.slice(0, 2)}/${digitos.slice(2)}`
-  return `${digitos.slice(0, 2)}/${digitos.slice(2, 4)}/${digitos.slice(4)}`
+  const blocos = ['']
+  for (const caractere of texto) {
+    const ultimo = blocos.length - 1
+    if (/\d/.test(caractere)) {
+      if (blocos[ultimo]!.length === TAMANHO_DOS_BLOCOS[ultimo]) {
+        if (ultimo === 2) continue
+        blocos.push('')
+      }
+      blocos[blocos.length - 1] += caractere
+    } else if (caractere === '/' && ultimo < 2 && blocos[ultimo] !== '') {
+      if (blocos[ultimo]!.length === 1) blocos[ultimo] = `0${blocos[ultimo]}`
+      blocos.push('')
+    }
+  }
+  return blocos.join('/')
 }
 
 /** `DD/MM/AAAA` → `AAAA-MM-DD`; `null` se incompleto ou se o dia não existe no calendário (31/02). */

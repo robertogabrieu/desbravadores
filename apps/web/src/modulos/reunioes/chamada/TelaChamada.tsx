@@ -82,7 +82,7 @@ function ChamadaNova({ pacote, baixadoEm }: PropriedadesModo) {
           min={minimo}
           max={hoje}
           onChange={setDataEscolhida}
-          erro={dataValida ? undefined : `Escolha uma data entre ${dataCurta(minimo)} e hoje.`}
+          erro={dataValida || data === '' ? undefined : `Escolha uma data entre ${dataCurta(minimo)} e hoje.`}
         />
       )}
       {dataValida && (

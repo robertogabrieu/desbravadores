@@ -58,6 +58,7 @@ function Formulario({ detalhe }: { detalhe: DetalheDoEncontro }) {
   const [faltaData, setFaltaData] = useState(false)
   const [motivo, setMotivo] = useState('')
   const [erroDoMotivo, setErroDoMotivo] = useState<string>()
+  const [erroDoHorario, setErroDoHorario] = useState<string>()
   const [confirmando, setConfirmando] = useState(false)
   const remarcar = useRemarcarEncontroCB()
   const cancelar = useCancelarEncontroCB()
@@ -70,7 +71,7 @@ function Formulario({ detalhe }: { detalhe: DetalheDoEncontro }) {
 
   const enviarRemarcacao = () => {
     if (!data) return setFaltaData(true)
-    if (horario && !horarioValido(horario)) return
+    if (horario && !horarioValido(horario)) return setErroDoHorario('Horário inválido')
     if (!leitura || leitura.tipo === 'recusa') return
     const entrada = horario && horario !== encontro.horario ? { data, horario } : { data }
     remarcar.mutate({ id: encontro.id, entrada }, { onSuccess: voltarAoPainel })
@@ -121,7 +122,7 @@ function Formulario({ detalhe }: { detalhe: DetalheDoEncontro }) {
                 )}
                 {leitura?.tipo === 'aviso' && <FaixaAviso>{leitura.texto}</FaixaAviso>}
               </div>
-              <CampoHorario rotulo="Horário" className="w-40" value={horario} onChange={(e) => setHorario(e.target.value)} />
+              <CampoHorario rotulo="Horário" className="w-40" value={horario} erro={erroDoHorario} onChange={(e) => { setHorario(e.target.value); setErroDoHorario(undefined) }} />
             </div>
           )}
         </div>

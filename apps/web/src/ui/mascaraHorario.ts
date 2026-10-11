@@ -1,8 +1,12 @@
 const HORARIO_COMPLETO = /^([01]\d|2[0-3]):[0-5]\d$/
 
-/** Mantém só os dígitos (até 4) e põe ":" depois do segundo; ao apagar, não recoloca o ":" que sobrou no fim. */
+/** Mantém só os dígitos (até 4) e põe ":" depois do segundo; ":" digitado após um dígito completa com zero ("8:" → "08:"); ao apagar, não recoloca o ":" que sobrou no fim. */
 export function mascararHorario(texto: string, apagando = false): string {
-  const digitos = texto.replace(/\D/g, '').slice(0, 4)
+  let digitos = ''
+  for (const caractere of texto) {
+    if (/\d/.test(caractere)) digitos = (digitos + caractere).slice(0, 4)
+    else if (caractere === ':' && digitos.length === 1) digitos = `0${digitos}`
+  }
   if (digitos.length < 2 || (digitos.length === 2 && apagando)) return digitos
   return `${digitos.slice(0, 2)}:${digitos.slice(2)}`
 }

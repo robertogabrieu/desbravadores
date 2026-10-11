@@ -9,6 +9,17 @@ describe('mascararData', () => {
     expect(mascararData('20/05/2015999')).toBe('20/05/2015')
     expect(mascararData('ab1c')).toBe('1')
   })
+  it('"/" digitado fecha o bloco e completa com zero', () => {
+    expect(mascararData('1/')).toBe('01/')
+    expect(mascararData('01/5/')).toBe('01/05/')
+    expect(mascararData('1/5/2024')).toBe('01/05/2024')
+    expect(mascararData('/')).toBe('')
+    expect(mascararData('01//')).toBe('01/')
+    expect(mascararData('01/05/2024/')).toBe('01/05/2024')
+  })
+  it('apagar a barra do meio reorganiza os blocos', () => {
+    expect(mascararData('01/052024')).toBe('01/05/2024')
+  })
 })
 
 describe('conversão DD/MM/AAAA e ISO', () => {

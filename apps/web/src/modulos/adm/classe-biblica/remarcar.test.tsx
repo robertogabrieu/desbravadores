@@ -90,6 +90,18 @@ describe('Remarcar o encontro', () => {
     await waitFor(() => expect(gravacoes.at(-1)?.corpo).toEqual({ data: '2026-10-24', horario: '15:00' }))
   })
 
+  it('horário incompleto não envia e mostra o erro no campo', async () => {
+    const usuario = userEvent.setup()
+    const { gravacoes } = abrir()
+    await escolherData(usuario, '2026-10-24')
+    const horario = screen.getByLabelText('Horário')
+    await usuario.clear(horario)
+    await usuario.type(horario, '08:3')
+    await usuario.click(screen.getByRole('button', { name: 'Remarcar para sábado, 24/10' }))
+    expect(await screen.findByText('Horário inválido')).toBeInTheDocument()
+    expect(gravacoes.filter((g) => g.metodo === 'POST')).toHaveLength(0)
+  })
+
   it('data em feriado mostra o aviso e deixa seguir', async () => {
     const usuario = userEvent.setup()
     const { gravacoes } = abrir()

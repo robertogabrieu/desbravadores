@@ -242,6 +242,18 @@ describe('Chamada nova', () => {
     expect(screen.queryByText('Ana Clara')).not.toBeInTheDocument()
   })
 
+  it('data pela metade não mostra o aviso de faixa, só a data completa fora dela', async () => {
+    montar('/reunioes/nova')
+    await screen.findByText('Ana Clara')
+    const data = screen.getByLabelText('Data')
+    await userEvent.clear(data)
+    await userEvent.type(data, '3')
+    expect(screen.queryByText(/Escolha uma data entre/)).not.toBeInTheDocument()
+    await userEvent.type(data, '1/02/2024')
+    expect(screen.getByRole('alert')).toHaveTextContent('Essa data não existe')
+    expect(screen.queryByText(/Escolha uma data entre 13\/02 e hoje/)).not.toBeInTheDocument()
+  })
+
   it('com 2 unidades mostra o seletor e troca a lista', async () => {
     guardar(pacote({ unidades: [{ ...AGUIAS, membros: [membro(ANA, 'Ana Clara')] }, { ...LEOES, membros: [membro(uuid(304), 'Davi Nunes')] }] }))
     montar('/reunioes/nova', [AGUIAS, LEOES])

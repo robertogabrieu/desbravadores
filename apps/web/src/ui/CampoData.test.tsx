@@ -28,6 +28,39 @@ describe('CampoData', () => {
     expect(iso()).toBe('2015-05-20')
   })
 
+  it('"/" completa o bloco com zero: 1/5/2024 vira 01/05/2024', async () => {
+    render(<Teste />)
+    const campo = screen.getByLabelText('Nascimento')
+    await userEvent.type(campo, '1/')
+    expect(campo).toHaveValue('01/')
+    await userEvent.type(campo, '5/2024')
+    expect(campo).toHaveValue('01/05/2024')
+    expect(iso()).toBe('2024-05-01')
+  })
+
+  it('apagar a barra funciona e o cursor fica onde estava', async () => {
+    render(<Teste />)
+    const campo = screen.getByLabelText('Nascimento') as HTMLInputElement
+    await userEvent.type(campo, '010520')
+    campo.setSelectionRange(3, 3)
+    await userEvent.keyboard('{Backspace}')
+    expect(campo).toHaveValue('01/05/20')
+    campo.setSelectionRange(1, 1)
+    await userEvent.keyboard('9')
+    expect(campo.selectionStart).toBe(2)
+  })
+
+  it('data fora de min/max mostra mensagem no campo', async () => {
+    render(<Teste min="2026-03-05" max="2026-03-20" />)
+    const campo = screen.getByLabelText('Nascimento')
+    await userEvent.type(campo, '01012020')
+    expect(screen.getByRole('alert')).toHaveTextContent('Escolha uma data entre 05/03/2026 e 20/03/2026.')
+    expect(campo).toHaveAttribute('aria-invalid', 'true')
+    await userEvent.clear(campo)
+    await userEvent.type(campo, '10032026')
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
   it('reprova 31/02 com mensagem e sem entregar valor', async () => {
     render(<Teste />)
     await userEvent.type(screen.getByLabelText('Nascimento'), '31022024')
@@ -76,5 +109,14 @@ describe('CampoData', () => {
     render(<CampoData compacto rotulo="Nascimento, linha 1" value="" onChange={() => {}} />)
     expect(screen.getByLabelText('Nascimento, linha 1')).toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('no modo compacto, data inexistente fica aria-invalid sem apontar para mensagem que não aparece', async () => {
+    render(<CampoData compacto rotulo="Nascimento, linha 1" value="" onChange={() => {}} />)
+    const campo = screen.getByLabelText('Nascimento, linha 1')
+    await userEvent.type(campo, '31022024')
+    expect(campo).toHaveAttribute('aria-invalid', 'true')
+    expect(campo).not.toHaveAttribute('aria-describedby')
+    expect(campo).toHaveValue('31/02/2024')
   })
 })

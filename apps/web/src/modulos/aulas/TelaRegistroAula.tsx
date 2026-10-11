@@ -99,7 +99,7 @@ function AulaNova({ pacote, classes, baixadoEm }: PropriedadesModo) {
           min={minimo}
           max={hoje}
           onChange={setDataEscolhida}
-          erro={dataValida ? undefined : `Escolha uma data entre ${dataCurta(minimo)} e hoje.`}
+          erro={dataValida || data === '' ? undefined : `Escolha uma data entre ${dataCurta(minimo)} e hoje.`}
         />
       )}
       {dataValida && <AulaDaData key={`${classe.classe.id}:${data}`} pacote={pacote} classes={classes} baixadoEm={baixadoEm} classe={classe} data={data} />}

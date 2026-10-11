@@ -30,6 +30,11 @@ const CORES_DO_CALENDARIO = {
   '--rdp-accent-background-color': 'var(--color-primary-soft)',
 } as CSSProperties
 
+function mensagemDaFaixa(min?: string, max?: string): string {
+  if (min && max) return `Escolha uma data entre ${isoParaTexto(min)} e ${isoParaTexto(max)}.`
+  return min ? `Escolha uma data a partir de ${isoParaTexto(min)}.` : `Escolha uma data até ${isoParaTexto(max ?? '')}.`
+}
+
 /** Campo de data: texto `DD/MM/AAAA` com barras automáticas e calendário em pt-BR; entrega `AAAA-MM-DD`. */
 export function CampoData({ rotulo, ajuda, erro, value, onChange, min, max, compacto, className, id, ref, onBlur, ...resto }: Propriedades) {
   const gerado = useId()
@@ -61,7 +66,13 @@ export function CampoData({ rotulo, ajuda, erro, value, onChange, min, max, comp
   }
 
   const aoDigitar = (evento: ChangeEvent<HTMLInputElement>) => {
-    const novo = mascararData(evento.target.value)
+    const campoDigitado = evento.target
+    const bruto = campoDigitado.value
+    const novo = mascararData(bruto)
+    const cursor = mascararData(bruto.slice(0, campoDigitado.selectionStart ?? bruto.length)).length
+    // O valor do DOM já fica igual ao estado, para o React não reescrevê-lo e levar o cursor ao fim.
+    campoDigitado.value = novo
+    campoDigitado.setSelectionRange(cursor, cursor)
     setTexto(novo)
     const iso = textoParaIso(novo) ?? ''
     if (iso !== value) onChange(iso)
@@ -77,9 +88,12 @@ export function CampoData({ rotulo, ajuda, erro, value, onChange, min, max, comp
   }
 
   const dataInvalida = texto.length === 10 && textoParaIso(texto) === null
-  const mensagem = erro ?? (dataInvalida ? 'Essa data não existe. Use o formato dia/mês/ano.' : undefined)
   const minimo = isoParaData(min)
   const maximo = isoParaData(max)
+  const isoDigitado = textoParaIso(texto)
+  const foraDaFaixa = isoDigitado !== null && ((!!min && isoDigitado < min) || (!!max && isoDigitado > max))
+  const mensagemDaData = dataInvalida ? 'Essa data não existe. Use o formato dia/mês/ano.' : foraDaFaixa ? mensagemDaFaixa(min, max) : undefined
+  const mensagem = erro ?? mensagemDaData
   const selecionada = isoParaData(value)
 
   const corpo = (
@@ -108,7 +122,7 @@ export function CampoData({ rotulo, ajuda, erro, value, onChange, min, max, comp
             aria-label={compacto ? rotulo : undefined}
             maxLength={10}
             aria-invalid={mensagem ? true : undefined}
-            aria-describedby={descreverCampo(idCampo, ajuda, mensagem)}
+            aria-describedby={descreverCampo(idCampo, ajuda, compacto ? undefined : mensagem)}
             className={cn(estiloControle, className)}
             value={texto}
             onChange={aoDigitar}

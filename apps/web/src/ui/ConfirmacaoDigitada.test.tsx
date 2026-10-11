@@ -6,7 +6,7 @@ import { ConfirmacaoDigitada } from './ConfirmacaoDigitada'
 function montar() {
   const aoConfirmar = vi.fn()
   render(
-    <ConfirmacaoDigitada aberta titulo="Excluir?" rotuloConfirmar="Excluir edição" textoEsperado="Classe Bíblica 2026" aoConfirmar={aoConfirmar} aoCancelar={() => undefined}>
+    <ConfirmacaoDigitada aberta titulo="Excluir?" rotuloConfirmar="Excluir edição" textoEsperado="Classe Bíblica 2026" pedido="Para confirmar, digite o nome da edição" aoConfirmar={aoConfirmar} aoCancelar={() => undefined}>
       Esta ação não pode ser desfeita.
     </ConfirmacaoDigitada>,
   )
@@ -19,6 +19,16 @@ describe('ConfirmacaoDigitada', () => {
     expect(screen.getByText('Esta ação não pode ser desfeita.')).toBeInTheDocument()
     expect(screen.getByText(/digite o nome da edição/)).toHaveTextContent('Classe Bíblica 2026')
     expect(screen.getByRole('button', { name: 'Excluir edição' })).toBeDisabled()
+  })
+
+  it('o pedido vem da prop, não é fixo', () => {
+    render(
+      <ConfirmacaoDigitada aberta titulo="Excluir?" rotuloConfirmar="Excluir" textoEsperado="Águias" pedido="Para confirmar, digite o nome da unidade" aoConfirmar={() => undefined} aoCancelar={() => undefined}>
+        Aviso.
+      </ConfirmacaoDigitada>,
+    )
+    expect(screen.getByText(/digite o nome da unidade/)).toHaveTextContent('Águias')
+    expect(screen.queryByText(/nome da edição/)).toBeNull()
   })
 
   it('texto incompleto mantém o botão desabilitado e não confirma', async () => {
