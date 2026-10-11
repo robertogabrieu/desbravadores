@@ -20,6 +20,7 @@ import { useEstadoDeVolta, useFiltrosNaUrl } from '../navegacao'
 import { CartaoDoEvento, GradeDoCelular, LegendaRecolhida, PainelDoDia, diaEscolhidoDoMes, fichaDoEvento } from './CalendarioDoCelular'
 import { DIAS_DA_SEMANA, MESES, MESES_CURTOS, chaveDoDia, chaveDoMes, diasDaGrade, eventosDoDia, eventosDoMes, mesDoEndereco } from './datas'
 import { COR_DA_REUNIAO, CORES_DO_TIPO, ICONE_DO_TIPO, ROTULOS_DO_TIPO } from './tipos'
+import { UniformeDoEvento } from './UniformeDoEvento'
 
 const ABAS_DE_MES = MESES_CURTOS.map((rotulo, indice) => ({ id: String(indice), rotulo }))
 const MAXIMO_POR_DIA = 2
@@ -67,13 +68,19 @@ export function AdmCalendario() {
             </li>
           )
         })}
+        <li>
+          <UniformeDoEvento uniforme="GALA" className="px-2.5" />
+        </li>
+        <li>
+          <UniformeDoEvento uniforme="CAMPO" className="px-2.5" />
+        </li>
       </ul>
     )
     corpo = (
       <>
         {celular ? (
           <>
-            <Cartao className="flex flex-col gap-3">
+            <Cartao className="flex flex-col gap-3 p-2">
               <GradeDoCelular
                 ano={ano}
                 mes={mes}
@@ -236,19 +243,23 @@ function CelulaDoDia({
       )}
       {doDia.slice(0, MAXIMO_POR_DIA).map((evento) => {
         const Icone = ICONE_DO_TIPO[evento.tipo]
+        const especial = evento.tipo === 'EVENTO_ESPECIAL'
         return (
-          <Link
-            key={evento.id}
-            to={fichaDoEvento(evento)}
-            state={estadoDeVolta}
-            className={cn(
-              'truncate rounded-controle px-1.5 py-0.5 text-left text-sm font-semibold focus-visible:outline-2 focus-visible:outline-marca',
-              CORES_DO_TIPO[evento.tipo],
-            )}
-          >
-            {Icone && <Icone aria-hidden className="mr-1 inline size-3.5" />}
-            {evento.classeBiblica?.cancelado ? <s>{evento.nome}</s> : evento.nome}
-          </Link>
+          <div key={evento.id} className="flex min-w-0 flex-col gap-0.5">
+            <Link
+              to={fichaDoEvento(evento)}
+              state={estadoDeVolta}
+              className={cn(
+                'rounded-controle px-1.5 py-0.5 text-left text-sm font-semibold focus-visible:outline-2 focus-visible:outline-marca',
+                especial ? 'break-words' : 'truncate',
+                CORES_DO_TIPO[evento.tipo],
+              )}
+            >
+              {Icone && <Icone aria-hidden className="mr-1 inline size-3.5" />}
+              {evento.classeBiblica?.cancelado ? <s>{evento.nome}</s> : evento.nome}
+            </Link>
+            {especial && evento.uniforme && <UniformeDoEvento uniforme={evento.uniforme} />}
+          </div>
         )
       })}
       {doDia.length > MAXIMO_POR_DIA && (

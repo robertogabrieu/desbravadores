@@ -1,7 +1,7 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { criarEvento, handlerCalendario } from '../../../testes/handlers/calendario'
+import { criarEvento, criarEventoEspecial, handlerCalendario } from '../../../testes/handlers/calendario'
 import { criarConfiguracao, handlerConfiguracao } from '../../../testes/handlers/clube'
 import { simularLargura } from '../../../testes/midia'
 import { renderizarRotas } from '../../../testes/renderizar'
@@ -99,7 +99,7 @@ describe('calendário · no celular', () => {
 
   it('a legenda vem recolhida e abre pelo botão', async () => {
     abrirEm('/adm/calendario?mes=2026-10')
-    const botao = await screen.findByRole('button', { name: 'O que cada cor quer dizer' })
+    const botao = await screen.findByRole('button', { name: 'O que cada marca quer dizer' })
     expect(botao).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByRole('list', { name: 'Legenda' })).not.toBeInTheDocument()
     await userEvent.click(botao)
@@ -166,7 +166,47 @@ describe('calendário · no computador', () => {
     expect(dias.getByRole('link', { name: 'Feira de saúde' })).toBeInTheDocument()
     expect(dias.queryByRole('button')).not.toBeInTheDocument()
     expect(screen.getByRole('list', { name: 'Legenda' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'O que cada cor quer dizer' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'O que cada marca quer dizer' })).not.toBeInTheDocument()
     expect(screen.queryByRole('region', { name: /de outubro$/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('calendário · evento especial no celular', () => {
+  beforeEach(() => simularLargura(360))
+  const gala = criarEventoEspecial(50, { nome: 'Culto de Ação de Graças', inicio: '2026-10-03', fim: '2026-10-03', horario: '18:00', local: 'Igreja Central' })
+  const campo = criarEventoEspecial(51, { nome: 'Aniversário do clube', inicio: '2026-10-17', fim: '2026-10-17', uniforme: 'CAMPO' })
+
+  function abrirComEspeciais(rota: string) {
+    servidor.use(handlerConfiguracao(criarConfiguracao({ diaReuniao: 0, horaReuniao: '15:00' })), handlerCalendario({ eventos: [gala, campo], diasDeReuniao: [] }))
+    return renderizarRotas(rotasAdmCalendario, rota)
+  }
+
+  it('o dia do evento especial leva um losango, e o nome do botão diz "evento especial"', async () => {
+    abrirComEspeciais('/adm/calendario?mes=2026-10')
+    const dias = await grade()
+    const tres = dias.getByRole('button', { name: '3 de outubro: evento especial' })
+    const ponto = tres.querySelector('[data-ponto]') as HTMLElement
+    expect(ponto.className).toContain('rotate-45')
+    expect(ponto.className).not.toContain('rounded-full')
+  })
+
+  it('a grade do celular não tem vão entre os dias, para o dia chegar a 44 px em 360 px', async () => {
+    abrirComEspeciais('/adm/calendario?mes=2026-10')
+    const dias = await screen.findByRole('group', { name: 'Outubro de 2026' })
+    expect(dias.className).toContain('gap-0')
+    expect(dias.className).not.toContain('gap-0.5')
+    expect(dias.parentElement?.className).toContain('p-2')
+  })
+
+  it('o painel do dia e a lista do mês mostram o uniforme; a pendência só na lista do mês e no painel do dia do evento', async () => {
+    abrirComEspeciais('/adm/calendario?mes=2026-10&dia=2026-10-03')
+    const painel = within(await screen.findByRole('region', { name: /^Sábado, 3 de outubro/ }))
+    expect(painel.getByText('Uniforme de gala')).toBeInTheDocument()
+    expect(painel.getByText('Falta registrar quem foi')).toBeInTheDocument()
+    const lista = within(screen.getByRole('list', { name: 'Eventos de Outubro' }))
+    expect(lista.getByText('Falta registrar quem foi')).toBeInTheDocument()
+    expect(lista.getByText('Uniforme de gala')).toBeInTheDocument()
+    expect(lista.getByText('Uniforme de campo')).toBeInTheDocument()
+    expect(lista.getAllByText('Falta registrar quem foi')).toHaveLength(1)
   })
 })

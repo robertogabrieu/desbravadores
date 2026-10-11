@@ -6,6 +6,7 @@ import { caixa } from '../../../testes/handlers/caixa'
 import {
   criarAulaAfetada,
   criarEvento,
+  criarEventoEspecial,
   handlerCalendario,
   handlerCriarEvento,
   handlerEditarEvento,
@@ -20,6 +21,7 @@ import { servidor } from '../../../testes/servidor'
 import { mesDoEndereco } from './datas'
 import { textoDasAulasAfetadas } from './EditarEvento'
 import { rotasAdmCalendario } from './rotas'
+import { ROTULOS_DO_TIPO } from './tipos'
 
 const estado = vi.hoisted(() => ({ modo: 'ONLINE' as 'ONLINE' | 'SEM_CONEXAO' }))
 vi.mock('../../../offline', async (importarOriginal) => ({
@@ -445,5 +447,75 @@ describe('textoDasAulasAfetadas', () => {
     expect(textoDasAulasAfetadas([criarAulaAfetada(1), criarAulaAfetada(2), criarAulaAfetada(3, { data: '2026-10-19' })])).toBe(
       '3 classes estavam marcadas nessas datas: Amigo (18/10), Amigo (18/10) e Amigo (19/10). Os instrutores foram avisados.',
     )
+  })
+})
+
+describe('evento especial no calendário do computador', () => {
+  const gala = criarEventoEspecial(40, { nome: 'Culto de Ação de Graças', inicio: '2026-10-03', fim: '2026-10-03', uniforme: 'GALA', horario: '18:00', local: 'Igreja Central' })
+  const campo = criarEventoEspecial(41, { nome: 'Aniversário do clube', inicio: '2026-10-17', fim: '2026-10-17', uniforme: 'CAMPO' })
+
+  it('a legenda segue a ordem real dos tipos e traz os dois uniformes à parte, depois deles', async () => {
+    abrir(handlerCalendario({ eventos: [gala] }))
+    const itens = within(await screen.findByRole('list', { name: 'Legenda' })).getAllByRole('listitem')
+    expect(itens.map((item) => item.textContent?.trim())).toEqual([
+      'Reunião regular · 15h',
+      ...Object.values(ROTULOS_DO_TIPO),
+      'Uniforme de gala',
+      'Uniforme de campo',
+    ])
+    expect(itens.at(-2)?.querySelector('svg')).not.toBeNull()
+    expect(itens.at(-1)?.querySelector('.border-dashed')).not.toBeNull()
+    expect(itens.at(-2)?.querySelector('.border-dashed')).toBeNull()
+  })
+
+  it('a célula traz ícone e nome e, em segunda linha, o uniforme: gala cheio, campo tracejado, sem cortar o texto', async () => {
+    abrir(handlerCalendario({ eventos: [gala, campo], diasDeReuniao: [] }))
+    const grade = within(await screen.findByRole('group', { name: 'Outubro de 2026' }))
+    const link = grade.getByRole('link', { name: 'Culto de Ação de Graças' })
+    expect(link.querySelector('svg')).not.toBeNull()
+    expect(link.className).not.toContain('truncate')
+    const celula = link.parentElement as HTMLElement
+    const uniforme = within(celula).getByText('Uniforme de gala')
+    expect(link.compareDocumentPosition(uniforme) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(uniforme.parentElement?.className).not.toContain('truncate')
+    expect(uniforme.parentElement?.className).toContain('border-solid')
+    const doCampo = grade.getByText('Uniforme de campo')
+    expect(doCampo.parentElement?.className).toContain('border-dashed')
+    expect(doCampo.parentElement?.className).not.toContain('truncate')
+  })
+
+  it('evento comum continua cortando o nome comprido e sem uniforme', async () => {
+    abrir(handlerCalendario({ eventos: [criarEvento(42, { nome: 'Feira', inicio: '2026-10-08', fim: '2026-10-08' })], diasDeReuniao: [] }))
+    const grade = within(await screen.findByRole('group', { name: 'Outubro de 2026' }))
+    expect(grade.getByRole('link', { name: 'Feira' }).className).toContain('truncate')
+    expect(grade.queryByText(/^Uniforme/)).not.toBeInTheDocument()
+  })
+
+  it('o cartão do evento mostra o uniforme e diz "Falta registrar quem foi" só com a pendência da regra única', async () => {
+    const noPrazo = criarEventoEspecial(43, { nome: 'No prazo', inicio: '2026-10-01', fim: '2026-10-03' })
+    const emAndamento = criarEventoEspecial(44, { nome: 'Em andamento', inicio: '2026-10-04', fim: '2026-10-06' })
+    const semPontos = criarEventoEspecial(45, { nome: 'Sem pontos', inicio: '2026-10-02', fim: '2026-10-02', pontosParticipacao: 0, pontosUniforme: 0 })
+    const concluida = criarEventoEspecial(46, {
+      nome: 'Concluída',
+      inicio: '2026-10-02',
+      fim: '2026-10-02',
+      lista: { concluidaEm: '2026-10-03T12:00:00Z', foram: 5, uniformizados: 3 },
+    })
+    abrir(handlerCalendario({ eventos: [noPrazo, emAndamento, semPontos, concluida] }))
+    const lista = within(await screen.findByRole('list', { name: 'Eventos de Outubro' }))
+    const doItem = (nome: string) => within(lista.getByRole('link', { name: new RegExp(nome) }))
+    expect(doItem('No prazo').getByText('Falta registrar quem foi')).toBeInTheDocument()
+    expect(doItem('No prazo').getByText('Uniforme de gala')).toBeInTheDocument()
+    expect(lista.getByRole('link', { name: new RegExp('No prazo') })).toHaveAttribute('href', `/adm/calendario/eventos/${noPrazo.id}`)
+    for (const nome of ['Em andamento', 'Sem pontos', 'Concluída']) expect(doItem(nome).queryByText('Falta registrar quem foi')).not.toBeInTheDocument()
+  })
+
+  it('passados mais de 60 dias do fim, o aviso some sozinho', async () => {
+    const antigo = criarEventoEspecial(47, { nome: 'Antigo', inicio: '2026-07-20', fim: '2026-07-20' })
+    const recente = criarEventoEspecial(48, { nome: 'Recente', inicio: '2026-08-10', fim: '2026-08-10' })
+    abrirEm('/adm/calendario?mes=2026-07', handlerCalendario({ eventos: [antigo, recente] }))
+    const julho = within(await screen.findByRole('list', { name: 'Eventos de Julho' }))
+    expect(julho.getByText('Uniforme de gala')).toBeInTheDocument()
+    expect(julho.queryByText('Falta registrar quem foi')).not.toBeInTheDocument()
   })
 })
