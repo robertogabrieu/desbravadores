@@ -73,7 +73,7 @@ export function LinhaDeMarca({ nome, marca, uniforme, semInternet, aoTocarNome, 
         </button>
       </div>
       {marca.situacao === 'falhou' && !semInternet && (
-        <div role="alert" className="flex flex-wrap items-center gap-2 pl-1">
+        <div role="alert" className="flex flex-wrap items-center gap-2 ml-1">
           <span className="text-sm font-medium text-perigo">{mensagemDaFalha(nome)}</span>
           <Botao variante="secundario" onClick={aoTentarDeNovo}>
             Tentar de novo

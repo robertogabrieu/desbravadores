@@ -81,7 +81,7 @@ function EventoNaoEncontrado() {
 
 function ErroAoAbrir({ aoTentarDeNovo }: { aoTentarDeNovo: () => void }) {
   return (
-    <div role="alert" className="flex flex-col items-center gap-3 px-6 py-10 text-center">
+    <div role="alert" className="flex flex-col items-center gap-3 mx-6 my-10 text-center">
       <p className="text-base font-semibold text-perigo">Não conseguimos abrir a lista agora. Confira a internet e tente de novo.</p>
       <Botao variante="secundario" onClick={aoTentarDeNovo}>
         Tentar de novo
@@ -326,7 +326,7 @@ function ListaDoEvento({ evento }: PropriedadesDaLista) {
 
   const secoes =
     visiveis.length === 0 ? (
-      <div className="flex flex-col items-center gap-3 px-6 py-8 text-center">
+      <div className="flex flex-col items-center gap-3 mx-6 my-8 text-center">
         <p className="text-base text-texto">{`Ninguém com “${busca.trim()}” na lista.`}</p>
         <Botao variante="secundario" onClick={() => setBusca('')}>
           Limpar a busca
@@ -367,7 +367,7 @@ function ListaDoEvento({ evento }: PropriedadesDaLista) {
 
   const fechamento = concluida ? (
     <>
-      <section aria-labelledby="lista-concluida" className="flex flex-col gap-2 rounded-cartao border border-borda bg-superficie p-4">
+      <section aria-labelledby="lista-concluida" className="flex flex-col gap-2 rounded-cartao border border-borda-controle bg-superficie p-4">
         <h2 id="lista-concluida" ref={tituloDoFechamento} tabIndex={-1} className="flex items-center gap-2 font-titulo text-xl font-bold text-sucesso outline-none">
           <Check aria-hidden className="size-6 shrink-0" />
           Lista concluída

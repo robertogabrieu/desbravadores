@@ -29,9 +29,9 @@ export function SecaoDaUnidade({ nome, foram, uniformizados, total, uniforme, ab
   )
 
   return (
-    <section aria-label={nome} className="flex flex-col gap-2 rounded-cartao border border-borda bg-superficie p-2">
+    <section aria-label={nome} className="flex flex-col gap-2 rounded-cartao border border-borda-controle bg-superficie p-2">
       {fixa ? (
-        <div className="flex min-h-[var(--touch-min)] items-center justify-between gap-2 px-2">{titulo}</div>
+        <div className="flex min-h-[var(--touch-min)] items-center justify-between gap-2 mx-2">{titulo}</div>
       ) : (
         <button
           type="button"
