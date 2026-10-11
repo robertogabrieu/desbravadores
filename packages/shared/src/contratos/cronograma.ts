@@ -78,7 +78,7 @@ export const AvancadaMontagem = z.object({
  *  null e listas vazias (a tela oferece "Criar"); classe fora do escopo: 404. */
 export const MontagemSaida = z.object({
   cronograma: z.object({
-    id: Uuid, status: StatusCronograma, inicio: DataCivil, fim: DataCivil,
+    id: Uuid, status: StatusCronograma, anoClube: z.number().int(), inicio: DataCivil, fim: DataCivil,
     enviadoEm: InstanteIso.nullable(), enviadoPor: z.string().nullable(), publicadoEm: InstanteIso.nullable(),
     /** Enviado de volta em enviar/publicar para detectar que o cronograma mudou (409). */
     atualizadoEm: InstanteIso,
