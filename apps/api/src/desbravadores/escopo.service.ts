@@ -3,7 +3,7 @@ import { anoClube, hojeNoFuso, permissoesEfetivas, type ChavePermissao } from '@
 import type { Prisma, StatusMatricula } from '../generated/prisma/client.js'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { PrismaService } from '../comum/prisma/prisma.service'
-import { comAvancadasPareadas } from '../classes/par-regular-avancada'
+import { avancadaComParAtivo } from '../classes/par-regular-avancada'
 
 /** "Hoje" e o ano do clube, no fuso e no inicio de ano configurados pelo clube. */
 export interface RelogioDoClube {
@@ -45,21 +45,16 @@ export class ServicoEscopo {
   }
 
   /**
-   * Com sessao de substituicao, so o alvo do link. Cada regular traz a avancada pareada: quem instrui a regular
-   * instrui a avancada, mesmo antes de o vinculo dela ser gravado.
+   * Com sessao de substituicao, so a classe do link: o link nao herda a avancada pareada. Instrutor do clube: cada
+   * regular do vinculo traz a avancada pareada (par ativo), mesmo antes de o vinculo dela ser gravado.
    */
   async classesDoInstrutor(sessao: SessaoLogada): Promise<string[]> {
-    const classeIds = await this.classesDoVinculo(sessao)
-    return comAvancadasPareadas(this.prisma, sessao.clubeId, classeIds)
-  }
-
-  private async classesDoVinculo(sessao: SessaoLogada): Promise<string[]> {
     if (sessao.substituicao) return sessao.substituicao.classeId ? [sessao.substituicao.classeId] : []
     const ligacoes = await this.prisma.vinculoClasse.findMany({
       where: { vinculoId: sessao.vinculoId },
-      select: { classeId: true },
+      select: { classeId: true, classe: { select: { avancadas: { where: avancadaComParAtivo(sessao.clubeId), select: { id: true } } } } },
     })
-    return ligacoes.map((ligacao) => ligacao.classeId)
+    return [...new Set(ligacoes.flatMap((ligacao) => [ligacao.classeId, ...ligacao.classe.avancadas.map((avancada) => avancada.id)]))]
   }
 
   /** Filtro de `Desbravador` que o papel alcanca; sempre carrega o `clubeId`. */

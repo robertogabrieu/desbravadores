@@ -5,10 +5,11 @@ import {
   situacaoDaData,
   type EventoDoCalendario,
   type MontagemSaida,
+  type SituacaoDeData,
 } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { refClasse, SELECAO_REF_CLASSE } from '../../classes/apresentacao-classe'
-import { avancadaDoPar } from '../../classes/par-regular-avancada'
+import { avancadaComParAtivo, avancadaDoPar } from '../../classes/par-regular-avancada'
 import type { SessaoLogada } from '../../comum/decorators/sessao.decorator'
 import { ErroApp } from '../../comum/erros'
 import { PrismaService } from '../../comum/prisma/prisma.service'
@@ -20,11 +21,6 @@ import type { Prisma } from '../../generated/prisma/client.js'
 type Saida = z.infer<typeof MontagemSaida>
 
 const CLASSE_NAO_ENCONTRADA = 'Classe não encontrada.'
-
-/** A classe de onde vem o ajuste de quem monta: a regular, quando a classe é avançada. */
-function classeDeReferencia(classe: { id: string; tipo: string; trilha: string; classeBaseId: string | null }): string {
-  return classe.tipo === 'AVANCADA' && classe.trilha === 'INDIVIDUAL' && classe.classeBaseId ? classe.classeBaseId : classe.id
-}
 
 /** Acesso à montagem (B3) e leitura do cronograma vivo no formato que as duas telas de montagem usam. */
 @Injectable()
@@ -53,12 +49,12 @@ export class ServicoMontagemLeitura {
     return classe
   }
 
-  /** B3: Adm sempre; instrutor da classe só se o clube liberou a montagem para ele (na avançada, vale o ajuste da regular). */
+  /** B3: Adm sempre; instrutor da classe só se o clube liberou a montagem para ele (na avançada com par ativo, vale o ajuste da regular). */
   async classeQueMonta(sessao: SessaoLogada, classeId: string) {
     const classe = await this.classeDoEscopo(sessao, classeId)
     if (sessao.papel === 'INSTRUTOR') {
       const ajuste = await this.prisma.classeClube.findUnique({
-        where: { clubeId_classeId: { clubeId: sessao.clubeId, classeId: classeDeReferencia(classe) } },
+        where: { clubeId_classeId: { clubeId: sessao.clubeId, classeId: await this.classeDeReferencia(sessao.clubeId, classe) } },
         select: { quemMontaCronograma: true },
       })
       if (ajuste?.quemMontaCronograma !== 'INSTRUTOR') {
@@ -66,6 +62,13 @@ export class ServicoMontagemLeitura {
       }
     }
     return classe
+  }
+
+  /** A classe de onde vem o ajuste de quem monta: a regular, quando a classe é avançada com o par ativo; senão, ela mesma. */
+  private async classeDeReferencia(clubeId: string, classe: { id: string; classeBaseId: string | null }): Promise<string> {
+    if (!classe.classeBaseId) return classe.id
+    const comPar = await this.prisma.classe.count({ where: { ...avancadaComParAtivo(clubeId), id: classe.id } })
+    return comPar > 0 ? classe.classeBaseId : classe.id
   }
 
   /** A avançada da regular neste clube, com o par ativo (as duas ativas no sistema e no clube); `null` se não há. */
@@ -196,7 +199,9 @@ export class ServicoMontagemLeitura {
         return { ...requisito, aulaId, data: aulaId ? (dataPorAula.get(aulaId) ?? null) : null }
       }),
       datasLivres: classe.trilha === 'AGRUPADAS',
-      avancada: avancada ? await this.blocoDaAvancada(clubeId, avancada, datas) : null,
+      avancada: avancada
+        ? await this.blocoDaAvancada(clubeId, avancada, datas, { situacoes, diaReuniao: configuracao.diaReuniao, hoje: relogio.hoje })
+        : null,
     }
   }
 
@@ -221,6 +226,7 @@ export class ServicoMontagemLeitura {
     clubeId: string,
     avancada: NonNullable<Awaited<ReturnType<ServicoMontagemLeitura['avancadaCarregada']>>>,
     datas: string[],
+    calendario: { situacoes: Map<string, SituacaoDeData>; diaReuniao: number; hoje: string },
   ): Promise<NonNullable<Saida['avancada']>> {
     const { classe, cronograma, aulas, ligacoes } = avancada
     const registros = await this.prisma.registroAula.findMany({
@@ -241,11 +247,17 @@ export class ServicoMontagemLeitura {
       }),
       datas: datas.map((data) => {
         const aula = aulaPorData.get(data)
+        const requisitoIds = aula ? ligacoes.filter((ligacao) => ligacao.aulaPlanejadaId === aula.id).map((ligacao) => ligacao.requisitoId) : []
+        const aulaDada = datasDadas.has(data)
+        const situacao = calendario.situacoes.get(data) ?? situacaoDaData(data, calendario.diaReuniao, [])
         return {
           data,
           aulaId: aula?.id ?? null,
-          requisitoIds: aula ? ligacoes.filter((ligacao) => ligacao.aulaPlanejadaId === aula.id).map((ligacao) => ligacao.requisitoId) : [],
-          aulaDada: datasDadas.has(data),
+          requisitoIds,
+          aulaDada,
+          conflito:
+            aula !== undefined &&
+            emConflito({ trilha: classe.trilha, temRequisitos: requisitoIds.length > 0, temRegistro: aulaDada, data, hoje: calendario.hoje, situacaoDaData: situacao }),
         }
       }),
     }

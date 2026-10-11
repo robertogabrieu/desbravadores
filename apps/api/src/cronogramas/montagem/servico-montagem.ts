@@ -72,7 +72,14 @@ export class ServicoMontagem {
             select: { id: true },
           })
         const criadoRegular = regular ?? (await criar(entrada.classeId))
-        if (avancada && !daAvancada) await criar(avancada.id)
+        if (avancada && !daAvancada) {
+          await criar(avancada.id)
+          // Completar um par que a regular já andava sozinha muda o par: a regular enviada ou publicada volta a rascunho.
+          if (regular) {
+            await this.travarCronograma(tx, clubeId, regular.id)
+            await this.devolverARascunho(tx, clubeId, regular.id)
+          }
+        }
         return criadoRegular.id
       })
       return await this.leitura.saida(clubeId, regularId)
@@ -82,15 +89,20 @@ export class ServicoMontagem {
     }
   }
 
+  /** O período é do par: mudar o de um dos cronogramas muda o dos dois, e as aulas de qualquer lado têm de caber nele. */
   editarPeriodo(sessao: SessaoLogada, cronogramaId: string, periodo: { inicio: string; fim: string }): Promise<Saida> {
     return this.executar(sessao, cronogramaId, 'MONTAR', async ({ tx, cronograma }) => {
+      const { clubeId } = cronograma
+      const doPar = await this.leitura.cronogramaDoPar(clubeId, cronogramaId, tx)
       const aulas = await tx.aulaPlanejada.findMany({
-        where: { clubeId: cronograma.clubeId, cronogramaId, removidaEm: null },
+        where: { clubeId, cronogramaId: { in: [cronogramaId, ...(doPar ? [doPar.id] : [])] }, removidaEm: null },
         select: { data: true },
       })
-      const fora = aulas.map((aula) => paraDataCivil(aula.data)).filter((data) => data < periodo.inicio || data > periodo.fim).sort()
+      const fora = [...new Set(aulas.map((aula) => paraDataCivil(aula.data)))].filter((data) => data < periodo.inicio || data > periodo.fim).sort()
       if (fora.length > 0) throw regra(`Há classes fora do novo período: ${fora.map(diaEMes).join(', ')}. Mova-as antes.`)
-      return { inicio: daDataCivil(periodo.inicio), fim: daDataCivil(periodo.fim) }
+      const novo = { inicio: daDataCivil(periodo.inicio), fim: daDataCivil(periodo.fim) }
+      if (doPar) await tx.cronograma.updateMany({ where: { clubeId, id: doPar.id }, data: novo })
+      return novo
     })
   }
 
@@ -198,6 +210,7 @@ export class ServicoMontagem {
       orderBy: { id: 'asc' },
     })
     const paresDosCandidatos = await Promise.all(candidatos.map(({ id }) => this.leitura.cronogramaDoPar(clubeId, id, tx)))
+    const parPorCronograma = new Map(candidatos.map(({ id }, posicao) => [id, paresDosCandidatos[posicao]]))
     const aTravar = [...new Set([...candidatos.map(({ id }) => id), ...paresDosCandidatos.flatMap((par) => (par ? [par.id] : []))])].sort()
     for (const id of aTravar) await this.travarCronograma(tx, clubeId, id)
     const ligacoes = await tx.aulaRequisito.findMany({ where: { clubeId, requisitoId }, select: { cronogramaId: true } })
@@ -222,7 +235,7 @@ export class ServicoMontagem {
         where: { clubeId, id: cronogramaId },
         data: { status: 'RASCUNHO', atualizadoEm: instanteNovo(cronograma.atualizadoEm) },
       })
-      const doPar = await this.leitura.cronogramaDoPar(clubeId, cronogramaId, tx)
+      const doPar = parPorCronograma.get(cronogramaId)
       if (doPar) await this.devolverARascunho(tx, clubeId, doPar.id)
     }
   }
@@ -328,6 +341,12 @@ export class ServicoMontagem {
     }
   }
 
+  /** A avançada tem o período da regular: grava o da regular no dela, o que também cura par antigo que divergia. */
+  private async alinharPeriodoDaAvancada(tx: Tx, clubeId: string, regularCronogramaId: string, avancadaCronogramaId: string): Promise<void> {
+    const regular = await tx.cronograma.findFirstOrThrow({ where: { clubeId, id: regularCronogramaId }, select: { inicio: true, fim: true } })
+    await tx.cronograma.updateMany({ where: { clubeId, id: avancadaCronogramaId }, data: { inicio: regular.inicio, fim: regular.fim } })
+  }
+
   /** O cronograma volta a rascunho com `atualizadoEm` novo; a linha já está travada por quem chama. */
   private async devolverARascunho(tx: Tx, clubeId: string, cronogramaId: string): Promise<void> {
     const atual = await tx.cronograma.findFirstOrThrow({ where: { clubeId, id: cronogramaId }, select: { atualizadoEm: true } })
@@ -357,7 +376,10 @@ export class ServicoMontagem {
           data: { status: 'RASCUNHO', ...mudanca, atualizadoEm: instanteNovo(cronograma.atualizadoEm) },
         })
         // Editar um lado do par devolve o outro a rascunho; enviar e publicar movem o par por `acompanharPar`.
-        if (doPar && autorizacao === 'MONTAR') await this.devolverARascunho(tx, sessao.clubeId, doPar.id)
+        if (doPar && autorizacao === 'MONTAR') {
+          await this.devolverARascunho(tx, sessao.clubeId, doPar.id)
+          await this.alinharPeriodoDaAvancada(tx, sessao.clubeId, doPar.parceiraEhRegular ? doPar.id : cronogramaId, doPar.parceiraEhRegular ? cronogramaId : doPar.id)
+        }
       })
     } catch (erro) {
       if (ehCorrida(erro)) throw new ErroApp('CONFLITO', OUTRA_PESSOA_MUDOU)

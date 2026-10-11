@@ -7,6 +7,7 @@ import { colador } from '../desbravadores/apoio'
 import { ServicoEscopo } from '../desbravadores/escopo.service'
 import type { Prisma } from '../generated/prisma/client.js'
 import { corTokenDaClasse } from './apresentacao-classe'
+import { avancadaComParAtivo } from './par-regular-avancada'
 
 type Classe = z.infer<typeof ClasseSaida>
 type Detalhe = z.infer<typeof ClasseDetalheSaida>
@@ -100,8 +101,12 @@ export class ClassesService {
       }),
     }))
     const total = secoes.reduce((soma, secao) => soma + secao.requisitos.filter((r) => r.ativo).length, 0)
-    const regular = classe.tipo === 'AVANCADA' && classe.trilha === 'INDIVIDUAL' && classe.classeBaseId ? await this.resumirRegular(clubeId, classe.classeBaseId) : null
+    const regular = classe.classeBaseId && (await this.temParAtivo(clubeId, classe.id)) ? await this.resumirRegular(clubeId, classe.classeBaseId) : null
     return { ...montarClasse(classe, total), regular, secoes }
+  }
+
+  private async temParAtivo(clubeId: string, avancadaId: string): Promise<boolean> {
+    return (await this.prisma.classe.count({ where: { ...avancadaComParAtivo(clubeId), id: avancadaId } })) > 0
   }
 
   private async resumirRegular(clubeId: string, regularId: string): Promise<ResumoDaRegular | null> {

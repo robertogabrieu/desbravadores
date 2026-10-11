@@ -1,5 +1,6 @@
+import { randomUUID } from 'node:crypto'
 import type { INestApplication } from '@nestjs/common'
-import type { ClasseDetalheSaida } from '@desbravadores/shared'
+import { hojeNoFuso, type ClasseDetalheSaida } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { criarAppDeTeste } from '../../test/app'
 import {
@@ -8,7 +9,9 @@ import {
   criarAcesso,
   criarClube,
   criarDbv,
+  credencialDeSubstituicao,
   criarMatricula,
+  criarSubstituicao,
   criarVinculo,
   desconectarPrismaDeTeste,
   prismaDeTeste,
@@ -166,6 +169,45 @@ describe('regular e avançada andam juntas', () => {
       await api.get(`/api/classes/${avancada.id}/progresso`, instrutor.autorizacao).expect(200)
       await api.patch(`/api/classes/${avancada.id}`, adm.autorizacao, { ativa: false }).expect(200)
       await api.get(`/api/classes/${avancada.id}/progresso`, instrutor.autorizacao).expect(404)
+    })
+
+    it('sessão de substituição da regular não alcança a avançada pareada (404); o instrutor titular continua alcançando', async () => {
+      const { clube, regular, avancada } = await cenario()
+      const substituicao = await criarSubstituicao({ clubeId: clube.id, tipo: 'CLASSE', classeId: regular.id })
+      const { autorizacao } = credencialDeSubstituicao(substituicao)
+      await api.get(`/api/classes/${regular.id}/aulas`, autorizacao).expect(200)
+      await api.get(`/api/classes/${regular.id}/cronograma`, autorizacao).expect(200)
+      await api.get(`/api/classes/${avancada.id}/aulas`, autorizacao).expect(404)
+      await api.get(`/api/classes/${avancada.id}/cronograma`, autorizacao).expect(404)
+      await api
+        .put(`/api/sync/aulas/${randomUUID()}`, autorizacao, {
+          versaoPayload: 1,
+          envioId: randomUUID(),
+          classeId: avancada.id,
+          data: hojeNoFuso('America/Sao_Paulo', new Date()),
+          feitaNoAparelhoEm: new Date().toISOString(),
+          aulaPlanejadaId: null,
+          presencas: [],
+          requisitosMarcados: [],
+          requisitosDesmarcados: [],
+        })
+        .expect(404)
+
+      const titular = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [regular.id] })
+      await api.get(`/api/classes/${avancada.id}/aulas`, titular.autorizacao).expect(200)
+    })
+  })
+
+  describe('quem monta com o par inativo', () => {
+    it('regular inativa no clube: a avançada edita o próprio "quem monta"; com o par ativo, segue 400', async () => {
+      const { adm, regular, avancada } = await cenario()
+      const bloqueado = await api.patch(`/api/classes/${avancada.id}`, adm.autorizacao, { quemMontaCronograma: 'INSTRUTOR' }).expect(400)
+      expect(corpo<{ mensagem: string }>(bloqueado).mensagem).toContain('a avançada segue a regular')
+
+      await api.patch(`/api/classes/${regular.id}`, adm.autorizacao, { ativa: false }).expect(200)
+      const editada = corpo<Detalhe>(await api.patch(`/api/classes/${avancada.id}`, adm.autorizacao, { quemMontaCronograma: 'INSTRUTOR' }).expect(200))
+      expect(editada.quemMontaCronograma).toBe('INSTRUTOR')
+      expect(editada.regular).toBeNull()
     })
   })
 })
