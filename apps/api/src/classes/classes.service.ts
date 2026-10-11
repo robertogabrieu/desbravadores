@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common'
 import type { ClasseDetalheSaida, ClasseFiltro, ClasseRegularResumo, ClasseSaida } from '@desbravadores/shared'
-import { anoClube, hojeNoFuso } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { colador } from '../desbravadores/apoio'
+import { ServicoEscopo } from '../desbravadores/escopo.service'
 import type { Prisma } from '../generated/prisma/client.js'
 import { corTokenDaClasse } from './apresentacao-classe'
 
@@ -53,7 +53,10 @@ function montarClasse(classe: ClasseLida, totalRequisitos: number): Classe {
 
 @Injectable()
 export class ClassesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly escopo: ServicoEscopo,
+  ) {}
 
   async listar(clubeId: string, filtro: z.infer<typeof ClasseFiltro>): Promise<Classe[]> {
     const classes = await this.prisma.classe.findMany({
@@ -107,15 +110,16 @@ export class ClassesService {
       select: { id: true, nome: true, clubes: { where: { clubeId }, select: { quemMontaCronograma: true } } },
     })
     if (!regular) return null
-    const configuracao = await this.prisma.configuracaoClube.findUniqueOrThrow({ where: { clubeId } })
-    const ano = anoClube(hojeNoFuso(configuracao.fuso, new Date()), configuracao.inicioAnoClube)
-    const [instrutores, totalAlunos] = await Promise.all([
+    const [relogio, instrutores] = await Promise.all([
+      this.escopo.relogio(clubeId),
       this.prisma.vinculo.findMany({
         where: { clubeId, papel: 'INSTRUTOR', ativo: true, classes: { some: { classeId: regularId } } },
         select: { usuario: { select: { nome: true } } },
       }),
-      this.prisma.matriculaClasse.count({ where: { clubeId, classeId: regularId, anoClube: ano, status: { not: 'DESISTIU' } } }),
     ])
+    const totalAlunos = await this.prisma.matriculaClasse.count({
+      where: { clubeId, classeId: regularId, anoClube: relogio.anoClube, status: { not: 'DESISTIU' } },
+    })
     return {
       id: regular.id,
       nome: regular.nome,

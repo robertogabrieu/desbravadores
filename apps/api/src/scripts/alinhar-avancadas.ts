@@ -1,4 +1,5 @@
 import { parseArgs } from 'node:util'
+import { avancadaComParAtivo } from '../classes/par-regular-avancada'
 import { PrismaSistema } from '../comum/prisma/prisma-sistema'
 
 export interface ResultadoDoAlinhamento {
@@ -9,17 +10,13 @@ export interface ResultadoDoAlinhamento {
 }
 
 /**
- * Clube a clube, faz a avancada copiar a regular: os instrutores (VinculoClasse) e quem monta o cronograma.
+ * Clube a clube, nos pares ativos, faz a avancada copiar a regular: os instrutores (VinculoClasse) e quem monta o cronograma.
  * Idempotente. Com `seco`, so conta o que mudaria. `clubeId` restringe a um clube.
  */
 export async function alinharAvancadas(
   prisma: PrismaSistema,
   opcoes: { seco: boolean; clubeId?: string },
 ): Promise<ResultadoDoAlinhamento> {
-  const avancadas = await prisma.classe.findMany({
-    where: { tipo: 'AVANCADA', trilha: 'INDIVIDUAL', classeBaseId: { not: null } },
-    select: { id: true, classeBaseId: true },
-  })
   const clubes = await prisma.clube.findMany({ where: { id: opcoes.clubeId }, select: { id: true } })
   const resultado: ResultadoDoAlinhamento = { clubes: clubes.length, vinculosCriados: 0, vinculosRemovidos: 0, quemMontaAlterado: 0 }
 
@@ -29,6 +26,8 @@ export async function alinharAvancadas(
   }
 
   for (const { id: clubeId } of clubes) {
+    // So os pares ativos no sistema e neste clube; avancada ou regular desativada fica como esta.
+    const avancadas = await prisma.classe.findMany({ where: avancadaComParAtivo(clubeId), select: { id: true, classeBaseId: true } })
     for (const avancada of avancadas) {
       if (!avancada.classeBaseId) continue
       const regularId = avancada.classeBaseId

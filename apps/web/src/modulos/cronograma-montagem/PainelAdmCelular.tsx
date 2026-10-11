@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { Classe } from '../../api/leitura'
-import type { CronogramaDaMontagem, DataDaMontagem, Montagem } from '../../api/montagem'
+import type { CronogramaDaMontagem, Montagem } from '../../api/montagem'
 import { Abas } from '../../ui/Abas'
 import { BarraProgresso } from '../../ui/BarraProgresso'
 import { Botao } from '../../ui/Botao'
@@ -17,7 +17,7 @@ import type { AulaEmEdicao } from './FormularioAula'
 import { SeloDoCronograma } from './SeloDoCronograma'
 import { aceitaRequisitoNovo, chaveDoMes, diaComDadosSomeAoTirar, diaMes, mesPorExtenso } from './datas'
 import { progressoDoLado, unirMontagem } from './unida'
-import type { RequisitoUnido } from './unida'
+import type { DataUnida, RequisitoUnido } from './unida'
 import { useAcoesDeMontagem } from './useAcoesDeMontagem'
 
 interface Propriedades {
@@ -45,8 +45,8 @@ const QUEM_MONTA = { ADM: 'Adm', INSTRUTOR: 'Instrutores da classe' } as const
 
 const plural = (quantidade: number, um: string, varios: string) => (quantidade === 1 ? `1 ${um}` : `${quantidade} ${varios}`)
 
-function agruparPorMes(datas: DataDaMontagem[]): { chave: string; datas: DataDaMontagem[] }[] {
-  const meses: { chave: string; datas: DataDaMontagem[] }[] = []
+function agruparPorMes(datas: DataUnida[]): { chave: string; datas: DataUnida[] }[] {
+  const meses: { chave: string; datas: DataUnida[] }[] = []
   for (const dado of datas) {
     const chave = chaveDoMes(dado.data)
     const ultimo = meses[meses.length - 1]
@@ -86,7 +86,7 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
   const total = unida.requisitos.length
   const regular = progressoDoLado(unida, 'REGULAR')
   const avancada = progressoDoLado(unida, 'AVANCADA')
-  const conflitos = montagem.datas.filter((dado) => dado.conflito).length
+  const conflitos = unida.datas.filter((dado) => dado.conflito).length
   const proximo = semData.find((requisito) => requisito.id !== colocacao?.requisitoId) ?? null
   const publicado = cronograma.status === 'PUBLICADO'
 
@@ -96,16 +96,16 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
   }
 
   /** Sem data antes, desfazer é tirar; com data, ela precisa aceitar o requisito de volta e não ter sido apagada com dados próprios. */
-  function desfazerSeguro(anterior: string | null): boolean {
+  function desfazerSeguro(requisito: RequisitoUnido, anterior: string | null): boolean {
     if (anterior === null) return true
-    const dado = montagem.datas.find((item) => item.data === anterior)
-    return dado !== undefined && aceitaRequisitoNovo(montagem, dado) && !diaComDadosSomeAoTirar(montagem, dado)
+    const dado = unida.datas.find((item) => item.data === anterior)
+    return dado !== undefined && aceitaRequisitoNovo(montagem, dado, requisito.lado) && !diaComDadosSomeAoTirar(montagem, dado)
   }
 
   async function colocarPelaFolha(data: string) {
     if (!folhaPara) return
     const anterior = folhaPara.data
-    const podeDesfazer = desfazerSeguro(anterior)
+    const podeDesfazer = desfazerSeguro(folhaPara, anterior)
     if (!(await acoes.colocar(folhaPara.id, data))) return
     setFolhaParaId(null)
     setColocacao({ requisitoId: folhaPara.id, codigo: folhaPara.codigo, data, anterior, podeDesfazer })
@@ -129,7 +129,7 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
     if (await acoes.tirar(requisito.id)) setColocacao(null)
   }
 
-  async function removerAula(dado: DataDaMontagem) {
+  async function removerAula(dado: DataUnida) {
     if (dado.aulaId && (await acoes.removerAula(dado.aulaId))) setColocacao(null)
   }
 

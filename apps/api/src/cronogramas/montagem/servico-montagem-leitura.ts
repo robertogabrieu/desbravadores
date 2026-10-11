@@ -8,6 +8,7 @@ import {
 } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { refClasse, SELECAO_REF_CLASSE } from '../../classes/apresentacao-classe'
+import { avancadaDoPar } from '../../classes/par-regular-avancada'
 import type { SessaoLogada } from '../../comum/decorators/sessao.decorator'
 import { ErroApp } from '../../comum/erros'
 import { PrismaService } from '../../comum/prisma/prisma.service'
@@ -20,7 +21,7 @@ type Saida = z.infer<typeof MontagemSaida>
 
 const CLASSE_NAO_ENCONTRADA = 'Classe não encontrada.'
 
-/** A classe de onde vêm o vínculo do instrutor e o ajuste de quem monta: a regular, quando a classe é avançada. */
+/** A classe de onde vem o ajuste de quem monta: a regular, quando a classe é avançada. */
 function classeDeReferencia(classe: { id: string; tipo: string; trilha: string; classeBaseId: string | null }): string {
   return classe.tipo === 'AVANCADA' && classe.trilha === 'INDIVIDUAL' && classe.classeBaseId ? classe.classeBaseId : classe.id
 }
@@ -36,7 +37,7 @@ export class ServicoMontagemLeitura {
 
   /**
    * Conselheiro 403; instrutor só as classes do vínculo e Adm só as oficiais ou do clube (senão 404). Na avançada,
-   * o vínculo que vale é o da regular dela.
+   * o escopo do instrutor já traz a avançada da regular dele.
    */
   async classeDoEscopo(sessao: SessaoLogada, classeId: string) {
     if (sessao.papel === 'CONSELHEIRO') throw new ErroApp('SEM_PERMISSAO', 'Você não tem acesso ao cronograma.')
@@ -47,7 +48,7 @@ export class ServicoMontagemLeitura {
     if (!classe) throw new ErroApp('NAO_ENCONTRADO', CLASSE_NAO_ENCONTRADA)
     if (sessao.papel === 'INSTRUTOR') {
       const doInstrutor = await this.escopo.classesDoInstrutor(sessao)
-      if (!doInstrutor.includes(classeDeReferencia(classe))) throw new ErroApp('NAO_ENCONTRADO', CLASSE_NAO_ENCONTRADA)
+      if (!doInstrutor.includes(classe.id)) throw new ErroApp('NAO_ENCONTRADO', CLASSE_NAO_ENCONTRADA)
     }
     return classe
   }
@@ -67,19 +68,36 @@ export class ServicoMontagemLeitura {
     return classe
   }
 
-  /** A avançada ativa da regular neste clube (classe ativa e não desativada pelo clube); `null` se não há. */
+  /** A avançada da regular neste clube, com o par ativo (as duas ativas no sistema e no clube); `null` se não há. */
   avancadaAtivaDa(clubeId: string, regularId: string, db: Pick<Prisma.TransactionClient, 'classe'> = this.prisma) {
-    return db.classe.findFirst({
-      where: {
-        classeBaseId: regularId,
-        tipo: 'AVANCADA',
-        trilha: 'INDIVIDUAL',
-        ativa: true,
-        OR: [{ clubeId: null }, { clubeId }],
-        NOT: { clubes: { some: { clubeId, ativa: false } } },
-      },
-      select: SELECAO_REF_CLASSE,
+    return db.classe.findFirst({ where: avancadaDoPar(clubeId, [regularId]), select: SELECAO_REF_CLASSE })
+  }
+
+  /**
+   * O outro cronograma do par (mesmo ano) do cronograma recebido: a avançada, se ele é da regular, ou a regular, se é da
+   * avançada. `null` sem par ativo ou sem cronograma do outro lado.
+   */
+  async cronogramaDoPar(clubeId: string, cronogramaId: string, db: Pick<Prisma.TransactionClient, 'classe' | 'cronograma'> = this.prisma) {
+    const cronograma = await db.cronograma.findFirst({
+      where: { clubeId, id: cronogramaId },
+      select: { anoClube: true, classe: { select: { id: true, tipo: true, trilha: true, classeBaseId: true } } },
     })
+    if (!cronograma || cronograma.classe.trilha !== 'INDIVIDUAL') return null
+    const { classe } = cronograma
+    const ehAvancada = classe.tipo === 'AVANCADA'
+    const regularId = ehAvancada ? classe.classeBaseId : classe.id
+    if (!regularId) return null
+    const avancada = await db.classe.findFirst({
+      where: { ...avancadaDoPar(clubeId, [regularId]), ...(ehAvancada ? { id: classe.id } : {}) },
+      select: { id: true, nome: true, classeBase: { select: { id: true, nome: true } } },
+    })
+    if (!avancada?.classeBase) return null
+    const parceira = ehAvancada ? avancada.classeBase : avancada
+    const doPar = await db.cronograma.findFirst({
+      where: { clubeId, classeId: parceira.id, anoClube: cronograma.anoClube },
+      select: { id: true },
+    })
+    return doPar ? { id: doPar.id, classeNome: parceira.nome, parceiraEhRegular: ehAvancada } : null
   }
 
   async montagem(sessao: SessaoLogada, classeId: string, anoClube?: number): Promise<Saida> {
@@ -102,8 +120,8 @@ export class ServicoMontagemLeitura {
       include: { enviadoPor: { select: { nome: true } }, classe: { select: SELECAO_REF_CLASSE } },
     })
     const { classe } = cronograma
-    const avancada = classe.tipo === 'REGULAR' ? await this.avancadaCarregada(clubeId, classe.id, cronograma.anoClube) : null
-    const [aulas, ligacoes, configuracao, relogio] = await Promise.all([
+    const [avancada, aulas, ligacoes, configuracao, relogio] = await Promise.all([
+      classe.tipo === 'REGULAR' ? this.avancadaCarregada(clubeId, classe.id, cronograma.anoClube) : null,
       this.prisma.aulaPlanejada.findMany({ where: { clubeId, cronogramaId, removidaEm: null } }),
       this.prisma.aulaRequisito.findMany({ where: { clubeId, cronogramaId }, select: { aulaPlanejadaId: true, requisitoId: true } }),
       this.prisma.configuracaoClube.findUniqueOrThrow({ where: { clubeId } }),
@@ -145,6 +163,7 @@ export class ServicoMontagemLeitura {
       cronograma: {
         id: cronograma.id,
         status: cronograma.status,
+        anoClube: cronograma.anoClube,
         inicio,
         fim,
         enviadoEm: cronograma.enviadoEm?.toISOString() ?? null,

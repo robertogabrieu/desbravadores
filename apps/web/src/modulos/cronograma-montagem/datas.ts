@@ -1,4 +1,5 @@
 import type { DataDaMontagem } from '../../api/montagem'
+import type { DataUnida, Lado } from './unida'
 
 const DIAS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'] as const
 const MESES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'] as const
@@ -67,9 +68,15 @@ export const periodoPadrao = (ano: number, inicioAnoClube: string): { inicio: st
 /** "09:15 · Sala 2 · Título" com o que existir. */
 export const detalheDaAula = (d: DataDaMontagem): string => [d.horario, d.local, d.titulo].filter(Boolean).join(' · ')
 
-/** Colocar requisito novo na data: fora bloqueio e aula dada; nas individuais, também fora data em conflito (a API responde 422). */
-export const aceitaRequisitoNovo = (montagem: { datasLivres: boolean }, dado: DataDaMontagem): boolean =>
-  !dataBloqueada(dado) && !dado.aulaDada && (montagem.datasLivres || !dado.conflito)
+/**
+ * Colocar requisito novo na data: fora bloqueio e aula dada; nas individuais, também fora data em conflito (a API responde 422).
+ * A aula dada e o conflito valem por classe: com `lado`, só esse; sem, basta uma das duas aceitar.
+ */
+export function aceitaRequisitoNovo(montagem: { datasLivres: boolean }, dado: DataUnida, lado?: Lado): boolean {
+  if (dataBloqueada(dado)) return false
+  const aceita = (doLado: Lado) => !dado.lados[doLado].aulaDada && (montagem.datasLivres || !dado.lados[doLado].conflito)
+  return lado ? aceita(lado) : aceita('REGULAR') || aceita('AVANCADA')
+}
 
 /** Nas individuais, tirar o único requisito apaga o dia de classe: pesa quando o dia tem horário, local ou título próprios, que se perdem. */
 export const diaComDadosSomeAoTirar = (montagem: { datasLivres: boolean }, dado: DataDaMontagem): boolean =>

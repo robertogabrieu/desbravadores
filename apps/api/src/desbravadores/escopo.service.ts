@@ -3,6 +3,7 @@ import { anoClube, hojeNoFuso, permissoesEfetivas, type ChavePermissao } from '@
 import type { Prisma, StatusMatricula } from '../generated/prisma/client.js'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { PrismaService } from '../comum/prisma/prisma.service'
+import { comAvancadasPareadas } from '../classes/par-regular-avancada'
 
 /** "Hoje" e o ano do clube, no fuso e no inicio de ano configurados pelo clube. */
 export interface RelogioDoClube {
@@ -43,8 +44,16 @@ export class ServicoEscopo {
     return ligacoes.map((ligacao) => ligacao.unidadeId)
   }
 
-  /** Com sessao de substituicao, so o alvo do link. */
+  /**
+   * Com sessao de substituicao, so o alvo do link. Cada regular traz a avancada pareada: quem instrui a regular
+   * instrui a avancada, mesmo antes de o vinculo dela ser gravado.
+   */
   async classesDoInstrutor(sessao: SessaoLogada): Promise<string[]> {
+    const classeIds = await this.classesDoVinculo(sessao)
+    return comAvancadasPareadas(this.prisma, sessao.clubeId, classeIds)
+  }
+
+  private async classesDoVinculo(sessao: SessaoLogada): Promise<string[]> {
     if (sessao.substituicao) return sessao.substituicao.classeId ? [sessao.substituicao.classeId] : []
     const ligacoes = await this.prisma.vinculoClasse.findMany({
       where: { vinculoId: sessao.vinculoId },

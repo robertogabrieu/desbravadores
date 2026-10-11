@@ -1,6 +1,6 @@
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
-import type { CronogramaDaMontagem, DataDaMontagem, Montagem } from '../../api/montagem'
+import type { CronogramaDaMontagem, Montagem } from '../../api/montagem'
 import { Abas } from '../../ui/Abas'
 import { BarraProgresso } from '../../ui/BarraProgresso'
 import { Botao } from '../../ui/Botao'
@@ -17,7 +17,7 @@ import { LinhaData } from './LinhaData'
 import { OrdemDasDatas } from './OrdemDasDatas'
 import { aceitaRequisitoNovo } from './datas'
 import { ordenarPorVazias, unirMontagem } from './unida'
-import type { RequisitoUnido } from './unida'
+import type { DataUnida, RequisitoUnido } from './unida'
 import { useAcoesDeMontagem } from './useAcoesDeMontagem'
 
 interface Propriedades {
@@ -33,7 +33,7 @@ const AULA_VAZIA: AulaEmEdicao = { data: null, aulaId: null, dados: { horario: n
 export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Propriedades) {
   const acoes = useAcoesDeMontagem(montagem.classe.id, ano, cronograma.id, montagem)
   const [aba, setAba] = useState('data')
-  const [dataAberta, setDataAberta] = useState<DataDaMontagem | null>(null)
+  const [dataAberta, setDataAberta] = useState<DataUnida | null>(null)
   const [emMovimento, setEmMovimento] = useState<RequisitoUnido | null>(null)
   const [aAgendar, setAAgendar] = useState<RequisitoUnido | null>(null)
   const [aulaEmEdicao, setAulaEmEdicao] = useState<AulaEmEdicao | null>(null)
@@ -191,7 +191,7 @@ export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Prop
       {dataAberta && (
         <FolhaAdicionar
           dado={dataAberta}
-          livres={semData}
+          livres={semData.filter((requisito) => aceitaRequisitoNovo(montagem, dataAberta, requisito.lado))}
           comAvancada={par}
           desabilitado={acoes.ocupada}
           aoConfirmar={colocarVarios}
@@ -211,7 +211,7 @@ export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Prop
         <FolhaMover
           titulo={`Agendar ${aAgendar.codigo} para`}
           requisito={aAgendar}
-          datas={vista.datas.filter((dado) => aceitaRequisitoNovo(montagem, dado))}
+          datas={vista.datas.filter((dado) => aceitaRequisitoNovo(montagem, dado, aAgendar.lado))}
           desabilitado={acoes.ocupada}
           aoEscolher={(data) => acoes.colocar(aAgendar.id, data)}
           aoFechar={() => setAAgendar(null)}

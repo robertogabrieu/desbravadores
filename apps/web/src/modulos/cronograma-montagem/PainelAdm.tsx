@@ -200,7 +200,7 @@ function PainelAdmComputador({ montagem, cronograma, classe, ano, aoAtualizar }:
                     setAulaEmEdicao({ data: aula.data, aulaId: aula.aulaId, dados: { horario: aula.horario, local: aula.local, titulo: aula.titulo } })
                   }
                   acaoDaData={
-                    aceitaRequisitoNovo(montagem, dado) && selecionado?.data !== dado.data && (
+                    aceitaRequisitoNovo(montagem, dado, selecionado?.lado) && selecionado?.data !== dado.data && (
                       <Botao
                         variante="secundario"
                         aria-label={`Colocar aqui em ${diaMes(dado.data)}`}

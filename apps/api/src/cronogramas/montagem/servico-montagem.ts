@@ -197,7 +197,9 @@ export class ServicoMontagem {
       select: { id: true },
       orderBy: { id: 'asc' },
     })
-    for (const { id } of candidatos) await this.travarCronograma(tx, clubeId, id)
+    const paresDosCandidatos = await Promise.all(candidatos.map(({ id }) => this.leitura.cronogramaDoPar(clubeId, id, tx)))
+    const aTravar = [...new Set([...candidatos.map(({ id }) => id), ...paresDosCandidatos.flatMap((par) => (par ? [par.id] : []))])].sort()
+    for (const id of aTravar) await this.travarCronograma(tx, clubeId, id)
     const ligacoes = await tx.aulaRequisito.findMany({ where: { clubeId, requisitoId }, select: { cronogramaId: true } })
     const cronogramaIds = [...new Set(ligacoes.map((ligacao) => ligacao.cronogramaId))].sort()
     for (const cronogramaId of cronogramaIds) {
@@ -220,6 +222,8 @@ export class ServicoMontagem {
         where: { clubeId, id: cronogramaId },
         data: { status: 'RASCUNHO', atualizadoEm: instanteNovo(cronograma.atualizadoEm) },
       })
+      const doPar = await this.leitura.cronogramaDoPar(clubeId, cronogramaId, tx)
+      if (doPar) await this.devolverARascunho(tx, clubeId, doPar.id)
     }
   }
 
@@ -247,9 +251,9 @@ export class ServicoMontagem {
         link,
       })
       const mudanca = { status: 'ENVIADO', enviadoEm: new Date(), enviadoPorId: contexto.sessao.usuarioId } as const
-      await this.acompanharAvancada(contexto, (avancada) => {
-        // Avançada que já saiu do rascunho não mudou desde então (toda edição a devolve a rascunho): nada a enviar.
-        if (avancada.status !== 'RASCUNHO') return null
+      await this.acompanharPar(contexto, (parceiro) => {
+        // O outro do par que já saiu do rascunho não mudou desde então (toda edição a devolve a rascunho): nada a enviar.
+        if (parceiro.status !== 'RASCUNHO') return null
         return mudanca
       })
       return mudanca
@@ -265,11 +269,11 @@ export class ServicoMontagem {
       await tx.cronogramaPublicacao.create({
         data: { clubeId, cronogramaId: cronograma.id, conteudo: await this.retrato(tx, cronograma), publicadoPorId: contexto.sessao.usuarioId },
       })
-      await this.acompanharAvancada(contexto, async (avancada) => {
-        // Avançada já publicada e sem edição desde então: o retrato publicado continua valendo.
-        if (avancada.status === 'PUBLICADO') return null
+      await this.acompanharPar(contexto, async (parceiro) => {
+        // O outro já publicado e sem edição desde então: o retrato publicado continua valendo.
+        if (parceiro.status === 'PUBLICADO') return null
         await tx.cronogramaPublicacao.create({
-          data: { clubeId, cronogramaId: avancada.id, conteudo: await this.retrato(tx, avancada), publicadoPorId: contexto.sessao.usuarioId },
+          data: { clubeId, cronogramaId: parceiro.id, conteudo: await this.retrato(tx, parceiro), publicadoPorId: contexto.sessao.usuarioId },
         })
         return { status: 'PUBLICADO' }
       })
@@ -300,33 +304,34 @@ export class ServicoMontagem {
   }
 
   /**
-   * Enviar e publicar uma regular andam junto com a avançada dela (se tem cronograma no mesmo ano): trava o
-   * cronograma da avançada, aplica a mudança que `aplicar` devolve (ou nada, se devolver `null`) e renova-o. Falha
-   * na avançada aborta a transação inteira e o erro diz de qual classe é.
+   * Enviar e publicar andam em par (regular e avançada, no mesmo ano): trava o outro cronograma do par, aplica a
+   * mudança que `aplicar` devolve (ou nada, se devolver `null`) e renova-o. Falha no outro aborta a transação
+   * inteira e o erro diz de qual classe é.
    */
-  private async acompanharAvancada(
+  private async acompanharPar(
     contexto: Contexto,
-    aplicar: (avancada: Cronograma) => MudancaDoCronograma | null | Promise<MudancaDoCronograma | null>,
+    aplicar: (parceiro: Cronograma) => MudancaDoCronograma | null | Promise<MudancaDoCronograma | null>,
   ): Promise<void> {
     const { tx, cronograma } = contexto
     const { clubeId } = cronograma
-    const classe = await this.leitura.avancadaAtivaDa(clubeId, cronograma.classeId, tx)
-    if (!classe) return
-    const existente = await tx.cronograma.findFirst({
-      where: { clubeId, classeId: classe.id, anoClube: cronograma.anoClube },
-      select: { id: true },
-    })
-    if (!existente) return
-    await this.travarCronograma(tx, clubeId, existente.id)
-    const avancada = await tx.cronograma.findFirstOrThrow({ where: { clubeId, id: existente.id } })
+    const doPar = await this.leitura.cronogramaDoPar(clubeId, cronograma.id, tx)
+    if (!doPar) return
+    await this.travarCronograma(tx, clubeId, doPar.id)
+    const parceiro = await tx.cronograma.findFirstOrThrow({ where: { clubeId, id: doPar.id } })
     try {
-      const mudanca = await aplicar(avancada)
+      const mudanca = await aplicar(parceiro)
       if (!mudanca) return
-      await tx.cronograma.updateMany({ where: { clubeId, id: avancada.id }, data: { ...mudanca, atualizadoEm: instanteNovo(avancada.atualizadoEm) } })
+      await tx.cronograma.updateMany({ where: { clubeId, id: parceiro.id }, data: { ...mudanca, atualizadoEm: instanteNovo(parceiro.atualizadoEm) } })
     } catch (erro) {
-      if (erro instanceof ErroApp) throw new ErroApp(erro.codigo, `${classe.nome}: ${erro.mensagem}`)
+      if (erro instanceof ErroApp) throw new ErroApp(erro.codigo, `${doPar.classeNome}: ${erro.mensagem}`)
       throw erro
     }
+  }
+
+  /** O cronograma volta a rascunho com `atualizadoEm` novo; a linha já está travada por quem chama. */
+  private async devolverARascunho(tx: Tx, clubeId: string, cronogramaId: string): Promise<void> {
+    const atual = await tx.cronograma.findFirstOrThrow({ where: { clubeId, id: cronogramaId }, select: { atualizadoEm: true } })
+    await tx.cronograma.updateMany({ where: { clubeId, id: cronogramaId }, data: { status: 'RASCUNHO', atualizadoEm: instanteNovo(atual.atualizadoEm) } })
   }
 
   /**
@@ -340,21 +345,27 @@ export class ServicoMontagem {
     mudar: (contexto: Contexto) => Promise<MudancaDoCronograma | void>,
   ): Promise<Saida> {
     const classe = await this.autorizar(sessao, cronogramaId, autorizacao)
+    const doPar = await this.leitura.cronogramaDoPar(sessao.clubeId, cronogramaId)
     try {
       await this.prisma.$transaction(async (tx) => {
-        await this.travarCronograma(tx, sessao.clubeId, cronogramaId)
+        // O par se trava junto e em ordem de id, para duas edições de lados opostos não se esperarem uma à outra.
+        for (const id of [cronogramaId, ...(doPar ? [doPar.id] : [])].sort()) await this.travarCronograma(tx, sessao.clubeId, id)
         const cronograma = await tx.cronograma.findFirstOrThrow({ where: { clubeId: sessao.clubeId, id: cronogramaId } })
         const mudanca = await mudar({ tx, sessao, cronograma, classeNome: classe.nome, trilha: classe.trilha })
         await tx.cronograma.updateMany({
           where: { clubeId: sessao.clubeId, id: cronogramaId },
           data: { status: 'RASCUNHO', ...mudanca, atualizadoEm: instanteNovo(cronograma.atualizadoEm) },
         })
+        // Editar um lado do par devolve o outro a rascunho; enviar e publicar movem o par por `acompanharPar`.
+        if (doPar && autorizacao === 'MONTAR') await this.devolverARascunho(tx, sessao.clubeId, doPar.id)
       })
     } catch (erro) {
       if (ehCorrida(erro)) throw new ErroApp('CONFLITO', OUTRA_PESSOA_MUDOU)
       throw erro
     }
-    return this.leitura.saida(sessao.clubeId, cronogramaId)
+    // A tela guarda a visão da regular, que traz o bloco da avançada: editar pela avançada responde a mesma visão.
+    const visao = doPar?.parceiraEhRegular ? doPar.id : cronogramaId
+    return this.leitura.saida(sessao.clubeId, visao)
   }
 
   private async travarCronograma(tx: Tx, clubeId: string, cronogramaId: string): Promise<void> {

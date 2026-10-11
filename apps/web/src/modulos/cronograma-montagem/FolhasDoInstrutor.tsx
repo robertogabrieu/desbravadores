@@ -1,15 +1,14 @@
 import { useState } from 'react'
-import type { DataDaMontagem } from '../../api/montagem'
 import { Botao } from '../../ui/Botao'
 import { FolhaLateral } from '../../ui/FolhaLateral'
 import { cn } from '../../ui/cn'
 import { EtiquetaCampo } from './EtiquetaCampo'
 import { EtiquetaDoLado } from './EtiquetaDoLado'
-import type { RequisitoUnido } from './unida'
+import type { DataUnida, RequisitoUnido } from './unida'
 import { dataBloqueada, diaMes, textoDaData } from './datas'
 
 interface PropriedadesAdicionar {
-  dado: DataDaMontagem
+  dado: DataUnida
   /** Requisitos sem data. */
   livres: RequisitoUnido[]
   /** Regular com avançada: cada requisito mostra a etiqueta da classe. */
@@ -79,7 +78,7 @@ interface PropriedadesMover {
   /** Padrão "Mover <código> para"; quem agenda um requisito sem data troca o verbo. */
   titulo?: string
   requisito: RequisitoUnido
-  datas: DataDaMontagem[]
+  datas: DataUnida[]
   desabilitado: boolean
   aoEscolher: (data: string) => Promise<boolean>
   aoFechar: () => void
@@ -87,7 +86,7 @@ interface PropriedadesMover {
 
 /** Folha do "Mover": as datas que aceitam aula (não bloqueadas, sem aula dada). */
 export function FolhaMover({ titulo, requisito, datas, desabilitado, aoEscolher, aoFechar }: PropriedadesMover) {
-  const destinos = datas.filter((dado) => !dataBloqueada(dado) && !dado.aulaDada && dado.data !== requisito.data)
+  const destinos = datas.filter((dado) => !dataBloqueada(dado) && !dado.lados[requisito.lado].aulaDada && dado.data !== requisito.data)
 
   async function escolher(data: string) {
     await aoEscolher(data)
@@ -106,7 +105,7 @@ export function FolhaMover({ titulo, requisito, datas, desabilitado, aoEscolher,
   )
 }
 
-function OpcaoDeData({ dado, desabilitado, aoEscolher }: { dado: DataDaMontagem; desabilitado: boolean; aoEscolher: (data: string) => Promise<void> }) {
+function OpcaoDeData({ dado, desabilitado, aoEscolher }: { dado: DataUnida; desabilitado: boolean; aoEscolher: (data: string) => Promise<void> }) {
   return (
     <Botao variante="secundario" className="justify-start" disabled={desabilitado} onClick={() => void aoEscolher(dado.data)}>
       {diaMes(dado.data)}
