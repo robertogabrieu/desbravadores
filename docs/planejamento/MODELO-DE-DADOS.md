@@ -146,10 +146,15 @@ EspecialidadeConcluida(id, dbvId, especialidadeId, concluidaEm, instrutorId,
 ## 5. Calendário e cronograma
 
 ```
-EventoCalendario(id, nome, tipo: SEM_REUNIAO|ACAMPAMENTO|EVENTO|FERIADO|FERIAS|REUNIAO_EXTRA|CLASSE_BIBLICA,
+EventoCalendario(id, nome, tipo: SEM_REUNIAO|ACAMPAMENTO|EVENTO|EVENTO_ESPECIAL|FERIADO|FERIAS|REUNIAO_EXTRA|CLASSE_BIBLICA,
   inicio: date, fim: date, horario?, local?,
   temReuniao: bool, temClasse: bool,             # marcações afirmativas: "terá reunião", "terá classe"
-  bomParaCampo: bool)
+  bomParaCampo: bool,
+  uniforme?: GALA|CAMPO, pontosParticipacao?: int, pontosUniforme?: int,   # só EVENTO_ESPECIAL (obrigatórios nele)
+  listaConcluidaEm?: timestamp)                  # nulo = sem lista ou em rascunho; os pontos só entram ao concluir
+
+PresencaEventoEspecial(eventoId, dbvId, clubeId, foi: bool, comUniforme: bool,   # PK (eventoId, dbvId)
+  alteradaPorId, alteradaEm)                     # nunca apaga: desmarcar grava foi=false e comUniforme=false
 ```
 A reunião regular é **implícita**: todo `diaReuniao` sem evento com `temReuniao = não`. Eventos de
 vários dias valem para **todos os dias do intervalo**. A regra do dia é única
@@ -161,7 +166,7 @@ sobreposição com os outros eventos.
 
 Padrões por tipo (`MARCACOES_PADRAO`, editáveis no formulário): SEM_REUNIAO → sem reunião e sem
 classe; EVENTO → com reunião, sem classe; ACAMPAMENTO → sem reunião, com classe, bom para campo;
-FERIADO → com reunião e com classe; FERIAS → sem reunião, com classe (a API grava sempre este
+EVENTO_ESPECIAL → com reunião, com classe, sem campo (neutro nas contas do dia, como a Classe Bíblica; o Adm pode desmarcar reunião ou classe); FERIADO → com reunião e com classe; FERIAS → sem reunião, com classe (a API grava sempre este
 padrão; "com classe" evita que as férias derrubem um acampamento dentro delas, e sem reunião e sem
 campo não há classe); REUNIAO_EXTRA → com reunião e com classe, e nunca bom para campo. O encontro da Classe Bíblica
 (`CLASSE_BIBLICA`, criado só pela edição dela) fica fora das contas: divide o dia com a reunião sem
@@ -255,19 +260,25 @@ Nenhuma linha é apagada com histórico: grupo sai por `removidoEm`, e só se n�
 pontos não ficam aqui: saem em `LancamentoPontos` (origem `CLASSE_BIBLICA`, `origemId` =
 `<encontroId>:<dbvId>`).
 
+Os pontos do evento especial também saem em `LancamentoPontos` (origem `EVENTO_ESPECIAL`, `origemId` =
+`<eventoId>:<dbvId>`, `data` = início do evento), só quando a lista é concluída: participação para quem foi,
+uniforme para quem foi com o uniforme, com o valor do evento. Mudar valor ou início do evento refaz os
+lançamentos; excluir o evento os estorna.
+
 ## 7. Ranking
 
 ```
 CriterioRanking(id, nome, descricao, pontos: int, ativo, ordem,
   gatilho: PRESENCA|PONTUALIDADE|UNIFORME|BIBLIA|LICAO|REQUISITO|ESPECIALIDADE|MANUAL|
-          CLASSE_BIBLICA_PRESENCA|CLASSE_BIBLICA_PARTICIPACAO,
+          CLASSE_BIBLICA_PRESENCA|CLASSE_BIBLICA_PARTICIPACAO|EVENTO_ESPECIAL_PARTICIPACAO|EVENTO_ESPECIAL_UNIFORME,
   lancadoPor: CONSELHEIRO|INSTRUTOR|ADM,
   padrao: bool)                                  # os 8 de fábrica não podem ser apagados, só desligados
   # os dois da Classe Bíblica (10 e 5 pontos) nascem por clube ao terminar a primeira edição ou na primeira chamada
+  # os dois do evento especial nascem por clube com 0 ponto ao concluir a primeira lista: o valor vem do evento
 
 LancamentoPontos(id, dbvId, criterioId, pontos: int,   # valor COPIADO do critério no momento
   data: date,
-  origemTipo: CHAMADA|REQUISITO|ESPECIALIDADE|MANUAL|FALTA|CLASSE_BIBLICA,
+  origemTipo: CHAMADA|REQUISITO|ESPECIALIDADE|MANUAL|FALTA|CLASSE_BIBLICA|EVENTO_ESPECIAL,
   origemId,                                      # chave da origem, para estornar
   lancadoPor, estornadoEm?)
   UNIQUE(origemTipo, origemId, criterioId) entre os não estornados
@@ -331,11 +342,11 @@ Atividade(id, autorId, tipo, descricao, link, criadaEm)   # feed da visão geral
 | `Chamada.presente, atrasou, pontos` | `situacao` + `licao`; sem pontos | Falta justificada; pontos só em `LancamentoPontos` (uma fonte) |
 | `Cronograma.semestre` | `anoClube` + `inicio/fim` + `status` | O calendário é anual; publicação tem estado |
 | `AulaPlanejada.requisitoIds[]` | `AulaRequisito` com unicidade | Garante "um requisito, uma data" no banco |
-| `EventoCalendario` | + `temReuniao`, `temClasse`, horário, local; tipos `FERIAS` e `REUNIAO_EXTRA` | "Sem reunião" ≠ "sem classe" (acampamento não tem reunião mas é bom para campo); extra e férias têm tipo próprio |
+| `EventoCalendario` | + `temReuniao`, `temClasse`, horário, local; tipos `FERIAS`, `REUNIAO_EXTRA` e `EVENTO_ESPECIAL` (+ `uniforme`, pontos, `listaConcluidaEm`) | "Sem reunião" ≠ "sem classe" (acampamento não tem reunião mas é bom para campo); extra e férias têm tipo próprio |
 | `RequisitoConcluido` e `EspecialidadeConcluida` | + `registroAulaId?` + remoção lógica | Reposição fora da aula; estorno de pontos |
 | `Foto.album` texto | `Album` + `Foto.legenda` | Álbum por reunião, evento ou avulso; legenda do lote |
 | — | `ChamadaAlteracao` | Correção de chamada e conflito entre aparelhos ficam registrados |
 | `Observacao` | + `classeId`, `titulo`, remoção | Instrutor com duas classes; editar/apagar |
 | `CriterioRanking.lancadoPor` | + `gatilho`, `padrao` | O sistema precisa saber quando lançar cada critério |
 | `LancamentoPontos` | + `origemTipo`, `estornadoEm`, unicidade | Estorno e regravação da chamada sem duplicar |
-| — | `ConfiguracaoClube`, `Notificacao`, `Atividade`, `Convite`, `RefreshToken`, `Arquivo`, `AreaEspecialidade`, `MembroUnidade`, `MatriculaClasse`, `CategoriaBiblioteca`, `ItemBiblioteca` | Exigidos pelas telas ou pelas decisões |
+| — | `ConfiguracaoClube`, `Notificacao`, `Atividade`, `Convite`, `RefreshToken`, `Arquivo`, `AreaEspecialidade`, `MembroUnidade`, `MatriculaClasse`, `CategoriaBiblioteca`, `ItemBiblioteca`, `PresencaEventoEspecial` | Exigidos pelas telas ou pelas decisões |
