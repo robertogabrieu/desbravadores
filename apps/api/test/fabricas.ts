@@ -187,6 +187,25 @@ export async function classeOficial(nome: string, trilha: Trilha = 'INDIVIDUAL')
   return prismaDeTeste().classe.findFirstOrThrow({ where: { nome, trilha, clubeId: null }, select: { id: true } })
 }
 
+/** A avancada oficial da regular (individual). */
+export async function avancadaOficial(regularId: string): Promise<{ id: string; nome: string }> {
+  return prismaDeTeste().classe.findFirstOrThrow({
+    where: { tipo: 'AVANCADA', trilha: 'INDIVIDUAL', clubeId: null, classeBaseId: regularId },
+    select: { id: true, nome: true },
+  })
+}
+
+/** Os primeiros requisitos ativos de uma classe, na ordem do caderno. */
+export async function requisitosDe(classeId: string, quantos: number): Promise<string[]> {
+  const requisitos = await prismaDeTeste().requisito.findMany({
+    where: { secao: { classeId }, ativo: true },
+    orderBy: [{ secao: { ordem: 'asc' } }, { ordem: 'asc' }],
+    take: quantos,
+    select: { id: true },
+  })
+  return requisitos.map((requisito) => requisito.id)
+}
+
 export async function criarMatricula(dados: {
   clubeId: string
   dbvId: string
@@ -583,8 +602,17 @@ export async function criarRegistroAula(dados: {
 }): Promise<RegistroAula> {
   const prisma = prismaDeTeste()
   const registradoPorId = (await criarUsuario()).id
+  // A avancada de par ativo nao tem cronograma proprio: o registro dela liga a aula da regular que tem requisito dela.
+  const classe = await prisma.classe.findUniqueOrThrow({ where: { id: dados.classeId }, select: { classeBaseId: true, tipo: true } })
+  const daAvancada = classe.tipo === 'AVANCADA' && classe.classeBaseId !== null
   const planejada = await prisma.aulaPlanejada.findFirst({
-    where: { clubeId: dados.clubeId, data: dataCivil(dados.data), removidaEm: null, cronograma: { classeId: dados.classeId } },
+    where: {
+      clubeId: dados.clubeId,
+      data: dataCivil(dados.data),
+      removidaEm: null,
+      cronograma: { classeId: daAvancada ? { in: [dados.classeId, classe.classeBaseId ?? ''] } : dados.classeId },
+      ...(daAvancada ? { requisitos: { some: { requisito: { secao: { classeId: dados.classeId } } } } } : {}),
+    },
     select: { id: true },
   })
   const agora = new Date()

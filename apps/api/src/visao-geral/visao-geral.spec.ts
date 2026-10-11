@@ -6,6 +6,7 @@ import { congelarRelogio, descongelarRelogio } from '../../test/relogio'
 import {
   admCriarDbvComDatas,
   admDefinirClasseClube,
+  avancadaOficial,
   classeOficial,
   criarAcesso,
   criarClube,
@@ -276,5 +277,24 @@ describe('visao geral (GET /visao-geral)', () => {
     expect(atividades).toEqual([
       expect.objectContaining({ descricao: 'Joana Visitante (substituto) registrou a classe de Amigo', autor: 'Joana Visitante (substituto)' }),
     ])
+  })
+
+  it('cronograma enviado do par aparece uma vez, com o nome das duas classes; sem par ativo, só a regular', async () => {
+    const clube = await criarClube()
+    const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+    const amigo = await classeOficial('Amigo')
+    const avancada = await avancadaOficial(amigo.id)
+    const companheiro = await classeOficial('Companheiro')
+    const avancadaDoCompanheiro = await avancadaOficial(companheiro.id)
+    await admDefinirClasseClube({ clubeId: clube.id, classeId: avancadaDoCompanheiro.id, ativa: false })
+    await criarCronograma({ clubeId: clube.id, classeId: amigo.id, status: 'ENVIADO' })
+    await criarCronograma({ clubeId: clube.id, classeId: companheiro.id, status: 'ENVIADO' })
+
+    const { cronogramasEnviados } = corpo<Visao>(await api.get('/api/visao-geral', adm.autorizacao).expect(200))
+
+    expect(cronogramasEnviados).toHaveLength(2)
+    const nomes = cronogramasEnviados.map((c) => c.classe.nome).sort()
+    expect(nomes).toEqual(['Amigo + ' + avancada.nome, 'Companheiro'].sort())
+    expect(cronogramasEnviados.find((c) => c.classe.nome.startsWith('Amigo'))?.classe.id).toBe(amigo.id)
   })
 })

@@ -12,7 +12,9 @@ import type { z } from 'zod'
 import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
 import { nomeDoAutor } from '../comum/nome-do-autor'
 import { PrismaService } from '../comum/prisma/prisma.service'
+import { avancadaDoPar } from '../classes/par-regular-avancada'
 import { ServicoCronograma } from '../cronogramas/servico-cronograma'
+import { nomeDoPar } from '../cronogramas/servico-cronograma-par'
 import { daDataCivil, paraDataCivil } from '../desbravadores/apoio'
 
 type Visao = z.infer<typeof VisaoGeralSaida>
@@ -242,9 +244,15 @@ export class VisaoGeralService {
       select: { id: true, enviadoEm: true, atualizadoEm: true, classe: { select: SELECAO_REF_CLASSE }, enviadoPor: { select: { nome: true } } },
       orderBy: [{ enviadoEm: 'asc' }, { id: 'asc' }],
     })
+    // O cronograma do par e um so: aparece uma vez, com o nome das duas classes.
+    const avancadas = await this.prisma.classe.findMany({
+      where: avancadaDoPar(clubeId, enviados.map((cronograma) => cronograma.classe.id)),
+      select: { nome: true, classeBaseId: true },
+    })
+    const nomeDaAvancada = new Map(avancadas.map((avancada) => [avancada.classeBaseId, avancada.nome]))
     return enviados.map((cronograma) => ({
       cronogramaId: cronograma.id,
-      classe: refClasse(cronograma.classe),
+      classe: refClasse({ ...cronograma.classe, nome: nomeDoPar(cronograma.classe.nome, nomeDaAvancada.get(cronograma.classe.id)) }),
       enviadoPor: cronograma.enviadoPor?.nome ?? '',
       enviadoEm: (cronograma.enviadoEm ?? cronograma.atualizadoEm).toISOString(),
     }))

@@ -124,12 +124,7 @@ export class InstrutorService {
 
   /** As aulas da ultima publicacao do cronograma do ano, por data; vazio se nunca publicou. */
   private async aulasPublicadas(clubeId: string, classeId: string, relogio: RelogioDoClube) {
-    const cronograma = await this.prisma.cronograma.findFirst({
-      where: { clubeId, classeId, anoClube: relogio.anoClube },
-      select: { id: true },
-    })
-    if (!cronograma) return []
-    const publicacao = await this.cronograma.ultimaPublicacao(clubeId, cronograma.id)
+    const publicacao = await this.cronograma.publicadaDaClasse(clubeId, classeId, relogio.anoClube)
     return [...(publicacao?.aulas ?? [])].sort((a, b) => a.data.localeCompare(b.data))
   }
 

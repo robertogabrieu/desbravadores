@@ -2,8 +2,10 @@ import { Injectable } from '@nestjs/common'
 import type { ConfiguracaoClubeEntrada, ConfiguracaoClubeSaida } from '@desbravadores/shared'
 import { hojeNoFuso } from '@desbravadores/shared'
 import type { z } from 'zod'
+import { avancadaDoPar } from '../classes/par-regular-avancada'
 import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
+import { nomeDoPar } from '../cronogramas/servico-cronograma-par'
 import { daDataCivil, paraDataCivil } from '../desbravadores/apoio'
 
 type Saida = z.infer<typeof ConfiguracaoClubeSaida>
@@ -45,8 +47,18 @@ export class ClubeService {
     const hoje = hojeNoFuso(atual.fuso, new Date())
     const aulas = await this.prisma.aulaPlanejada.findMany({
       where: { clubeId, removidaEm: null, data: { gte: daDataCivil(hoje) }, cronograma: { classe: { trilha: 'INDIVIDUAL' } } },
-      select: { data: true, cronograma: { select: { classe: { select: { nome: true, ordem: true } } } } },
+      select: {
+        data: true,
+        requisitos: { select: { requisito: { select: { secao: { select: { classeId: true } } } } } },
+        cronograma: { select: { classe: { select: { id: true, nome: true, ordem: true } } } },
+      },
     })
+    // A aula do par e uma so, com o nome das duas classes quando tem requisito da avançada.
+    const avancadas = await this.prisma.classe.findMany({
+      where: avancadaDoPar(clubeId, aulas.map((aula) => aula.cronograma.classe.id)),
+      select: { id: true, nome: true, classeBaseId: true },
+    })
+    const avancadaDaRegular = new Map(avancadas.map((avancada) => [avancada.classeBaseId, avancada]))
     const datasDasClasses = aulas.map((aula) => aula.data)
     const extrasComClasse = await this.prisma.eventoCalendario.findMany({
       where: { clubeId, removidoEm: null, tipo: 'REUNIAO_EXTRA', temClasse: true, inicio: { in: datasDasClasses } },
@@ -58,8 +70,10 @@ export class ClubeService {
       const data = paraDataCivil(aula.data)
       if (diaDaSemana(data) !== atual.diaReuniao) continue
       if (datasComExtra.has(data)) continue
-      const { nome, ordem } = aula.cronograma.classe
-      classes.set(nome, ordem)
+      const { id, nome, ordem } = aula.cronograma.classe
+      const avancada = avancadaDaRegular.get(id)
+      const comAvancada = avancada !== undefined && aula.requisitos.some((ligacao) => ligacao.requisito.secao.classeId === avancada.id)
+      classes.set(nomeDoPar(nome, comAvancada ? avancada.nome : undefined), ordem)
     }
     if (classes.size === 0) return
     const nomes = [...classes.entries()].sort((a, b) => a[1] - b[1]).map(([nome]) => nome)

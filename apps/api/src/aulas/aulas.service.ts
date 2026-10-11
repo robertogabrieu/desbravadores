@@ -67,7 +67,7 @@ export class AulasService {
 
     const [configuracao, planejados, substituicao] = await Promise.all([
       this.prisma.configuracaoClube.findUniqueOrThrow({ where: { clubeId } }),
-      this.requisitosPlanejados(clubeId, registro.aulaPlanejadaId),
+      this.requisitosPlanejados(clubeId, registro.classeId, registro.aulaPlanejadaId),
       this.substituicaoDoRegistro(clubeId, registro.substituicaoId, registro.registradoPorId),
     ])
     const marcadosNaAula = registro.requisitos.map((conclusao) => conclusao.requisitoId)
@@ -116,17 +116,18 @@ export class AulasService {
   }
 
   /** Requisitos da aula planejada: os da ultima publicacao e, se ela nao esta la (vivo), os do cronograma vivo. */
-  private async requisitosPlanejados(clubeId: string, aulaPlanejadaId: string | null): Promise<string[]> {
+  private async requisitosPlanejados(clubeId: string, classeId: string, aulaPlanejadaId: string | null): Promise<string[]> {
     if (aulaPlanejadaId === null) return []
     const planejada = await this.prisma.aulaPlanejada.findFirst({ where: { clubeId, id: aulaPlanejadaId }, select: { cronogramaId: true } })
     if (!planejada) return []
     const publicacao = await this.cronogramas.ultimaPublicacao(clubeId, planejada.cronogramaId)
     const publicada = publicacao?.aulas.find((aula) => aula.id === aulaPlanejadaId)
-    if (publicada) return publicada.requisitoIds
-    const ligacoes = await this.prisma.aulaRequisito.findMany({
-      where: { clubeId, aulaPlanejadaId },
-      select: { requisitoId: true },
-    })
-    return ligacoes.map((ligacao) => ligacao.requisitoId)
+    const ligacoes = publicada
+      ? publicada.requisitoIds
+      : (await this.prisma.aulaRequisito.findMany({ where: { clubeId, aulaPlanejadaId }, select: { requisitoId: true } })).map((l) => l.requisitoId)
+    // No cronograma do par a aula tem requisitos das duas classes; o registro enxerga so os da sua.
+    const daClasse = await this.prisma.requisito.findMany({ where: { id: { in: ligacoes }, secao: { classeId } }, select: { id: true } })
+    const ids = new Set(daClasse.map((requisito) => requisito.id))
+    return ligacoes.filter((id) => ids.has(id))
   }
 }

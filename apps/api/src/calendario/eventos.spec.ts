@@ -6,6 +6,7 @@ import type { z } from 'zod'
 import { criarAppDeTeste } from '../../test/app'
 import {
   admDefinirClasseClube,
+  avancadaOficial,
   classeOficial,
   criarAcesso,
   criarClube,
@@ -507,6 +508,49 @@ describe('calendário do clube — eventos', () => {
         return { metodo: 'get', caminho: `/api/calendario/eventos/${alvo.id}` }
       },
       esperado: { tipo: 'NAO_ENCONTRADO' },
+    })
+  })
+  describe('par regular + avançada', () => {
+    it('o conflito vale para as duas classes que têm requisito na aula; quem instrui as duas recebe um aviso só', async () => {
+      const { clube, amigo, adm, instrutor, requisitos } = await cenario()
+      const avancada = await avancadaOficial(amigo.id)
+      const [a1] = await requisitosDa(avancada.id, 1)
+      // O instrutor ganha as duas classes do par; o outro só a avançada.
+      const soDaAvancada = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [avancada.id] })
+      const cronograma = await criarCronograma({
+        clubeId: clube.id,
+        classeId: amigo.id,
+        aulas: [
+          { data: dia(10), requisitoIds: [requisitos[0], a1] },
+          { data: dia(11), requisitoIds: [requisitos[1]] },
+        ],
+      })
+      const { aulasAfetadas } = corpo<Gravado>(
+        await http.post('/api/calendario/eventos', adm.autorizacao, evento({ fim: dia(11), bomParaCampo: false })),
+      )
+      expect(aulasAfetadas.map((a) => [a.aulaId, a.classe.id])).toEqual(
+        expect.arrayContaining([
+          [cronograma.aulas[0].id, amigo.id],
+          [cronograma.aulas[0].id, avancada.id],
+          [cronograma.aulas[1].id, amigo.id],
+        ]),
+      )
+      expect(aulasAfetadas).toHaveLength(3)
+      const doInstrutor = await notificacoesDe(instrutor.usuario.id)
+      expect(doInstrutor).toHaveLength(1)
+      expect(doInstrutor[0].texto).toContain(`Amigo + ${avancada.nome}`)
+      expect(doInstrutor[0].link).toBe(`/cronograma?classe=${amigo.id}`)
+      expect(await notificacoesDe(soDaAvancada.usuario.id)).toHaveLength(1)
+      expect(await notificacoesDe(adm.usuario.id)).toHaveLength(1)
+    })
+
+    it('aula só com requisito da avançada não conflita para a regular', async () => {
+      const { clube, amigo, adm } = await cenario()
+      const avancada = await avancadaOficial(amigo.id)
+      const [a1] = await requisitosDa(avancada.id, 1)
+      await criarCronograma({ clubeId: clube.id, classeId: amigo.id, aulas: [{ data: dia(10), requisitoIds: [a1] }] })
+      const { aulasAfetadas } = corpo<Gravado>(await http.post('/api/calendario/eventos', adm.autorizacao, evento({ bomParaCampo: false })))
+      expect(aulasAfetadas.map((a) => a.classe.id)).toEqual([avancada.id])
     })
   })
 })

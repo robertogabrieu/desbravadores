@@ -3,6 +3,7 @@ import type { CronogramaLeitura } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { criarAppDeTeste } from '../../test/app'
 import {
+  avancadaOficial,
   classeOficial,
   criarAcesso,
   criarCronograma,
@@ -14,6 +15,7 @@ import {
   desconectarPrismaDeTeste,
   prismaDeTeste,
   publicarCronograma,
+  requisitosDe,
 } from '../../test/fabricas'
 import { anoCorrente, clienteHttp, corpo, criarClasseDoClube, hoje } from '../../test/p6'
 import { ServicoCronograma } from './servico-cronograma'
@@ -328,5 +330,86 @@ describe('ServicoCronograma.instrutoresDaClasse (B10)', () => {
     expect(await servico.instrutoresDaClasse(clubeA.id, amigo.id)).toEqual([{ usuarioId: ativo.usuario.id, nome: ativo.usuario.nome }])
     expect(await servico.instrutoresDaClasse(clubeB.id, amigo.id)).toEqual([{ usuarioId: doOutroClube.usuario.id, nome: doOutroClube.usuario.nome }])
     expect(outraClasse.usuario.id).toBeDefined()
+  })
+})
+
+describe('GET /api/classes/:id/cronograma — par regular + avançada', () => {
+  let app: INestApplication
+  const http = clienteHttp(() => app)
+
+  beforeAll(async () => {
+    app = await criarAppDeTeste()
+  })
+  afterAll(async () => {
+    await app.close()
+    await desconectarPrismaDeTeste()
+  })
+  beforeEach(() => congelarRelogio('2026-06-15T15:00:00Z'))
+  afterEach(() => jest.useRealTimers())
+
+  const rota = (classeId: string): string => `/api/classes/${classeId}/cronograma`
+
+  /** Um cronograma só (o da regular): A1 só da regular, A2 das duas, A3 só da avançada. */
+  async function cenarioPar() {
+    const clube = await criarClube()
+    const amigo = await classeOficial('Amigo')
+    const avancada = await avancadaOficial(amigo.id)
+    const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+    const instrutor = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [amigo.id, avancada.id] })
+    const [r1, r2] = await requisitosDe(amigo.id, 2)
+    const [a1, a2] = await requisitosDe(avancada.id, 2)
+    const cronograma = await criarCronograma({
+      clubeId: clube.id,
+      classeId: amigo.id,
+      status: 'PUBLICADO',
+      aulas: [
+        { data: dia(5), requisitoIds: [r1 ?? ''] },
+        { data: dia(12), requisitoIds: [r2 ?? '', a1 ?? ''] },
+        { data: dia(19), requisitoIds: [a2 ?? ''] },
+      ],
+    })
+    return { clube, amigo, avancada, adm, instrutor, cronograma, r1, r2, a1, a2 }
+  }
+
+  const idsDosRequisitos = (leitura: Leitura): string[][] => leitura.aulas.map((aula) => aula.requisitos.map((r) => r.id))
+
+  it('vivo: a avançada recebe o cronograma da regular só com as aulas e os requisitos dela; a regular não vê a aula só da avançada', async () => {
+    const c = await cenarioPar()
+    const daAvancada = corpo<Leitura>(await http.get(rota(c.avancada.id), c.adm.autorizacao))
+    expect(daAvancada).toMatchObject({ cronogramaId: c.cronograma.id, fonte: 'VIVO', classe: { id: c.avancada.id } })
+    expect(daAvancada.aulas.map((aula) => aula.data)).toEqual([dia(12), dia(19)])
+    expect(idsDosRequisitos(daAvancada)).toEqual([[c.a1], [c.a2]])
+
+    const daRegular = corpo<Leitura>(await http.get(rota(c.amigo.id), c.adm.autorizacao))
+    expect(daRegular.cronogramaId).toBe(c.cronograma.id)
+    expect(daRegular.aulas.map((aula) => aula.data)).toEqual([dia(5), dia(12)])
+    expect(idsDosRequisitos(daRegular)).toEqual([[c.r1], [c.r2]])
+  })
+
+  it('publicado: instrutor da avançada vê a publicação da regular filtrada; a presença continua por classe', async () => {
+    const c = await cenarioPar()
+    await publicarCronograma({ cronogramaId: c.cronograma.id, publicadoPorId: c.adm.usuario.id })
+    await criarRegistroAula({ clubeId: c.clube.id, classeId: c.avancada.id, data: dia(-3) })
+    const daAvancada = corpo<Leitura>(await http.get(rota(c.avancada.id), c.instrutor.autorizacao))
+    expect(daAvancada).toMatchObject({ fonte: 'PUBLICADO', podeMontar: false })
+    expect(daAvancada.aulas.filter((aula) => aula.origem === 'PLANEJADA').map((aula) => aula.data)).toEqual([dia(12), dia(19)])
+    expect(daAvancada.aulas.filter((aula) => aula.origem === 'PLANEJADA').map((aula) => aula.requisitos.map((r) => r.id))).toEqual([[c.a1], [c.a2]])
+    // o registro da avançada em dia(-3) é só dela: aparece como extra na avançada e não na regular
+    expect(daAvancada.aulas.filter((aula) => aula.origem === 'EXTRA').map((aula) => aula.data)).toEqual([dia(-3)])
+    const daRegular = corpo<Leitura>(await http.get(rota(c.amigo.id), c.instrutor.autorizacao))
+    expect(daRegular.aulas.map((aula) => [aula.data, aula.requisitos.map((r) => r.id)])).toEqual([[dia(5), [c.r1]], [dia(12), [c.r2]]])
+  })
+
+  it('par desativado no clube: a avançada volta a ter cronograma próprio (vazio) e a regular mantém o seu', async () => {
+    const c = await cenarioPar()
+    await prismaDeTeste().classeClube.upsert({
+      where: { clubeId_classeId: { clubeId: c.clube.id, classeId: c.avancada.id } },
+      create: { clubeId: c.clube.id, classeId: c.avancada.id, ativa: false },
+      update: { ativa: false },
+    })
+    const daAvancada = corpo<Leitura>(await http.get(rota(c.avancada.id), c.adm.autorizacao))
+    expect(daAvancada.cronogramaId).toBeNull()
+    const daRegular = corpo<Leitura>(await http.get(rota(c.amigo.id), c.adm.autorizacao))
+    expect(daRegular.cronogramaId).toBe(c.cronograma.id)
   })
 })

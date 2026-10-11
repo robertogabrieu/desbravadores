@@ -4,6 +4,7 @@ import type { z } from 'zod'
 import { criarAppDeTeste } from '../../test/app'
 import { congelarRelogio, descongelarRelogio } from '../../test/relogio'
 import {
+  avancadaOficial,
   classeOficial,
   criarAcesso,
   criarClube,
@@ -11,6 +12,7 @@ import {
   criarEvento,
   desconectarPrismaDeTeste,
   prismaDeTeste,
+  requisitosDe,
 } from '../../test/fabricas'
 import { clienteHttp, corpo } from '../../test/p6'
 
@@ -125,5 +127,21 @@ describe('configuracao do clube', () => {
     await criarCronograma({ clubeId: clube.id, classeId: companheiro.id, aulas: [{ data: '2026-06-21', requisitoIds: [] }] })
     const resposta = await api.patch('/api/clube/configuracao', adm.autorizacao, { diaReuniao: 5 }).expect(422)
     expect((resposta.body as { mensagem: string }).mensagem).toBe('Há classes marcadas no dia atual de reunião: Amigo, Companheiro. Mova-as antes.')
+  })
+
+  it('G9: no par, a aula de domingo cita as duas classes quando tem requisito da avançada, e a regular sozinha quando não tem', async () => {
+    const { clube, adm, amigo } = await cenario()
+    const avancada = await avancadaOficial(amigo.id)
+    const [a1] = await requisitosDe(avancada.id, 1)
+    const [r1] = await requisitosDe(amigo.id, 1)
+    const cronograma = await criarCronograma({ clubeId: clube.id, classeId: amigo.id, aulas: [{ data: '2026-06-21', requisitoIds: [r1 ?? ''] }] })
+    let resposta = await api.patch('/api/clube/configuracao', adm.autorizacao, { diaReuniao: 5 }).expect(422)
+    expect((resposta.body as { mensagem: string }).mensagem).toBe('Há classes marcadas no dia atual de reunião: Amigo. Mova-as antes.')
+
+    await prismaDeTeste().aulaRequisito.create({
+      data: { clubeId: clube.id, cronogramaId: cronograma.id, aulaPlanejadaId: cronograma.aulas[0]?.id ?? '', requisitoId: a1 ?? '' },
+    })
+    resposta = await api.patch('/api/clube/configuracao', adm.autorizacao, { diaReuniao: 5 }).expect(422)
+    expect((resposta.body as { mensagem: string }).mensagem).toBe(`Há classes marcadas no dia atual de reunião: Amigo + ${avancada.nome}. Mova-as antes.`)
   })
 })
