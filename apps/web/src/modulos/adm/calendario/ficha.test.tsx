@@ -158,6 +158,8 @@ describe('ficha do evento', () => {
     const { roteador } = abrir('/adm/calendario?mes=2026-10', acampamento(), criado)
     await userEvent.click(await screen.findByRole('link', { name: 'Novo evento' }))
     expect(roteador.state.location.search).toBe('?data=2026-10-01')
+    await userEvent.click(await screen.findByRole('link', { name: /Feriado/ }))
+    expect(roteador.state.location.search).toBe('?data=2026-10-01&tipo=FERIADO')
     expect(await screen.findByLabelText('Início')).toHaveValue('2026-10-01')
     await userEvent.type(screen.getByLabelText('Nome'), 'Feriado municipal')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
@@ -194,7 +196,7 @@ describe('ficha do evento', () => {
   })
 
   it('o seletor de tipo do formulário não oferece Classe Bíblica', async () => {
-    abrir('/adm/calendario/eventos/novo')
+    abrir(`/adm/calendario/eventos/${uuid(801)}/editar`)
     const tipo = await screen.findByLabelText('Tipo')
     const opcoes = within(tipo).getAllByRole('option').map((opcao) => opcao.textContent)
     expect(opcoes).toContain('Evento do clube')

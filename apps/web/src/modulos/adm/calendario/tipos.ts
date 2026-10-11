@@ -1,4 +1,4 @@
-import { BookOpen, CalendarPlus, Sparkles, Sun } from 'lucide-react'
+import { BookOpen, CalendarDays, CalendarPlus, CalendarX, Flag, Sparkles, Sun, Tent } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { z } from 'zod'
 import type { TipoEvento } from '@desbravadores/shared'
@@ -39,6 +39,18 @@ export const ICONE_DO_TIPO: Partial<Record<TipoDeEvento, LucideIcon>> = {
   CLASSE_BIBLICA: BookOpen,
 }
 
+/** Ícone de cada tipo na escolha e no selo do formulário; o do calendário (`ICONE_DO_TIPO`) só marca os que precisam de sinal além da cor. */
+export const ICONE_DA_ESCOLHA: Record<TipoDeEvento, LucideIcon> = {
+  REUNIAO_EXTRA: CalendarPlus,
+  FERIAS: Sun,
+  ACAMPAMENTO: Tent,
+  EVENTO: CalendarDays,
+  EVENTO_ESPECIAL: Sparkles,
+  FERIADO: Flag,
+  SEM_REUNIAO: CalendarX,
+  CLASSE_BIBLICA: BookOpen,
+}
+
 /** Texto de apoio sob o seletor de Tipo; `diaReuniao` ausente (configuração não carregada) cai em "dias de reunião". */
 export const TEXTO_DO_TIPO: Partial<Record<TipoDeEvento, (diaReuniao: number | undefined) => string>> = {
   EVENTO: (diaReuniao) =>
@@ -47,6 +59,9 @@ export const TEXTO_DO_TIPO: Partial<Record<TipoDeEvento, (diaReuniao: number | u
     'Evento especial: vale pontos no ranking, tem lista de quem foi e pede uniforme de gala ou de campo. A reunião e a classe do dia continuam, salvo se você desmarcar abaixo.',
   FERIAS: (diaReuniao) => `Férias: sem reunião e sem classe ${dosDiasDeReuniao(diaReuniao).nos} do período; acampamentos continuam valendo.`,
   REUNIAO_EXTRA: (diaReuniao) => `Reunião extra: uma data fora ${dosDiasDeReuniao(diaReuniao).do}, com chamada da unidade, classe ou as duas.`,
+  ACAMPAMENTO: () => 'Acampamento: um ou mais dias fora da sede, sem reunião; a classe só acontece como atividade de campo.',
+  FERIADO: () => 'Feriado: marca a data no calendário; a reunião e a classe do dia continuam, salvo se você desmarcar abaixo.',
+  SEM_REUNIAO: () => 'Sem reunião: o clube não se reúne nesses dias e não há classe nem atividade de campo.',
 }
 
 /** Ponto do dia na grade do celular, na cor forte do tipo; a reunião extra é um anel, para não se confundir com a regular. */

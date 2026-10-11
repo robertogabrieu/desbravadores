@@ -19,6 +19,8 @@ import { Selecao } from '../../../ui/Selecao'
 import { lerErroDaApi } from '../desbravadores/erros'
 import { dataCivilBr, juntarNomes } from '../formatos'
 import { MESES, diaDaSemana, dosDiasDeReuniao } from './datas'
+import { SeloDoTipo } from './SeloDoTipo'
+import type { VoltaAEscolha } from './SeloDoTipo'
 import { ROTULOS_DO_TIPO, TEXTO_DO_TIPO } from './tipos'
 import type { TipoDeEvento } from './tipos'
 
@@ -31,6 +33,8 @@ interface Propriedades {
   dataInicial: string
   aoGravar: (gravado: EventoGravado) => void
   cancelar: { para: string; estado?: object }
+  /** Evento novo que veio da escolha do tipo: o tipo já está definido, o seletor some e o selo leva de volta à escolha. */
+  escolhido?: { tipo: TipoDeEvento; trocar: VoltaAEscolha }
 }
 
 const MENSAGENS_DE_CAMPO: Record<string, string> = {
@@ -58,9 +62,12 @@ interface Marcacoes {
 }
 
 /** O encontro da Classe Bíblica nasce e muda só pela edição dele. */
-const TIPOS_DO_FORMULARIO = TIPOS_EVENTO.filter((t) => t !== 'CLASSE_BIBLICA')
+export const TIPOS_DO_FORMULARIO = TIPOS_EVENTO.filter((t) => t !== 'CLASSE_BIBLICA')
 
 const tipoConhecido = (valor: string): TipoDeEvento => TIPOS_DO_FORMULARIO.find((t) => t === valor) ?? 'EVENTO'
+
+/** O tipo pedido no endereço, se o formulário o aceita. */
+export const tipoDoEndereco = (valor: string | null): TipoDeEvento | null => TIPOS_DO_FORMULARIO.find((t) => t === valor) ?? null
 
 /** Vazio é "ainda não informado" (nulo); o resto vira número, e `validarEvento` diz se serve. */
 const pontosDoTexto = (texto: string): number | null => (texto.trim() === '' ? null : Number(texto))
@@ -116,9 +123,9 @@ function textoDoAvisoDeLista(foram: number): string {
   return `A lista deste evento já foi concluída: ${quem}. Se você mudar a data ou os pontos, ${pontos}.`
 }
 
-export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar }: Propriedades) {
+export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar, escolhido }: Propriedades) {
   const [nome, setNome] = useState(evento?.nome ?? '')
-  const [tipo, setTipo] = useState<TipoDeEvento>(evento?.tipo ?? 'EVENTO')
+  const [tipo, setTipo] = useState<TipoDeEvento>(evento?.tipo ?? escolhido?.tipo ?? 'EVENTO')
   const [inicio, setInicio] = useState(evento?.inicio ?? dataInicial)
   const [fim, setFim] = useState(evento?.fim ?? dataInicial)
   const [horario, setHorario] = useState(evento?.horario ?? '')
@@ -129,7 +136,7 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar }: Pr
   const [marcacoes, setMarcacoes] = useState<Marcacoes>(
     evento
       ? { temReuniao: evento.temReuniao, temClasse: evento.temClasse, bomParaCampo: evento.bomParaCampo }
-      : { ...MARCACOES_PADRAO['EVENTO'] },
+      : { ...MARCACOES_PADRAO[escolhido?.tipo ?? 'EVENTO'] },
   )
   const [erros, setErros] = useState<Record<string, string>>({})
   // O erro dos campos de pontos ao sair deles: fora de `erros` de propósito, senão `useErrosAVista` tiraria o foco de quem está digitando.
@@ -160,6 +167,20 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar }: Pr
     uniforme && pontosValem(pontosDeIr) && pontosValem(pontosDoUniforme)
       ? `Quem for ganha ${pontosPorExtenso(Number(pontosDeIr))}. Quem for com o uniforme de ${NOME_CURTO_DO_UNIFORME[uniforme]} ganha mais ${Number(pontosDoUniforme)}.`
       : null
+
+  const marcacoesDoPadrao = MARCACOES_PADRAO[tipo]
+  const preenchido =
+    nome !== '' ||
+    inicio !== dataInicial ||
+    fim !== dataInicial ||
+    horario !== '' ||
+    local !== '' ||
+    uniforme !== null ||
+    pontosDeIr !== '' ||
+    pontosDoUniforme !== '' ||
+    marcacoes.temReuniao !== marcacoesDoPadrao.temReuniao ||
+    marcacoes.temClasse !== marcacoesDoPadrao.temClasse ||
+    marcacoes.bomParaCampo !== marcacoesDoPadrao.bomParaCampo
 
   function trocarTipo(novo: TipoDeEvento) {
     setTipo(novo)
@@ -251,14 +272,22 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar }: Pr
     <form ref={formulario} noValidate onSubmit={(submissao) => void enviar(submissao)} className="flex flex-col gap-4">
       <ResumoDosErros pendencias={pendencias} />
       {pontosJaDados > 0 && <FaixaAviso>{textoDoAvisoDeLista(pontosJaDados)}</FaixaAviso>}
+      {escolhido && !evento && (
+        <div className="flex flex-col gap-1">
+          <SeloDoTipo tipo={tipo} trocar={escolhido.trocar} preenchido={preenchido} />
+          {textoDeApoio && <p className="text-sm text-texto-2">{textoDeApoio}</p>}
+        </div>
+      )}
       <Campo rotulo="Nome" value={nome} erro={erros['nome']} onChange={(e) => setNome(e.target.value)} />
-      <Selecao rotulo="Tipo" value={tipo} disabled={listaComecada} ajuda={textoDeApoio} erro={erros['tipo']} onChange={(e) => trocarTipo(tipoConhecido(e.target.value))}>
-        {TIPOS_DO_FORMULARIO.map((t) => (
-          <option key={t} value={t}>
-            {ROTULOS_DO_TIPO[t]}
-          </option>
-        ))}
-      </Selecao>
+      {!(escolhido && !evento) && (
+        <Selecao rotulo="Tipo" value={tipo} disabled={listaComecada} ajuda={textoDeApoio} erro={erros['tipo']} onChange={(e) => trocarTipo(tipoConhecido(e.target.value))}>
+          {TIPOS_DO_FORMULARIO.map((t) => (
+            <option key={t} value={t}>
+              {ROTULOS_DO_TIPO[t]}
+            </option>
+          ))}
+        </Selecao>
+      )}
       {ehExtra ? (
         <CampoData
           rotulo="Data"

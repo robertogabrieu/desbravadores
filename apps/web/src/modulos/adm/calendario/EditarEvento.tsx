@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { DataCivil } from '@desbravadores/shared'
 import { useEvento } from '../../../api/calendario'
 import type { AulaAfetada, EventoCalendario, EventoGravado } from '../../../api/calendario'
@@ -12,7 +12,9 @@ import { EstadoNaoEncontrado, ehNaoEncontrado } from '../../../ui/EstadoNaoEncon
 import { juntarNomes } from '../formatos'
 import { useVoltarPara } from '../navegacao'
 import { diaEMes } from './datas'
-import { FormularioEvento } from './FormularioEvento'
+import { EscolhaDoTipo } from './EscolhaDoTipo'
+import { FormularioEvento, tipoDoEndereco } from './FormularioEvento'
+import type { TipoDeEvento } from './tipos'
 
 const CALENDARIO = '/adm/calendario'
 const NAO_ENCONTRADO = { para: CALENDARIO, rotulo: 'Ver o calendário' }
@@ -32,6 +34,8 @@ export function EditarEvento() {
   const editando = id !== undefined
   const [parametros] = useSearchParams()
   const navegar = useNavigate()
+  const local = useLocation()
+  const estadoDeChegada: unknown = local.state
   const consulta = useEvento(id ?? '', editando)
   const { modo } = useConexao()
 
@@ -50,14 +54,32 @@ export function EditarEvento() {
       },
     })
 
+  // A escolha e o formulário são a mesma rota; o tipo vai em `?tipo=` e o resto do endereço (a data) segue junto.
+  const tipoEscolhido = tipoDoEndereco(parametros.get('tipo'))
+  const enderecoComTipo = (tipo: TipoDeEvento | null): string => {
+    const restante = new URLSearchParams(parametros)
+    restante.delete('tipo')
+    if (tipo) restante.set('tipo', tipo)
+    const busca = restante.toString()
+    return busca ? `${local.pathname}?${busca}` : local.pathname
+  }
+
   let corpo: ReactNode
-  if (!editando) {
+  if (!editando && tipoEscolhido) {
     corpo = (
       <>
         <CabecalhoDaPagina voltar={{ para: voltarPara, rotulo: 'Calendário do clube' }} titulo="Novo evento" />
-        <FormularioEvento dataInicial={dataInicial} cancelar={{ para: voltarPara }} aoGravar={aoGravar} />
+        <FormularioEvento
+          key={tipoEscolhido}
+          dataInicial={dataInicial}
+          cancelar={{ para: voltarPara }}
+          aoGravar={aoGravar}
+          escolhido={{ tipo: tipoEscolhido, trocar: { para: enderecoComTipo(null), estado: estadoDeChegada } }}
+        />
       </>
     )
+  } else if (!editando) {
+    corpo = <EscolhaDoTipo voltarPara={voltarPara} enderecoDoTipo={(tipo) => enderecoComTipo(tipo)} estado={estadoDeChegada} />
   } else if (consulta.data) {
     corpo = <EdicaoCarregada evento={consulta.data} voltarPara={voltarPara} aoGravar={aoGravar} />
   } else if (consulta.isError && ehNaoEncontrado(consulta.error)) {

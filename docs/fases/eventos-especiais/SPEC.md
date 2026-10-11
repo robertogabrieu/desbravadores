@@ -227,6 +227,23 @@ fechamento e as confirmações dizem "gala" ou "campo". Os quadros usam um event
 Calendário do Adm, calendário de leitura e cartão "Próximo evento": **sem mecânica**. Têm desenho porque o
 sinal do uniforme é decisão de layout, não de adesão.
 
+## Escolha do tipo antes do formulário
+
+"Novo evento" abre primeiro numa tela de escolha: um cartão para cada um dos 7 tipos que o formulário
+aceita (ícone, nome e uma frase do que o tipo faz), na ordem da legenda do calendário. Tocar num cartão abre
+o formulário já com o tipo definido. **Por quê:** a pessoa vê o que vai cadastrar antes de ver 12 campos, e
+o formulário que abre já é o certo (sem o seletor "Tipo", sem campos de outro tipo). É o mesmo fluxo da
+"Nova receita" do dbv finance.
+
+- **Mesma rota, `?tipo=`.** Sem `?tipo=` válido (ou com um tipo que o formulário não aceita, como a Classe
+  Bíblica) aparece a escolha; o cartão navega para a mesma rota com `?tipo=<tipo>`, preservando a data
+  (`?data=`). O "voltar" do navegador volta à escolha.
+- **No formulário**, o seletor de tipo some na criação. No topo ficam o selo do tipo (ícone e nome, nunca só
+  cor) e o link "Trocar tipo", que volta à escolha levando a data. Se algo já foi preenchido além do padrão,
+  pergunta antes ("Trocar o tipo do evento?"; "Continuar preenchendo" ou "Trocar e descartar").
+- **Edição não muda:** sem escolha, e o seletor de tipo continua (travado com a lista começada).
+- Os formulários não mudam: mesma ordem de campos. As frases dos cartões são as do texto de apoio do tipo.
+
 ## Descobribilidade
 
 - **Pré-requisitos.** Lista: precisa de desbravador ativo (condicional: sem nenhum, a lista mostra "Nenhum

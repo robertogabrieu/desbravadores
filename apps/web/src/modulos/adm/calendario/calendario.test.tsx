@@ -52,10 +52,12 @@ function abrirEm(rota: string, ...extras: Parameters<typeof servidor.use>) {
   return renderizarRotas(rotasAdmCalendario, rota)
 }
 
-async function abrirNovoEvento(...extras: Parameters<typeof servidor.use>) {
-  abrirEm('/adm/calendario/eventos/novo?data=2026-10-01', ...extras)
+async function abrirNovoDoTipo(tipo: string, ...extras: Parameters<typeof servidor.use>) {
+  abrirEm(`/adm/calendario/eventos/novo?data=2026-10-01&tipo=${tipo}`, ...extras)
   await screen.findByLabelText('Nome')
 }
+
+const abrirNovoEvento = (...extras: Parameters<typeof servidor.use>) => abrirNovoDoTipo('EVENTO', ...extras)
 
 describe('A6 · quatro estados', () => {
   it('carregando mostra o esqueleto', () => {
@@ -168,10 +170,9 @@ describe('A6 · criar', () => {
   it('as três caixas seguem o padrão do tipo e a gravação leva o que está marcado', async () => {
     let corpo: Record<string, unknown> = {}
     const criado = caixa(criarEvento(99, { id: uuid(899) }))
-    await abrirNovoEvento(handlerCalendario(), handlerEvento(criado), handlerCriarEvento([], (c) => (corpo = c as Record<string, unknown>)))
+    await abrirNovoDoTipo('ACAMPAMENTO', handlerCalendario(), handlerEvento(criado), handlerCriarEvento([], (c) => (corpo = c as Record<string, unknown>)))
 
     await userEvent.type(screen.getByLabelText('Nome'), 'Acampamento de unidades')
-    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'ACAMPAMENTO')
     expect(screen.getByLabelText('Terá reunião')).not.toBeChecked()
     expect(screen.getByLabelText('Terá classe')).toBeChecked()
     expect(screen.getByLabelText('Terá atividade de campo')).toBeChecked()
@@ -194,7 +195,7 @@ describe('A6 · criar', () => {
   })
 
   it('sem ?data= (ou inválida) o novo evento abre no dia de hoje', async () => {
-    abrirEm('/adm/calendario/eventos/novo?data=xx', handlerCalendario())
+    abrirEm('/adm/calendario/eventos/novo?data=xx&tipo=EVENTO', handlerCalendario())
     expect(await screen.findByLabelText('Início')).toHaveValue('2026-10-05')
   })
 
@@ -224,7 +225,7 @@ describe('A6 · criar', () => {
 
   it('Cancelar volta ao mês de onde veio, sem perguntar nada', async () => {
     servidor.use(handlerCalendario())
-    const { roteador } = abrirEm('/adm/calendario/eventos/novo?data=2026-10-01')
+    const { roteador } = abrirEm('/adm/calendario/eventos/novo?data=2026-10-01&tipo=EVENTO')
     await userEvent.type(await screen.findByLabelText('Nome'), 'Rascunho')
     await userEvent.click(screen.getByRole('link', { name: 'Cancelar' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -279,33 +280,29 @@ describe('P3 · formulário', () => {
   })
 
   it('Férias esconde as caixas e mostra o texto de apoio', async () => {
-    await abrirNovoEvento(handlerCalendario())
-    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'FERIAS')
+    await abrirNovoDoTipo('FERIAS', handlerCalendario())
     expect(await screen.findByText(TEXTO_FERIAS)).toBeInTheDocument()
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
   })
 
   it('o dia do texto de apoio vem da configuração; sem ela, "nos dias de reunião"', async () => {
     diaReuniao = 6
-    await abrirNovoEvento(handlerCalendario())
-    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'FERIAS')
+    await abrirNovoDoTipo('FERIAS', handlerCalendario())
     expect(await screen.findByText('Férias: sem reunião e sem classe nos sábados do período; acampamentos continuam valendo.')).toBeInTheDocument()
   })
 
   it('Férias grava o padrão do tipo (sem reunião, com classe)', async () => {
     let corpo: Record<string, unknown> = {}
-    await abrirNovoEvento(handlerCalendario(), handlerCriarEvento([], (c) => (corpo = c as Record<string, unknown>)))
+    await abrirNovoDoTipo('FERIAS', handlerCalendario(), handlerCriarEvento([], (c) => (corpo = c as Record<string, unknown>)))
     await userEvent.type(screen.getByLabelText('Nome'), 'Férias de verão')
-    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'FERIAS')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(corpo).toMatchObject({ tipo: 'FERIAS', temReuniao: false, temClasse: true, bomParaCampo: false }))
   })
 
   it('Reunião extra: campo Data, sem Início e Fim, duas caixas, e envia fim igual ao início', async () => {
     let corpo: Record<string, unknown> = {}
-    await abrirNovoEvento(handlerCalendario(), handlerCriarEvento([], (c) => (corpo = c as Record<string, unknown>)))
+    await abrirNovoDoTipo('REUNIAO_EXTRA', handlerCalendario(), handlerCriarEvento([], (c) => (corpo = c as Record<string, unknown>)))
     await userEvent.type(screen.getByLabelText('Nome'), 'Encontro')
-    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'REUNIAO_EXTRA')
     expect(await screen.findByText(TEXTO_EXTRA)).toBeInTheDocument()
     expect(screen.getByLabelText('Data')).toHaveValue('2026-10-01')
     expect(screen.queryByLabelText('Início')).not.toBeInTheDocument()
@@ -317,13 +314,12 @@ describe('P3 · formulário', () => {
   })
 
   it('API recusa duas extras na mesma data: o erro aparece sob a Data', async () => {
-    await abrirNovoEvento(handlerCalendario(),
+    await abrirNovoDoTipo('REUNIAO_EXTRA', handlerCalendario(),
       http.post('/api/calendario/eventos', () =>
         HttpResponse.json({ codigo: 'VALIDACAO', mensagem: 'Dados inválidos', campos: { inicio: 'Já há uma reunião extra nesta data.' } }, { status: 400 }),
       ),
     )
     await userEvent.type(screen.getByLabelText('Nome'), 'Encontro')
-    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'REUNIAO_EXTRA')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     expect(await screen.findByText('Já há uma reunião extra nesta data.')).toBeInTheDocument()
     expect(screen.getByLabelText('Data')).toHaveAccessibleDescription('Já há uma reunião extra nesta data.')
@@ -331,9 +327,8 @@ describe('P3 · formulário', () => {
 
   it('extra sem caixas: o erro fica no grupo, ligado ao fieldset, sem chamar a API', async () => {
     let chamadas = 0
-    await abrirNovoEvento(handlerCalendario(), handlerCriarEvento([], () => chamadas++))
+    await abrirNovoDoTipo('REUNIAO_EXTRA', handlerCalendario(), handlerCriarEvento([], () => chamadas++))
     await userEvent.type(screen.getByLabelText('Nome'), 'Encontro')
-    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'REUNIAO_EXTRA')
     await userEvent.click(screen.getByLabelText('Terá reunião'))
     await userEvent.click(screen.getByLabelText('Terá classe'))
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
@@ -346,8 +341,7 @@ describe('P3 · formulário', () => {
   })
 
   it('extra no dia da reunião avisa sob a Data; fora dele, não', async () => {
-    await abrirNovoEvento(handlerCalendario())
-    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'REUNIAO_EXTRA')
+    await abrirNovoDoTipo('REUNIAO_EXTRA', handlerCalendario())
     fireEvent.change(screen.getByLabelText('Data'), { target: { value: '2026-10-18' } })
     expect(screen.getByLabelText('Data')).toHaveAccessibleDescription('Domingo já tem reunião: esta reunião extra só muda nome, horário e local.')
     fireEvent.change(screen.getByLabelText('Data'), { target: { value: '2026-10-21' } })

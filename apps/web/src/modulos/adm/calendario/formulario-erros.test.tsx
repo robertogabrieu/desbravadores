@@ -18,7 +18,7 @@ function abrirEm(rota: string, ...extras: Parameters<typeof servidor.use>) {
 describe('Evento · erro à vista ao salvar', () => {
   it('novo: salvar sem nome e com o fim antes do início foca o nome e resume os dois campos', async () => {
     let chamadas = 0
-    abrirEm('/adm/calendario/eventos/novo?data=2026-10-10', handlerCriarEvento([], () => chamadas++))
+    abrirEm('/adm/calendario/eventos/novo?data=2026-10-10&tipo=EVENTO', handlerCriarEvento([], () => chamadas++))
     await screen.findByLabelText('Nome')
     await userEvent.clear(screen.getByLabelText('Fim'))
     await userEvent.type(screen.getByLabelText('Fim'), '2026-10-01')
@@ -45,9 +45,8 @@ describe('Evento · erro à vista ao salvar', () => {
 
   it('especial sem uniforme: o foco vai ao rádio, o erro aparece nele e no resumo, e nada é enviado', async () => {
     let chamadas = 0
-    abrirEm('/adm/calendario/eventos/novo?data=2026-10-10', handlerCriarEvento([], () => chamadas++))
+    abrirEm('/adm/calendario/eventos/novo?data=2026-10-10&tipo=EVENTO_ESPECIAL', handlerCriarEvento([], () => chamadas++))
     await userEvent.type(await screen.findByLabelText('Nome'), 'Culto de Investidura')
-    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'EVENTO_ESPECIAL')
     await userEvent.type(screen.getByLabelText('Pontos por ir ao evento'), '20')
     await userEvent.type(screen.getByLabelText('Pontos por usar o uniforme'), '10')
 

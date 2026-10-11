@@ -21,11 +21,13 @@ function abrir(rota: string, ...extras: Parameters<typeof servidor.use>) {
   return renderizarRotas(rotasAdmCalendario, rota)
 }
 
-async function abrirNovoEspecial(...extras: Parameters<typeof servidor.use>) {
-  const retorno = abrir('/adm/calendario/eventos/novo?data=2026-10-17', ...extras)
-  await userEvent.selectOptions(await screen.findByLabelText('Tipo'), 'EVENTO_ESPECIAL')
+async function abrirNovoDoTipo(tipo: string, ...extras: Parameters<typeof servidor.use>) {
+  const retorno = abrir(`/adm/calendario/eventos/novo?data=2026-10-17&tipo=${tipo}`, ...extras)
+  await screen.findByLabelText('Nome')
   return retorno
 }
+
+const abrirNovoEspecial = (...extras: Parameters<typeof servidor.use>) => abrirNovoDoTipo('EVENTO_ESPECIAL', ...extras)
 
 const pontosDeIr = () => screen.getByLabelText('Pontos por ir ao evento')
 const pontosDoUniforme = () => screen.getByLabelText('Pontos por usar o uniforme')
@@ -46,8 +48,7 @@ describe('Evento especial · formulário novo', () => {
   })
 
   it('outros tipos não mostram o grupo de uniforme e pontos', async () => {
-    await abrirNovoEspecial()
-    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'EVENTO')
+    await abrirNovoDoTipo('EVENTO')
 
     expect(screen.queryByRole('group', { name: 'Uniforme e pontos' })).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Pontos por ir ao evento')).not.toBeInTheDocument()
@@ -195,7 +196,7 @@ describe('Evento especial · formulário novo', () => {
   it('evento de outro tipo não leva uniforme nem pontos na gravação', async () => {
     let corpo: Record<string, unknown> = {}
     const criado = caixa(criarEvento(98, { id: uuid(899) }))
-    abrir('/adm/calendario/eventos/novo?data=2026-10-17', handlerEvento(criado), handlerCriarEvento([], (c) => (corpo = c as Record<string, unknown>)))
+    abrir('/adm/calendario/eventos/novo?data=2026-10-17&tipo=EVENTO', handlerEvento(criado), handlerCriarEvento([], (c) => (corpo = c as Record<string, unknown>)))
     await userEvent.type(await screen.findByLabelText('Nome'), 'Jantar')
 
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
