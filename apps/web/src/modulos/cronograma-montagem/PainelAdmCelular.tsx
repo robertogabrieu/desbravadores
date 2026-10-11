@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { Classe } from '../../api/leitura'
-import type { CronogramaDaMontagem, Montagem } from '../../api/montagem'
+import type { CronogramaDaMontagem, DataDaMontagem, Montagem } from '../../api/montagem'
 import { Abas } from '../../ui/Abas'
 import { BarraProgresso } from '../../ui/BarraProgresso'
 import { Botao } from '../../ui/Botao'
@@ -15,8 +15,8 @@ import { FolhaEmQualData } from './FolhaEmQualData'
 import { AULA_NOVA, FormularioAula, aulaEmEdicaoDaData, type AulaEmEdicao } from './FormularioAula'
 import { SeloDoCronograma } from './SeloDoCronograma'
 import { aceitaRequisitoNovo, chaveDoMes, diaComDadosSomeAoTirar, diaMes, mesPorExtenso } from './datas'
-import { aulasDaData, progressoDoLado, unirMontagem } from './unida'
-import type { DataUnida, RequisitoUnido } from './unida'
+import { montarVista, progressoDoLado } from './vista'
+import type { RequisitoComLado } from './vista'
 import { useAcoesDeMontagem } from './useAcoesDeMontagem'
 
 interface Propriedades {
@@ -44,8 +44,8 @@ const QUEM_MONTA = { ADM: 'Adm', INSTRUTOR: 'Instrutores da classe' } as const
 
 const plural = (quantidade: number, um: string, varios: string) => (quantidade === 1 ? `1 ${um}` : `${quantidade} ${varios}`)
 
-function agruparPorMes(datas: DataUnida[]): { chave: string; datas: DataUnida[] }[] {
-  const meses: { chave: string; datas: DataUnida[] }[] = []
+function agruparPorMes(datas: DataDaMontagem[]): { chave: string; datas: DataDaMontagem[] }[] {
+  const meses: { chave: string; datas: DataDaMontagem[] }[] = []
   for (const dado of datas) {
     const chave = chaveDoMes(dado.data)
     const ultimo = meses[meses.length - 1]
@@ -76,7 +76,7 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
     if (colocacao) confirmacao.current?.focus()
   }, [colocacao])
 
-  const unida = unirMontagem(montagem)
+  const unida = montarVista(montagem)
   const par = unida.temAvancada
   const requisitoPorId = new Map(unida.requisitos.map((requisito) => [requisito.id, requisito]))
   const folhaPara = (folhaParaId && requisitoPorId.get(folhaParaId)) || null
@@ -89,16 +89,16 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
   const proximo = semData.find((requisito) => requisito.id !== colocacao?.requisitoId) ?? null
   const publicado = cronograma.status === 'PUBLICADO'
 
-  function abrirFolha(requisito: RequisitoUnido) {
+  function abrirFolha(requisito: RequisitoComLado) {
     setDesfeito(null)
     setFolhaParaId(requisito.id)
   }
 
   /** Sem data antes, desfazer é tirar; com data, ela precisa aceitar o requisito de volta e não ter sido apagada com dados próprios. */
-  function desfazerSeguro(requisito: RequisitoUnido, anterior: string | null): boolean {
+  function desfazerSeguro(requisito: RequisitoComLado, anterior: string | null): boolean {
     if (anterior === null) return true
     const dado = unida.datas.find((item) => item.data === anterior)
-    return dado !== undefined && aceitaRequisitoNovo(montagem, dado, requisito.lado) && !diaComDadosSomeAoTirar(montagem, dado, requisito.lado)
+    return dado !== undefined && aceitaRequisitoNovo(montagem, dado, [requisito.classeId]) && !diaComDadosSomeAoTirar(montagem, dado)
   }
 
   async function colocarPelaFolha(data: string) {
@@ -123,13 +123,13 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
     setDesfeito(anterior ? `${codigo} voltou para ${diaMes(anterior)}` : `${codigo} voltou a ficar sem data`)
   }
 
-  async function tirar(requisito: RequisitoUnido) {
+  async function tirar(requisito: RequisitoComLado) {
     setDesfeito(null)
     if (await acoes.tirar(requisito.id)) setColocacao(null)
   }
 
-  async function removerAula(dado: DataUnida) {
-    if (await acoes.removerAulas(aulasDaData(dado))) setColocacao(null)
+  async function removerAula(dado: DataDaMontagem) {
+    if (dado.aulaId !== null && (await acoes.removerAula(dado.aulaId))) setColocacao(null)
   }
 
   async function publicar() {
@@ -140,7 +140,7 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
   }
 
   async function salvarAula(aula: AulaEmEdicao, data: string): Promise<boolean> {
-    return aula.aulaIds.length > 0 ? acoes.editarAulas(aula.aulaIds, aula.dados) : acoes.criarAula(data, aula.dados)
+    return aula.aulaId !== null ? acoes.editarAula(aula.aulaId, aula.dados) : acoes.criarAula(data, aula.dados)
   }
 
   function atualizarDepoisDoErro() {
@@ -152,7 +152,7 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
 
   const faixaDeErro = acoes.erro && <FaixaDeMontagem erro={acoes.erro} aoAtualizar={atualizarDepoisDoErro} />
 
-  function listaDeRequisitos(requisitos: RequisitoUnido[]) {
+  function listaDeRequisitos(requisitos: RequisitoComLado[]) {
     if (requisitos.length === 0) {
       return vista === 'sem-data' ? (
         <EstadoVazio titulo="Todos os requisitos têm data" descricao="Confira as datas em “Por data” e publique quando quiser." />

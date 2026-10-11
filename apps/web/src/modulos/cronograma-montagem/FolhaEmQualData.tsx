@@ -8,8 +8,9 @@ import { FolhaLateral } from '../../ui/FolhaLateral'
 import { Selo } from '../../ui/Selo'
 import { EtiquetaDoLado } from './EtiquetaDoLado'
 import { MedidorDeOcupacao } from './MedidorDeOcupacao'
-import { contagemDaData } from './unida'
-import type { DataUnida, RequisitoUnido, VistaUnida } from './unida'
+import type { DataDaMontagem } from '../../api/montagem'
+import { classeDada, contagemDaData } from './vista'
+import type { RequisitoComLado, VistaDoPar } from './vista'
 import {
   aceitaRequisitoNovo,
   chaveDoMes,
@@ -23,10 +24,10 @@ import {
 } from './datas'
 
 interface Propriedades {
-  requisito: RequisitoUnido
+  requisito: RequisitoComLado
   /** Regular com avançada: a folha mostra a etiqueta do requisito e o que cada data já tem das duas classes. */
-  vista?: VistaUnida
-  datas: DataUnida[]
+  vista?: VistaDoPar
+  datas: DataDaMontagem[]
   datasLivres: boolean
   desabilitado: boolean
   /** Faixa de erro da gravação, mostrada dentro da folha para não ficar escondida atrás dela. */
@@ -68,16 +69,16 @@ interface Recusa {
 }
 
 /** Por que o requisito não pode ir para esta data; `null` quando pode. Mesma regra do "Colocar aqui". */
-function recusa(requisito: RequisitoUnido, dado: DataUnida, datasLivres: boolean): Recusa | null {
+function recusa(requisito: RequisitoComLado, dado: DataDaMontagem, datasLivres: boolean): Recusa | null {
   if (requisito.data === dado.data) return { curta: 'o requisito já está nesta data', longa: 'O requisito já está nesta data.' }
-  if (aceitaRequisitoNovo({ datasLivres }, dado, requisito.lado)) return null
-  if (dataBloqueada(dado, requisito.lado)) {
+  if (aceitaRequisitoNovo({ datasLivres }, dado, [requisito.classeId])) return null
+  if (dataBloqueada(dado)) {
     const eventos = dado.situacao.eventos.join(', ')
     return eventos
       ? { curta: `sem classe (${eventos})`, longa: `Sem classe: ${eventos}. ${NAO_DA}` }
       : { curta: 'sem classe', longa: `Sem classe nesta data. ${NAO_DA}` }
   }
-  if (dado.lados[requisito.lado].aulaDada) return { curta: 'classe já dada', longa: `Classe já dada. ${NAO_DA}` }
+  if (classeDada(dado, requisito.classeId)) return { curta: 'classe já dada', longa: `Classe já dada. ${NAO_DA}` }
   return { curta: 'conflito, não há classe nesta data', longa: `Conflito: não há classe nesta data. ${NAO_DA}` }
 }
 
@@ -87,7 +88,7 @@ function quantosRequisitos(quantidade: number): string {
 }
 
 /** Data que aceita o requisito, com regular e avançada somadas: medidor, texto de ocupação e o que cada classe já pôs. */
-function ResumoDaData({ dado, vista }: { dado: DataUnida; vista: VistaUnida }) {
+function ResumoDaData({ dado, vista }: { dado: DataDaMontagem; vista: VistaDoPar }) {
   const { regular, avancada } = contagemDaData(vista, dado)
   return (
     <span className="flex flex-1 flex-col gap-1 text-sm text-texto-2">
@@ -99,7 +100,7 @@ function ResumoDaData({ dado, vista }: { dado: DataUnida; vista: VistaUnida }) {
 }
 
 interface DataAvaliada {
-  dado: DataUnida
+  dado: DataDaMontagem
   recusa: Recusa | null
 }
 
@@ -128,7 +129,7 @@ export function FolhaEmQualData({ requisito, vista, datas, datasLivres, desabili
   const proxima = avaliadas.find((avaliada) => avaliada.recusa === null && avaliada.dado.requisitoIds.length === 0)?.dado.data
   const nenhumaAceita = esconderRecusadas && avaliadas.length > 0 && avaliadas.every((avaliada) => avaliada.recusa !== null)
   const diaDeOrigem = datas.find((dado) => dado.data === requisito.data)
-  const diaQueSome = diaDeOrigem && diaComDadosSomeAoTirar({ datasLivres }, diaDeOrigem, requisito.lado) ? diaDeOrigem : undefined
+  const diaQueSome = diaDeOrigem && diaComDadosSomeAoTirar({ datasLivres }, diaDeOrigem) ? diaDeOrigem : undefined
   const idDoMes = (chave: string) => `${prefixo}-mes-${chave}`
 
   function irParaOMes(chave: string) {

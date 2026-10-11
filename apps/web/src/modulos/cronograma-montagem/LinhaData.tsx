@@ -8,15 +8,16 @@ import { cn } from '../../ui/cn'
 import { EtiquetaDoLado } from './EtiquetaDoLado'
 import { MedidorDeOcupacao } from './MedidorDeOcupacao'
 import { dataBloqueada, detalheDaAula, partesDaData, textoDaData } from './datas'
-import { diaPodeMudar, type DataUnida, type RequisitoUnido } from './unida'
+import type { DataDaMontagem } from '../../api/montagem'
+import { classeDada, diaPodeMudar, type RequisitoComLado } from './vista'
 
 const HACHURA =
   'bg-[repeating-linear-gradient(135deg,var(--color-surface-muted),var(--color-surface-muted)_8px,var(--color-divider)_8px,var(--color-divider)_16px)]'
 
 interface Propriedades {
-  dado: DataUnida
+  dado: DataDaMontagem
   /** Requisitos que estão nesta data (da regular e, no par, da avançada). */
-  requisitos: RequisitoUnido[]
+  requisitos: RequisitoComLado[]
   /** Regular com avançada: cada requisito leva a etiqueta da classe e a data mostra o medidor de ocupação. */
   comAvancada?: boolean
   /** Requisito de campo selecionado e data boa para campo: a linha fica verde. */
@@ -25,12 +26,12 @@ interface Propriedades {
   desabilitada: boolean
   /** "Colocar aqui" (A7) ou "+" (I3b): a tela decide se a data admite. */
   acaoDaData?: ReactNode
-  aoTirar: (requisito: RequisitoUnido) => void
+  aoTirar: (requisito: RequisitoComLado) => void
   /** Só no celular: "Mover" ao lado de cada requisito de uma data em conflito. */
-  aoMover?: (requisito: RequisitoUnido) => void
-  aoEditar: (dado: DataUnida) => void
+  aoMover?: (requisito: RequisitoComLado) => void
+  aoEditar: (dado: DataDaMontagem) => void
   /** "Remover aula" (com confirmação) nas aulas ainda não dadas. */
-  aoRemoverAula: (dado: DataUnida) => void
+  aoRemoverAula: (dado: DataDaMontagem) => void
 }
 
 export function LinhaData({ dado, requisitos, comAvancada = false, destaqueCampo = false, desabilitada, acaoDaData, aoTirar, aoMover, aoEditar, aoRemoverAula }: Propriedades) {
@@ -40,8 +41,8 @@ export function LinhaData({ dado, requisitos, comAvancada = false, destaqueCampo
   const detalhe = detalheDaAula(dado)
   const bloqueada = dataBloqueada(dado)
   const podeEditar = diaPodeMudar(dado)
-  // Classe dada só em uma das duas: o selo vai nos requisitos dela; nos dois lados, na data.
-  const dadaNosDois = dado.lados.REGULAR.aulaDada && (!comAvancada || dado.lados.AVANCADA.aulaDada)
+  // Classe dada só em uma das duas: o selo vai nos requisitos dela; nas duas, na data.
+  const dadaNosDois = dado.classeIdsComAulaDada.length === (comAvancada ? 2 : 1)
 
   return (
     <li
@@ -71,20 +72,20 @@ export function LinhaData({ dado, requisitos, comAvancada = false, destaqueCampo
         {detalhe && <span className="text-sm text-texto-2">{detalhe}</span>}
 
         {requisitos.map((requisito) => {
-          const lado = dado.lados[requisito.lado]
+          const dada = classeDada(dado, requisito.classeId)
           return (
           <div key={requisito.id} className="flex items-center gap-2 rounded-controle bg-marca-suave px-3 py-1.5 text-sm font-semibold text-marca">
             {comAvancada && <EtiquetaDoLado lado={requisito.lado} />}
             <span className="min-w-0 flex-1">
               {requisito.codigo} · {requisito.texto}
             </span>
-            {lado.aulaDada && !dadaNosDois && <Selo>Classe dada</Selo>}
-            {aoMover && lado.conflito && !lado.aulaDada && (
+            {dada && !dadaNosDois && <Selo>Classe dada</Selo>}
+            {aoMover && dado.conflito && !dada && (
               <Botao variante="secundario" className="px-3 text-sm" disabled={desabilitada} onClick={() => aoMover(requisito)}>
                 Mover
               </Botao>
             )}
-            {!lado.aulaDada && (
+            {!dada && (
               <button
                 type="button"
                 aria-label={`remover ${requisito.codigo} desta data`}

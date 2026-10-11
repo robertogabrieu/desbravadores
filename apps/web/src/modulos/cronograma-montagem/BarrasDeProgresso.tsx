@@ -1,12 +1,12 @@
 import { BarraProgresso } from '../../ui/BarraProgresso'
-import { progressoDoLado } from './unida'
-import type { Lado, VistaUnida } from './unida'
+import { progressoDoLado } from './vista'
+import type { Lado, VistaDoPar } from './vista'
 
-const nomeDoLado = (vista: VistaUnida, lado: Lado): string =>
+const nomeDoLado = (vista: VistaDoPar, lado: Lado): string =>
   lado === 'REGULAR' ? `Regular · ${vista.nomeDaRegular}` : `Avançada · ${vista.nomeDaAvancada ?? ''}`
 
 /** Duas barras, uma por classe: a da avançada é listrada para não depender da cor. */
-export function BarrasDeProgresso({ vista }: { vista: VistaUnida }) {
+export function BarrasDeProgresso({ vista }: { vista: VistaDoPar }) {
   return (
     <div className="flex flex-col gap-3">
       {(['REGULAR', 'AVANCADA'] as const).map((lado) => {

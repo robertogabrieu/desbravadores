@@ -1,6 +1,6 @@
 import { cn } from '../../ui/cn'
-import { ROTULO_DO_LADO } from './unida'
-import type { Lado } from './unida'
+import { ROTULO_DO_LADO } from './vista'
+import type { Lado } from './vista'
 
 /** "Regular" ou "Avançada", escrita: a da avançada tem borda tracejada, para não depender da cor. */
 export function EtiquetaDoLado({ lado, className }: { lado: Lado; className?: string }) {

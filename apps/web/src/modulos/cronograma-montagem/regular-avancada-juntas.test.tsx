@@ -7,10 +7,9 @@ import { GuardaRota } from '../../sessao/GuardaRota'
 import { criarClasse, handlerClasses } from '../../testes/handlers/leitura'
 import {
   AVANCADA_MONTAGEM,
+  CLASSE_AVANCADA_MONTAGEM,
   CLASSE_MONTAGEM,
-  CRONOGRAMA_AVANCADA_ID,
   CRONOGRAMA_ID,
-  criarAvancadaMontagem,
   criarDataMontagem,
   criarMontagem,
   criarRequisitoAvancada,
@@ -37,29 +36,29 @@ beforeEach(() => {
 
 const CLASSE_AVANCADA = criarClasse({ id: AVANCADA_MONTAGEM.id, nome: 'Amigo da Natureza', tipo: 'AVANCADA', classeBaseId: uuid(100), ordem: 2 })
 
-// Regular: R1 sem data, R3 em 04/10. Avançada: AN1 e AN5 sem data; AN2, AN3 e AN4 em 04/10; AN6 em 25/10.
+// Um cronograma só, o da regular. Regular: R1 sem data, R3 em 04/10. Avançada: AN1 e AN5 sem data; AN2, AN3 e AN4 em 04/10; AN6 em 25/10.
 const R1 = criarRequisitoMontagem(1)
 const R3 = criarRequisitoMontagem(3, { aulaId: uuid(2001), data: '2026-10-04' })
 const AN1 = criarRequisitoAvancada(1)
-const AN2 = criarRequisitoAvancada(2, { data: '2026-10-04' })
-const AN3 = criarRequisitoAvancada(3, { data: '2026-10-04' })
-const AN4 = criarRequisitoAvancada(4, { data: '2026-10-04' })
+const AN2 = criarRequisitoAvancada(2, { aulaId: uuid(2001), data: '2026-10-04' })
+const AN3 = criarRequisitoAvancada(3, { aulaId: uuid(2001), data: '2026-10-04' })
+const AN4 = criarRequisitoAvancada(4, { aulaId: uuid(2001), data: '2026-10-04' })
 const AN5 = criarRequisitoAvancada(5)
-const AN6 = criarRequisitoAvancada(6, { data: '2026-10-25' })
+const AN6 = criarRequisitoAvancada(6, { aulaId: uuid(2002), data: '2026-10-25' })
 
 const DATAS = [
-  criarDataMontagem('2026-10-04', { aulaId: uuid(2001), requisitoIds: [R3.id] }),
+  criarDataMontagem('2026-10-04', { aulaId: uuid(2001), requisitoIds: [R3.id, AN2.id, AN3.id, AN4.id] }),
   criarDataMontagem('2026-10-11', { situacao: situacaoDoDia('2026-10-11', [{ nome: 'Feriado prolongado', tipo: 'SEM_REUNIAO' }]) }),
   criarDataMontagem('2026-10-18'),
-  criarDataMontagem('2026-10-25'),
+  criarDataMontagem('2026-10-25', { aulaId: uuid(2002), requisitoIds: [AN6.id] }),
 ]
 
 /** Regular + avançada: 04/10 cheia (1 + 3), 11/10 bloqueada, 18/10 vazia, 25/10 com 1. */
 function criarPar(parcial: Partial<Montagem> = {}): Montagem {
   return criarMontagem({
-    requisitos: [R1, R3],
+    requisitos: [R1, R3, AN1, AN2, AN3, AN4, AN5, AN6],
     datas: DATAS,
-    avancada: criarAvancadaMontagem([AN1, AN2, AN3, AN4, AN5, AN6], DATAS),
+    avancada: AVANCADA_MONTAGEM,
     ...parcial,
   })
 }
@@ -79,7 +78,7 @@ const rotasInstrutor = [{ element: <GuardaRota papeis={['INSTRUTOR', 'ADM']} />,
 function abrirInstrutor(montagem: Montagem = criarPar(), rota = '/cronograma/montar') {
   const { handlers, registro } = handlersMontagem(montagem)
   servidor.use(
-    ...handlersSessao([criarVinculo('INSTRUTOR', 1, { classes: [CLASSE_MONTAGEM, AVANCADA_MONTAGEM] })]),
+    ...handlersSessao([criarVinculo('INSTRUTOR', 1, { classes: [CLASSE_MONTAGEM, CLASSE_AVANCADA_MONTAGEM] })]),
     handlerClasses([criarClasse(), CLASSE_AVANCADA]),
     ...handlers,
   )
@@ -111,7 +110,7 @@ describe('Regular e avançada · seletor de classe', () => {
 
 describe('Regular e avançada · regular inativa', () => {
   const REGULAR_INATIVA = criarClasse({ ativa: false })
-  const montagemDaAvancada = criarMontagem({ classe: AVANCADA_MONTAGEM, requisitos: [AN1], datas: DATAS })
+  const montagemDaAvancada = criarMontagem({ classe: CLASSE_AVANCADA_MONTAGEM, requisitos: [AN1], datas: DATAS })
 
   it('Adm: a avançada vale sozinha — aparece no seletor pelo próprio nome, e a regular inativa não', async () => {
     abrirAdm(montagemDaAvancada, '/adm/cronogramas', [REGULAR_INATIVA, CLASSE_AVANCADA])
@@ -129,7 +128,7 @@ describe('Regular e avançada · regular inativa', () => {
   it('instrutor: ?classe=<avançada> abre a avançada e o seletor oferece as duas como itens próprios', async () => {
     const { handlers, registro } = handlersMontagem(montagemDaAvancada)
     servidor.use(
-      ...handlersSessao([criarVinculo('INSTRUTOR', 1, { classes: [CLASSE_MONTAGEM, AVANCADA_MONTAGEM] })]),
+      ...handlersSessao([criarVinculo('INSTRUTOR', 1, { classes: [CLASSE_MONTAGEM, CLASSE_AVANCADA_MONTAGEM] })]),
       handlerClasses([REGULAR_INATIVA, CLASSE_AVANCADA]),
       ...handlers,
     )
@@ -230,7 +229,7 @@ describe('Regular e avançada · datas no computador', () => {
     expect(screen.getByText(/Escolhido:/)).toHaveTextContent('Escolhido: Avançada · AN1')
   })
 
-  it('colocar um requisito da avançada chama a API com o cronograma da avançada; o da regular, com o da regular', async () => {
+  it('colocar um requisito da avançada chama o PUT no cronograma único, como o da regular', async () => {
     const registro = abrirAdm()
     const usuario = userEvent.setup()
     await screen.findByRole('heading', { name: 'Requisitos' })
@@ -239,7 +238,7 @@ describe('Regular e avançada · datas no computador', () => {
     await waitFor(() => expect(registro.chamadas).toHaveLength(1))
     expect(registro.chamadas[0]).toMatchObject({
       metodo: 'PUT',
-      caminho: `/api/cronogramas/${CRONOGRAMA_AVANCADA_ID}/requisitos/${AN1.id}`,
+      caminho: `/api/cronogramas/${CRONOGRAMA_ID}/requisitos/${AN1.id}`,
       corpo: { data: '2026-10-18' },
     })
 
@@ -249,13 +248,13 @@ describe('Regular e avançada · datas no computador', () => {
     expect(registro.chamadas[1]).toMatchObject({ metodo: 'PUT', caminho: `/api/cronogramas/${CRONOGRAMA_ID}/requisitos/${R1.id}` })
   })
 
-  it('tirar um requisito da avançada da data chama DELETE no cronograma da avançada', async () => {
+  it('tirar um requisito da avançada da data chama DELETE no cronograma único', async () => {
     const registro = abrirAdm()
     const usuario = userEvent.setup()
     await screen.findByRole('heading', { name: 'Requisitos' })
     await usuario.click(within(linha('2026-10-25')).getByRole('button', { name: `remover ${AN6.codigo} desta data` }))
     await waitFor(() => expect(registro.chamadas).toHaveLength(1))
-    expect(registro.chamadas[0]).toMatchObject({ metodo: 'DELETE', caminho: `/api/cronogramas/${CRONOGRAMA_AVANCADA_ID}/requisitos/${AN6.id}` })
+    expect(registro.chamadas[0]).toMatchObject({ metodo: 'DELETE', caminho: `/api/cronogramas/${CRONOGRAMA_ID}/requisitos/${AN6.id}` })
   })
 })
 
@@ -292,35 +291,13 @@ describe('Regular e avançada · topo e publicação', () => {
     expect(registro.chamadas[0]).toMatchObject({ metodo: 'POST', caminho: '/api/cronogramas' })
     expect(screen.getByText('Amigo + Amigo da Natureza ainda não tem cronograma em ' + (registro.chamadas[0]?.corpo as { anoClube: number }).anoClube)).toBeInTheDocument()
   })
-
-  it('a regular tem cronograma e a avançada não: completa o par uma vez e depois coloca na avançada', async () => {
-    const semCronogramaDaAvancada = criarPar({ avancada: criarAvancadaMontagem([AN1], DATAS, { cronograma: null }) })
-    const registro = abrirAdm(semCronogramaDaAvancada)
-    const usuario = userEvent.setup()
-    await screen.findByRole('heading', { name: 'Requisitos' })
-    registro.responder(criarPar({ avancada: criarAvancadaMontagem([AN1], DATAS) }))
-    await usuario.click(screen.getByRole('button', { name: new RegExp(AN1.texto) }))
-    await usuario.click(within(linha('2026-10-18')).getByRole('button', { name: 'Colocar aqui em 18/10' }))
-    await waitFor(() => expect(registro.chamadas).toHaveLength(2))
-    expect(registro.chamadas[0]).toMatchObject({
-      metodo: 'POST',
-      caminho: '/api/cronogramas',
-      corpo: { classeId: uuid(100), inicio: '2026-01-01', fim: '2026-12-31' },
-    })
-    expect(registro.chamadas[1]).toMatchObject({
-      metodo: 'PUT',
-      caminho: `/api/cronogramas/${CRONOGRAMA_AVANCADA_ID}/requisitos/${AN1.id}`,
-    })
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-  })
 })
 
-/** O par com a classe dada em só um dos lados na data 04/10 (regular: R3; avançada: AN2, AN3, AN4). */
+/** O par com 04/10 já dada pela classe pedida (regular: R3; avançada: AN2, AN3, AN4). */
 function parComClasseDadaSo(lado: 'REGULAR' | 'AVANCADA'): Montagem {
-  const datas = DATAS.map((dado) => (dado.data === '2026-10-04' && lado === 'REGULAR' ? { ...dado, aulaDada: true } : dado))
-  const avancada = criarAvancadaMontagem([AN1, AN2, AN3, AN4, AN5, AN6], DATAS)
-  if (lado === 'AVANCADA') avancada.datas = avancada.datas.map((dado) => (dado.data === '2026-10-04' ? { ...dado, aulaDada: true } : dado))
-  return criarMontagem({ requisitos: [R1, R3], datas, avancada })
+  const classeId = lado === 'REGULAR' ? CLASSE_MONTAGEM.id : AVANCADA_MONTAGEM.id
+  const datas = DATAS.map((dado) => (dado.data === '2026-10-04' ? { ...dado, classeIdsComAulaDada: [classeId] } : dado))
+  return criarPar({ datas })
 }
 
 describe('Regular e avançada · classe dada por lado', () => {
@@ -358,13 +335,31 @@ describe('Regular e avançada · classe dada por lado', () => {
     expect(within(linha('2026-10-04')).getByRole('button', { name: 'Colocar aqui em 04/10' })).toBeInTheDocument()
   })
 
-  it('computador: conflito que vem só da avançada aparece na linha', async () => {
-    const datas = [criarDataMontagem('2026-10-25', { situacao: situacaoDoDia('2026-10-25', [{ nome: 'Ensaio da investidura', tipo: 'EVENTO' }]) })]
-    const base = criarAvancadaMontagem([AN6], datas)
-    const avancada = { ...base, datas: base.datas.map((dado) => ({ ...dado, conflito: true })) }
-    abrirAdm(criarMontagem({ requisitos: [R1], datas, avancada }))
+  it('computador: aula dada só da avançada trava editar e remover o dia; sem classe dada, aparecem', async () => {
+    abrirAdm(parComClasseDadaSo('AVANCADA'))
     await screen.findByRole('heading', { name: 'Requisitos' })
-    expect(within(linha('2026-10-25')).getByText(/Conflito:/)).toBeInTheDocument()
+    const dia = within(linha('2026-10-04'))
+    expect(dia.queryByRole('button', { name: 'Editar horário, local e título' })).not.toBeInTheDocument()
+    expect(dia.queryByRole('button', { name: 'Remover dia de classe' })).not.toBeInTheDocument()
+  })
+
+  it('computador: sem aula dada, editar e remover o dia aparecem e remover faz uma chamada só', async () => {
+    const registro = abrirAdm()
+    const usuario = userEvent.setup()
+    await screen.findByRole('heading', { name: 'Requisitos' })
+    const dia = within(linha('2026-10-04'))
+    expect(dia.getByRole('button', { name: 'Editar horário, local e título' })).toBeInTheDocument()
+    await usuario.click(dia.getByRole('button', { name: 'Remover dia de classe' }))
+    await usuario.click(screen.getByRole('button', { name: 'Remover' }))
+    await waitFor(() => expect(registro.chamadas).toHaveLength(1))
+    expect(registro.chamadas[0]).toMatchObject({ metodo: 'DELETE', caminho: `/api/aulas-planejadas/${uuid(2001)}` })
+  })
+
+  it('computador: conflito é um só por data e aparece na linha', async () => {
+    const datas = [criarDataMontagem('2026-10-25', { aulaId: uuid(2002), requisitoIds: [AN6.id], conflito: true, situacao: situacaoDoDia('2026-10-25', [{ nome: 'Ensaio da investidura', tipo: 'EVENTO' }]) })]
+    abrirAdm(criarMontagem({ requisitos: [R1, AN6], datas, avancada: AVANCADA_MONTAGEM }))
+    await screen.findByRole('heading', { name: 'Requisitos' })
+    expect(within(linha('2026-10-25')).getAllByText(/Conflito:/)).toHaveLength(1)
   })
 
   it('instrutor: só a avançada deu aula — sem remover nos chips dela e a folha "Adicionar" só lista a regular', async () => {
@@ -400,24 +395,14 @@ describe('Regular e avançada · classe dada por lado', () => {
   })
 })
 
-describe('Regular e avançada · completar o par', () => {
-  it('colocar vários da avançada de uma vez cria o par uma vez, com o ano do clube, e grava todos no id devolvido', async () => {
-    const regularComAno = { ...criarMontagem().cronograma!, anoClube: 2031 }
-    const semAvancada = criarPar({ cronograma: regularComAno, avancada: criarAvancadaMontagem([AN1, AN5], DATAS, { cronograma: null }) })
-    const registro = abrirInstrutor(semAvancada)
-    const usuario = userEvent.setup()
-    await screen.findByRole('progressbar', { name: /Regular/ })
-    registro.responder(criarPar({ cronograma: regularComAno, avancada: criarAvancadaMontagem([AN1, AN5], DATAS) }))
-    await usuario.click(within(linha('2026-10-18')).getByRole('button', { name: 'Adicionar requisito nesta data' }))
-    const folha = within(screen.getByRole('dialog'))
-    await usuario.click(folha.getByRole('button', { name: new RegExp(AN1.texto) }))
-    await usuario.click(folha.getByRole('button', { name: new RegExp(AN5.texto) }))
-    await usuario.click(folha.getByRole('button', { name: 'Adicionar 2 requisitos' }))
-    await waitFor(() => expect(registro.chamadas).toHaveLength(3))
-    expect(registro.chamadas.filter((chamada) => chamada.metodo === 'POST')).toHaveLength(1)
-    expect(registro.chamadas[0]).toMatchObject({ metodo: 'POST', caminho: '/api/cronogramas', corpo: { anoClube: 2031, inicio: '2026-01-01', fim: '2026-12-31' } })
-    expect(registro.chamadas[1]).toMatchObject({ caminho: `/api/cronogramas/${CRONOGRAMA_AVANCADA_ID}/requisitos/${AN1.id}` })
-    expect(registro.chamadas[2]).toMatchObject({ caminho: `/api/cronogramas/${CRONOGRAMA_AVANCADA_ID}/requisitos/${AN5.id}` })
+describe('Regular e avançada · agrupadas', () => {
+  it('agrupadas não formam par: ?classe=<avançada> abre a própria, sem avançada junto', async () => {
+    const agrupada = criarClasse({ id: uuid(104), nome: 'Agrupadas (Amigo a Guia)', trilha: 'AGRUPADAS', ordem: 13 })
+    const agrupadaAvancada = criarClasse({ id: uuid(105), nome: 'Agrupadas — avançada', tipo: 'AVANCADA', trilha: 'AGRUPADAS', classeBaseId: uuid(104), ordem: 14 })
+    const montagem = criarMontagem({ classe: { ...CLASSE_AVANCADA_MONTAGEM, id: agrupadaAvancada.id, trilha: 'AGRUPADAS' }, datasLivres: true })
+    const registro = abrirAdm(montagem, `/adm/cronogramas?classe=${agrupadaAvancada.id}`, [agrupada, agrupadaAvancada])
+    await waitFor(() => expect(registro.classesLidas).toEqual([agrupadaAvancada.id]))
+    expect(screen.queryByRole('tab', { name: 'Avançada' })).not.toBeInTheDocument()
   })
 })
 
@@ -435,7 +420,7 @@ describe('Regular e avançada · instrutor', () => {
     expect(registro.chamadas[0]).toMatchObject({ metodo: 'POST', caminho: `/api/cronogramas/${CRONOGRAMA_ID}/enviar` })
   })
 
-  it('"Sem data" junta as duas classes com etiqueta; as datas mostram etiqueta e medidor; colocar usa o cronograma da avançada', async () => {
+  it('"Sem data" junta as duas classes com etiqueta; as datas mostram etiqueta e medidor; colocar usa o cronograma único', async () => {
     const registro = abrirInstrutor()
     const usuario = userEvent.setup()
     await screen.findByRole('progressbar', { name: 'Avançada · Amigo da Natureza — 4 de 6 com data' })
@@ -448,7 +433,7 @@ describe('Regular e avançada · instrutor', () => {
     await usuario.click(botaoAvancado)
     await usuario.click(await screen.findByRole('button', { name: /18\/10/ }))
     await waitFor(() => expect(registro.chamadas).toHaveLength(1))
-    expect(registro.chamadas[0]).toMatchObject({ caminho: `/api/cronogramas/${CRONOGRAMA_AVANCADA_ID}/requisitos/${AN1.id}`, corpo: { data: '2026-10-18' } })
+    expect(registro.chamadas[0]).toMatchObject({ caminho: `/api/cronogramas/${CRONOGRAMA_ID}/requisitos/${AN1.id}`, corpo: { data: '2026-10-18' } })
   })
 
   it('?classe=<avançada> abre a regular', async () => {
@@ -490,7 +475,7 @@ describe('Regular e avançada · celular', () => {
     expect(within(vazia).getByText('Nenhum requisito ainda')).toBeInTheDocument()
     await usuario.click(vazia)
     await waitFor(() => expect(registro.chamadas).toHaveLength(1))
-    expect(registro.chamadas[0]).toMatchObject({ caminho: `/api/cronogramas/${CRONOGRAMA_AVANCADA_ID}/requisitos/${AN1.id}` })
+    expect(registro.chamadas[0]).toMatchObject({ caminho: `/api/cronogramas/${CRONOGRAMA_ID}/requisitos/${AN1.id}` })
   })
 
   it('"Próximo sem data" percorre os sem data das duas classes', async () => {

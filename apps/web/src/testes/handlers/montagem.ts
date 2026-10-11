@@ -1,7 +1,7 @@
 import { MARCACOES_PADRAO, situacaoDaData, type TIPOS_EVENTO } from '@desbravadores/shared'
 import { HttpResponse, http } from 'msw'
 import type { HttpHandler } from 'msw'
-import type { AvancadaDaMontagem, DataDaMontagem, Montagem, RequisitoDaMontagem } from '../../api/montagem'
+import type { DataDaMontagem, Montagem, RequisitoDaMontagem } from '../../api/montagem'
 import { uuid } from './sessao'
 
 export const CLASSE_MONTAGEM = { id: uuid(100), nome: 'Amigo', tipo: 'REGULAR', trilha: 'INDIVIDUAL', corToken: '--classe-amigo' } as const
@@ -15,6 +15,7 @@ export function criarRequisitoMontagem(n: number, parcial: Partial<RequisitoDaMo
     texto: `Requisito ${n}`,
     campo: false,
     secaoCodigo: 'S1',
+    classeId: CLASSE_MONTAGEM.id,
     aulaId: null,
     data: null,
     ...parcial,
@@ -38,7 +39,7 @@ export function criarDataMontagem(data: string, parcial: Partial<DataDaMontagem>
     requisitoIds: [],
     situacao: situacaoDoDia(data),
     conflito: false,
-    aulaDada: false,
+    classeIdsComAulaDada: [],
     ...parcial,
   }
 }
@@ -65,33 +66,14 @@ export function criarMontagem(parcial: Partial<Montagem> = {}): Montagem {
   }
 }
 
-export const AVANCADA_MONTAGEM = { id: uuid(101), nome: 'Amigo da Natureza', tipo: 'AVANCADA', trilha: 'INDIVIDUAL', corToken: '--classe-amigo' } as const
-export const CRONOGRAMA_AVANCADA_ID = uuid(801)
+/** A avançada que anda com a regular no cronograma único (par ativo). */
+export const AVANCADA_MONTAGEM = { id: uuid(101), nome: 'Amigo da Natureza' }
+/** A mesma avançada como classe de leitura, para quando a montagem é dela (regular inativa) ou para o vínculo do instrutor. */
+export const CLASSE_AVANCADA_MONTAGEM = { ...AVANCADA_MONTAGEM, tipo: 'AVANCADA', trilha: 'INDIVIDUAL', corToken: '--classe-amigo' } as const
 
-/** Requisito da avançada (ids a partir de 3000, para não colidir com os da regular). */
+/** Requisito da avançada (ids a partir de 3000, para não colidir com os da regular): vive no cronograma da regular. */
 export const criarRequisitoAvancada = (n: number, parcial: Partial<RequisitoDaMontagem> = {}): RequisitoDaMontagem =>
-  criarRequisitoMontagem(2000 + n, { codigo: `AN${n}`, texto: `Requisito avançado ${n}`, ...parcial })
-
-/** O bloco `avancada` da montagem: as datas acompanham as da regular, uma a uma, com os requisitos da avançada em cada uma. */
-export function criarAvancadaMontagem(
-  requisitos: RequisitoDaMontagem[],
-  datasDaRegular: DataDaMontagem[],
-  parcial: Partial<AvancadaDaMontagem> = {},
-): AvancadaDaMontagem {
-  return {
-    classe: AVANCADA_MONTAGEM,
-    cronograma: { id: CRONOGRAMA_AVANCADA_ID, status: 'RASCUNHO' },
-    requisitos,
-    datas: datasDaRegular.map((dado) => ({
-      data: dado.data,
-      aulaId: null,
-      aulaDada: dado.aulaDada,
-      conflito: false,
-      requisitoIds: requisitos.filter((requisito) => requisito.data === dado.data).map((requisito) => requisito.id),
-    })),
-    ...parcial,
-  }
-}
+  criarRequisitoMontagem(2000 + n, { codigo: `AN${n}`, texto: `Requisito avançado ${n}`, classeId: AVANCADA_MONTAGEM.id, ...parcial })
 
 export interface ChamadaDeMontagem {
   metodo: string
@@ -189,7 +171,7 @@ export function criarMontagemDeExemplo(parcial: Partial<Montagem> = {}): Montage
         conflito: true,
         situacao: situacaoDoDia('2026-10-25', [{ nome: 'Ensaio da investidura', tipo: 'EVENTO' }]),
       }),
-      criarDataMontagem('2026-11-01', { aulaId: uuid(2003), requisitoIds: [REQ_DA_AULA_DADA.id], aulaDada: true }),
+      criarDataMontagem('2026-11-01', { aulaId: uuid(2003), requisitoIds: [REQ_DA_AULA_DADA.id], classeIdsComAulaDada: [CLASSE_MONTAGEM.id] }),
     ],
     ...parcial,
   })

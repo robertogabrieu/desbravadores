@@ -4,21 +4,21 @@ import { Botao } from '../../ui/Botao'
 import { Campo } from '../../ui/Campo'
 import { CampoData } from '../../ui/CampoData'
 import { FolhaLateral } from '../../ui/FolhaLateral'
-import { aulasDaData, type DataUnida } from './unida'
+import type { DataDaMontagem } from '../../api/montagem'
 import type { DadosDaAula } from './useAcoesDeMontagem'
 
 export interface AulaEmEdicao {
   /** Preenchido ao criar (Agrupadas): a data é escolhida no formulário. */
   data: string | null
-  /** As aulas que a folha grava: uma por classe que tem aula na data; vazio é aula nova. */
-  aulaIds: string[]
+  /** A aula do encontro que a folha grava; null é aula nova. */
+  aulaId: string | null
   dados: DadosDaAula
 }
 
-export const AULA_NOVA: AulaEmEdicao = { data: null, aulaIds: [], dados: { horario: null, local: null, titulo: null } }
+export const AULA_NOVA: AulaEmEdicao = { data: null, aulaId: null, dados: { horario: null, local: null, titulo: null } }
 
-export function aulaEmEdicaoDaData(dado: DataUnida): AulaEmEdicao {
-  return { data: dado.data, aulaIds: aulasDaData(dado), dados: { horario: dado.horario, local: dado.local, titulo: dado.titulo } }
+export function aulaEmEdicaoDaData(dado: DataDaMontagem): AulaEmEdicao {
+  return { data: dado.data, aulaId: dado.aulaId, dados: { horario: dado.horario, local: dado.local, titulo: dado.titulo } }
 }
 
 interface Propriedades {
@@ -30,9 +30,9 @@ interface Propriedades {
 
 const vazioParaNulo = (texto: string): string | null => (texto.trim() === '' ? null : texto.trim())
 
-/** Folha de horário, local e título de uma aula; sem `aulaIds` é aula nova e pede também a data. */
+/** Folha de horário, local e título de uma aula; sem `aulaId` é aula nova e pede também a data. */
 export function FormularioAula({ aula, desabilitado, aoSalvar, aoFechar }: Propriedades) {
-  const nova = aula.aulaIds.length === 0
+  const nova = aula.aulaId === null
   const [data, setData] = useState(aula.data ?? '')
   const [horario, setHorario] = useState(aula.dados.horario ?? '')
   const [local, setLocal] = useState(aula.dados.local ?? '')

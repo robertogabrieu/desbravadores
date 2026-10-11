@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { Classe } from '../../api/leitura'
-import type { CronogramaDaMontagem, Montagem } from '../../api/montagem'
+import type { CronogramaDaMontagem, DataDaMontagem, Montagem } from '../../api/montagem'
 import { useLarguraMenorQue } from '../../layouts/useLarguraMenorQue'
 import { Botao } from '../../ui/Botao'
 import { Abas } from '../../ui/Abas'
@@ -20,8 +20,8 @@ import { OrdemDasDatas } from './OrdemDasDatas'
 import { PainelAdmCelular } from './PainelAdmCelular'
 import { SeloDoCronograma } from './SeloDoCronograma'
 import { aceitaRequisitoNovo, diaMes } from './datas'
-import { ROTULO_DO_LADO, aulasDaData, ordenarPorVazias, unirMontagem } from './unida'
-import type { Lado, RequisitoUnido } from './unida'
+import { ROTULO_DO_LADO, montarVista, ordenarPorVazias } from './vista'
+import type { Lado, RequisitoComLado } from './vista'
 import { useAcoesDeMontagem } from './useAcoesDeMontagem'
 
 interface Propriedades {
@@ -45,7 +45,7 @@ export function PainelAdm(propriedades: Propriedades) {
 /** Computador: requisitos à esquerda, datas à direita; escolhe um requisito e "Colocar aqui" numa data. */
 function PainelAdmComputador({ montagem, cronograma, classe, ano, aoAtualizar }: Propriedades) {
   const acoes = useAcoesDeMontagem(montagem.classe.id, ano, cronograma.id, montagem)
-  const vista = unirMontagem(montagem)
+  const vista = montarVista(montagem)
   const par = vista.temAvancada
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null)
   const [filtro, setFiltro] = useState<Filtro>('sem-data')
@@ -76,11 +76,15 @@ function PainelAdmComputador({ montagem, cronograma, classe, ano, aoAtualizar }:
 
   const faixaDeErro = acoes.erro && <FaixaDeMontagem erro={acoes.erro} aoAtualizar={() => { acoes.limparErro(); aoAtualizar() }} />
 
-  async function salvarAula(aula: AulaEmEdicao, data: string): Promise<boolean> {
-    return aula.aulaIds.length > 0 ? acoes.editarAulas(aula.aulaIds, aula.dados) : acoes.criarAula(data, aula.dados)
+  async function removerAula(dado: DataDaMontagem) {
+    if (dado.aulaId !== null) await acoes.removerAula(dado.aulaId)
   }
 
-  function cartaoDoRequisito(requisito: RequisitoUnido) {
+  async function salvarAula(aula: AulaEmEdicao, data: string): Promise<boolean> {
+    return aula.aulaId !== null ? acoes.editarAula(aula.aulaId, aula.dados) : acoes.criarAula(data, aula.dados)
+  }
+
+  function cartaoDoRequisito(requisito: RequisitoComLado) {
     return (
       <button
         key={requisito.id}
@@ -194,10 +198,10 @@ function PainelAdmComputador({ montagem, cronograma, classe, ano, aoAtualizar }:
                   destaqueCampo={Boolean(selecionado?.campo) && dado.situacao.bomParaCampo}
                   desabilitada={acoes.ocupada}
                   aoTirar={(requisito) => void acoes.tirar(requisito.id)}
-                  aoRemoverAula={(aula) => void acoes.removerAulas(aulasDaData(aula))}
+                  aoRemoverAula={(aula) => void removerAula(aula)}
                   aoEditar={(aula) => setAulaEmEdicao(aulaEmEdicaoDaData(aula))}
                   acaoDaData={
-                    aceitaRequisitoNovo(montagem, dado, selecionado?.lado) && selecionado?.data !== dado.data && (
+                    aceitaRequisitoNovo(montagem, dado, selecionado ? [selecionado.classeId] : vista.classeIds) && selecionado?.data !== dado.data && (
                       <Botao
                         variante="secundario"
                         aria-label={`Colocar aqui em ${diaMes(dado.data)}`}

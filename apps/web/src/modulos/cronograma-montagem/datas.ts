@@ -1,5 +1,4 @@
 import type { DataDaMontagem } from '../../api/montagem'
-import type { DataUnida, Lado } from './unida'
 
 const DIAS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'] as const
 const MESES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'] as const
@@ -35,18 +34,9 @@ export function partesDaData(data: string): { semana: string; dia: string; mes: 
   return { semana, dia: data.slice(8, 10), mes: MESES[Number(data.slice(5, 7)) - 1] ?? '' }
 }
 
-const bloqueadaPelaAula = ({ situacao }: DataDaMontagem, aulaId: string | null): boolean =>
+/** Dia sem classe: o dia não tem classe e (nada marcado nele ou algum evento tira a classe). Férias com classe marcada segue aberta. */
+export const dataBloqueada = ({ situacao, aulaId }: DataDaMontagem): boolean =>
   !situacao.temClasse && (aulaId === null || !situacao.classeLiberada)
-
-/**
- * Dia sem classe: o dia não tem classe e (nada marcado nele ou algum evento tira a classe). Férias com classe marcada segue aberta.
- * A aula marcada vale por classe: com `lado`, só a daquele lado; sem, o dia só é bloqueado se as duas classes o recusam.
- */
-export function dataBloqueada(dado: DataDaMontagem | DataUnida, lado?: Lado): boolean {
-  const aulaDoLado = (doLado: Lado) => ('lados' in dado ? dado.lados[doLado].aulaId : dado.aulaId)
-  if (lado) return bloqueadaPelaAula(dado, aulaDoLado(lado))
-  return bloqueadaPelaAula(dado, aulaDoLado('REGULAR')) && bloqueadaPelaAula(dado, aulaDoLado('AVANCADA'))
-}
 
 /** Nome(s) do evento + rótulo pelas marcações; vazio quando a data não tem nada de especial. */
 export function textoDaData(dado: DataDaMontagem): string {
@@ -79,16 +69,16 @@ export const detalheDaAula = (d: DataDaMontagem): string => [d.horario, d.local,
 
 /**
  * Colocar requisito novo na data: fora bloqueio e aula dada; nas individuais, também fora data em conflito (a API responde 422).
- * A aula dada e o conflito valem por classe: com `lado`, só esse; sem, basta uma das duas aceitar.
+ * A aula dada vale por classe: aceita se alguma das `classeIds` ainda não deu aula nela.
  */
-export function aceitaRequisitoNovo(montagem: { datasLivres: boolean }, dado: DataUnida, lado?: Lado): boolean {
-  const aceita = (doLado: Lado) => !dataBloqueada(dado, doLado) && !dado.lados[doLado].aulaDada && (montagem.datasLivres || !dado.lados[doLado].conflito)
-  return lado ? aceita(lado) : aceita('REGULAR') || aceita('AVANCADA')
+export function aceitaRequisitoNovo(montagem: { datasLivres: boolean }, dado: DataDaMontagem, classeIds: string[]): boolean {
+  if (dataBloqueada(dado) || (!montagem.datasLivres && dado.conflito)) return false
+  return classeIds.some((classeId) => !dado.classeIdsComAulaDada.includes(classeId))
 }
 
 /**
- * Nas individuais, tirar o último requisito de uma classe apaga o dia de classe dela: pesa quando o dia tem horário, local
- * ou título próprios, que se perdem. A conta é por classe: o requisito da outra na mesma data não segura a aula.
+ * Nas individuais, tirar o último requisito do dia apaga o dia de classe: pesa quando o dia tem horário, local
+ * ou título próprios, que se perdem. A conta é do total de requisitos da aula, das duas classes.
  */
-export const diaComDadosSomeAoTirar = (montagem: { datasLivres: boolean }, dado: DataUnida, lado: Lado): boolean =>
-  !montagem.datasLivres && dado.lados[lado].aulaId !== null && dado.lados[lado].quantidade === 1 && detalheDaAula(dado) !== ''
+export const diaComDadosSomeAoTirar = (montagem: { datasLivres: boolean }, dado: DataDaMontagem): boolean =>
+  !montagem.datasLivres && dado.aulaId !== null && dado.requisitoIds.length === 1 && detalheDaAula(dado) !== ''

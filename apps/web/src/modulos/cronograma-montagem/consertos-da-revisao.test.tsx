@@ -6,7 +6,8 @@ import type { ModoConexao } from '../../offline'
 import { criarClasse, handlerClasses } from '../../testes/handlers/leitura'
 import {
   AVANCADA_MONTAGEM,
-  criarAvancadaMontagem,
+  CLASSE_AVANCADA_MONTAGEM,
+  CLASSE_MONTAGEM,
   criarDataMontagem,
   criarMontagem,
   criarRequisitoAvancada,
@@ -21,7 +22,7 @@ import { servidor } from '../../testes/servidor'
 import { nomeDoPar, parDaClasse, regularDaClasse } from './classes'
 import { aceitaRequisitoNovo, dataBloqueada, diaComDadosSomeAoTirar } from './datas'
 import { rotasAdmCronogramas } from './rotas'
-import { aulasDaData, diaPodeMudar, ordenarPorVazias, unirMontagem } from './unida'
+import { diaPodeMudar, montarVista, ordenarPorVazias } from './vista'
 
 const offline = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao }))
 
@@ -34,8 +35,7 @@ beforeEach(() => {
   offline.modo = 'ONLINE'
 })
 
-const AULA_REGULAR = uuid(2001)
-const AULA_AVANCADA = uuid(2501)
+const AULA = uuid(2001)
 const CLASSE_AVANCADA = criarClasse({ id: AVANCADA_MONTAGEM.id, nome: 'Amigo da Natureza', tipo: 'AVANCADA', classeBaseId: uuid(100), ordem: 2 })
 
 const linha = (data: string) => document.querySelector<HTMLElement>(`li[data-data="${data}"]`) as HTMLElement
@@ -47,23 +47,16 @@ function abrirAdm(montagem: Montagem, rota = '/adm/cronogramas', classes = [cria
   return registro
 }
 
-/** Avançada com a aula de cada data no id pedido (a fixture padrão deixa `aulaId` nulo). */
-function comAulaDaAvancada(montagem: Montagem, aulaId: string | null): Montagem {
-  if (!montagem.avancada) throw new Error('montagem sem avançada')
-  return { ...montagem, avancada: { ...montagem.avancada, datas: montagem.avancada.datas.map((dado) => ({ ...dado, aulaId })) } }
-}
-
-/** Par com a aula de 04/10 já planejada nas duas classes, ou só em uma. */
-function parComAulas(aulas: { regular: string | null; avancada: string | null }, detalhe: { horario?: string } = {}): Montagem {
-  const R1 = criarRequisitoMontagem(1, { aulaId: aulas.regular, data: '2026-10-04' })
-  const AN1 = criarRequisitoAvancada(1, { data: '2026-10-04' })
-  const datas = [criarDataMontagem('2026-10-04', { aulaId: aulas.regular, requisitoIds: aulas.regular ? [R1.id] : [], ...detalhe })]
-  const avancada = criarAvancadaMontagem([AN1], datas)
-  return comAulaDaAvancada(criarMontagem({ requisitos: [R1], datas, avancada }), aulas.avancada)
+/** Par com a aula de 04/10 planejada, um requisito de cada classe nela e, se pedido, as classes que já deram aula. */
+function parComAula(classeIdsComAulaDada: string[] = [], detalhe: { horario?: string } = {}): Montagem {
+  const R1 = criarRequisitoMontagem(1, { aulaId: AULA, data: '2026-10-04' })
+  const AN1 = criarRequisitoAvancada(1, { aulaId: AULA, data: '2026-10-04' })
+  const datas = [criarDataMontagem('2026-10-04', { aulaId: AULA, requisitoIds: [R1.id, AN1.id], classeIdsComAulaDada, ...detalhe })]
+  return criarMontagem({ requisitos: [R1, AN1], datas, avancada: AVANCADA_MONTAGEM })
 }
 
 function primeiraData(montagem: Montagem) {
-  const [dado] = unirMontagem(montagem).datas
+  const [dado] = montarVista(montagem).datas
   if (!dado) throw new Error('montagem sem data')
   return dado
 }
@@ -81,7 +74,7 @@ describe('Agrupadas não formam par', () => {
   })
 
   it('o seletor mostra as duas pelo próprio nome e ?classe=<avançada> abre a montagem dela', async () => {
-    const montagem = criarMontagem({ classe: { ...AVANCADA_MONTAGEM, id: agrupadaAvancada.id, trilha: 'AGRUPADAS' }, datasLivres: true })
+    const montagem = criarMontagem({ classe: { ...CLASSE_AVANCADA_MONTAGEM, id: agrupadaAvancada.id, trilha: 'AGRUPADAS' }, datasLivres: true })
     const registro = abrirAdm(montagem, `/adm/cronogramas?classe=${agrupadaAvancada.id}`, classes)
     const seletor = await screen.findByRole('combobox', { name: 'Classe' })
     await waitFor(() =>
@@ -91,120 +84,106 @@ describe('Agrupadas não formam par', () => {
   })
 })
 
-describe('Conflito da avançada vem do servidor', () => {
+describe('Conflito é um só por data e vem do servidor', () => {
   const evento = situacaoDoDia('2026-10-25', [{ nome: 'Ensaio', tipo: 'EVENTO' }])
 
-  function montar(conflito: boolean) {
-    const AN = criarRequisitoAvancada(1, { data: '2026-10-25' })
-    const datas = [criarDataMontagem('2026-10-25', { situacao: evento })]
-    const base = criarAvancadaMontagem([AN], datas)
-    return criarMontagem({ datas, avancada: { ...base, datas: base.datas.map((dado) => ({ ...dado, conflito })) } })
-  }
-
   it('usa o valor do servidor nos dois sentidos, sem refazer a conta no navegador', () => {
-    const comConflito = primeiraData(montar(true))
-    expect(comConflito.lados.AVANCADA.conflito).toBe(true)
-    expect(comConflito.conflito).toBe(true)
+    const datas = (conflito: boolean) => [criarDataMontagem('2026-10-25', { situacao: evento, conflito })]
+    expect(primeiraData(criarMontagem({ datas: datas(true) })).conflito).toBe(true)
     // Mesmo com a data em evento, o navegador não decide por conta própria.
-    const semConflito = primeiraData(montar(false))
-    expect(semConflito.lados.AVANCADA.conflito).toBe(false)
-    expect(semConflito.conflito).toBe(false)
+    expect(primeiraData(criarMontagem({ datas: datas(false) })).conflito).toBe(false)
+  })
+
+  it('computador: a linha em conflito avisa uma vez, para o encontro', async () => {
+    const AN = criarRequisitoAvancada(1, { aulaId: AULA, data: '2026-10-25' })
+    const datas = [criarDataMontagem('2026-10-25', { aulaId: AULA, situacao: evento, conflito: true, requisitoIds: [AN.id] })]
+    abrirAdm(criarMontagem({ requisitos: [AN], datas, avancada: AVANCADA_MONTAGEM }))
+    await screen.findByRole('heading', { name: 'Requisitos' })
+    expect(within(linha('2026-10-25')).getAllByText(/Conflito:/)).toHaveLength(1)
   })
 })
 
-describe('Data bloqueada por lado', () => {
+describe('Bloqueio é um só por data', () => {
   // Dia sem classe, mas com classe liberada quando há aula marcada (férias com classe marcada).
   const situacao = { ...situacaoDoDia('2026-10-04'), temClasse: false, classeLiberada: true }
 
-  function soAvancadaTemAula() {
-    const datas = [criarDataMontagem('2026-10-04', { situacao })]
-    const avancada = criarAvancadaMontagem([criarRequisitoAvancada(1)], datas)
-    return primeiraData(comAulaDaAvancada(criarMontagem({ requisitos: [criarRequisitoMontagem(1)], datas, avancada }), AULA_AVANCADA))
-  }
-
-  it('não bloqueia a avançada, aceita requisito dela e segue recusando o da regular', () => {
-    const dado = soAvancadaTemAula()
-    expect(dataBloqueada(dado, 'AVANCADA')).toBe(false)
-    expect(dataBloqueada(dado, 'REGULAR')).toBe(true)
-    expect(dataBloqueada(dado)).toBe(false)
-    expect(aceitaRequisitoNovo({ datasLivres: false }, dado, 'AVANCADA')).toBe(true)
-    expect(aceitaRequisitoNovo({ datasLivres: false }, dado, 'REGULAR')).toBe(false)
+  it('com a aula do encontro marcada a data fica aberta para as duas classes; sem aula, fechada', () => {
+    const comAula = primeiraData(criarMontagem({ datas: [criarDataMontagem('2026-10-04', { situacao, aulaId: AULA })] }))
+    const semAula = primeiraData(criarMontagem({ datas: [criarDataMontagem('2026-10-04', { situacao })] }))
+    expect(dataBloqueada(comAula)).toBe(false)
+    expect(dataBloqueada(semAula)).toBe(true)
+    expect(aceitaRequisitoNovo({ datasLivres: false }, comAula, [CLASSE_MONTAGEM.id, AVANCADA_MONTAGEM.id])).toBe(true)
+    expect(aceitaRequisitoNovo({ datasLivres: false }, semAula, [CLASSE_MONTAGEM.id, AVANCADA_MONTAGEM.id])).toBe(false)
   })
 
-  it('"Mais vazias primeiro" não manda para o fim a data aberta só para a avançada', () => {
-    const aberta = { ...soAvancadaTemAula(), requisitoIds: ['a', 'b'] }
+  it('"Mais vazias primeiro" manda a bloqueada para o fim e a aberta com aula não', () => {
+    const aberta = { ...primeiraData(criarMontagem({ datas: [criarDataMontagem('2026-10-04', { situacao, aulaId: AULA })] })), requisitoIds: ['a', 'b'] }
     const fechada = primeiraData(criarMontagem({ datas: [criarDataMontagem('2026-10-05', { situacao })] }))
-    expect(dataBloqueada(fechada)).toBe(true)
     expect(ordenarPorVazias([fechada, aberta]).map((dado) => dado.data)).toEqual(['2026-10-04', '2026-10-05'])
   })
 })
 
-describe('Aviso de dia que some, por lado', () => {
-  function montar(regular: number, avancada: number) {
-    const daRegular = Array.from({ length: regular }, (_, n) => criarRequisitoMontagem(n + 1, { data: '2026-10-04' }))
-    const daAvancada = Array.from({ length: avancada }, (_, n) => criarRequisitoAvancada(n + 1, { data: '2026-10-04' }))
-    const datas = [criarDataMontagem('2026-10-04', { aulaId: AULA_REGULAR, local: 'Sala 2', requisitoIds: daRegular.map((requisito) => requisito.id) })]
-    const base = criarAvancadaMontagem(daAvancada, datas)
-    return primeiraData(comAulaDaAvancada(criarMontagem({ requisitos: daRegular, datas, avancada: base }), AULA_AVANCADA))
-  }
-
-  it('o último da regular avisa mesmo que a avançada tenha requisito na data', () => {
-    const dado = montar(1, 2)
-    expect(dado.requisitoIds).toHaveLength(3)
-    expect(diaComDadosSomeAoTirar({ datasLivres: false }, dado, 'REGULAR')).toBe(true)
-    expect(diaComDadosSomeAoTirar({ datasLivres: false }, dado, 'AVANCADA')).toBe(false)
-    expect(diaComDadosSomeAoTirar({ datasLivres: true }, dado, 'REGULAR')).toBe(false)
+describe('Classe dada por classe, só pela lista do servidor', () => {
+  it('só a avançada deu aula: o colocar dela fecha e o da regular segue aberto; com as duas, nenhuma', () => {
+    const dadaAvancada = primeiraData(parComAula([AVANCADA_MONTAGEM.id]))
+    expect(aceitaRequisitoNovo({ datasLivres: false }, dadaAvancada, [AVANCADA_MONTAGEM.id])).toBe(false)
+    expect(aceitaRequisitoNovo({ datasLivres: false }, dadaAvancada, [CLASSE_MONTAGEM.id])).toBe(true)
+    expect(aceitaRequisitoNovo({ datasLivres: false }, dadaAvancada, [CLASSE_MONTAGEM.id, AVANCADA_MONTAGEM.id])).toBe(true)
+    const dadaNasDuas = primeiraData(parComAula([CLASSE_MONTAGEM.id, AVANCADA_MONTAGEM.id]))
+    expect(aceitaRequisitoNovo({ datasLivres: false }, dadaNasDuas, [CLASSE_MONTAGEM.id, AVANCADA_MONTAGEM.id])).toBe(false)
   })
 
-  it('o último da avançada avisa mesmo que a regular tenha mais de um', () => {
-    const dado = montar(2, 1)
-    expect(diaComDadosSomeAoTirar({ datasLivres: false }, dado, 'AVANCADA')).toBe(true)
-    expect(diaComDadosSomeAoTirar({ datasLivres: false }, dado, 'REGULAR')).toBe(false)
+  it('editar e remover o dia só valem com a lista vazia (e com aula)', () => {
+    expect(diaPodeMudar(primeiraData(parComAula()))).toBe(true)
+    expect(diaPodeMudar(primeiraData(parComAula([AVANCADA_MONTAGEM.id])))).toBe(false)
+    expect(diaPodeMudar(primeiraData(criarMontagem({ datas: [criarDataMontagem('2026-10-04')] })))).toBe(false)
   })
 })
 
-describe('Dia da data unida', () => {
-  it('aulasDaData e diaPodeMudar consideram os dois lados', () => {
-    const ambas = primeiraData(parComAulas({ regular: AULA_REGULAR, avancada: AULA_AVANCADA }))
-    const soAvancada = primeiraData(parComAulas({ regular: null, avancada: AULA_AVANCADA }))
-    expect(aulasDaData(ambas)).toEqual([AULA_REGULAR, AULA_AVANCADA])
-    expect(aulasDaData(soAvancada)).toEqual([AULA_AVANCADA])
-    expect(diaPodeMudar(soAvancada)).toBe(true)
-    expect(diaPodeMudar({ ...ambas, lados: { ...ambas.lados, AVANCADA: { ...ambas.lados.AVANCADA, aulaDada: true } } })).toBe(false)
-  })
+describe('Aviso de dia que some, pelo total da aula', () => {
+  function montar(regular: number, avancada: number) {
+    const daRegular = Array.from({ length: regular }, (_, n) => criarRequisitoMontagem(n + 1, { data: '2026-10-04' }))
+    const daAvancada = Array.from({ length: avancada }, (_, n) => criarRequisitoAvancada(n + 1, { data: '2026-10-04' }))
+    const requisitoIds = [...daRegular, ...daAvancada].map((requisito) => requisito.id)
+    const datas = [criarDataMontagem('2026-10-04', { aulaId: AULA, local: 'Sala 2', requisitoIds })]
+    return primeiraData(criarMontagem({ requisitos: [...daRegular, ...daAvancada], datas, avancada: AVANCADA_MONTAGEM }))
+  }
 
-  it('computador: "Remover dia de classe" apaga as aulas das duas classes e a confirmação fala das duas', async () => {
-    const registro = abrirAdm(parComAulas({ regular: AULA_REGULAR, avancada: AULA_AVANCADA }))
+  it('só avisa quando o requisito é o único da aula, de qualquer classe', () => {
+    expect(diaComDadosSomeAoTirar({ datasLivres: false }, montar(1, 0))).toBe(true)
+    expect(diaComDadosSomeAoTirar({ datasLivres: false }, montar(0, 1))).toBe(true)
+    expect(diaComDadosSomeAoTirar({ datasLivres: false }, montar(1, 1))).toBe(false)
+    expect(diaComDadosSomeAoTirar({ datasLivres: true }, montar(1, 0))).toBe(false)
+  })
+})
+
+describe('Dia único do encontro', () => {
+  it('computador: "Remover dia de classe" faz uma chamada só e a confirmação fala das duas classes', async () => {
+    const registro = abrirAdm(parComAula())
     const usuario = userEvent.setup()
     await screen.findByRole('heading', { name: 'Requisitos' })
     await usuario.click(within(linha('2026-10-04')).getByRole('button', { name: 'Remover dia de classe' }))
     expect(screen.getByText(/requisitos das duas classes neste dia voltam a ficar sem data/)).toBeInTheDocument()
     await usuario.click(screen.getByRole('button', { name: 'Remover' }))
-    await waitFor(() => expect(registro.chamadas).toHaveLength(2))
-    expect(registro.chamadas.map((chamada) => [chamada.metodo, chamada.caminho])).toEqual([
-      ['DELETE', `/api/aulas-planejadas/${AULA_REGULAR}`],
-      ['DELETE', `/api/aulas-planejadas/${AULA_AVANCADA}`],
-    ])
+    await waitFor(() => expect(registro.chamadas).toHaveLength(1))
+    expect(registro.chamadas[0]).toMatchObject({ metodo: 'DELETE', caminho: `/api/aulas-planejadas/${AULA}` })
   })
 
-  it('computador: "Editar horário, local e título" grava nas duas aulas', async () => {
-    const registro = abrirAdm(parComAulas({ regular: AULA_REGULAR, avancada: AULA_AVANCADA }, { horario: '09:15' }))
+  it('computador: "Editar horário, local e título" faz uma chamada só', async () => {
+    const registro = abrirAdm(parComAula([], { horario: '09:15' }))
     const usuario = userEvent.setup()
     await screen.findByRole('heading', { name: 'Requisitos' })
     await usuario.click(within(linha('2026-10-04')).getByRole('button', { name: 'Editar horário, local e título' }))
     await usuario.type(screen.getByLabelText('Local'), 'Sala 3')
     await usuario.click(screen.getByRole('button', { name: 'Salvar' }))
-    await waitFor(() => expect(registro.chamadas).toHaveLength(2))
-    expect(registro.chamadas.map((chamada) => [chamada.metodo, chamada.caminho])).toEqual([
-      ['PATCH', `/api/aulas-planejadas/${AULA_REGULAR}`],
-      ['PATCH', `/api/aulas-planejadas/${AULA_AVANCADA}`],
-    ])
-    expect(registro.chamadas[1]?.corpo).toMatchObject({ horario: '09:15', local: 'Sala 3' })
+    await waitFor(() => expect(registro.chamadas).toHaveLength(1))
+    expect(registro.chamadas[0]).toMatchObject({ metodo: 'PATCH', caminho: `/api/aulas-planejadas/${AULA}` })
+    expect(registro.chamadas[0]?.corpo).toMatchObject({ horario: '09:15', local: 'Sala 3' })
   })
 
-  it('celular: data em que só a avançada tem aula também mostra editar e remover, e remove a dela', async () => {
+  it('celular: o cartão da data mostra editar e remover e remove o dia com uma chamada', async () => {
     simularLargura(390)
-    const registro = abrirAdm(parComAulas({ regular: null, avancada: AULA_AVANCADA }))
+    const registro = abrirAdm(parComAula())
     const usuario = userEvent.setup()
     await screen.findByRole('tab', { name: 'Por data' })
     await usuario.click(screen.getByRole('tab', { name: 'Por data' }))
@@ -213,6 +192,6 @@ describe('Dia da data unida', () => {
     await usuario.click(dia.getByRole('button', { name: 'Remover dia de classe' }))
     await usuario.click(screen.getByRole('button', { name: 'Remover' }))
     await waitFor(() => expect(registro.chamadas).toHaveLength(1))
-    expect(registro.chamadas[0]).toMatchObject({ metodo: 'DELETE', caminho: `/api/aulas-planejadas/${AULA_AVANCADA}` })
+    expect(registro.chamadas[0]).toMatchObject({ metodo: 'DELETE', caminho: `/api/aulas-planejadas/${AULA}` })
   })
 })

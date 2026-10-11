@@ -6,21 +6,22 @@ import { Selo } from '../../ui/Selo'
 import { cn } from '../../ui/cn'
 import { EtiquetaDoLado } from './EtiquetaDoLado'
 import { MedidorDeOcupacao } from './MedidorDeOcupacao'
-import { diaPodeMudar, type DataUnida, type RequisitoUnido } from './unida'
+import type { DataDaMontagem } from '../../api/montagem'
+import { classeDada, diaPodeMudar, type RequisitoComLado } from './vista'
 import { dataBloqueada, detalheDaAula, diaDaSemanaEData, textoDaData } from './datas'
 
 interface Propriedades {
-  dado: DataUnida
+  dado: DataDaMontagem
   /** Requisitos que estão nesta data, na ordem do caderno. */
-  requisitos: RequisitoUnido[]
+  requisitos: RequisitoComLado[]
   desabilitada: boolean
   /** Regular com avançada: etiqueta em cada requisito e medidor de ocupação na data. */
   comAvancada?: boolean
   /** "Trocar data" e "Escolher outra data": abrem a folha "Em qual data?" para o requisito. */
-  aoEscolherData: (requisito: RequisitoUnido) => void
-  aoTirar: (requisito: RequisitoUnido) => void
-  aoEditar: (dado: DataUnida) => void
-  aoRemoverAula: (dado: DataUnida) => void
+  aoEscolherData: (requisito: RequisitoComLado) => void
+  aoTirar: (requisito: RequisitoComLado) => void
+  aoEditar: (dado: DataDaMontagem) => void
+  aoRemoverAula: (dado: DataDaMontagem) => void
 }
 
 /** Vista "Por data" do Adm no celular: um cartão por data, com as ações de cada requisito nela. */
@@ -30,8 +31,8 @@ export function CartaoDaDataCelular({ dado, requisitos, comAvancada = false, des
   const detalhe = detalheDaAula(dado)
   const bloqueada = dataBloqueada(dado)
   const podeEditar = diaPodeMudar(dado)
-  // Classe dada só em uma das duas: o selo vai nos requisitos dela; nos dois lados, na data.
-  const dadaNosDois = dado.lados.REGULAR.aulaDada && (!comAvancada || dado.lados.AVANCADA.aulaDada)
+  // Classe dada só em uma das duas: o selo vai nos requisitos dela; nas duas, na data.
+  const dadaNosDois = dado.classeIdsComAulaDada.length === (comAvancada ? 2 : 1)
 
   return (
     <li
@@ -57,7 +58,7 @@ export function CartaoDaDataCelular({ dado, requisitos, comAvancada = false, des
       {requisitos.length > 0 && (
         <ul className="flex flex-col gap-3">
           {requisitos.map((requisito) => {
-            const lado = dado.lados[requisito.lado]
+            const dada = classeDada(dado, requisito.classeId)
             return (
             <li key={requisito.id} className="flex flex-col gap-2 border-t border-divisor pt-3 first:border-t-0 first:pt-0">
               <p className="flex flex-wrap items-center gap-2 text-base text-texto">
@@ -65,10 +66,10 @@ export function CartaoDaDataCelular({ dado, requisitos, comAvancada = false, des
                 <span>
                   <strong className="text-marca">{requisito.codigo}</strong> · {requisito.texto}
                 </span>
-                {lado.aulaDada && !dadaNosDois && <Selo>Classe dada</Selo>}
+                {dada && !dadaNosDois && <Selo>Classe dada</Selo>}
               </p>
-              {!lado.aulaDada &&
-                (lado.conflito ? (
+              {!dada &&
+                (dado.conflito ? (
                   <Botao
                     variante="secundario"
                     className="self-start"

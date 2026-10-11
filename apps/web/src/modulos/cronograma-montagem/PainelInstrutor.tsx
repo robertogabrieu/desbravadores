@@ -1,6 +1,6 @@
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
-import type { CronogramaDaMontagem, Montagem } from '../../api/montagem'
+import type { CronogramaDaMontagem, DataDaMontagem, Montagem } from '../../api/montagem'
 import { Abas } from '../../ui/Abas'
 import { BarraProgresso } from '../../ui/BarraProgresso'
 import { Botao } from '../../ui/Botao'
@@ -15,8 +15,8 @@ import { AULA_NOVA, FormularioAula, aulaEmEdicaoDaData, type AulaEmEdicao } from
 import { LinhaData } from './LinhaData'
 import { OrdemDasDatas } from './OrdemDasDatas'
 import { aceitaRequisitoNovo } from './datas'
-import { aulasDaData, ordenarPorVazias, unirMontagem } from './unida'
-import type { DataUnida, RequisitoUnido } from './unida'
+import { montarVista, ordenarPorVazias } from './vista'
+import type { RequisitoComLado } from './vista'
 import { useAcoesDeMontagem } from './useAcoesDeMontagem'
 
 interface Propriedades {
@@ -30,13 +30,13 @@ interface Propriedades {
 export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Propriedades) {
   const acoes = useAcoesDeMontagem(montagem.classe.id, ano, cronograma.id, montagem)
   const [aba, setAba] = useState('data')
-  const [dataAberta, setDataAberta] = useState<DataUnida | null>(null)
-  const [emMovimento, setEmMovimento] = useState<RequisitoUnido | null>(null)
-  const [aAgendar, setAAgendar] = useState<RequisitoUnido | null>(null)
+  const [dataAberta, setDataAberta] = useState<DataDaMontagem | null>(null)
+  const [emMovimento, setEmMovimento] = useState<RequisitoComLado | null>(null)
+  const [aAgendar, setAAgendar] = useState<RequisitoComLado | null>(null)
   const [aulaEmEdicao, setAulaEmEdicao] = useState<AulaEmEdicao | null>(null)
   const [confirmandoEnvio, setConfirmandoEnvio] = useState(false)
 
-  const vista = unirMontagem(montagem)
+  const vista = montarVista(montagem)
   const par = vista.temAvancada
   const [maisVazias, setMaisVazias] = useState(false)
   const semData = vista.requisitos.filter((requisito) => requisito.data === null)
@@ -58,8 +58,12 @@ export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Prop
     await acoes.enviar()
   }
 
+  async function removerAula(dado: DataDaMontagem) {
+    if (dado.aulaId !== null) await acoes.removerAula(dado.aulaId)
+  }
+
   async function salvarAula(aula: AulaEmEdicao, data: string): Promise<boolean> {
-    return aula.aulaIds.length > 0 ? acoes.editarAulas(aula.aulaIds, aula.dados) : acoes.criarAula(data, aula.dados)
+    return aula.aulaId !== null ? acoes.editarAula(aula.aulaId, aula.dados) : acoes.criarAula(data, aula.dados)
   }
 
   return (
@@ -120,11 +124,11 @@ export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Prop
                   destaqueCampo={dado.situacao.bomParaCampo}
                   desabilitada={acoes.ocupada}
                   aoTirar={(requisito) => void acoes.tirar(requisito.id)}
-                  aoRemoverAula={(aula) => void acoes.removerAulas(aulasDaData(aula))}
+                  aoRemoverAula={(aula) => void removerAula(aula)}
                   aoMover={setEmMovimento}
                   aoEditar={(aula) => setAulaEmEdicao(aulaEmEdicaoDaData(aula))}
                   acaoDaData={
-                    aceitaRequisitoNovo(montagem, dado) && (
+                    aceitaRequisitoNovo(montagem, dado, vista.classeIds) && (
                       <button
                         type="button"
                         aria-label="Adicionar requisito nesta data"
@@ -186,7 +190,7 @@ export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Prop
       {dataAberta && (
         <FolhaAdicionar
           dado={dataAberta}
-          livres={semData.filter((requisito) => aceitaRequisitoNovo(montagem, dataAberta, requisito.lado))}
+          livres={semData.filter((requisito) => aceitaRequisitoNovo(montagem, dataAberta, [requisito.classeId]))}
           comAvancada={par}
           desabilitado={acoes.ocupada}
           aoConfirmar={colocarVarios}
@@ -206,7 +210,7 @@ export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Prop
         <FolhaMover
           titulo={`Agendar ${aAgendar.codigo} para`}
           requisito={aAgendar}
-          datas={vista.datas.filter((dado) => aceitaRequisitoNovo(montagem, dado, aAgendar.lado))}
+          datas={vista.datas.filter((dado) => aceitaRequisitoNovo(montagem, dado, [aAgendar.classeId]))}
           desabilitado={acoes.ocupada}
           aoEscolher={(data) => acoes.colocar(aAgendar.id, data)}
           aoFechar={() => setAAgendar(null)}
