@@ -11,7 +11,7 @@ import {
 } from '@desbravadores/shared'
 import { z } from 'zod'
 import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
-import { avancadaComParAtivo, avancadaDoPar } from '../classes/par-regular-avancada'
+import { avancadaPareadaDe, regularDoPar } from '../classes/par-regular-avancada'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import type { Trilha } from '../generated/prisma/client.js'
 import { ErroApp } from '../comum/erros'
@@ -107,10 +107,9 @@ export class ServicoCronograma {
    * `emPar` diz que as aulas do cronograma misturam requisitos das duas classes e precisam ser filtradas.
    */
   async parDaClasse(clubeId: string, classeId: string): Promise<{ donaId: string; emPar: boolean }> {
-    const avancada = await this.prisma.classe.findFirst({ where: { ...avancadaComParAtivo(clubeId), id: classeId }, select: { classeBaseId: true } })
-    if (avancada?.classeBaseId) return { donaId: avancada.classeBaseId, emPar: true }
-    const temAvancada = await this.prisma.classe.count({ where: avancadaDoPar(clubeId, [classeId]) })
-    return { donaId: classeId, emPar: temAvancada > 0 }
+    const regularId = await regularDoPar(this.prisma, clubeId, classeId)
+    if (regularId) return { donaId: regularId, emPar: true }
+    return { donaId: classeId, emPar: (await avancadaPareadaDe(this.prisma, clubeId, classeId)) !== null }
   }
 
   /**

@@ -819,8 +819,8 @@ describe('Montagem do cronograma', () => {
       expect((await colocar(cronograma.id, requisitoAlheio, DOMINGO_A, adm.autorizacao)).status).toBe(404)
     })
 
-    it('publicar leva as duas classes no retrato, cada requisito com a classe dele; enviar e publicar são de um registro só', async () => {
-      const { clube, amigo, adm, instrutor, cronograma, requisitos, avancada, requisitosAvancada } = await cenarioPar()
+    it('publicar leva os requisitos das duas classes no retrato; enviar e publicar são de um registro só', async () => {
+      const { clube, amigo, adm, instrutor, cronograma, requisitos, requisitosAvancada } = await cenarioPar()
       await admDefinirClasseClube({ clubeId: clube.id, classeId: amigo.id, quemMontaCronograma: 'INSTRUTOR' })
       await colocar(cronograma.id, requisitos[0], DOMINGO_A, adm.autorizacao)
       await colocar(cronograma.id, requisitosAvancada[0], DOMINGO_A, adm.autorizacao)
@@ -835,14 +835,9 @@ describe('Montagem do cronograma', () => {
       expect(await prismaDeTeste().cronograma.count({ where: { clubeId: clube.id } })).toBe(1)
       const publicacoes = await prismaDeTeste().cronogramaPublicacao.findMany({ where: { clubeId: clube.id } })
       expect(publicacoes).toHaveLength(1)
-      const [aula] = (publicacoes[0].conteudo as { aulas: { requisitoIds: string[]; requisitos: { requisitoId: string; classeId: string }[] }[] }).aulas
+      const [aula] = (publicacoes[0].conteudo as { aulas: { requisitoIds: string[] }[] }).aulas
       expect(aula.requisitoIds.sort()).toEqual([requisitos[0], requisitosAvancada[0]].sort())
-      expect(aula.requisitos).toEqual(
-        expect.arrayContaining([
-          { requisitoId: requisitos[0], classeId: amigo.id },
-          { requisitoId: requisitosAvancada[0], classeId: avancada.id },
-        ]),
-      )
+      expect(aula).not.toHaveProperty('requisitos')
     })
 
     it('editar um cronograma publicado o devolve a rascunho', async () => {
@@ -869,6 +864,55 @@ describe('Montagem do cronograma', () => {
       await http.patch(`/api/requisitos/${requisitosAvancada[0]}/ajuste`, adm.autorizacao, { ativo: false }).expect(200)
       expect((await doAno(amigo.id, clube.id))?.status).toBe('RASCUNHO')
       expect(await aulasAtivas(cronograma.id)).toHaveLength(0)
+    })
+
+    it('instrutor com vínculo só na avançada monta o cronograma do par: coloca e tira requisito', async () => {
+      const { clube, amigo, cronograma, avancada, requisitos, requisitosAvancada } = await cenarioPar()
+      await admDefinirClasseClube({ clubeId: clube.id, classeId: amigo.id, quemMontaCronograma: 'INSTRUTOR' })
+      const soDaAvancada = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [avancada.id] })
+
+      expect((await http.get(rotaMontagem(amigo.id), soDaAvancada.autorizacao)).status).toBe(200)
+      expect((await colocar(cronograma.id, requisitosAvancada[0], DOMINGO_A, soDaAvancada.autorizacao)).status).toBe(200)
+      expect((await colocar(cronograma.id, requisitos[0], DOMINGO_B, soDaAvancada.autorizacao)).status).toBe(200)
+      expect((await tirar(cronograma.id, requisitosAvancada[0], soDaAvancada.autorizacao)).status).toBe(200)
+      expect(await aulasAtivas(cronograma.id)).toHaveLength(1)
+    })
+
+    it('desfeito o par, o requisito da avançada que ficou no cronograma da regular continua listado e pode ser tirado, mas não se coloca outro', async () => {
+      const { clube, amigo, adm, cronograma, avancada, requisitosAvancada } = await cenarioPar()
+      await colocar(cronograma.id, requisitosAvancada[0], DOMINGO_A, adm.autorizacao)
+      await admDefinirClasseClube({ clubeId: clube.id, classeId: avancada.id, ativa: false })
+
+      const lida = corpo<Saida>(await http.get(rotaMontagem(amigo.id), adm.autorizacao))
+      expect(lida.avancada).toBeNull()
+      expect(lida.requisitos.filter((requisito) => requisito.classeId === avancada.id)).toEqual([
+        expect.objectContaining({ id: requisitosAvancada[0], classeId: avancada.id, data: DOMINGO_A }),
+      ])
+      expect((await colocar(cronograma.id, requisitosAvancada[1], DOMINGO_B, adm.autorizacao)).status).toBe(404)
+
+      const depois = corpo<Saida>(await tirar(cronograma.id, requisitosAvancada[0], adm.autorizacao))
+      expect(depois.requisitos.some((requisito) => requisito.classeId === avancada.id)).toBe(false)
+      expect(await aulasAtivas(cronograma.id)).toHaveLength(0)
+    })
+
+    it('tirar o último requisito da avançada mantém a aula se a regular já deu aula naquela data', async () => {
+      const { clube, amigo, adm, cronograma, requisitosAvancada } = await cenarioPar()
+      await colocar(cronograma.id, requisitosAvancada[0], DOMINGO_A, adm.autorizacao)
+      await criarRegistroAula({ clubeId: clube.id, classeId: amigo.id, data: DOMINGO_A })
+
+      expect((await tirar(cronograma.id, requisitosAvancada[0], adm.autorizacao)).status).toBe(200)
+      expect(await aulasAtivas(cronograma.id)).toHaveLength(1)
+    })
+
+    it('regular com duas avançadas ativas pareia sempre com a de menor ordem', async () => {
+      const { clube, amigo, adm, avancada } = await cenarioPar()
+      const oficial = await prismaDeTeste().classe.findUniqueOrThrow({ where: { id: avancada.id }, select: { ordem: true } })
+      const maisTarde = await prismaDeTeste().classe.create({
+        data: { clubeId: clube.id, origem: 'CLUBE', nome: 'Avançada extra', tipo: 'AVANCADA', trilha: 'INDIVIDUAL', classeBaseId: amigo.id, ordem: oficial.ordem + 100 },
+      })
+
+      expect(corpo<Saida>(await http.get(rotaMontagem(amigo.id), adm.autorizacao)).avancada?.id).toBe(avancada.id)
+      expect(corpo<Saida>(await http.get(rotaMontagem(maisTarde.id), adm.autorizacao)).classe.id).toBe(maisTarde.id)
     })
 
     it('com a regular inativa no clube, a avançada tem cronograma e "quem monta" próprios', async () => {

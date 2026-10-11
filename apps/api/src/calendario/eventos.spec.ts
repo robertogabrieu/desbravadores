@@ -548,9 +548,13 @@ describe('calendário do clube — eventos', () => {
       const { clube, amigo, adm } = await cenario()
       const avancada = await avancadaOficial(amigo.id)
       const [a1] = await requisitosDa(avancada.id, 1)
+      const soDaAvancada = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [avancada.id] })
       await criarCronograma({ clubeId: clube.id, classeId: amigo.id, aulas: [{ data: dia(10), requisitoIds: [a1] }] })
       const { aulasAfetadas } = corpo<Gravado>(await http.post('/api/calendario/eventos', adm.autorizacao, evento({ bomParaCampo: false })))
       expect(aulasAfetadas.map((a) => a.classe.id)).toEqual([avancada.id])
+      // O conflito vem só da avançada: o link do instrutor abre a tela já nela; o do Adm segue na regular.
+      expect((await notificacoesDe(soDaAvancada.usuario.id))[0].link).toBe(`/cronograma?classe=${avancada.id}`)
+      expect((await notificacoesDe(adm.usuario.id))[0].link).toBe(`/cronograma/montar?classe=${amigo.id}`)
     })
   })
 })

@@ -7,7 +7,7 @@ import { PrismaService } from '../comum/prisma/prisma.service'
 import type { Prisma, QuemMonta } from '../generated/prisma/client.js'
 import { ServicoMontagem } from '../cronogramas/montagem/servico-montagem'
 import { ClassesService } from './classes.service'
-import { avancadaComParAtivo } from './par-regular-avancada'
+import { temParAtivo } from './par-regular-avancada'
 
 type Detalhe = z.infer<typeof ClasseDetalheSaida>
 
@@ -28,7 +28,7 @@ export class AjustesService {
       select: { id: true, nome: true, tipo: true, trilha: true, classeBase: { select: { nome: true } } },
     })
     if (!classe) throw new ErroApp('NAO_ENCONTRADO', CLASSE_NAO_ENCONTRADA)
-    if (entrada.quemMontaCronograma !== undefined && classe.classeBase && (await this.temParAtivo(clubeId, classe.id))) {
+    if (entrada.quemMontaCronograma !== undefined && classe.classeBase && (await temParAtivo(this.prisma, clubeId, classe.id))) {
       throw new ErroApp('VALIDACAO', `Altere em ${classe.classeBase.nome}: a avançada segue a regular.`)
     }
 
@@ -43,11 +43,6 @@ export class AjustesService {
       if (entrada.quemMontaCronograma !== undefined) await this.repassarQuemMontaParaAvancada(tx, clubeId, classeId, entrada.quemMontaCronograma)
     })
     return this.classes.detalhar(clubeId, classeId)
-  }
-
-  /** A avançada com o par ativo (ela e a regular ativas no sistema e no clube); só então segue a regular em quem monta. */
-  private async temParAtivo(clubeId: string, avancadaId: string): Promise<boolean> {
-    return (await this.prisma.classe.count({ where: { ...avancadaComParAtivo(clubeId), id: avancadaId } })) > 0
   }
 
   /** A avancada segue a regular em quem monta, salvo com a regular desativada; `ativa` continua de cada uma. */

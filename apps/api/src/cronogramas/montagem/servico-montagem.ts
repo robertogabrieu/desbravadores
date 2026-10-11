@@ -89,7 +89,8 @@ export class ServicoMontagem {
     return this.executar(sessao, cronogramaId, 'MONTAR', async (contexto) => {
       const { tx, cronograma, trilha } = contexto
       const { clubeId } = cronograma
-      const classeDoRequisito = await this.classeDoRequisito(tx, cronograma, requisitoId)
+      const classesDoPar = await this.leitura.classesDoPar(clubeId, cronograma, tx)
+      const classeDoRequisito = await this.classeDoRequisito(tx, requisitoId, classesDoPar)
       const requisitos = await this.leitura.requisitosDaClasse(clubeId, classeDoRequisito, tx)
       if (!requisitos.some((requisito) => requisito.id === requisitoId)) {
         throw new ErroApp('NAO_ENCONTRADO', 'Requisito não encontrado nesta classe.')
@@ -109,7 +110,7 @@ export class ServicoMontagem {
 
       await tx.aulaRequisito.deleteMany({ where: { clubeId, cronogramaId: cronograma.id, requisitoId } })
       await tx.aulaRequisito.create({ data: { clubeId, cronogramaId: cronograma.id, aulaPlanejadaId: destino.id, requisitoId } })
-      if (origem && trilha === 'INDIVIDUAL') await this.removerSeVazia(tx, clubeId, origem.id)
+      if (origem && trilha === 'INDIVIDUAL') await this.removerSeVazia(tx, cronograma, origem)
     })
   }
 
@@ -117,10 +118,11 @@ export class ServicoMontagem {
     return this.executar(sessao, cronogramaId, 'MONTAR', async ({ tx, cronograma, trilha }) => {
       const origem = await this.aulaDoRequisito(tx, cronograma, requisitoId)
       if (!origem) return
-      const classeDoRequisito = await this.classeDoRequisito(tx, cronograma, requisitoId)
+      const aceitas = await this.leitura.classesDoCronograma(cronograma.clubeId, cronograma, tx)
+      const classeDoRequisito = await this.classeDoRequisito(tx, requisitoId, aceitas)
       await this.exigirAulaNaoDada(tx, cronograma.clubeId, [classeDoRequisito], paraDataCivil(origem.data))
       await tx.aulaRequisito.deleteMany({ where: { clubeId: cronograma.clubeId, cronogramaId: cronograma.id, requisitoId } })
-      if (trilha === 'INDIVIDUAL') await this.removerSeVazia(tx, cronograma.clubeId, origem.id)
+      if (trilha === 'INDIVIDUAL') await this.removerSeVazia(tx, cronograma, origem)
     })
   }
 
@@ -212,7 +214,7 @@ export class ServicoMontagem {
         if (dada) continue
         await tx.aulaRequisito.deleteMany({ where: { clubeId, cronogramaId, requisitoId, aulaPlanejadaId } })
         retirou = true
-        if (cronograma.classe.trilha === 'INDIVIDUAL') await this.removerSeVazia(tx, clubeId, aula.id)
+        if (cronograma.classe.trilha === 'INDIVIDUAL') await this.removerSeVazia(tx, cronograma, aula)
       }
       if (!retirou) continue
       await tx.cronograma.updateMany({
@@ -393,10 +395,9 @@ export class ServicoMontagem {
     await this.exigirAulaNaoDada(tx, cronograma.clubeId, classeIds, data)
   }
 
-  /** A classe do requisito, que tem de ser uma das que o cronograma cobre (senão 404, como requisito de outra classe). */
-  private async classeDoRequisito(tx: Tx, cronograma: Cronograma, requisitoId: string): Promise<string> {
+  /** A classe do requisito, que tem de ser uma das aceitas (senão 404, como requisito de outra classe). */
+  private async classeDoRequisito(tx: Tx, requisitoId: string, classeIds: string[]): Promise<string> {
     const requisito = await tx.requisito.findUnique({ where: { id: requisitoId }, select: { secao: { select: { classeId: true } } } })
-    const classeIds = await this.leitura.classesDoCronograma(cronograma.clubeId, cronograma, tx)
     if (!requisito || !classeIds.includes(requisito.secao.classeId)) throw new ErroApp('NAO_ENCONTRADO', 'Requisito não encontrado nesta classe.')
     return requisito.secao.classeId
   }
@@ -420,20 +421,28 @@ export class ServicoMontagem {
     return vinculos.map((vinculo) => ({ usuarioId: vinculo.usuario.id }))
   }
 
-  /** Aula das individuais que ficou sem requisito deixa de existir; nas agrupadas só se remove de propósito. */
-  private async removerSeVazia(tx: Tx, clubeId: string, aulaId: string): Promise<void> {
-    const restantes = await tx.aulaRequisito.count({ where: { clubeId, aulaPlanejadaId: aulaId } })
-    if (restantes === 0) await tx.aulaPlanejada.updateMany({ where: { clubeId, id: aulaId }, data: { removidaEm: new Date() } })
+  /**
+   * Aula das individuais que ficou sem requisito deixa de existir, salvo se alguma classe do encontro já deu a aula
+   * naquela data; nas agrupadas só se remove de propósito.
+   */
+  private async removerSeVazia(tx: Tx, cronograma: Cronograma, aula: { id: string; data: Date }): Promise<void> {
+    const { clubeId } = cronograma
+    const restantes = await tx.aulaRequisito.count({ where: { clubeId, aulaPlanejadaId: aula.id } })
+    if (restantes > 0) return
+    const classeIds = await this.leitura.classesDoCronograma(clubeId, cronograma, tx)
+    const dada = await tx.registroAula.findFirst({ where: { clubeId, classeId: { in: classeIds }, data: aula.data }, select: { id: true } })
+    if (dada) return
+    await tx.aulaPlanejada.updateMany({ where: { clubeId, id: aula.id }, data: { removidaEm: new Date() } })
   }
 
-  /** G4: as aulas ativas do vivo, com os requisitos das duas classes do par e a classe de cada um, no formato que `ServicoCronograma.ultimaPublicacao` lê de volta. */
+  /** G4: as aulas ativas do vivo, com os requisitos das duas classes do par, no formato que `ServicoCronograma.ultimaPublicacao` lê de volta. */
   private async retrato(tx: Tx, cronograma: Cronograma) {
     const { clubeId } = cronograma
     const [aulas, ligacoes] = await Promise.all([
       tx.aulaPlanejada.findMany({ where: { clubeId, cronogramaId: cronograma.id, removidaEm: null }, orderBy: { data: 'asc' } }),
       tx.aulaRequisito.findMany({
         where: { clubeId, cronogramaId: cronograma.id },
-        select: { aulaPlanejadaId: true, requisitoId: true, requisito: { select: { secao: { select: { classeId: true } } } } },
+        select: { aulaPlanejadaId: true, requisitoId: true },
       }),
     ])
     return {
@@ -444,9 +453,6 @@ export class ServicoMontagem {
         local: aula.local,
         titulo: aula.titulo,
         requisitoIds: ligacoes.filter((ligacao) => ligacao.aulaPlanejadaId === aula.id).map((ligacao) => ligacao.requisitoId),
-        requisitos: ligacoes
-          .filter((ligacao) => ligacao.aulaPlanejadaId === aula.id)
-          .map((ligacao) => ({ requisitoId: ligacao.requisitoId, classeId: ligacao.requisito.secao.classeId })),
       })),
     }
   }

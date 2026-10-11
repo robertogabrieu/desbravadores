@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common'
 import type { ConfiguracaoClubeEntrada, ConfiguracaoClubeSaida } from '@desbravadores/shared'
 import { hojeNoFuso } from '@desbravadores/shared'
 import type { z } from 'zod'
-import { avancadaDoPar } from '../classes/par-regular-avancada'
+import { avancadasPareadas } from '../classes/par-regular-avancada'
 import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { nomeDoPar } from '../cronogramas/servico-cronograma-par'
@@ -54,11 +54,7 @@ export class ClubeService {
       },
     })
     // A aula do par e uma so, com o nome das duas classes quando tem requisito da avançada.
-    const avancadas = await this.prisma.classe.findMany({
-      where: avancadaDoPar(clubeId, aulas.map((aula) => aula.cronograma.classe.id)),
-      select: { id: true, nome: true, classeBaseId: true },
-    })
-    const avancadaDaRegular = new Map(avancadas.map((avancada) => [avancada.classeBaseId, avancada]))
+    const avancadaDaRegular = await avancadasPareadas(this.prisma, clubeId, aulas.map((aula) => aula.cronograma.classe.id))
     const datasDasClasses = aulas.map((aula) => aula.data)
     const extrasComClasse = await this.prisma.eventoCalendario.findMany({
       where: { clubeId, removidoEm: null, tipo: 'REUNIAO_EXTRA', temClasse: true, inicio: { in: datasDasClasses } },

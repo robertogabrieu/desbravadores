@@ -23,6 +23,7 @@ import {
 } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
+import { ativaNoClube } from '../classes/par-regular-avancada'
 import { ErroApp } from '../comum/erros'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { PrismaService } from '../comum/prisma/prisma.service'
@@ -150,8 +151,7 @@ export function montarSaida(dbv: DesbravadorCompleto, relogio: RelogioDoClube, c
   return saida
 }
 
-/** Classe desligada pelo clube (`ClasseClube.ativa = false`) não existe para matrícula nova. */
-export const ativaNoClube = (clubeId: string) => ({ clubes: { none: { clubeId, ativa: false } } }) satisfies Prisma.ClasseWhereInput
+export { ativaNoClube }
 
 /**
  * Classe regular ativa (e ativa no clube) que a idade de referência pede: na individual, a da idade exata;

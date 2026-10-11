@@ -78,7 +78,7 @@ export function MontagemInstrutor() {
             dados.cronograma === null ? (
               <EstadoVazio titulo="O cronograma ainda não foi criado" descricao="Peça ao Adm para criar o cronograma desta classe." />
             ) : (
-              <PainelInstrutor montagem={dados} cronograma={dados.cronograma} ano={undefined} aoAtualizar={() => void montagem.refetch()} />
+              <PainelInstrutor montagem={dados} classeConsultada={classeId} cronograma={dados.cronograma} ano={undefined} aoAtualizar={() => void montagem.refetch()} />
             )
           }
         </ResultadoConsulta>

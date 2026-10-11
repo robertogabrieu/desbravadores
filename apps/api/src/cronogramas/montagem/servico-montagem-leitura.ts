@@ -8,7 +8,7 @@ import {
 } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { refClasse, SELECAO_REF_CLASSE } from '../../classes/apresentacao-classe'
-import { avancadaComParAtivo, avancadaDoPar } from '../../classes/par-regular-avancada'
+import { avancadaPareadaDe, regularDoPar } from '../../classes/par-regular-avancada'
 import type { SessaoLogada } from '../../comum/decorators/sessao.decorator'
 import { ErroApp } from '../../comum/erros'
 import { PrismaService } from '../../comum/prisma/prisma.service'
@@ -69,23 +69,39 @@ export class ServicoMontagemLeitura {
    */
   async classeDoCronograma(clubeId: string, classe: { id: string; classeBaseId: string | null }): Promise<string> {
     if (!classe.classeBaseId) return classe.id
-    const comPar = await this.prisma.classe.count({ where: { ...avancadaComParAtivo(clubeId), id: classe.id } })
-    return comPar > 0 ? classe.classeBaseId : classe.id
+    return (await regularDoPar(this.prisma, clubeId, classe.id)) ?? classe.id
   }
 
   /** A avançada da regular neste clube, com o par ativo (as duas ativas no sistema e no clube); `null` se não há. */
   avancadaAtivaDa(clubeId: string, regularId: string, db: Pick<Prisma.TransactionClient, 'classe'> = this.prisma) {
-    return db.classe.findFirst({ where: avancadaDoPar(clubeId, [regularId]), select: SELECAO_REF_CLASSE })
+    return avancadaPareadaDe(db, clubeId, regularId)
   }
 
-  /** As classes que o cronograma cobre: a dele e, sendo regular com par ativo, a avançada. */
-  async classesDoCronograma(
+  /** As classes do par: a dona do cronograma e, sendo regular com par ativo, a avançada. Só elas aceitam requisito novo. */
+  async classesDoPar(
     clubeId: string,
     cronograma: { classeId: string },
     db: Pick<Prisma.TransactionClient, 'classe'> = this.prisma,
   ): Promise<string[]> {
     const avancada = await this.avancadaAtivaDa(clubeId, cronograma.classeId, db)
     return avancada ? [cronograma.classeId, avancada.id] : [cronograma.classeId]
+  }
+
+  /**
+   * As classes que o cronograma cobre: as do par mais as classes dos requisitos que já estão nele. Desfeito o par,
+   * o requisito da avançada que ficou no cronograma da regular continua dele (e pode ser tirado).
+   */
+  async classesDoCronograma(
+    clubeId: string,
+    cronograma: { id: string; classeId: string },
+    db: Pick<Prisma.TransactionClient, 'classe' | 'aulaRequisito'> = this.prisma,
+  ): Promise<string[]> {
+    const doPar = await this.classesDoPar(clubeId, cronograma, db)
+    const ligacoes = await db.aulaRequisito.findMany({
+      where: { clubeId, cronogramaId: cronograma.id },
+      select: { requisito: { select: { secao: { select: { classeId: true } } } } },
+    })
+    return [...new Set([...doPar, ...ligacoes.map((ligacao) => ligacao.requisito.secao.classeId)])]
   }
 
   async montagem(sessao: SessaoLogada, classeId: string, anoClube?: number): Promise<Saida> {
@@ -120,7 +136,7 @@ export class ServicoMontagemLeitura {
     })
     const { classe } = cronograma
     const avancada = classe.tipo === 'REGULAR' && classe.trilha === 'INDIVIDUAL' ? await this.avancadaAtivaDa(clubeId, classe.id) : null
-    const classeIds = avancada ? [classe.id, avancada.id] : [classe.id]
+    const classeIdsDoPar = avancada ? [classe.id, avancada.id] : [classe.id]
     const [aulas, ligacoes, configuracao, relogio] = await Promise.all([
       this.prisma.aulaPlanejada.findMany({ where: { clubeId, cronogramaId, removidaEm: null } }),
       this.prisma.aulaRequisito.findMany({
@@ -130,6 +146,9 @@ export class ServicoMontagemLeitura {
       this.prisma.configuracaoClube.findUniqueOrThrow({ where: { clubeId } }),
       this.escopo.relogio(clubeId),
     ])
+    // Requisito de classe fora do par (a avançada, depois que o par se desfez) continua no cronograma até ser tirado.
+    const classeIdsOrfas = [...new Set(ligacoes.map((ligacao) => ligacao.requisito.secao.classeId))].filter((id) => !classeIdsDoPar.includes(id))
+    const classeIds = [...classeIdsDoPar, ...classeIdsOrfas]
     const inicio = paraDataCivil(cronograma.inicio)
     const fim = paraDataCivil(cronograma.fim)
     const datasComAula = aulas.map((aula) => paraDataCivil(aula.data))
@@ -160,10 +179,15 @@ export class ServicoMontagemLeitura {
     const datas = [...new Set([...datasDoPeriodo, ...datasComAula])].sort()
     const aulaPorData = new Map(aulas.map((aula) => [paraDataCivil(aula.data), aula]))
 
-    const requisitosPorClasse = await Promise.all(
-      classeIds.map(async (classeId) => (await this.requisitosDaClasse(clubeId, classeId)).map((requisito) => ({ ...requisito, classeId }))),
-    )
     const ligacaoPorRequisito = new Map(ligacoes.map((ligacao) => [ligacao.requisitoId, ligacao.aulaPlanejadaId]))
+    // Da classe órfã só entra o que já está no cronograma: requisito novo dela não se coloca.
+    const requisitosPorClasse = await Promise.all(
+      classeIds.map(async (classeId) => {
+        const requisitos = await this.requisitosDaClasse(clubeId, classeId)
+        const visiveis = classeIdsOrfas.includes(classeId) ? requisitos.filter((requisito) => ligacaoPorRequisito.has(requisito.id)) : requisitos
+        return visiveis.map((requisito) => ({ ...requisito, classeId }))
+      }),
+    )
     const dataPorAula = new Map(aulas.map((aula) => [aula.id, paraDataCivil(aula.data)]))
 
     return {

@@ -16,7 +16,7 @@ import {
 import { z } from 'zod'
 import { ServicoAtividade } from '../atividades/servico-atividade'
 import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
-import { avancadaDoPar } from '../classes/par-regular-avancada'
+import { avancadasPareadas } from '../classes/par-regular-avancada'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
@@ -291,9 +291,13 @@ export class ServicoEventos {
       where: { clubeId, aulaPlanejadaId: { in: vivas.map((aula) => aula.id) } },
       select: { aulaPlanejadaId: true, requisitoId: true },
     })
+    const requisitosPorAula = new Map<string, string[]>()
+    for (const ligacao of ligacoes) {
+      requisitosPorAula.set(ligacao.aulaPlanejadaId, [...(requisitosPorAula.get(ligacao.aulaPlanejadaId) ?? []), ligacao.requisitoId])
+    }
     const doVivo = vivas.flatMap((aula): CronogramaAula[] => {
       if (!cronogramaPorId.has(aula.cronogramaId)) return []
-      const requisitoIds = ligacoes.filter((l) => l.aulaPlanejadaId === aula.id).map((l) => l.requisitoId)
+      const requisitoIds = requisitosPorAula.get(aula.id) ?? []
       return [{ aulaId: aula.id, cronogramaId: aula.cronogramaId, data: paraDataCivil(aula.data), requisitoIds }]
     })
 
@@ -314,8 +318,7 @@ export class ServicoEventos {
     aulas: CronogramaAula[],
   ): Promise<AulaVista[]> {
     const donas = [...new Set(aulas.map((aula) => cronogramaPorId.get(aula.cronogramaId)?.classeId ?? ''))].filter(Boolean)
-    const avancadas = await tx.classe.findMany({ where: avancadaDoPar(clubeId, donas), select: { id: true, classeBaseId: true } })
-    const avancadaDaRegular = new Map(avancadas.flatMap((a) => (a.classeBaseId ? [[a.classeBaseId, a.id] as const] : [])))
+    const avancadaDaRegular = await avancadasPareadas(tx, clubeId, donas)
     const requisitos = await tx.requisito.findMany({
       where: { id: { in: [...new Set(aulas.flatMap((aula) => aula.requisitoIds))] } },
       select: { id: true, secao: { select: { classeId: true } } },
@@ -326,7 +329,7 @@ export class ServicoEventos {
       const cronograma = cronogramaPorId.get(aula.cronogramaId)
       if (!cronograma) return []
       const base = { aulaId: aula.aulaId, cronogramaId: aula.cronogramaId, donaId: cronograma.classeId, trilha: cronograma.classe.trilha, data: aula.data }
-      const avancadaId = avancadaDaRegular.get(cronograma.classeId)
+      const avancadaId = avancadaDaRegular.get(cronograma.classeId)?.id
       if (!avancadaId) return [{ ...base, classeId: cronograma.classeId, temRequisitos: aula.requisitoIds.length > 0 }]
       const classes = [cronograma.classeId, avancadaId].filter((classeId) =>
         aula.requisitoIds.some((id) => classeDoRequisito.get(id) === classeId),
@@ -392,11 +395,13 @@ export class ServicoEventos {
         ).values(),
       ]
       const admMonta = (quemMonta.get(donaId) ?? 'ADM') === 'ADM'
-      const linkQuemMonta = `/cronograma/montar?classe=${donaId}`
-      const linkQuemNaoMonta = `/cronograma?classe=${donaId}`
+      // O instrutor que só tem requisito da avançada no conflito abre a tela já na avançada.
+      const classeDoInstrutor = classesAvisadas.includes(donaId) ? donaId : classesAvisadas[0]
+      const linkDoAdm = `/cronograma/montar?classe=${donaId}`
+      const linkDoInstrutor = admMonta ? `/cronograma?classe=${classeDoInstrutor}` : `/cronograma/montar?classe=${classeDoInstrutor}`
       const destinos = [
-        ...instrutores.map((i) => ({ usuarioId: i.usuarioId, link: admMonta ? linkQuemNaoMonta : linkQuemMonta })),
-        ...(admMonta ? adms.map((a) => ({ usuarioId: a.usuarioId, link: linkQuemMonta })) : []),
+        ...instrutores.map((i) => ({ usuarioId: i.usuarioId, link: linkDoInstrutor })),
+        ...(admMonta ? adms.map((a) => ({ usuarioId: a.usuarioId, link: linkDoAdm })) : []),
       ]
       await this.notificacoes.notificar(tx, {
         clubeId,

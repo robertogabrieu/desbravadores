@@ -443,6 +443,35 @@ describe('Regular e avançada · instrutor', () => {
   })
 })
 
+describe('Regular e avançada · instrutor só da avançada', () => {
+  it('?classe=<avançada> sem a regular no vínculo: depois de colocar um requisito, a tela mostra a data nova', async () => {
+    const { handlers, registro } = handlersMontagem(criarPar())
+    servidor.use(
+      ...handlersSessao([criarVinculo('INSTRUTOR', 1, { classes: [CLASSE_AVANCADA_MONTAGEM] })]),
+      handlerClasses([criarClasse(), CLASSE_AVANCADA]),
+      ...handlers,
+    )
+    renderizarRotas(rotasInstrutor, `/cronograma/montar?classe=${CLASSE_AVANCADA.id}`)
+    const usuario = userEvent.setup()
+    await screen.findByRole('progressbar', { name: 'Avançada · Amigo da Natureza — 4 de 6 com data' })
+
+    const colocado = { ...AN1, aulaId: uuid(2003), data: '2026-10-18' }
+    registro.responder(
+      criarPar({
+        requisitos: [R1, R3, colocado, AN2, AN3, AN4, AN5, AN6],
+        datas: DATAS.map((dado) => (dado.data === '2026-10-18' ? { ...dado, aulaId: uuid(2003), requisitoIds: [AN1.id] } : dado)),
+      }),
+    )
+    await usuario.click(screen.getByRole('tab', { name: 'Sem data (3)' }))
+    await usuario.click(screen.getByRole('button', { name: new RegExp(AN1.texto) }))
+    await usuario.click(await screen.findByRole('button', { name: /18\/10/ }))
+
+    await waitFor(() => expect(registro.chamadas).toHaveLength(1))
+    expect(await screen.findByRole('progressbar', { name: 'Avançada · Amigo da Natureza — 5 de 6 com data' })).toBeInTheDocument()
+    expect(registro.leituras).toBe(1)
+  })
+})
+
 describe('Regular e avançada · celular', () => {
   async function abrirNoCelular() {
     simularLargura(390)

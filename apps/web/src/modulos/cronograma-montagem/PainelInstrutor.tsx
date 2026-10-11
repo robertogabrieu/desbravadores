@@ -21,14 +21,16 @@ import { useAcoesDeMontagem } from './useAcoesDeMontagem'
 
 interface Propriedades {
   montagem: Montagem
+  /** A classe pela qual a tela leu a montagem: as gravações atualizam a mesma chave de cache (aberta pela avançada, a API devolve a regular). */
+  classeConsultada: string
   cronograma: CronogramaDaMontagem
   ano: number | undefined
   aoAtualizar: () => void
 }
 
 /** I3b com cronograma: abas Por data / Sem data; "Adicionar requisito" numa data ou o toque num requisito sem data agendam, cada ação grava. */
-export function PainelInstrutor({ montagem, cronograma, ano, aoAtualizar }: Propriedades) {
-  const acoes = useAcoesDeMontagem(montagem.classe.id, ano, cronograma.id, montagem)
+export function PainelInstrutor({ montagem, classeConsultada, cronograma, ano, aoAtualizar }: Propriedades) {
+  const acoes = useAcoesDeMontagem(classeConsultada, ano, cronograma.id, montagem)
   const [aba, setAba] = useState('data')
   const [dataAberta, setDataAberta] = useState<DataDaMontagem | null>(null)
   const [emMovimento, setEmMovimento] = useState<RequisitoComLado | null>(null)
