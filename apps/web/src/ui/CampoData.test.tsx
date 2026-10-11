@@ -40,7 +40,7 @@ describe('CampoData', () => {
 
   it('apagar a barra funciona e o cursor fica onde estava', async () => {
     render(<Teste />)
-    const campo = screen.getByLabelText('Nascimento') as HTMLInputElement
+    const campo = screen.getByLabelText<HTMLInputElement>('Nascimento')
     await userEvent.type(campo, '010520')
     campo.setSelectionRange(3, 3)
     await userEvent.keyboard('{Backspace}')
@@ -123,7 +123,7 @@ describe('CampoData', () => {
 
   it('apagar o 1º dígito de uma data cheia e redigitar restaura o valor, com cursor no lugar', async () => {
     render(<Teste inicial="2024-05-12" />)
-    const campo = screen.getByLabelText('Nascimento') as HTMLInputElement
+    const campo = screen.getByLabelText<HTMLInputElement>('Nascimento')
     await userEvent.click(campo)
     campo.setSelectionRange(1, 1)
     await userEvent.keyboard('{Backspace}')
@@ -135,7 +135,7 @@ describe('CampoData', () => {
 
   it('"1" + "/" vira "01/" com o cursor depois da barra', async () => {
     render(<Teste />)
-    const campo = screen.getByLabelText('Nascimento') as HTMLInputElement
+    const campo = screen.getByLabelText<HTMLInputElement>('Nascimento')
     await userEvent.type(campo, '1/')
     expect(campo).toHaveValue('01/')
     expect(campo.selectionStart).toBe(3)
@@ -152,7 +152,7 @@ describe('CampoData', () => {
 
   it('digitar no meio de data parcial só reposiciona os dígitos', async () => {
     render(<Teste />)
-    const campo = screen.getByLabelText('Nascimento') as HTMLInputElement
+    const campo = screen.getByLabelText<HTMLInputElement>('Nascimento')
     await userEvent.type(campo, '120520')
     campo.setSelectionRange(1, 1)
     await userEvent.keyboard('3')

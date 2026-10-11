@@ -39,7 +39,7 @@ export function editarComMascara(mascara: Mascara, bruto: string, cursorBruto: n
   const quantos = Math.min(digitosAntesDoCursor, digitos.length)
   let cursor = 0
   for (let vistos = 0; cursor < texto.length && vistos < quantos; cursor++) {
-    if (/\d/.test(texto[cursor]!)) vistos++
+    if (/\d/.test(texto[cursor])) vistos++
   }
   if (digitando && quantos > 0 && texto[cursor] === mascara.separador) cursor++
   return { texto, cursor }
@@ -88,7 +88,7 @@ export function isoParaTexto(iso: string): string {
 export function isoParaData(iso: string | undefined): Date | undefined {
   if (!iso || textoParaIso(isoParaTexto(iso)) === null) return undefined
   const [ano, mes, dia] = iso.slice(0, 10).split('-').map(Number)
-  return new Date(ano!, mes! - 1, dia)
+  return new Date(ano, mes - 1, dia)
 }
 
 /** Date local → `AAAA-MM-DD`. */

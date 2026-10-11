@@ -66,14 +66,14 @@ describe('editarHorario', () => {
 describe('CampoHorario', () => {
   it('cursor fica depois dos dois pontos após "1" + ":"', async () => {
     render(<Exemplo />)
-    const campo = screen.getByLabelText('Horário') as HTMLInputElement
+    const campo = screen.getByLabelText<HTMLInputElement>('Horário')
     await userEvent.type(campo, '1:')
     expect(campo).toHaveValue('01:')
     expect(campo.selectionStart).toBe(3)
   })
   it('apagar o 1º dígito de 12:30 e redigitar restaura o valor, sem travar por tamanho', async () => {
     render(<Exemplo />)
-    const campo = screen.getByLabelText('Horário') as HTMLInputElement
+    const campo = screen.getByLabelText<HTMLInputElement>('Horário')
     await userEvent.type(campo, '1230')
     campo.setSelectionRange(1, 1)
     await userEvent.keyboard('{Backspace}')
@@ -130,7 +130,7 @@ describe('CampoHorario', () => {
   })
   it('inserir número no meio mantém o cursor onde estava', async () => {
     render(<Exemplo />)
-    const campo = screen.getByLabelText('Horário') as HTMLInputElement
+    const campo = screen.getByLabelText<HTMLInputElement>('Horário')
     await userEvent.type(campo, '103')
     campo.setSelectionRange(1, 1)
     await userEvent.keyboard('2')
