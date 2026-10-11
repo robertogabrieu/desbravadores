@@ -263,7 +263,7 @@ describe('A6 · editar', () => {
   })
 })
 
-const TEXTO_EVENTO = 'Evento do clube: a reunião acontece e não há classe, salvo se você marcar. Para um período sem reuniões, escolha Férias; para uma reunião fora do domingo, Reunião extra.'
+const TEXTO_EVENTO = 'Evento do clube: só marca a data no calendário; não vale pontos nem tem lista de quem foi. Para um período sem reuniões, escolha Férias; para uma reunião fora do domingo, Reunião extra; para um evento que vale pontos, Evento especial.'
 const TEXTO_FERIAS = 'Férias: sem reunião e sem classe nos domingos do período; acampamentos continuam valendo.'
 const TEXTO_EXTRA = 'Reunião extra: uma data fora do domingo, com chamada da unidade, classe ou as duas.'
 const CAIXAS = ['Terá reunião', 'Terá classe', 'Terá atividade de campo']

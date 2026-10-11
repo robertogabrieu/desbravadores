@@ -9,12 +9,12 @@ export type TipoDeEvento = z.infer<typeof TipoEvento>
 /** Na ordem da legenda do calendário. */
 export const ROTULOS_DO_TIPO: Record<TipoDeEvento, string> = {
   REUNIAO_EXTRA: 'Reunião extra',
+  SEM_REUNIAO: 'Sem reunião',
   FERIAS: 'Férias',
-  ACAMPAMENTO: 'Acampamento / campo',
+  FERIADO: 'Feriado',
   EVENTO: 'Evento do clube',
   EVENTO_ESPECIAL: 'Evento especial',
-  FERIADO: 'Feriado',
-  SEM_REUNIAO: 'Sem reunião',
+  ACAMPAMENTO: 'Acampamento / campo',
   CLASSE_BIBLICA: 'Classe Bíblica',
 }
 
@@ -54,7 +54,7 @@ export const ICONE_DA_ESCOLHA: Record<TipoDeEvento, LucideIcon> = {
 /** Texto de apoio sob o seletor de Tipo; `diaReuniao` ausente (configuração não carregada) cai em "dias de reunião". */
 export const TEXTO_DO_TIPO: Partial<Record<TipoDeEvento, (diaReuniao: number | undefined) => string>> = {
   EVENTO: (diaReuniao) =>
-    `Evento do clube: a reunião acontece e não há classe, salvo se você marcar. Para um período sem reuniões, escolha Férias; para uma reunião fora ${dosDiasDeReuniao(diaReuniao).do}, Reunião extra.`,
+    `Evento do clube: só marca a data no calendário; não vale pontos nem tem lista de quem foi. Para um período sem reuniões, escolha Férias; para uma reunião fora ${dosDiasDeReuniao(diaReuniao).do}, Reunião extra; para um evento que vale pontos, Evento especial.`,
   EVENTO_ESPECIAL: () =>
     'Evento especial: vale pontos no ranking, tem lista de quem foi e pede uniforme de gala ou de campo. A reunião e a classe do dia continuam, salvo se você desmarcar abaixo.',
   FERIAS: (diaReuniao) => `Férias: sem reunião e sem classe ${dosDiasDeReuniao(diaReuniao).nos} do período; acampamentos continuam valendo.`,

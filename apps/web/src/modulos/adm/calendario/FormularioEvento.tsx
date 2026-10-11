@@ -1,4 +1,4 @@
-import { EventoEntrada, MARCACOES_PADRAO, PontosDeEvento, TIPOS_EVENTO, validarEvento } from '@desbravadores/shared'
+import { EventoEntrada, MARCACOES_PADRAO, PontosDeEvento, validarEvento } from '@desbravadores/shared'
 import type { UniformeEvento } from '@desbravadores/shared'
 import { Check } from 'lucide-react'
 import { useId, useState } from 'react'
@@ -62,7 +62,8 @@ interface Marcacoes {
 }
 
 /** O encontro da Classe Bíblica nasce e muda só pela edição dele. */
-export const TIPOS_DO_FORMULARIO = TIPOS_EVENTO.filter((t) => t !== 'CLASSE_BIBLICA')
+/** Na ordem de `ROTULOS_DO_TIPO`: a mesma dos cartões da escolha, do seletor da edição e da legenda. */
+export const TIPOS_DO_FORMULARIO = (Object.keys(ROTULOS_DO_TIPO) as TipoDeEvento[]).filter((t) => t !== 'CLASSE_BIBLICA')
 
 const tipoConhecido = (valor: string): TipoDeEvento => TIPOS_DO_FORMULARIO.find((t) => t === valor) ?? 'EVENTO'
 

@@ -13,7 +13,7 @@ import type { TipoDeEvento } from './tipos'
 
 const ESCOLHA = '/adm/calendario/eventos/novo?data=2026-10-17'
 const SUBTITULO = 'Que tipo de evento é? Escolha o tipo e o formulário certo abre em seguida.'
-const NA_ORDEM: TipoDeEvento[] = ['REUNIAO_EXTRA', 'FERIAS', 'ACAMPAMENTO', 'EVENTO', 'EVENTO_ESPECIAL', 'FERIADO', 'SEM_REUNIAO']
+const NA_ORDEM: TipoDeEvento[] = ['REUNIAO_EXTRA', 'SEM_REUNIAO', 'FERIAS', 'FERIADO', 'EVENTO', 'EVENTO_ESPECIAL', 'ACAMPAMENTO']
 
 function abrir(rota: string, ...extras: Parameters<typeof servidor.use>) {
   servidor.use(handlerConfiguracao(criarConfiguracao({ diaReuniao: 0 })), handlerCalendario(), ...extras)
@@ -75,7 +75,7 @@ describe('Novo evento · escolha do tipo', () => {
 describe('Novo evento · formulário com o tipo escolhido', () => {
   it('o cartão leva ao formulário daquele tipo, com a data, sem o seletor e com o selo', async () => {
     const { roteador } = abrir(ESCOLHA)
-    await userEvent.click(await screen.findByRole('link', { name: new RegExp(ROTULOS_DO_TIPO.EVENTO_ESPECIAL) }))
+    await userEvent.click(await screen.findByRole('link', { name: new RegExp(`^${ROTULOS_DO_TIPO.EVENTO_ESPECIAL}`) }))
 
     expect(await screen.findByLabelText('Nome')).toBeInTheDocument()
     expect(roteador.state.location.search).toBe('?data=2026-10-17&tipo=EVENTO_ESPECIAL')
@@ -88,7 +88,7 @@ describe('Novo evento · formulário com o tipo escolhido', () => {
 
   it('ao abrir o formulário pelo cartão, o foco vai ao título e não ao body', async () => {
     abrir(ESCOLHA)
-    await userEvent.click(await screen.findByRole('link', { name: new RegExp(ROTULOS_DO_TIPO.FERIADO) }))
+    await userEvent.click(await screen.findByRole('link', { name: new RegExp(`^${ROTULOS_DO_TIPO.FERIADO}`) }))
     const titulo = await screen.findByRole('heading', { level: 1, name: 'Novo evento' })
     await waitFor(() => expect(titulo).toHaveFocus())
   })
@@ -131,7 +131,7 @@ describe('Novo evento · formulário com o tipo escolhido', () => {
 
     expect(await screen.findByRole('link', { name: 'Cancelar' })).toBeInTheDocument()
     expect(roteador.state.location.search).toBe('?data=2026-10-17')
-    await userEvent.click(screen.getByRole('link', { name: new RegExp(ROTULOS_DO_TIPO.FERIADO) }))
+    await userEvent.click(screen.getByRole('link', { name: new RegExp(`^${ROTULOS_DO_TIPO.FERIADO}`) }))
     expect(await screen.findByLabelText('Nome')).toHaveValue('')
     expect(screen.getByLabelText('Início')).toHaveValue('2026-10-17')
   })
@@ -145,7 +145,7 @@ describe('Novo evento · formulário com o tipo escolhido', () => {
 
   it('o voltar do navegador volta à escolha', async () => {
     const { roteador } = abrir(ESCOLHA)
-    await userEvent.click(await screen.findByRole('link', { name: new RegExp(ROTULOS_DO_TIPO.SEM_REUNIAO) }))
+    await userEvent.click(await screen.findByRole('link', { name: new RegExp(`^${ROTULOS_DO_TIPO.SEM_REUNIAO}`) }))
     await screen.findByLabelText('Nome')
     await roteador.navigate(-1)
     expect(await screen.findByText(SUBTITULO)).toBeInTheDocument()
