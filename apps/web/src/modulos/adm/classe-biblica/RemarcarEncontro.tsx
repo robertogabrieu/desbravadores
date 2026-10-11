@@ -9,7 +9,9 @@ import { useConexao, usePacote } from '../../../offline'
 import { Botao, estiloDoBotao } from '../../../ui/Botao'
 import { CabecalhoDaPagina } from '../../../ui/CabecalhoDaPagina'
 import { Campo } from '../../../ui/Campo'
+import { CampoHorario } from '../../../ui/CampoHorario'
 import { CampoData } from '../../../ui/CampoData'
+import { horarioValido } from '../../../ui/mascaraHorario'
 import { Confirmacao } from '../../../ui/Confirmacao'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/EstadosDeCarga'
 import { FaixaAviso } from '../../../ui/FaixaAviso'
@@ -68,6 +70,7 @@ function Formulario({ detalhe }: { detalhe: DetalheDoEncontro }) {
 
   const enviarRemarcacao = () => {
     if (!data) return setFaltaData(true)
+    if (horario && !horarioValido(horario)) return
     if (!leitura || leitura.tipo === 'recusa') return
     const entrada = horario && horario !== encontro.horario ? { data, horario } : { data }
     remarcar.mutate({ id: encontro.id, entrada }, { onSuccess: voltarAoPainel })
@@ -118,7 +121,7 @@ function Formulario({ detalhe }: { detalhe: DetalheDoEncontro }) {
                 )}
                 {leitura?.tipo === 'aviso' && <FaixaAviso>{leitura.texto}</FaixaAviso>}
               </div>
-              <Campo rotulo="Horário" type="time" className="w-40" value={horario} onChange={(e) => setHorario(e.target.value)} />
+              <CampoHorario rotulo="Horário" className="w-40" value={horario} onChange={(e) => setHorario(e.target.value)} />
             </div>
           )}
         </div>

@@ -6,6 +6,7 @@ import { useCriarEvento, useEditarEvento } from '../../../api/calendario'
 import type { EventoCalendario, EventoGravado } from '../../../api/calendario'
 import { CaixaMarcacao } from '../../../ui/CaixaMarcacao'
 import { Campo } from '../../../ui/Campo'
+import { CampoHorario } from '../../../ui/CampoHorario'
 import { CampoData } from '../../../ui/CampoData'
 import { ResumoDosErros, useErrosAVista } from '../../../ui/ErrosDoFormulario'
 import { RodapeDoFormulario } from '../../../ui/RodapeDoFormulario'
@@ -144,7 +145,7 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar }: Pr
         </div>
       )}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Campo rotulo="Horário" type="time" value={horario} erro={erros['horario']} onChange={(e) => setHorario(e.target.value)} />
+        <CampoHorario rotulo="Horário" value={horario} erro={erros['horario']} onChange={(e) => setHorario(e.target.value)} />
         <Campo rotulo="Local" value={local} erro={erros['local']} onChange={(e) => setLocal(e.target.value)} />
       </div>
       {!ehFerias && (
