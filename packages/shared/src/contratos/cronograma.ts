@@ -66,7 +66,7 @@ export const DataMontagem = z.object({
 })
 export const RequisitoMontagem = RequisitoResumo.extend({ aulaId: Uuid.nullable(), data: DataCivil.nullable() })
 /** O que a classe avançada tem em cada data do calendário da regular (mesma ordem de `datas`). */
-export const DataDaAvancada = z.object({ data: DataCivil, aulaId: Uuid.nullable(), requisitoIds: z.array(Uuid), aulaDada: z.boolean() })
+export const DataDaAvancada = z.object({ data: DataCivil, aulaId: Uuid.nullable(), requisitoIds: z.array(Uuid), aulaDada: z.boolean(), conflito: z.boolean() })
 /** A avançada ativa da regular, lida junto com ela: `cronograma` null enquanto não existe. */
 export const AvancadaMontagem = z.object({
   classe: RefClasse,
