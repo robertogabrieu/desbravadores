@@ -65,6 +65,15 @@ export const DataMontagem = z.object({
   aulaDada: z.boolean(),
 })
 export const RequisitoMontagem = RequisitoResumo.extend({ aulaId: Uuid.nullable(), data: DataCivil.nullable() })
+/** O que a classe avançada tem em cada data do calendário da regular (mesma ordem de `datas`). */
+export const DataDaAvancada = z.object({ data: DataCivil, aulaId: Uuid.nullable(), requisitoIds: z.array(Uuid), aulaDada: z.boolean() })
+/** A avançada ativa da regular, lida junto com ela: `cronograma` null enquanto não existe. */
+export const AvancadaMontagem = z.object({
+  classe: RefClasse,
+  cronograma: z.object({ id: Uuid, status: StatusCronograma }).nullable(),
+  requisitos: z.array(RequisitoMontagem), // no mesmo formato e ordem dos da regular
+  datas: z.array(DataDaAvancada),
+})
 /** GET /classes/:id/cronograma/montagem?anoClube → o cronograma vivo. Sem cronograma: `cronograma`
  *  null e listas vazias (a tela oferece "Criar"); classe fora do escopo: 404. */
 export const MontagemSaida = z.object({
@@ -79,6 +88,8 @@ export const MontagemSaida = z.object({
   datas: z.array(DataMontagem),
   requisitos: z.array(RequisitoMontagem), // todos os ativos da classe (com ajuste do clube), ordem do caderno
   datasLivres: z.boolean(),               // true para Agrupadas
+  /** Só a regular com avançada ativa no clube traz o bloco; nos demais casos é null (opcional para não quebrar quem monta a resposta à mão). */
+  avancada: AvancadaMontagem.nullable().optional(),
 })
 export const ColocarRequisitoEntrada = z.object({ data: DataCivil })
 export const EnviarPublicarEntrada = z.object({ atualizadoEmVisto: InstanteIso })

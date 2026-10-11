@@ -49,21 +49,33 @@ export class ServicoMontagem {
     private readonly atividades: ServicoAtividade,
   ) {}
 
+  /**
+   * Cria o cronograma da classe e, sendo regular com avançada ativa, o da avançada (mesmo ano e período). Idempotente
+   * para o par: se a regular já tem o dela e a avançada não, cria só o que falta; se nada falta, é conflito.
+   */
   async criar(sessao: SessaoLogada, entrada: { classeId: string; anoClube: number; inicio: string; fim: string }): Promise<Saida> {
     await this.leitura.classeQueMonta(sessao, entrada.classeId)
     await this.exigirClasseAtiva(sessao.clubeId, entrada.classeId)
+    const { clubeId } = sessao
+    const avancada = await this.leitura.avancadaAtivaDa(clubeId, entrada.classeId)
     try {
-      const criado = await this.prisma.cronograma.create({
-        data: {
-          clubeId: sessao.clubeId,
-          classeId: entrada.classeId,
-          anoClube: entrada.anoClube,
-          inicio: daDataCivil(entrada.inicio),
-          fim: daDataCivil(entrada.fim),
-        },
-        select: { id: true },
+      const regularId = await this.prisma.$transaction(async (tx) => {
+        const doAno = (classeId: string) => tx.cronograma.findFirst({ where: { clubeId, classeId, anoClube: entrada.anoClube } })
+        const regular = await doAno(entrada.classeId)
+        const daAvancada = avancada ? await doAno(avancada.id) : null
+        if (regular && (!avancada || daAvancada)) throw new ErroApp('CONFLITO', 'Já existe um cronograma desta classe neste ano.')
+        // Faltando só a avançada, ela segue o período que a regular já tem.
+        const periodo = regular ?? { inicio: daDataCivil(entrada.inicio), fim: daDataCivil(entrada.fim) }
+        const criar = (classeId: string) =>
+          tx.cronograma.create({
+            data: { clubeId, classeId, anoClube: entrada.anoClube, inicio: periodo.inicio, fim: periodo.fim },
+            select: { id: true },
+          })
+        const criadoRegular = regular ?? (await criar(entrada.classeId))
+        if (avancada && !daAvancada) await criar(avancada.id)
+        return criadoRegular.id
       })
-      return await this.leitura.saida(sessao.clubeId, criado.id)
+      return await this.leitura.saida(clubeId, regularId)
     } catch (erro) {
       if (ehCorrida(erro)) throw new ErroApp('CONFLITO', 'Já existe um cronograma desta classe neste ano.')
       throw erro
@@ -234,7 +246,13 @@ export class ServicoMontagem {
         descricao: `${autor.nome} enviou o cronograma de ${classeNome}`,
         link,
       })
-      return { status: 'ENVIADO', enviadoEm: new Date(), enviadoPorId: contexto.sessao.usuarioId }
+      const mudanca = { status: 'ENVIADO', enviadoEm: new Date(), enviadoPorId: contexto.sessao.usuarioId } as const
+      await this.acompanharAvancada(contexto, (avancada) => {
+        // Avançada que já saiu do rascunho não mudou desde então (toda edição a devolve a rascunho): nada a enviar.
+        if (avancada.status !== 'RASCUNHO') return null
+        return mudanca
+      })
+      return mudanca
     })
   }
 
@@ -246,6 +264,14 @@ export class ServicoMontagem {
       const { clubeId } = cronograma
       await tx.cronogramaPublicacao.create({
         data: { clubeId, cronogramaId: cronograma.id, conteudo: await this.retrato(tx, cronograma), publicadoPorId: contexto.sessao.usuarioId },
+      })
+      await this.acompanharAvancada(contexto, async (avancada) => {
+        // Avançada já publicada e sem edição desde então: o retrato publicado continua valendo.
+        if (avancada.status === 'PUBLICADO') return null
+        await tx.cronogramaPublicacao.create({
+          data: { clubeId, cronogramaId: avancada.id, conteudo: await this.retrato(tx, avancada), publicadoPorId: contexto.sessao.usuarioId },
+        })
+        return { status: 'PUBLICADO' }
       })
 
       const instrutores = await this.instrutoresDaClasse(tx, clubeId, cronograma.classeId)
@@ -271,6 +297,36 @@ export class ServicoMontagem {
       })
       return { status: 'PUBLICADO' }
     })
+  }
+
+  /**
+   * Enviar e publicar uma regular andam junto com a avançada dela (se tem cronograma no mesmo ano): trava o
+   * cronograma da avançada, aplica a mudança que `aplicar` devolve (ou nada, se devolver `null`) e renova-o. Falha
+   * na avançada aborta a transação inteira e o erro diz de qual classe é.
+   */
+  private async acompanharAvancada(
+    contexto: Contexto,
+    aplicar: (avancada: Cronograma) => MudancaDoCronograma | null | Promise<MudancaDoCronograma | null>,
+  ): Promise<void> {
+    const { tx, cronograma } = contexto
+    const { clubeId } = cronograma
+    const classe = await this.leitura.avancadaAtivaDa(clubeId, cronograma.classeId, tx)
+    if (!classe) return
+    const existente = await tx.cronograma.findFirst({
+      where: { clubeId, classeId: classe.id, anoClube: cronograma.anoClube },
+      select: { id: true },
+    })
+    if (!existente) return
+    await this.travarCronograma(tx, clubeId, existente.id)
+    const avancada = await tx.cronograma.findFirstOrThrow({ where: { clubeId, id: existente.id } })
+    try {
+      const mudanca = await aplicar(avancada)
+      if (!mudanca) return
+      await tx.cronograma.updateMany({ where: { clubeId, id: avancada.id }, data: { ...mudanca, atualizadoEm: instanteNovo(avancada.atualizadoEm) } })
+    } catch (erro) {
+      if (erro instanceof ErroApp) throw new ErroApp(erro.codigo, `${classe.nome}: ${erro.mensagem}`)
+      throw erro
+    }
   }
 
   /**

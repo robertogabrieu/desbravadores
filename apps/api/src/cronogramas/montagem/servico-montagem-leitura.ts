@@ -20,6 +20,11 @@ type Saida = z.infer<typeof MontagemSaida>
 
 const CLASSE_NAO_ENCONTRADA = 'Classe não encontrada.'
 
+/** A classe de onde vêm o vínculo do instrutor e o ajuste de quem monta: a regular, quando a classe é avançada. */
+function classeDeReferencia(classe: { id: string; tipo: string; trilha: string; classeBaseId: string | null }): string {
+  return classe.tipo === 'AVANCADA' && classe.trilha === 'INDIVIDUAL' && classe.classeBaseId ? classe.classeBaseId : classe.id
+}
+
 /** Acesso à montagem (B3) e leitura do cronograma vivo no formato que as duas telas de montagem usam. */
 @Injectable()
 export class ServicoMontagemLeitura {
@@ -29,26 +34,30 @@ export class ServicoMontagemLeitura {
     private readonly calendario: ServicoCalendario,
   ) {}
 
-  /** Conselheiro 403; instrutor só as classes do vínculo e Adm só as oficiais ou do clube (senão 404). */
+  /**
+   * Conselheiro 403; instrutor só as classes do vínculo e Adm só as oficiais ou do clube (senão 404). Na avançada,
+   * o vínculo que vale é o da regular dela.
+   */
   async classeDoEscopo(sessao: SessaoLogada, classeId: string) {
     if (sessao.papel === 'CONSELHEIRO') throw new ErroApp('SEM_PERMISSAO', 'Você não tem acesso ao cronograma.')
-    if (sessao.papel === 'INSTRUTOR' && !(await this.escopo.classesDoInstrutor(sessao)).includes(classeId)) {
-      throw new ErroApp('NAO_ENCONTRADO', CLASSE_NAO_ENCONTRADA)
-    }
     const classe = await this.prisma.classe.findFirst({
       where: { id: classeId, OR: [{ clubeId: null }, { clubeId: sessao.clubeId }] },
-      select: SELECAO_REF_CLASSE,
+      select: { ...SELECAO_REF_CLASSE, classeBaseId: true },
     })
     if (!classe) throw new ErroApp('NAO_ENCONTRADO', CLASSE_NAO_ENCONTRADA)
+    if (sessao.papel === 'INSTRUTOR') {
+      const doInstrutor = await this.escopo.classesDoInstrutor(sessao)
+      if (!doInstrutor.includes(classeDeReferencia(classe))) throw new ErroApp('NAO_ENCONTRADO', CLASSE_NAO_ENCONTRADA)
+    }
     return classe
   }
 
-  /** B3: Adm sempre; instrutor da classe só se o clube liberou a montagem daquela classe para ele. */
+  /** B3: Adm sempre; instrutor da classe só se o clube liberou a montagem para ele (na avançada, vale o ajuste da regular). */
   async classeQueMonta(sessao: SessaoLogada, classeId: string) {
     const classe = await this.classeDoEscopo(sessao, classeId)
     if (sessao.papel === 'INSTRUTOR') {
       const ajuste = await this.prisma.classeClube.findUnique({
-        where: { clubeId_classeId: { clubeId: sessao.clubeId, classeId } },
+        where: { clubeId_classeId: { clubeId: sessao.clubeId, classeId: classeDeReferencia(classe) } },
         select: { quemMontaCronograma: true },
       })
       if (ajuste?.quemMontaCronograma !== 'INSTRUTOR') {
@@ -56,6 +65,21 @@ export class ServicoMontagemLeitura {
       }
     }
     return classe
+  }
+
+  /** A avançada ativa da regular neste clube (classe ativa e não desativada pelo clube); `null` se não há. */
+  avancadaAtivaDa(clubeId: string, regularId: string, db: Pick<Prisma.TransactionClient, 'classe'> = this.prisma) {
+    return db.classe.findFirst({
+      where: {
+        classeBaseId: regularId,
+        tipo: 'AVANCADA',
+        trilha: 'INDIVIDUAL',
+        ativa: true,
+        OR: [{ clubeId: null }, { clubeId }],
+        NOT: { clubes: { some: { clubeId, ativa: false } } },
+      },
+      select: SELECAO_REF_CLASSE,
+    })
   }
 
   async montagem(sessao: SessaoLogada, classeId: string, anoClube?: number): Promise<Saida> {
@@ -66,7 +90,7 @@ export class ServicoMontagemLeitura {
       select: { id: true },
     })
     if (!cronograma) {
-      return { cronograma: null, classe: refClasse(classe), datas: [], requisitos: [], datasLivres: classe.trilha === 'AGRUPADAS' }
+      return { cronograma: null, classe: refClasse(classe), datas: [], requisitos: [], datasLivres: classe.trilha === 'AGRUPADAS', avancada: null }
     }
     return this.saida(sessao.clubeId, cronograma.id)
   }
@@ -78,6 +102,7 @@ export class ServicoMontagemLeitura {
       include: { enviadoPor: { select: { nome: true } }, classe: { select: SELECAO_REF_CLASSE } },
     })
     const { classe } = cronograma
+    const avancada = classe.tipo === 'REGULAR' ? await this.avancadaCarregada(clubeId, classe.id, cronograma.anoClube) : null
     const [aulas, ligacoes, configuracao, relogio] = await Promise.all([
       this.prisma.aulaPlanejada.findMany({ where: { clubeId, cronogramaId, removidaEm: null } }),
       this.prisma.aulaRequisito.findMany({ where: { clubeId, cronogramaId }, select: { aulaPlanejadaId: true, requisitoId: true } }),
@@ -87,7 +112,9 @@ export class ServicoMontagemLeitura {
     const inicio = paraDataCivil(cronograma.inicio)
     const fim = paraDataCivil(cronograma.fim)
     const datasDasAulas = aulas.map((aula) => paraDataCivil(aula.data))
-    const [primeira, ultima] = [[inicio, ...datasDasAulas].sort()[0], [fim, ...datasDasAulas].sort().reverse()[0]]
+    const datasDaAvancada = avancada?.aulas.map((aula) => paraDataCivil(aula.data)) ?? []
+    const datasComAula = [...datasDasAulas, ...datasDaAvancada]
+    const [primeira, ultima] = [[inicio, ...datasComAula].sort()[0], [fim, ...datasComAula].sort().reverse()[0]]
 
     const [situacoes, eventos, registros] = await Promise.all([
       this.calendario.situacoes(clubeId, primeira, ultima),
@@ -107,7 +134,7 @@ export class ServicoMontagemLeitura {
       fim: paraDataCivil(evento.fim),
     }))
     const datasDoPeriodo = classe.trilha === 'INDIVIDUAL' ? datasDaMontagem(inicio, fim, configuracao.diaReuniao, eventosDoPeriodo) : []
-    const datas = [...new Set([...datasDoPeriodo, ...datasDasAulas])].sort()
+    const datas = [...new Set([...datasDoPeriodo, ...datasComAula])].sort()
     const aulaPorData = new Map(aulas.map((aula) => [paraDataCivil(aula.data), aula]))
 
     const requisitos = await this.requisitosDaClasse(clubeId, classe.id)
@@ -150,6 +177,58 @@ export class ServicoMontagemLeitura {
         return { ...requisito, aulaId, data: aulaId ? (dataPorAula.get(aulaId) ?? null) : null }
       }),
       datasLivres: classe.trilha === 'AGRUPADAS',
+      avancada: avancada ? await this.blocoDaAvancada(clubeId, avancada, datas) : null,
+    }
+  }
+
+  /** A avançada ativa da regular com o cronograma do ano e as aulas dele; `null` se a regular não tem avançada ativa. */
+  private async avancadaCarregada(clubeId: string, regularId: string, anoClube: number) {
+    const classe = await this.avancadaAtivaDa(clubeId, regularId)
+    if (!classe) return null
+    const cronograma = await this.prisma.cronograma.findFirst({
+      where: { clubeId, classeId: classe.id, anoClube },
+      select: { id: true, status: true },
+    })
+    const [aulas, ligacoes] = cronograma
+      ? await Promise.all([
+          this.prisma.aulaPlanejada.findMany({ where: { clubeId, cronogramaId: cronograma.id, removidaEm: null } }),
+          this.prisma.aulaRequisito.findMany({ where: { clubeId, cronogramaId: cronograma.id }, select: { aulaPlanejadaId: true, requisitoId: true } }),
+        ])
+      : [[], []]
+    return { classe, cronograma, aulas, ligacoes }
+  }
+
+  private async blocoDaAvancada(
+    clubeId: string,
+    avancada: NonNullable<Awaited<ReturnType<ServicoMontagemLeitura['avancadaCarregada']>>>,
+    datas: string[],
+  ): Promise<NonNullable<Saida['avancada']>> {
+    const { classe, cronograma, aulas, ligacoes } = avancada
+    const registros = await this.prisma.registroAula.findMany({
+      where: { clubeId, classeId: classe.id, data: { in: datas.map(daDataCivil) } },
+      select: { data: true },
+    })
+    const datasDadas = new Set(registros.map((registro) => paraDataCivil(registro.data)))
+    const aulaPorData = new Map(aulas.map((aula) => [paraDataCivil(aula.data), aula]))
+    const ligacaoPorRequisito = new Map(ligacoes.map((ligacao) => [ligacao.requisitoId, ligacao.aulaPlanejadaId]))
+    const dataPorAula = new Map(aulas.map((aula) => [aula.id, paraDataCivil(aula.data)]))
+    const requisitos = await this.requisitosDaClasse(clubeId, classe.id)
+    return {
+      classe: refClasse(classe),
+      cronograma,
+      requisitos: requisitos.map((requisito) => {
+        const aulaId = ligacaoPorRequisito.get(requisito.id) ?? null
+        return { ...requisito, aulaId, data: aulaId ? (dataPorAula.get(aulaId) ?? null) : null }
+      }),
+      datas: datas.map((data) => {
+        const aula = aulaPorData.get(data)
+        return {
+          data,
+          aulaId: aula?.id ?? null,
+          requisitoIds: aula ? ligacoes.filter((ligacao) => ligacao.aulaPlanejadaId === aula.id).map((ligacao) => ligacao.requisitoId) : [],
+          aulaDada: datasDadas.has(data),
+        }
+      }),
     }
   }
 
