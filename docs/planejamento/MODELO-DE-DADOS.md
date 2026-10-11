@@ -102,6 +102,22 @@ das listas de escolha e continua legível para quem já tinha matrícula ou vín
 requisitos das duas trilhas são **registros diferentes**, mesmo quando o texto coincide: o
 progresso de uma nunca conta na outra.
 
+**O par regular + avançada.** Na trilha individual, a regular e a avançada dela andam em par
+quando as duas estão ativas no sistema (`Classe.ativa`) e no clube (`ClasseClube.ativa`); havendo
+mais de uma avançada ativa para a mesma regular, vale a de menor `ordem` (a mesma que a matrícula
+escolhe). Agrupadas nunca formam par. Desativar um dos lados desfaz o par e cada classe volta a
+ficar sozinha. Enquanto o par existe:
+
+- **Instrutor:** o `VinculoClasse` guarda as duas classes — gravar o vínculo (convite, acréscimo de
+  papel, edição) completa o par, e ativar uma classe ou rodar a carga completa o vínculo de quem já
+  instrui um dos lados. O escopo do instrutor confia no vínculo gravado, não calcula o par na
+  leitura. O link de substituição não herda o par: vale só a classe do link.
+- **Quem monta o cronograma:** o da avançada segue o da regular; mudar na avançada é recusado
+  (422 `VALIDACAO`, "Altere em <regular>") e mudar na regular grava o mesmo valor nas avançadas
+  dela. Com a regular desativada no clube o par está desfeito e a avançada guarda o que ela mesma
+  escolheu.
+- **Cronograma:** um só por ano, o da regular (ver §5).
+
 A carga é **reexecutável**: casa cada requisito pela chave (classe + código) e atualiza texto e
 CAMPO sem trocar o id — o progresso já registrado continua apontando para o mesmo requisito.
 
@@ -185,9 +201,22 @@ domingo, então as aulas das Agrupadas acontecem em outro dia e horário. Para c
 `AGRUPADAS`, o cronograma aceita **qualquer data** (não só o dia de reunião); o calendário do clube
 só **avisa** quando a data cai num evento, sem bloquear. O cronograma é opcional para elas.
 
+**Cronograma do par.** Com o par ativo há um cronograma por ano, o da regular, e uma `AulaPlanejada`
+por encontro, que pode ter requisitos das duas classes. Pedir, montar ou criar o cronograma pela
+avançada opera o da regular. A leitura de cada classe (instrutor, registro de aula) só enxerga os
+requisitos dela; a aula com requisito só da outra classe não aparece, e a aula ainda sem requisito
+algum aparece só na regular. Presença é por classe: o `RegistroAula` continua sendo de uma classe e
+data, e o conflito (abaixo) vale para o encontro se qualquer uma das classes estiver nele. Se o par
+se desfaz, o cronograma continua sendo da regular e os requisitos da avançada que já estavam nele
+ficam lá até serem tirados — só dá para tirá-los, não colocar ou mover. Cronograma que já existia
+para a avançada, antes de ela formar par, não é migrado nem apagado: passa a ser ignorado enquanto
+o par existir.
+
 Um evento criado ou alterado que bloqueia a data de uma `AulaPlanejada` gera `Notificacao` para
 os instrutores da classe (e para o Adm, se `quemMontaCronograma=ADM`) e marca a aula com
-**conflito** (derivado, não coluna) até alguém mover os requisitos.
+**conflito** (derivado, não coluna) até alguém mover os requisitos. No par, a notificação é uma
+só por cronograma, cita as duas classes ("Amigo + Amigo da Natureza") e vai a quem instrui
+qualquer uma delas, sem repetir pessoa.
 
 ## 6. Reunião e aula
 
