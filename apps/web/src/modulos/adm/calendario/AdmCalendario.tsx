@@ -129,13 +129,16 @@ export function AdmCalendario() {
             descricao="Cadastre feriados, férias, acampamentos, dias sem reunião e reuniões extras para que o cronograma das classes os respeite."
           />
         ) : (
-          <ul aria-label={`Eventos de ${MESES[mes]}`} className="flex flex-col gap-2">
-            {eventosDesteMes.map((evento) => (
-              <li key={evento.id}>
-                <CartaoDoEvento evento={evento} estadoDeVolta={estadoDeVolta} />
-              </li>
-            ))}
-          </ul>
+          <>
+            {celular && <h3 className="text-lg font-extrabold text-texto">{`Eventos de ${MESES[mes].toLowerCase()}`}</h3>}
+            <ul aria-label={`Eventos de ${MESES[mes]}`} className="flex flex-col gap-2">
+              {eventosDesteMes.map((evento) => (
+                <li key={evento.id}>
+                  <CartaoDoEvento evento={evento} estadoDeVolta={estadoDeVolta} />
+                </li>
+              ))}
+            </ul>
+          </>
         )}
       </>
     )

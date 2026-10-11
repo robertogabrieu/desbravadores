@@ -229,6 +229,31 @@ describe('useMarcasDaPresenca', () => {
     await waitFor(() => expect(atual.marcaDe(ANA.dbvId)).toMatchObject({ foi: true, situacao: 'salva' }))
   })
 
+  it('uma leitura que saiu durante a gravação e volta depois não desfaz a marca confirmada', async () => {
+    const espera = portao()
+    let soltarLeitura: () => void = () => undefined
+    let seguraLeitura = false
+    await abrir({
+      antesDeGravar: espera.antesDeGravar,
+      antesDeResponderLeitura: () => (seguraLeitura ? new Promise<void>((resolver) => (soltarLeitura = resolver)) : Promise.resolve()),
+    })
+    act(() => atual.marcar(ANA.dbvId, { foi: true }))
+    await waitFor(() => expect(espera.chegadas).toHaveLength(1))
+
+    // A leitura sai com a lista de antes da gravação e só responde depois dela.
+    seguraLeitura = true
+    act(() => {
+      window.dispatchEvent(new Event('visibilitychange'))
+    })
+    await new Promise((resolver) => setTimeout(resolver, 50))
+    act(() => espera.soltarUm())
+    await waitFor(() => expect(atual.marcaDe(ANA.dbvId)).toMatchObject({ foi: true, situacao: 'salva' }))
+    act(() => soltarLeitura())
+    await new Promise((resolver) => setTimeout(resolver, 100))
+    expect(atual.marcaDe(ANA.dbvId)).toMatchObject({ foi: true, situacao: 'salva' })
+    expect(atual.totais.foram).toBe(1)
+  })
+
   it('sem internet não aceita toque novo, e as marcas sem confirmação continuam contadas', async () => {
     const corpos: unknown[] = []
     await abrir({

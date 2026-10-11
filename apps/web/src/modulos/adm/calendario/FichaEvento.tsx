@@ -29,7 +29,11 @@ const TRACO = '—'
 
 const nomeDoMes = (data: string): string => (MESES[Number(data.slice(5, 7)) - 1] ?? '').toLowerCase()
 
-const desbravadores = (quantos: number): string => (quantos === 1 ? '1 desbravador' : `${quantos} desbravadores`)
+/** "sábado, 3 de outubro de 2026", como no quadro da ficha; vários dias: "… a domingo, 4 de outubro de 2026". */
+const diaCompleto = (data: string): string => `${dataPorExtenso(data).replace(/^./, (letra) => letra.toLowerCase())} de ${data.slice(0, 4)}`
+const datasPorExtensoCompletas = (inicio: string, fim: string): string => (inicio === fim ? diaCompleto(inicio) : `${diaCompleto(inicio)} a ${diaCompleto(fim)}`)
+
+const desbravadores =(quantos: number): string => (quantos === 1 ? '1 desbravador' : `${quantos} desbravadores`)
 
 type SituacaoDaLista = 'ANTES_DO_DIA' | 'SEM_MARCAS' | 'RASCUNHO' | 'CONCLUIDA'
 
@@ -247,7 +251,7 @@ function Conteudo({ evento }: { evento: EventoCalendario }) {
           <ListaDePares
             colunas={3}
             pares={[
-              { rotulo: evento.tipo === 'REUNIAO_EXTRA' ? 'Data' : 'Datas', valor: periodoPorExtenso(evento.inicio, evento.fim) },
+              { rotulo: evento.tipo === 'REUNIAO_EXTRA' ? 'Data' : 'Datas', valor: ehEspecial ? datasPorExtensoCompletas(evento.inicio, evento.fim) : periodoPorExtenso(evento.inicio, evento.fim) },
               { rotulo: 'Horário', valor: evento.horario ? horaCurta(evento.horario) : TRACO },
               { rotulo: 'Local', valor: evento.local ?? TRACO },
               ...(encontro

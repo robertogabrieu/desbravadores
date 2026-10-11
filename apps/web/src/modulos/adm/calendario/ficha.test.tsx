@@ -356,6 +356,18 @@ describe('ficha do evento especial', () => {
     expect((await cartaoDaLista()).getByText('10 desbravadores foram, 4 de campo. Os pontos já estão no ranking de outubro.')).toBeInTheDocument()
   })
 
+  it('“Datas” sai por extenso, com o ano; vários dias mostram início e fim completos', async () => {
+    abrirEspecial()
+    const dados = within(await screen.findByRole('region', { name: 'Dados do evento' }))
+    expect(dados.getByText('Datas', { selector: 'dt' }).nextElementSibling).toHaveTextContent('sábado, 3 de outubro de 2026')
+  })
+
+  it('evento especial de vários dias mostra as duas datas por extenso', async () => {
+    abrirEspecial({ inicio: '2026-10-03', fim: '2026-10-04' })
+    const dados = within(await screen.findByRole('region', { name: 'Dados do evento' }))
+    expect(dados.getByText('Datas', { selector: 'dt' }).nextElementSibling).toHaveTextContent('sábado, 3 de outubro de 2026 a domingo, 4 de outubro de 2026')
+  })
+
   it('“Pontos e uniforme” mostra os dois valores e o uniforme escrito', async () => {
     abrirEspecial()
 

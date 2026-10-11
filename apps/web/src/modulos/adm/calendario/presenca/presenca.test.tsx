@@ -147,7 +147,7 @@ describe('lista "Quem foi" no celular', () => {
     await screen.findByText('Ana Clara Souza')
     await userEvent.click(botaoDeNome('Ana Clara Souza'))
     await waitFor(() => expect(botaoDeNome('Ana Clara Souza')).toHaveAttribute('aria-pressed', 'true'))
-    await userEvent.click(linhaDe('Ana Clara Souza').getByRole('button', { name: 'De gala' }))
+    await userEvent.click(linhaDe('Ana Clara Souza').getByRole('button', { name: /^De gala: / }))
     await waitFor(() => expect(screen.getByText('1 de gala')).toBeInTheDocument())
     expect(corpos).toEqual([{ marcas: [{ dbvId: ANA.dbvId, foi: true }] }, { marcas: [{ dbvId: ANA.dbvId, comUniforme: true }] }])
     expect(screen.getByRole('button', { name: /^Águias/ })).toHaveTextContent('1 de 3 foram · 1 de gala')
@@ -261,7 +261,7 @@ describe('concluir a lista', () => {
     await userEvent.click(botaoDeNome('Ana Clara Souza'))
     await userEvent.click(botaoDeNome('Davi Carvalho'))
     await waitFor(() => expect(screen.getByText('2 de 6 foram')).toBeInTheDocument())
-    await userEvent.click(linhaDe('Ana Clara Souza').getByRole('button', { name: 'De gala' }))
+    await userEvent.click(linhaDe('Ana Clara Souza').getByRole('button', { name: /^De gala: / }))
     await waitFor(() => expect(screen.getByText('1 de gala')).toBeInTheDocument())
 
     expect(screen.getByText('Ao concluir, os 2 que foram ganham os pontos de ir ao evento, e o 1 de gala ganha também os do uniforme. Depois você ainda pode corrigir a lista.')).toBeInTheDocument()
@@ -360,7 +360,7 @@ describe('corrigir depois de concluída', () => {
   it('tirar só o uniforme diz quantos pontos saem e que os de ir ficam', async () => {
     const { corpos } = await abrirConcluida()
     await userEvent.click(screen.getByRole('button', { name: /^Águias/ }))
-    await userEvent.click(linhaDe('Davi Carvalho').getByRole('button', { name: 'De gala' }))
+    await userEvent.click(linhaDe('Davi Carvalho').getByRole('button', { name: /^De gala: / }))
 
     const dialogo = within(await screen.findByRole('dialog', { name: 'Tirar o uniforme de gala de Davi Carvalho?' }))
     expect(dialogo.getByText('Davi Carvalho perde 10 pontos do ranking de outubro. Os 20 de ir ao evento ficam. Você pode marcar de novo depois.')).toBeInTheDocument()
@@ -391,7 +391,7 @@ describe('o rótulo segue o uniforme do evento', () => {
     expect(screen.queryByText(/gala/i)).not.toBeInTheDocument()
 
     await userEvent.click(botaoDeNome('Ana Clara Souza'))
-    await userEvent.click(linhaDe('Ana Clara Souza').getByRole('button', { name: 'De campo' }))
+    await userEvent.click(linhaDe('Ana Clara Souza').getByRole('button', { name: /^De campo: / }))
     await waitFor(() => expect(screen.getByText('1 de campo')).toBeInTheDocument())
     await userEvent.click(screen.getByRole('button', { name: 'Concluir a lista' }))
     expect(await screen.findByText('1 desbravador foi, 1 de campo. Os pontos já estão no ranking de outubro.')).toBeInTheDocument()
@@ -473,10 +473,10 @@ describe('lista no computador (≥ 900 px)', () => {
     expect(linhaEnzo.getByRole('button', { name: 'De gala: indisponível porque Enzo não foi' })).toBeDisabled()
     expect(linhaEnzo.getByText('De gala · só quem foi')).toBeInTheDocument()
 
-    await userEvent.click(linhaEnzo.getByRole('button', { name: 'Não foi' }))
-    await waitFor(() => expect(linhaEnzo.getByRole('button', { name: 'Foi' })).toHaveAttribute('aria-pressed', 'true'))
-    await userEvent.click(linhaEnzo.getByRole('button', { name: 'De gala' }))
-    await waitFor(() => expect(linhaEnzo.getByRole('button', { name: 'De gala' })).toHaveAttribute('aria-pressed', 'true'))
+    await userEvent.click(linhaEnzo.getByRole('button', { name: 'Não foi: Enzo Barros' }))
+    await waitFor(() => expect(linhaEnzo.getByRole('button', { name: 'Foi: Enzo Barros' })).toHaveAttribute('aria-pressed', 'true'))
+    await userEvent.click(linhaEnzo.getByRole('button', { name: /^De gala: / }))
+    await waitFor(() => expect(linhaEnzo.getByRole('button', { name: /^De gala: / })).toHaveAttribute('aria-pressed', 'true'))
     expect(corpos).toEqual([{ marcas: [{ dbvId: ENZO.dbvId, foi: true }] }, { marcas: [{ dbvId: ENZO.dbvId, comUniforme: true }] }])
     expect(screen.getByText('1 de gala')).toBeInTheDocument()
   })
@@ -492,7 +492,53 @@ describe('lista no computador (≥ 900 px)', () => {
     await screen.findByRole('heading', { name: 'Lista concluída' })
     await userEvent.click(screen.getByRole('button', { name: /^Águias/ }))
     const tabela = await screen.findByRole('table')
-    await userEvent.click(within(within(tabela).getByText('Ana Clara Souza').closest('tr') as HTMLElement).getByRole('button', { name: 'Foi' }))
+    await userEvent.click(within(within(tabela).getByText('Ana Clara Souza').closest('tr') as HTMLElement).getByRole('button', { name: 'Foi: Ana Clara Souza' }))
     expect(await screen.findByRole('dialog', { name: 'Tirar Ana Clara Souza da lista?' })).toBeInTheDocument()
+  })
+})
+
+describe('foco e nome acessível (C48)', () => {
+  function seguraGravacao() {
+    const porta = { soltar: (): void => undefined }
+    const antesDeGravar = () => new Promise<undefined>((resolver) => (porta.soltar = () => resolver(undefined)))
+    return { porta, antesDeGravar }
+  }
+
+  it('no celular o botão tocado continua com o foco durante e depois do salvamento', async () => {
+    const { porta, antesDeGravar } = seguraGravacao()
+    abrir({ opcoes: { antesDeGravar } })
+    const botao = await screen.findByRole('button', { name: /^Ana Clara Souza/ })
+    await userEvent.click(botao)
+    await waitFor(() => expect(botao).toHaveAttribute('aria-disabled', 'true'))
+    expect(document.activeElement).toBe(botao)
+    await userEvent.click(botao)
+    porta.soltar()
+    await waitFor(() => expect(botao).toHaveAttribute('aria-pressed', 'true'))
+    expect(document.activeElement).toBe(botao)
+    expect(botao).not.toHaveAttribute('aria-disabled')
+  })
+
+  it('no celular a pílula do uniforme se acha pelo nome da pessoa', async () => {
+    abrir({ presenca: criarPresenca(unidades({ aguias: [{ ...ANA, foi: true }, DAVI, ENZO], leoes: [], sem: [] })) })
+    await screen.findByText('Ana Clara Souza')
+    expect(screen.getByRole('button', { name: 'De gala: Ana Clara Souza' })).toBeEnabled()
+  })
+
+  describe('no computador', () => {
+    beforeEach(() => simularLargura(1280))
+
+    it('os botões se chamam com o nome da pessoa e o foco fica no botão tocado', async () => {
+      const { porta, antesDeGravar } = seguraGravacao()
+      abrir({ opcoes: { antesDeGravar } })
+      const botao = await screen.findByRole('button', { name: 'Não foi: Ana Clara Souza' })
+      expect(screen.getByRole('button', { name: 'De gala: indisponível porque Ana não foi' })).toBeDisabled()
+      await userEvent.click(botao)
+      await waitFor(() => expect(botao).toHaveAttribute('aria-disabled', 'true'))
+      expect(document.activeElement).toBe(botao)
+      porta.soltar()
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Foi: Ana Clara Souza' })).toHaveAttribute('aria-pressed', 'true'))
+      expect(document.activeElement).toBe(botao)
+      expect(screen.getByRole('button', { name: 'De gala: Ana Clara Souza' })).toBeEnabled()
+    })
   })
 })

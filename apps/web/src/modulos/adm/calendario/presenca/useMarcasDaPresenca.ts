@@ -101,7 +101,10 @@ export function useMarcasDaPresenca(eventoId: string) {
       for (let trabalho = fila.current.shift(); trabalho; trabalho = fila.current.shift()) {
         try {
           await cliente.cancelQueries({ queryKey: chavesPresenca.evento(eventoId) })
-          reconciliar(trabalho, await gravarPresenca(eventoId, trabalho.marcas))
+          const resposta = await gravarPresenca(eventoId, trabalho.marcas)
+          // Uma leitura que saiu durante a gravação traz a lista de antes dela: o que o servidor confirmou vale mais.
+          await cliente.cancelQueries({ queryKey: chavesPresenca.evento(eventoId) })
+          reconciliar(trabalho, resposta)
           void invalidarDepoisDaLista(cliente)
         } catch {
           falhar(trabalho)

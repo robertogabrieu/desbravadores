@@ -29,6 +29,8 @@ export function criarPresenca(unidades: UnidadeDaPresenca[], parcial: Partial<Pr
 
 export interface OpcoesDaPresenca {
   aoLer?: () => void
+  /** Segura a resposta da leitura (que já saiu com a lista de agora): simula a leitura lenta que volta depois de uma gravação. */
+  antesDeResponderLeitura?: () => Promise<void>
   /** Corpo do PUT. Devolver uma resposta substitui a do servidor de mentira (falha ou espera controlada pelo teste). */
   antesDeGravar?: (corpo: { marcas: MarcaParaGravar[] }) => Promise<Response | undefined> | Response | undefined
   aoConcluir?: (corpo: unknown) => void
@@ -36,9 +38,11 @@ export interface OpcoesDaPresenca {
 
 /** Servidor de mentira da lista "Quem foi": o `PUT` muda a caixa como a API, e o `POST` conclui se os totais baterem. */
 export const handlersPresenca = (presenca: Caixa<Presenca>, opcoes: OpcoesDaPresenca = {}) => [
-  http.get('/api/calendario/eventos/:id/presenca', () => {
+  http.get('/api/calendario/eventos/:id/presenca', async () => {
     opcoes.aoLer?.()
-    return HttpResponse.json({ ...presenca.atual, resumo: resumoDe(presenca.atual.unidades) })
+    const doMomento = { ...presenca.atual, resumo: resumoDe(presenca.atual.unidades) }
+    await opcoes.antesDeResponderLeitura?.()
+    return HttpResponse.json(doMomento)
   }),
   http.put('/api/calendario/eventos/:id/presenca', async ({ request }) => {
     const corpo = (await request.json()) as { marcas: MarcaParaGravar[] }

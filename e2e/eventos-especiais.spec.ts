@@ -64,10 +64,10 @@ test('evento especial: o Adm cria, registra quem foi e conclui; conselheiro e in
   // Quem foi: marca a pessoa e "de gala"; a lista se salva sozinha e a conclusão manda os 30 pontos ao ranking.
   await expect(paginaAdm.getByRole('heading', { level: 1, name: 'Quem foi' })).toBeVisible()
   const linha = paginaAdm.getByRole('row').filter({ hasText: nomeDaPessoa })
-  await linha.getByRole('button', { name: new RegExp(nomeDaPessoa) }).click()
+  await linha.getByRole('button', { name: `Não foi: ${nomeDaPessoa}` }).click()
   await expect(linha.getByText('Foi', { exact: true })).toBeVisible()
-  await linha.getByRole('button', { name: 'De gala' }).click()
-  await expect(linha.getByRole('button', { name: 'De gala' })).toHaveAttribute('aria-pressed', 'true')
+  await linha.getByRole('button', { name: `De gala: ${nomeDaPessoa}` }).click()
+  await expect(linha.getByRole('button', { name: `De gala: ${nomeDaPessoa}` })).toHaveAttribute('aria-pressed', 'true')
   await expect(paginaAdm.getByText('1 de 1 foram')).toBeVisible()
   await expect(paginaAdm.getByText('1 de gala')).toBeVisible()
   await paginaAdm.getByRole('button', { name: 'Concluir a lista' }).click()

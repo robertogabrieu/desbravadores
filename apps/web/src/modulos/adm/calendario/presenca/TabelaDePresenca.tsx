@@ -42,7 +42,7 @@ export function TabelaDePresenca({ linhas, uniforme, semInternet, marcaDe, toque
         {linhas.map((linha) => {
           const marca = marcaDe(linha.dbvId)
           const toques = toquesDe(linha.dbvId)
-          const travada = marca.situacao !== 'salva' || semInternet
+          const emAndamento = marca.situacao !== 'salva'
           return (
             <tr key={linha.dbvId} aria-busy={marca.situacao === 'salvando'} className="border-b border-borda last:border-b-0">
               <td className="px-3 py-1 align-middle">
@@ -60,8 +60,10 @@ export function TabelaDePresenca({ linhas, uniforme, semInternet, marcaDe, toque
                 <button
                   type="button"
                   aria-pressed={marca.foi}
-                  disabled={travada}
-                  onClick={toques.aoTocarNome}
+                  aria-label={`${textoDoFoi(marca)}: ${linha.nome}`}
+                  disabled={semInternet}
+                  aria-disabled={emAndamento || undefined}
+                  onClick={emAndamento ? undefined : toques.aoTocarNome}
                   className={cn(BOTAO, marca.foi ? 'border-marca bg-marca-suave text-marca' : 'border-borda-controle bg-superficie text-texto')}
                 >
                   <span aria-hidden className={cn('flex size-6 shrink-0 items-center justify-center rounded-md', marca.foi ? 'bg-marca text-sobre-marca' : 'border-2 border-borda-controle bg-superficie')}>
@@ -74,9 +76,10 @@ export function TabelaDePresenca({ linhas, uniforme, semInternet, marcaDe, toque
                 <button
                   type="button"
                   aria-pressed={marca.comUniforme}
-                  aria-label={marca.foi ? undefined : `De ${uniforme}: indisponível porque ${primeiroNome(linha.nome)} não foi`}
-                  disabled={!marca.foi || travada}
-                  onClick={toques.aoTocarUniforme}
+                  aria-label={marca.foi ? `De ${uniforme}: ${linha.nome}` : `De ${uniforme}: indisponível porque ${primeiroNome(linha.nome)} não foi`}
+                  disabled={!marca.foi || semInternet}
+                  aria-disabled={emAndamento || undefined}
+                  onClick={emAndamento ? undefined : toques.aoTocarUniforme}
                   className={cn(BOTAO, uniforme === 'gala' ? 'border-solid' : 'border-dashed', marca.comUniforme ? 'border-marca bg-marca-suave text-marca' : 'border-borda-controle bg-superficie text-texto')}
                 >
                   {marca.comUniforme && <Shirt aria-hidden className="size-4 shrink-0" />}

@@ -113,6 +113,13 @@ describe('calendário · no celular', () => {
     const lista = screen.getByRole('list', { name: 'Eventos de Outubro' })
     expect(painel.compareDocumentPosition(lista) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
+
+  it('a lista do mês tem o título "Eventos de outubro" logo antes dela', async () => {
+    abrirEm('/adm/calendario?mes=2026-10')
+    const titulo = await screen.findByRole('heading', { name: 'Eventos de outubro' })
+    const lista = screen.getByRole('list', { name: 'Eventos de Outubro' })
+    expect(titulo.compareDocumentPosition(lista) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
 })
 
 const doEncontro = (n: number, inicio: string, cancelado: boolean) =>

@@ -32,7 +32,7 @@ export const mensagemDaFalha = (nome: string): string => `Não salvou a marca de
 
 /** O nome é a caixa de marcar; a pílula do uniforme só liga para quem foi. Nada depende só da cor: tem texto, ícone e contorno. */
 export function LinhaDeMarca({ nome, marca, uniforme, semInternet, aoTocarNome, aoTocarUniforme, aoTentarDeNovo }: Propriedades) {
-  const travada = marca.situacao !== 'salva' || semInternet
+  const emAndamento = marca.situacao !== 'salva'
   const rotuloDoUniforme = `De ${uniforme}`
 
   return (
@@ -41,8 +41,9 @@ export function LinhaDeMarca({ nome, marca, uniforme, semInternet, aoTocarNome, 
         <button
           type="button"
           aria-pressed={marca.foi}
-          disabled={travada}
-          onClick={aoTocarNome}
+          disabled={semInternet}
+          aria-disabled={emAndamento || undefined}
+          onClick={emAndamento ? undefined : aoTocarNome}
           className="flex min-h-[var(--touch-min)] min-w-0 flex-1 items-center gap-3 rounded-botao text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marca disabled:cursor-not-allowed"
         >
           <span
@@ -59,9 +60,10 @@ export function LinhaDeMarca({ nome, marca, uniforme, semInternet, aoTocarNome, 
         <button
           type="button"
           aria-pressed={marca.comUniforme}
-          aria-label={marca.foi ? undefined : `${rotuloDoUniforme}: indisponível porque ${primeiroNome(nome)} não foi`}
-          disabled={!marca.foi || travada}
-          onClick={aoTocarUniforme}
+          aria-label={marca.foi ? `${rotuloDoUniforme}: ${nome}` : `${rotuloDoUniforme}: indisponível porque ${primeiroNome(nome)} não foi`}
+          disabled={!marca.foi || semInternet}
+          aria-disabled={emAndamento || undefined}
+          onClick={emAndamento ? undefined : aoTocarUniforme}
           className={cn(
             'inline-flex min-h-[var(--touch-min)] shrink-0 items-center justify-center gap-1.5 rounded-full border-2 px-4 text-base font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marca disabled:cursor-not-allowed disabled:opacity-50',
             uniforme === 'gala' ? 'border-solid' : 'border-dashed',
