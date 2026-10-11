@@ -45,6 +45,7 @@ export function EditarEvento() {
       replace: true,
       state: {
         voltarPara,
+        salvo: true,
         avisos: gravado.aulasAfetadas.length > 0 ? [textoDasAulasAfetadas(gravado.aulasAfetadas)] : [],
       },
     })

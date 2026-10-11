@@ -43,6 +43,8 @@ export const ICONE_DO_TIPO: Partial<Record<TipoDeEvento, LucideIcon>> = {
 export const TEXTO_DO_TIPO: Partial<Record<TipoDeEvento, (diaReuniao: number | undefined) => string>> = {
   EVENTO: (diaReuniao) =>
     `Evento do clube: a reunião acontece e não há classe, salvo se você marcar. Para um período sem reuniões, escolha Férias; para uma reunião fora ${dosDiasDeReuniao(diaReuniao).do}, Reunião extra.`,
+  EVENTO_ESPECIAL: () =>
+    'Evento especial: vale pontos no ranking, tem lista de quem foi e pede uniforme de gala ou de campo. A reunião e a classe do dia continuam, salvo se você desmarcar abaixo.',
   FERIAS: (diaReuniao) => `Férias: sem reunião e sem classe ${dosDiasDeReuniao(diaReuniao).nos} do período; acampamentos continuam valendo.`,
   REUNIAO_EXTRA: (diaReuniao) => `Reunião extra: uma data fora ${dosDiasDeReuniao(diaReuniao).do}, com chamada da unidade, classe ou as duas.`,
 }

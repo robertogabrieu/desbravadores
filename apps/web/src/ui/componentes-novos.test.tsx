@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import { Abas } from './Abas'
@@ -9,6 +10,8 @@ import { Avatar } from './Avatar'
 import { BarraProgresso } from './BarraProgresso'
 import { Chip } from './Chip'
 import { Confirmacao } from './Confirmacao'
+import { EscolhaUnica } from './EscolhaUnica'
+import { ResumoDosErros, useErrosAVista } from './ErrosDoFormulario'
 import { Esqueleto } from './Esqueleto'
 import { Interruptor } from './Interruptor'
 import { RodapeDoFormulario } from './RodapeDoFormulario'
@@ -265,5 +268,83 @@ describe('CampoData', () => {
     await userEvent.type(campo, '2030-09-14')
     expect(campo).toHaveValue('2030-09-14')
     expect(aoMudar).toHaveBeenCalled()
+  })
+})
+
+describe('EscolhaUnica', () => {
+  const OPCOES = [
+    { valor: 'GALA', rotulo: 'Uniforme de gala' },
+    { valor: 'CAMPO', rotulo: 'Uniforme de campo' },
+  ]
+
+  it('é um grupo com legenda e abre sem nenhuma opção marcada', () => {
+    render(<EscolhaUnica legenda="Uniforme do evento" opcoes={OPCOES} valor={null} aoEscolher={vi.fn()} />)
+
+    const grupo = screen.getByRole('group', { name: 'Uniforme do evento' })
+    const radios = within(grupo).getAllByRole('radio')
+    expect(radios.map((r) => r.closest('label')?.textContent)).toEqual(['Uniforme de gala', 'Uniforme de campo'])
+    expect(radios.some((r) => (r as HTMLInputElement).checked)).toBe(false)
+    expect(new Set(radios.map((r) => r.getAttribute('name'))).size).toBe(1)
+  })
+
+  it('marca a opção do valor e devolve o valor de quem foi tocado', async () => {
+    const aoEscolher = vi.fn()
+    const { rerender } = render(<EscolhaUnica legenda="Uniforme do evento" opcoes={OPCOES} valor="GALA" aoEscolher={aoEscolher} />)
+    expect(screen.getByLabelText('Uniforme de gala')).toBeChecked()
+
+    await userEvent.click(screen.getByLabelText('Uniforme de campo'))
+    expect(aoEscolher).toHaveBeenCalledWith('CAMPO')
+
+    rerender(<EscolhaUnica legenda="Uniforme do evento" opcoes={OPCOES} valor="CAMPO" aoEscolher={aoEscolher} />)
+    expect(screen.getByLabelText('Uniforme de campo')).toBeChecked()
+    expect(screen.getByLabelText('Uniforme de gala')).not.toBeChecked()
+  })
+
+  it('cada opção é um alvo de toque de 44 px, em toda a linha', () => {
+    render(<EscolhaUnica legenda="Uniforme do evento" opcoes={OPCOES} valor={null} aoEscolher={vi.fn()} />)
+    for (const opcao of OPCOES) {
+      expect(screen.getByLabelText(opcao.rotulo).closest('label')?.className).toContain('min-h-[var(--touch-min)]')
+    }
+  })
+
+  it('o erro é anunciado, ligado ao grupo e marcado para o resumo de erros', () => {
+    render(<EscolhaUnica id="uniforme" legenda="Uniforme do evento" opcoes={OPCOES} valor={null} erro="Escolha o uniforme do evento." aoEscolher={vi.fn()} />)
+
+    const grupo = screen.getByRole('group', { name: 'Uniforme do evento' })
+    expect(grupo).toHaveAttribute('id', 'uniforme')
+    expect(grupo).toHaveAttribute('data-com-erro')
+    const alerta = screen.getByRole('alert')
+    expect(alerta).toHaveTextContent('Escolha o uniforme do evento.')
+    expect(grupo.getAttribute('aria-describedby')).toContain(alerta.id)
+  })
+
+  it('sem erro, não marca o grupo nem anuncia nada; a ajuda descreve o grupo', () => {
+    render(<EscolhaUnica legenda="Uniforme do evento" opcoes={OPCOES} valor={null} ajuda="Confira a lista depois." aoEscolher={vi.fn()} />)
+
+    const grupo = screen.getByRole('group', { name: 'Uniforme do evento' })
+    expect(grupo).not.toHaveAttribute('data-com-erro')
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(grupo).toHaveAccessibleDescription('Confira a lista depois.')
+  })
+
+  it('no formulário, o erro leva o foco ao primeiro rádio e entra no resumo', async () => {
+    function Formulario() {
+      const [erros, definir] = useState<Record<string, string>>({})
+      const { formulario, pendencias } = useErrosAVista(erros)
+      return (
+        <form ref={formulario} onSubmit={(e) => { e.preventDefault(); definir({ uniforme: 'Escolha o uniforme do evento.' }) }}>
+          <ResumoDosErros pendencias={pendencias} />
+          <EscolhaUnica id="uniforme" legenda="Uniforme do evento" opcoes={OPCOES} valor={null} erro={erros['uniforme']} aoEscolher={vi.fn()} />
+          <button type="submit">Salvar</button>
+        </form>
+      )
+    }
+    render(<Formulario />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+
+    expect(screen.getByLabelText('Uniforme de gala')).toHaveFocus()
+    const resumo = screen.getByRole('region', { name: 'Revise 1 campo para salvar' })
+    expect(within(resumo).getByRole('link', { name: 'Uniforme do evento' })).toBeInTheDocument()
   })
 })

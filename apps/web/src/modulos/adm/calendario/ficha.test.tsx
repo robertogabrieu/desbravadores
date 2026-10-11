@@ -6,21 +6,28 @@ import { chavesCalendario } from '../../../api/calendario'
 import type { EventoCalendario } from '../../../api/calendario'
 import { caixa } from '../../../testes/handlers/caixa'
 import type { Caixa } from '../../../testes/handlers/caixa'
-import { criarAulaAfetada, criarEvento, handlerCalendario, handlerCriarEvento, handlerEditarEvento, handlerEvento, handlerExcluirEvento } from '../../../testes/handlers/calendario'
+import { criarAulaAfetada, criarEvento, criarEventoEspecial, handlerCalendario, handlerCriarEvento, handlerEditarEvento, handlerEvento, handlerExcluirEvento } from '../../../testes/handlers/calendario'
 import { criarConfiguracao, handlerConfiguracao, handlerErroConfiguracao } from '../../../testes/handlers/clube'
 import { uuid } from '../../../testes/handlers/sessao'
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
 import { rotasAdmCalendario } from './rotas'
 
-const estado = vi.hoisted(() => ({ modo: 'ONLINE' as 'ONLINE' | 'SEM_CONEXAO' }))
+const estado = vi.hoisted(() => ({ modo: 'ONLINE' as 'ONLINE' | 'SEM_CONEXAO', hoje: null as string | null }))
 vi.mock('../../../offline', async (importarOriginal) => ({
   ...(await importarOriginal<typeof import('../../../offline')>()),
   useConexao: () => ({ modo: estado.modo }),
 }))
 
+// Os testes da lista do evento especial fixam o "hoje" do clube; fora deles vale o real.
+vi.mock('../../../api/desbravadores', async (importarOriginal) => {
+  const original = await importarOriginal<typeof import('../../../api/desbravadores')>()
+  return { ...original, hojeDoClube: () => estado.hoje ?? original.hojeDoClube() }
+})
+
 let diaReuniao = 0
 beforeEach(() => {
+  estado.hoje = null
   estado.modo = 'ONLINE'
   diaReuniao = 0
 })
@@ -266,5 +273,192 @@ describe('ficha do evento', () => {
   it.each([`/adm/calendario/eventos/${uuid(898)}`, '/adm/calendario/eventos/abc'])('%s → "Não encontramos este evento"', async (rota) => {
     abrir(rota)
     expect(await screen.findByRole('heading', { name: 'Não encontramos este evento' })).toBeInTheDocument()
+  })
+})
+
+describe('ficha do evento especial', () => {
+  const NOME_DO_CARTAO = 'Quem foi ao evento'
+
+  function abrirEspecial(parcial: Parameters<typeof criarEventoEspecial>[1] = {}, hoje = '2026-10-11') {
+    estado.hoje = hoje
+    const evento = caixa(criarEventoEspecial(20, { id: uuid(820), nome: 'Culto de Ação de Graças', inicio: '2026-10-03', fim: '2026-10-03', horario: '18:00', local: 'Igreja Central', ...parcial }))
+    return abrir(`/adm/calendario/eventos/${evento.atual.id}`, evento)
+  }
+
+  const cartaoDaLista = async () => within(await screen.findByRole('region', { name: NOME_DO_CARTAO }))
+
+  it('antes do dia: só o texto de que a lista abre no dia, sem botão', async () => {
+    abrirEspecial({ inicio: '2026-10-31', fim: '2026-10-31' })
+
+    const cartao = await cartaoDaLista()
+    expect(cartao.getByText('A lista abre no dia do evento, sábado, 31 de outubro.')).toBeInTheDocument()
+    expect(cartao.getByText('Até lá, não há nada a registrar.')).toBeInTheDocument()
+    expect(cartao.queryByRole('link')).not.toBeInTheDocument()
+    expect(cartao.queryByRole('button')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Editar' })).toHaveClass('bg-marca')
+  })
+
+  it('no dia do evento a lista já abre', async () => {
+    abrirEspecial({ inicio: '2026-10-11', fim: '2026-10-11' }, '2026-10-11')
+
+    const cartao = await cartaoDaLista()
+    expect(cartao.getByRole('link', { name: 'Registrar quem foi' })).toBeInTheDocument()
+  })
+
+  it('sem marcas: diz que ninguém foi marcado e leva a “Registrar quem foi”', async () => {
+    abrirEspecial()
+
+    const cartao = await cartaoDaLista()
+    expect(cartao.getByText('O evento foi sábado, 3 de outubro. Ainda ninguém foi marcado.')).toBeInTheDocument()
+    expect(cartao.getByText('Os pontos só chegam ao ranking quando você concluir a lista.')).toBeInTheDocument()
+    expect(cartao.getByRole('link', { name: 'Registrar quem foi' })).toHaveAttribute('href', `/adm/calendario/eventos/${uuid(820)}/presenca`)
+    expect(cartao.getByRole('link', { name: 'Registrar quem foi' })).toHaveClass('bg-marca')
+    expect(screen.getByRole('link', { name: 'Editar' })).toHaveClass('border-borda-controle')
+  })
+
+  it('lista com concluidaEm nulo e ninguém marcado também conta como sem marcas', async () => {
+    abrirEspecial({ lista: { concluidaEm: null, foram: 0, uniformizados: 0 } })
+
+    const cartao = await cartaoDaLista()
+    expect(cartao.getByRole('link', { name: 'Registrar quem foi' })).toBeInTheDocument()
+  })
+
+  it('rascunho: conta as marcas e leva a “Continuar a lista”', async () => {
+    abrirEspecial({ lista: { concluidaEm: null, foram: 41, uniformizados: 12 } })
+
+    const cartao = await cartaoDaLista()
+    expect(cartao.getByText('Você começou a lista: 41 desbravadores marcados. Falta concluir.')).toBeInTheDocument()
+    expect(cartao.getByText('Os pontos só chegam ao ranking quando você concluir a lista.')).toBeInTheDocument()
+    expect(cartao.getByRole('link', { name: 'Continuar a lista' })).toHaveAttribute('href', `/adm/calendario/eventos/${uuid(820)}/presenca`)
+    expect(cartao.queryByRole('link', { name: 'Registrar quem foi' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Editar' })).toHaveClass('border-borda-controle')
+  })
+
+  it('rascunho com uma marca só fala no singular', async () => {
+    abrirEspecial({ lista: { concluidaEm: null, foram: 1, uniformizados: 0 } })
+
+    expect((await cartaoDaLista()).getByText('Você começou a lista: 1 desbravador marcado. Falta concluir.')).toBeInTheDocument()
+  })
+
+  it('concluída: quando, quantos foram, quantos de gala e o mês do ranking; botão secundário “Corrigir a lista”', async () => {
+    abrirEspecial({ inicio: '2026-09-26', fim: '2026-09-26', lista: { concluidaEm: '2026-09-27T00:05:00.000Z', foram: 38, uniformizados: 15 } })
+
+    const cartao = await cartaoDaLista()
+    expect(cartao.getByText('Lista concluída em 26/09 às 21:05')).toBeInTheDocument()
+    expect(cartao.getByText('38 desbravadores foram, 15 de gala. Os pontos já estão no ranking de setembro.')).toBeInTheDocument()
+    expect(cartao.getByRole('link', { name: 'Corrigir a lista' })).toHaveClass('border-borda-controle')
+    expect(screen.getByRole('link', { name: 'Editar' })).toHaveClass('border-borda-controle')
+  })
+
+  it('concluída num evento de campo diz “de campo”', async () => {
+    abrirEspecial({ uniforme: 'CAMPO', lista: { concluidaEm: '2026-10-04T01:00:00.000Z', foram: 10, uniformizados: 4 } })
+
+    expect((await cartaoDaLista()).getByText('10 desbravadores foram, 4 de campo. Os pontos já estão no ranking de outubro.')).toBeInTheDocument()
+  })
+
+  it('“Pontos e uniforme” mostra os dois valores e o uniforme escrito', async () => {
+    abrirEspecial()
+
+    const pontos = within(await screen.findByRole('region', { name: 'Pontos e uniforme' }))
+    expect(pontos.getByText('Pontos por ir ao evento', { selector: 'dt' }).nextElementSibling).toHaveTextContent('20')
+    expect(pontos.getByText('Uniforme', { selector: 'dt' }).nextElementSibling).toHaveTextContent('Uniforme de gala')
+    expect(pontos.getByText('Pontos por usar o uniforme', { selector: 'dt' }).nextElementSibling).toHaveTextContent('10')
+  })
+
+  it('evento de campo escreve “Uniforme de campo”', async () => {
+    abrirEspecial({ uniforme: 'CAMPO' })
+
+    const pontos = within(await screen.findByRole('region', { name: 'Pontos e uniforme' }))
+    expect(pontos.getByText('Uniforme de campo')).toBeInTheDocument()
+  })
+
+  it('evento de outro tipo não tem o cartão da lista nem “Pontos e uniforme”', async () => {
+    abrir(`/adm/calendario/eventos/${uuid(801)}`)
+
+    await screen.findByRole('heading', { level: 1, name: 'Acampamento de primavera' })
+    expect(screen.queryByRole('region', { name: NOME_DO_CARTAO })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Pontos e uniforme' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Editar' })).toHaveClass('bg-marca')
+  })
+
+  describe('excluir', () => {
+    const concluida = { inicio: '2026-09-26', fim: '2026-09-26', nome: 'Dia do Desbravador', lista: { concluidaEm: '2026-09-27T00:05:00.000Z', foram: 38, uniformizados: 15 } }
+
+    it('com a lista concluída, diz quantos pontos saem e o botão seguro é o principal', async () => {
+      abrirEspecial(concluida)
+      await userEvent.click(await screen.findByRole('button', { name: 'Excluir' }))
+
+      const dialogo = screen.getByRole('dialog', { name: 'Excluir Dia do Desbravador?' })
+      expect(dialogo).toHaveTextContent('Os pontos de 38 desbravadores saem do ranking de setembro e a lista de quem foi se perde. Não dá para desfazer.')
+      expect(within(dialogo).getByRole('button', { name: 'Manter o evento' })).toHaveClass('bg-marca')
+      expect(within(dialogo).getByRole('button', { name: 'Excluir e retirar os pontos' })).toHaveClass('text-perigo')
+    })
+
+    it('“Manter o evento”, Esc e o fundo não excluem', async () => {
+      const excluidos: string[] = []
+      servidor.use(handlerExcluirEvento((id) => excluidos.push(id)))
+      abrirEspecial(concluida)
+      await userEvent.click(await screen.findByRole('button', { name: 'Excluir' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Manter o evento' }))
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Excluir' }))
+      await userEvent.keyboard('{Escape}')
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Excluir' }))
+      await userEvent.click(screen.getByTestId('fundo-da-confirmacao'))
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(excluidos).toEqual([])
+    })
+
+    it('“Excluir e retirar os pontos” exclui e volta ao mês', async () => {
+      const excluidos: string[] = []
+      servidor.use(handlerExcluirEvento((id) => excluidos.push(id)))
+      const { roteador } = abrirEspecial(concluida)
+      await userEvent.click(await screen.findByRole('button', { name: 'Excluir' }))
+
+      await userEvent.click(screen.getByRole('button', { name: 'Excluir e retirar os pontos' }))
+
+      await waitFor(() => expect(excluidos).toEqual([uuid(820)]))
+      await waitFor(() => expect(roteador.state.location.pathname).toBe('/adm/calendario'))
+    })
+
+    it('com a lista só começada, a confirmação é a de hoje', async () => {
+      abrirEspecial({ lista: { concluidaEm: null, foram: 41, uniformizados: 12 } })
+      await userEvent.click(await screen.findByRole('button', { name: 'Excluir' }))
+
+      const dialogo = screen.getByRole('dialog', { name: 'Excluir Culto de Ação de Graças?' })
+      expect(dialogo).toHaveTextContent('O evento sai do calendário do clube.')
+      expect(within(dialogo).getByRole('button', { name: 'Excluir' })).toBeInTheDocument()
+      expect(within(dialogo).queryByRole('button', { name: 'Manter o evento' })).not.toBeInTheDocument()
+    })
+
+    it('lista concluída sem ninguém não fala em pontos que saem', async () => {
+      abrirEspecial({ lista: { concluidaEm: '2026-10-04T01:00:00.000Z', foram: 0, uniformizados: 0 } })
+      await userEvent.click(await screen.findByRole('button', { name: 'Excluir' }))
+
+      expect(screen.getByRole('dialog')).toHaveTextContent('O evento sai do calendário do clube.')
+    })
+  })
+})
+
+describe('“Evento salvo.”', () => {
+  it('aparece quando a navegação traz `salvo` e sai do estado, para não voltar no F5', async () => {
+    const { roteador } = abrir('/adm/calendario?mes=2026-10')
+    await screen.findByRole('list', { name: 'Eventos de Outubro' })
+
+    await act(() => roteador.navigate(`/adm/calendario/eventos/${uuid(801)}`, { replace: true, state: { voltarPara: '/adm/calendario?mes=2026-10', salvo: true } }))
+
+    expect(await screen.findByText('Evento salvo. Conselheiros e instrutores o veem ao abrir o app com internet.')).toBeInTheDocument()
+    await waitFor(() => expect(roteador.state.location.state).toEqual({ voltarPara: '/adm/calendario?mes=2026-10' }))
+    expect(screen.getByText(/Evento salvo\./)).toBeInTheDocument()
+  })
+
+  it('sem `salvo` no estado, não aparece', async () => {
+    abrir(`/adm/calendario/eventos/${uuid(801)}`)
+
+    await screen.findByRole('heading', { level: 1, name: 'Acampamento de primavera' })
+    expect(screen.queryByText(/Evento salvo\./)).not.toBeInTheDocument()
   })
 })

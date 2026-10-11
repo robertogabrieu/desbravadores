@@ -42,4 +42,20 @@ describe('Evento · erro à vista ao salvar', () => {
     await waitFor(() => expect(screen.getByLabelText('Nome')).toHaveFocus())
     expect(within(screen.getByRole('region', { name: 'Revise 1 campo para salvar' })).getByRole('link', { name: 'Nome' })).toBeInTheDocument()
   })
+
+  it('especial sem uniforme: o foco vai ao rádio, o erro aparece nele e no resumo, e nada é enviado', async () => {
+    let chamadas = 0
+    abrirEm('/adm/calendario/eventos/novo?data=2026-10-10', handlerCriarEvento([], () => chamadas++))
+    await userEvent.type(await screen.findByLabelText('Nome'), 'Culto de Investidura')
+    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'EVENTO_ESPECIAL')
+    await userEvent.type(screen.getByLabelText('Pontos por ir ao evento'), '20')
+    await userEvent.type(screen.getByLabelText('Pontos por usar o uniforme'), '10')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+
+    await waitFor(() => expect(screen.getByLabelText('Uniforme de gala')).toHaveFocus())
+    expect(within(screen.getByRole('group', { name: 'Uniforme do evento' })).getByRole('alert')).toHaveTextContent('Escolha o uniforme do evento.')
+    expect(within(screen.getByRole('region', { name: 'Revise 1 campo para salvar' })).getByRole('link', { name: 'Uniforme do evento' })).toBeInTheDocument()
+    expect(chamadas).toBe(0)
+  })
 })
