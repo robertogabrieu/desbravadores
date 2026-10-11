@@ -171,7 +171,7 @@ export function criarPainel(parcial: Partial<Painel> = {}): Painel {
   const unidades = (chaves: (keyof typeof UNIDADES_CB)[]) => chaves.map((chave) => UNIDADES_CB[chave])
   return {
     edicao: criarEdicaoCB(),
-    aoExcluir: { encontros: 17, chamadas: 12, presencas: 340 },
+    aoExcluir: { encontros: 17, chamadas: 0 },
     grupos: [
       {
         id: GRUPO_DANIEL_ID, nome: 'Grupo Daniel', unidades: unidades(['aguias', 'leoes', 'gavioes']),

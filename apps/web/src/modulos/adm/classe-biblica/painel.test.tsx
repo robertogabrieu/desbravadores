@@ -442,7 +442,7 @@ describe('Painel — excluir a edição', () => {
     const { gravacoes } = abrir()
     await usuario.click(await screen.findByRole('button', { name: 'Excluir edição' }))
     const dialogo = within(screen.getByRole('dialog', { name: 'Excluir a edição?' }))
-    expect(dialogo.getByText('Esta ação não pode ser desfeita. Serão apagados 17 encontros, 12 chamadas e 340 presenças.')).toBeInTheDocument()
+    expect(dialogo.getByText('Esta ação não pode ser desfeita. Serão apagados 17 encontros.')).toBeInTheDocument()
     const confirmar = dialogo.getByRole('button', { name: 'Excluir edição' })
     expect(confirmar).toBeDisabled()
     await usuario.type(dialogo.getByLabelText('Nome para confirmar'), 'Classe Bíblica 2026')
@@ -471,8 +471,29 @@ describe('Painel — excluir a edição', () => {
     expect(await within(screen.getByRole('dialog')).findByRole('alert')).toHaveTextContent('Não deu para excluir.')
   })
 
+  it('com chamada registrada o botão fica desabilitado, o aviso aparece e nada é enviado', async () => {
+    const usuario = userEvent.setup()
+    const { gravacoes } = abrir({ painel: criarPainel({ aoExcluir: { encontros: 17, chamadas: 3 } }) })
+    const botao = await screen.findByRole('button', { name: 'Excluir edição' })
+    expect(botao).toBeDisabled()
+    expect(screen.getByText(/Esta edição já tem chamada registrada e não pode ser excluída\. Para tirá-la do calendário, cancele os encontros que ainda não aconteceram\./)).toBeInTheDocument()
+    await usuario.click(botao)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(gravacoes).toEqual([])
+  })
+
+  it('o 409 da API (chamada lançada depois de abrir a tela) mostra a mesma mensagem no diálogo', async () => {
+    const usuario = userEvent.setup()
+    const mensagem = 'Esta edição já tem chamada registrada e não pode ser excluída. Para tirá-la do calendário, cancele os encontros que ainda não aconteceram.'
+    abrir({}, http.delete('/api/classe-biblica/edicoes/:id', () => HttpResponse.json({ codigo: 'CONFLITO', mensagem }, { status: 409 })))
+    await usuario.click(await screen.findByRole('button', { name: 'Excluir edição' }))
+    await usuario.type(screen.getByLabelText('Nome para confirmar'), 'Classe Bíblica 2026 · 2º semestre')
+    await usuario.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Excluir edição' }))
+    expect(await within(screen.getByRole('dialog')).findByRole('alert')).toHaveTextContent(mensagem)
+  })
+
   it('quem só tem a chamada não vê o botão', async () => {
-    abrir({ painel: criarPainel({ podeGerenciar: false }) })
+    abrir({ painel: criarPainel({ podeGerenciar: false, aoExcluir: null }) })
     await screen.findByRole('heading', { level: 1, name: '2026 · 2º semestre' })
     expect(screen.queryByRole('button', { name: 'Excluir edição' })).not.toBeInTheDocument()
   })

@@ -8,6 +8,9 @@ import { lerErroDaApi } from '../desbravadores/erros'
 
 const NOME_PROVISORIO = 'Edição sem nome'
 
+const AVISO_COM_CHAMADA =
+  'Esta edição já tem chamada registrada e não pode ser excluída. Para tirá-la do calendário, cancele os encontros que ainda não aconteceram.'
+
 const plural = (n: number, singular: string, pluralDe: string): string => `${n} ${n === 1 ? singular : pluralDe}`
 
 interface Propriedades {
@@ -35,8 +38,19 @@ export function ExcluirEdicao({ id, nome, contagens }: Propriedades) {
     })
 
   const apagados = contagens
-    ? `Serão apagados ${plural(contagens.encontros, 'encontro', 'encontros')}, ${plural(contagens.chamadas, 'chamada', 'chamadas')} e ${plural(contagens.presencas, 'presença', 'presenças')}.`
+    ? `Serão apagados ${plural(contagens.encontros, 'encontro', 'encontros')}.`
     : 'A edição ainda não tem encontros nem chamadas.'
+
+  if (contagens && contagens.chamadas > 0) {
+    return (
+      <div className="flex flex-col gap-2">
+        <Botao variante="texto" className="w-fit text-perigo" disabled aria-describedby={`sem-exclusao-${id}`}>
+          Excluir edição
+        </Botao>
+        <p id={`sem-exclusao-${id}`} className="text-sm text-texto-2">{AVISO_COM_CHAMADA}</p>
+      </div>
+    )
+  }
 
   return (
     <>

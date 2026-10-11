@@ -275,7 +275,7 @@ function Conteudo({ painel }: { painel: PainelDaEdicao }) {
   // Longe da ação primária, no fim da página: só aparece para quem gerencia.
   const excluir = podeGerenciar && (
     <div className="border-t border-borda-controle pt-5">
-      <ExcluirEdicao id={edicao.id} nome={edicao.nome} contagens={painel.aoExcluir} />
+      <ExcluirEdicao id={edicao.id} nome={edicao.nome} contagens={painel.aoExcluir ?? undefined} />
     </div>
   )
 

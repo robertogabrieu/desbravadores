@@ -37,6 +37,8 @@ type Grupo = z.infer<typeof GrupoCB>
 type Banco = Prisma.TransactionClient | PrismaService
 
 const TEMPO_DA_TRANSACAO_MS = 20_000
+const EDICAO_COM_CHAMADA =
+  'Esta edição já tem chamada registrada e não pode ser excluída. Para tirá-la do calendário, cancele os encontros que ainda não aconteceram.'
 const CONFIRA = 'Confira os campos informados.'
 const TRAVADOS_DEPOIS_DE_TERMINAR = 'Início, fim e dia da semana não mudam depois que os encontros foram criados.'
 
@@ -427,27 +429,18 @@ export class ServicoEdicoes {
   }
 
   /**
-   * Apaga a edição inteira, com chamadas e presenças lançadas. Os pontos já creditados saem do ranking pelo
-   * estorno (o livro de pontos não perde linha); as chaves estrangeiras são Restrict, então desce de baixo para cima.
+   * Só sai a edição em que ninguém fez chamada: com chamada há presença e pontos, e histórico não se apaga.
+   * As chaves estrangeiras são Restrict, então desce de baixo para cima.
    */
   async excluir(sessao: SessaoLogada, id: string): Promise<void> {
     const { clubeId } = sessao
     await this.prisma.$transaction(
       async (tx) => {
         await exigirEdicao(tx, clubeId, id)
+        const chamada = await tx.chamadaClasseBiblica.findFirst({ where: { clubeId, encontro: { clubeId, edicaoId: id } }, select: { grupoId: true } })
+        if (chamada) throw new ErroApp('CONFLITO', EDICAO_COM_CHAMADA)
         const encontros = await tx.encontroClasseBiblica.findMany({ where: { clubeId, edicaoId: id }, select: { id: true, eventoId: true } })
-        const encontroIds = encontros.map((encontro) => encontro.id)
-        const dosEncontros = { clubeId, encontroId: { in: encontroIds } }
-        const estorno = encontroIds.map((encontroId) => ({ origemId: { startsWith: `${encontroId}:` } }))
-        if (estorno.length > 0) {
-          await tx.lancamentoPontos.updateMany({
-            where: { clubeId, origemTipo: 'CLASSE_BIBLICA', estornadoEm: null, OR: estorno },
-            data: { estornadoEm: new Date() },
-          })
-        }
-        await tx.presencaClasseBiblica.deleteMany({ where: dosEncontros })
-        await tx.chamadaClasseBiblica.deleteMany({ where: dosEncontros })
-        await tx.envioClasseBiblicaProcessado.deleteMany({ where: dosEncontros })
+        await tx.envioClasseBiblicaProcessado.deleteMany({ where: { clubeId, encontroId: { in: encontros.map((encontro) => encontro.id) } } })
         await tx.encontroClasseBiblica.deleteMany({ where: { clubeId, edicaoId: id } })
         await tx.eventoCalendario.deleteMany({ where: { clubeId, id: { in: encontros.map((encontro) => encontro.eventoId) } } })
         await tx.grupoUnidadeClasseBiblica.deleteMany({ where: { clubeId, edicaoId: id } })

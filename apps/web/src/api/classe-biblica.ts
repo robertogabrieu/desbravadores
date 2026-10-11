@@ -96,7 +96,7 @@ export function useSalvarRascunhoCB() {
   })
 }
 
-/** Apaga a edição com encontros, chamadas e presenças (204). A edição some do cache: ler de novo responderia "não encontrada". */
+/** Apaga a edição sem nenhuma chamada lançada (204; com chamada, 409). A edição some do cache: ler de novo responderia "não encontrada". */
 export function useExcluirEdicaoCB() {
   const clienteConsultas = useQueryClient()
   return useMutation({

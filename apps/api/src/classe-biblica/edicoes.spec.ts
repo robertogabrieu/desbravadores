@@ -545,29 +545,52 @@ describe('classe bíblica: edição', () => {
       return { ...base, edicao, grupo, encontro, outro, dbv }
     }
 
-    it('o painel conta o que será apagado e a exclusão leva edição, chamadas, presenças e eventos, estornando os pontos', async () => {
+    async function semChamada() {
+      const base = await cenario()
+      const edicao = await criarEdicaoCB({ clubeId: base.clube.id, terminada: true, inicio: '2024-01-07', fim: '2024-03-31' })
+      const grupo = await criarGrupoCB({ clubeId: base.clube.id, edicaoId: edicao.id, unidadeIds: [base.aguias.id] })
+      const encontro = await criarEncontroCB({ clubeId: base.clube.id, edicaoId: edicao.id, data: '2024-01-07' })
+      const outro = await criarEncontroCB({ clubeId: base.clube.id, edicaoId: edicao.id, data: '2024-01-14' })
+      return { ...base, edicao, grupo, encontro, outro }
+    }
+
+    it('com chamada lançada o painel conta e a exclusão responde 409, sem apagar nada nem mexer nos pontos', async () => {
       const { clube, adm, edicao, encontro, outro, dbv } = await comChamada()
+      const prisma = prismaDeTeste()
+      await prisma.lancamentoPontos.create({
+        data: { clubeId: clube.id, dbvId: dbv.id, pontos: 10, data: new Date('2024-01-07'), origemTipo: 'CLASSE_BIBLICA', origemId: `${encontro.id}:${dbv.id}`, lancadoPorId: adm.usuario.id },
+      })
+      const painel = corpo<Painel>(await api.get(`${BASE}/edicoes/${edicao.id}`, adm.autorizacao).expect(200))
+      expect(painel.aoExcluir).toEqual({ encontros: 2, chamadas: 1 })
+
+      const resposta = await excluirEdicao(`${BASE}/edicoes/${edicao.id}`, adm.autorizacao).expect(409)
+      expect((resposta.body as { mensagem: string }).mensagem).toContain('já tem chamada registrada')
+
+      expect(await prisma.edicaoClasseBiblica.count({ where: { id: edicao.id } })).toBe(1)
+      expect(await prisma.encontroClasseBiblica.count({ where: { edicaoId: edicao.id } })).toBe(2)
+      expect(await prisma.chamadaClasseBiblica.count({ where: { encontroId: encontro.id } })).toBe(1)
+      expect(await prisma.presencaClasseBiblica.count({ where: { encontroId: encontro.id } })).toBe(1)
+      expect(await prisma.eventoCalendario.count({ where: { id: { in: [encontro.eventoId, outro.eventoId] } } })).toBe(2)
+      const lancamento = await prisma.lancamentoPontos.findFirstOrThrow({ where: { origemTipo: 'CLASSE_BIBLICA', dbvId: dbv.id } })
+      expect(lancamento.estornadoEm).toBeNull()
+    })
+
+    it('sem chamada apaga edição, encontros, eventos do calendário e grupos, preservando outra edição', async () => {
+      const { clube, adm, edicao, grupo, encontro, outro } = await semChamada()
       const prisma = prismaDeTeste()
       const guardada = await criarEdicaoCB({ clubeId: clube.id, terminada: true, inicio: '2025-01-05', fim: '2025-02-02' })
       const guardadoEncontro = await criarEncontroCB({ clubeId: clube.id, edicaoId: guardada.id, data: '2025-01-05' })
-      const usuarioId = adm.usuario.id
-      await prisma.lancamentoPontos.create({
-        data: { clubeId: clube.id, dbvId: dbv.id, pontos: 10, data: new Date('2024-01-07'), origemTipo: 'CLASSE_BIBLICA', origemId: `${encontro.id}:${dbv.id}`, lancadoPorId: usuarioId },
-      })
-      const painel = corpo<Painel>(await api.get(`${BASE}/edicoes/${edicao.id}`, adm.autorizacao).expect(200))
-      expect(painel.aoExcluir).toEqual({ encontros: 2, chamadas: 1, presencas: 1 })
 
       await excluirEdicao(`${BASE}/edicoes/${edicao.id}`, adm.autorizacao).expect(204)
 
       expect(await prisma.edicaoClasseBiblica.count({ where: { id: edicao.id } })).toBe(0)
       expect(await prisma.encontroClasseBiblica.count({ where: { edicaoId: edicao.id } })).toBe(0)
-      expect(await prisma.grupoClasseBiblica.count({ where: { edicaoId: edicao.id } })).toBe(0)
-      expect(await prisma.presencaClasseBiblica.count({ where: { encontroId: encontro.id } })).toBe(0)
-      expect(await prisma.chamadaClasseBiblica.count({ where: { encontroId: encontro.id } })).toBe(0)
+      expect(await prisma.grupoClasseBiblica.count({ where: { id: grupo.id } })).toBe(0)
+      expect(await prisma.grupoUnidadeClasseBiblica.count({ where: { edicaoId: edicao.id } })).toBe(0)
       expect(await prisma.eventoCalendario.count({ where: { id: { in: [encontro.eventoId, outro.eventoId] } } })).toBe(0)
-      const lancamento = await prisma.lancamentoPontos.findFirstOrThrow({ where: { origemTipo: 'CLASSE_BIBLICA', dbvId: dbv.id } })
-      expect(lancamento.estornadoEm).not.toBeNull()
+      expect(await prisma.edicaoClasseBiblica.count({ where: { id: guardada.id } })).toBe(1)
       expect(await prisma.encontroClasseBiblica.count({ where: { id: guardadoEncontro.id } })).toBe(1)
+      expect(await prisma.eventoCalendario.count({ where: { id: guardadoEncontro.eventoId } })).toBe(1)
       await api.get(`${BASE}/edicoes/${edicao.id}`, adm.autorizacao).expect(404)
     })
 
