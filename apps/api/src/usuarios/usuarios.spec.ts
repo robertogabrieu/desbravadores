@@ -45,7 +45,7 @@ describe('usuarios e vinculos', () => {
       const clube = await criarClube()
       const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
       const unidade = await criarUnidade({ clubeId: clube.id })
-      const amigo = await classeOficial('Amigo')
+      const semPar = await classeOficial('Agrupadas (Amigo a Guia)', 'AGRUPADAS')
       const resposta = await api
         .post('/api/usuarios', adm.autorizacao, {
           nome: 'Carla Nova',
@@ -53,7 +53,7 @@ describe('usuarios e vinculos', () => {
           genero: 'F',
           vinculos: [
             { papel: 'CONSELHEIRO', unidadeIds: [unidade.id], ajustes: [{ permissao: 'dbv.editar', concedida: true }] },
-            { papel: 'INSTRUTOR', classeIds: [amigo.id] },
+            { papel: 'INSTRUTOR', classeIds: [semPar.id] },
           ],
         })
         .expect(201)
@@ -64,7 +64,7 @@ describe('usuarios e vinculos', () => {
       const conselheiro = saida.vinculos.find((v) => v.papel === 'CONSELHEIRO')
       expect(conselheiro?.unidades).toEqual([{ id: unidade.id, nome: unidade.nome }])
       expect(conselheiro?.ajustes).toEqual([{ permissao: 'dbv.editar', concedida: true }])
-      expect(saida.vinculos.find((v) => v.papel === 'INSTRUTOR')?.classes.map((c) => c.id)).toEqual([amigo.id])
+      expect(saida.vinculos.find((v) => v.papel === 'INSTRUTOR')?.classes.map((c) => c.id)).toEqual([semPar.id])
 
       const enviadas = emailFalso(app).enviadas
       expect(enviadas).toHaveLength(1)
@@ -375,19 +375,19 @@ describe('usuarios e vinculos', () => {
       const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
       const alvo = await criarUsuario()
       const amigo = await classeOficial('Amigo')
-      const guia = await classeOficial('Guia')
+      const semPar = await classeOficial('Agrupadas (Amigo a Guia)', 'AGRUPADAS')
       const antigo = await criarVinculo({ usuarioId: alvo.id, clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [amigo.id] })
       await ajustarPermissao(antigo.id, 'observacao.ver_outros', true)
       await api.put(`/api/vinculos/${antigo.id}`, adm.autorizacao, { ativo: false }).expect(200)
 
       const saida = corpo<Usuario>(
         await api
-          .post(`/api/usuarios/${alvo.id}/vinculos`, adm.autorizacao, { papel: 'INSTRUTOR', classeIds: [guia.id], ajustes: [] })
+          .post(`/api/usuarios/${alvo.id}/vinculos`, adm.autorizacao, { papel: 'INSTRUTOR', classeIds: [semPar.id], ajustes: [] })
           .expect(201),
       )
       const instrutor = saida.vinculos.find((v) => v.papel === 'INSTRUTOR')
       expect(instrutor).toMatchObject({ id: antigo.id, ativo: true, ajustes: [] })
-      expect(instrutor?.classes.map((c) => c.id)).toEqual([guia.id])
+      expect(instrutor?.classes.map((c) => c.id)).toEqual([semPar.id])
     })
 
     it('acrescenta vinculo; mesmo papel ativo → 409; ajuste invalido → 422; unidade de outro clube → 404', async () => {
@@ -430,7 +430,7 @@ describe('usuarios e vinculos', () => {
       const u2 = await criarUnidade({ clubeId: clube.id })
       const unidadeFora = await criarUnidade({ clubeId: outro.id })
       const classeFora = await criarClasseDoClube(outro.id)
-      const amigo = await classeOficial('Amigo')
+      const semPar = await classeOficial('Agrupadas (Amigo a Guia)', 'AGRUPADAS')
       const cons = await criarAcesso({ clubeId: clube.id, papel: 'CONSELHEIRO', unidadeIds: [u1.id] })
       const instrutor = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR' })
 
@@ -446,8 +446,8 @@ describe('usuarios e vinculos', () => {
       expect(trocado.vinculos[0]?.ajustes).toEqual([])
       expect(trocado.vinculos[0]?.unidades.map((u) => u.id)).toEqual([u2.id])
 
-      const comClasse = corpo<Usuario>(await api.put(`/api/vinculos/${instrutor.vinculo.id}`, adm.autorizacao, { classeIds: [amigo.id] }).expect(200))
-      expect(comClasse.vinculos[0]?.classes.map((c) => c.id)).toEqual([amigo.id])
+      const comClasse = corpo<Usuario>(await api.put(`/api/vinculos/${instrutor.vinculo.id}`, adm.autorizacao, { classeIds: [semPar.id] }).expect(200))
+      expect(comClasse.vinculos[0]?.classes.map((c) => c.id)).toEqual([semPar.id])
 
       await api.put(`/api/vinculos/${cons.vinculo.id}`, adm.autorizacao, { unidadeIds: [unidadeFora.id] }).expect(404)
       await api.put(`/api/vinculos/${instrutor.vinculo.id}`, adm.autorizacao, { classeIds: [classeFora.id] }).expect(404)
@@ -467,7 +467,7 @@ describe('usuarios e vinculos', () => {
       const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
       const alvo = await criarAcesso({ clubeId: clube.id, papel: 'CONSELHEIRO' })
       const retirada = await criarClasseDoClube(clube.id, 'Retirada')
-      const amigo = await classeOficial('Amigo')
+      const semPar = await classeOficial('Agrupadas (Amigo a Guia)', 'AGRUPADAS')
       const antigo = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [retirada.id] })
       const novo = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR' })
       await prismaDeTeste().classe.update({ where: { id: retirada.id }, data: { ativa: false } })
@@ -479,9 +479,9 @@ describe('usuarios e vinculos', () => {
       await api.put(`/api/vinculos/${novo.vinculo.id}`, adm.autorizacao, { classeIds: [retirada.id] }).expect(404)
 
       const mantido = corpo<Usuario>(
-        await api.put(`/api/vinculos/${antigo.vinculo.id}`, adm.autorizacao, { classeIds: [retirada.id, amigo.id] }).expect(200),
+        await api.put(`/api/vinculos/${antigo.vinculo.id}`, adm.autorizacao, { classeIds: [retirada.id, semPar.id] }).expect(200),
       )
-      expect(mantido.vinculos[0]?.classes.map((c) => c.id).sort()).toEqual([retirada.id, amigo.id].sort())
+      expect(mantido.vinculos[0]?.classes.map((c) => c.id).sort()).toEqual([retirada.id, semPar.id].sort())
     })
 
     it('a permissao ajustada vale na proxima requisicao', async () => {

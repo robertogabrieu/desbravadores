@@ -24,7 +24,17 @@ export const RequisitoSaida = z.object({
   oficial: z.object({ ativo: z.boolean(), campo: z.boolean() }).optional(),
   ajustado: z.boolean().optional(),
 })
+/** A avançada anda com a regular: instrutor, quem monta e alunos são os dela (cartão "Anda junto com Amigo"). */
+export const ClasseRegularResumo = z.object({
+  id: Uuid,
+  nome: z.string(),
+  instrutores: z.array(z.string()),   // nomes dos instrutores ativos da regular
+  quemMontaCronograma: QuemMonta,     // da regular
+  totalAlunos: z.number().int(),      // matriculados na regular no ano corrente do clube (sem os que desistiram)
+})
 export const ClasseDetalheSaida = ClasseSaida.extend({
+  /** Preenchido só na avançada; `null` nas demais classes (ausente em respostas que não o calculam). */
+  regular: ClasseRegularResumo.nullable().optional(),
   secoes: z.array(z.object({
     id: Uuid, codigo: z.string(), nome: z.string(), ordem: z.number().int(),
     requisitos: z.array(RequisitoSaida),

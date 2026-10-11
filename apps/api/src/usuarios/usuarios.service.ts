@@ -14,6 +14,7 @@ import {
 } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
+import { comParDeClasses } from '../classes/par-regular-avancada'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
@@ -367,7 +368,8 @@ export class UsuariosService {
     }
     if (novas.classeIds) {
       await tx.vinculoClasse.deleteMany({ where: { vinculoId } })
-      await tx.vinculoClasse.createMany({ data: [...new Set(novas.classeIds)].map((classeId) => ({ vinculoId, classeId })) })
+      const classeIds = await comParDeClasses(tx, clubeId, novas.classeIds)
+      await tx.vinculoClasse.createMany({ data: classeIds.map((classeId) => ({ vinculoId, classeId })) })
     }
     if (novas.ajustes) {
       const ultimoPorChave = new Map(novas.ajustes.map((a) => [a.permissao, a.concedida]))

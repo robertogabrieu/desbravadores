@@ -1,13 +1,16 @@
 import { Injectable } from '@nestjs/common'
-import type { ClasseDetalheSaida, ClasseFiltro, ClasseSaida } from '@desbravadores/shared'
+import type { ClasseDetalheSaida, ClasseFiltro, ClasseRegularResumo, ClasseSaida } from '@desbravadores/shared'
+import { anoClube, hojeNoFuso } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
+import { colador } from '../desbravadores/apoio'
 import type { Prisma } from '../generated/prisma/client.js'
 import { corTokenDaClasse } from './apresentacao-classe'
 
 type Classe = z.infer<typeof ClasseSaida>
 type Detalhe = z.infer<typeof ClasseDetalheSaida>
+type ResumoDaRegular = z.infer<typeof ClasseRegularResumo>
 
 const SELECAO_CLASSE = (clubeId: string) =>
   ({
@@ -94,7 +97,32 @@ export class ClassesService {
       }),
     }))
     const total = secoes.reduce((soma, secao) => soma + secao.requisitos.filter((r) => r.ativo).length, 0)
-    return { ...montarClasse(classe, total), secoes }
+    const regular = classe.tipo === 'AVANCADA' && classe.trilha === 'INDIVIDUAL' && classe.classeBaseId ? await this.resumirRegular(clubeId, classe.classeBaseId) : null
+    return { ...montarClasse(classe, total), regular, secoes }
+  }
+
+  private async resumirRegular(clubeId: string, regularId: string): Promise<ResumoDaRegular | null> {
+    const regular = await this.prisma.classe.findFirst({
+      where: { id: regularId, OR: [{ clubeId: null }, { clubeId }] },
+      select: { id: true, nome: true, clubes: { where: { clubeId }, select: { quemMontaCronograma: true } } },
+    })
+    if (!regular) return null
+    const configuracao = await this.prisma.configuracaoClube.findUniqueOrThrow({ where: { clubeId } })
+    const ano = anoClube(hojeNoFuso(configuracao.fuso, new Date()), configuracao.inicioAnoClube)
+    const [instrutores, totalAlunos] = await Promise.all([
+      this.prisma.vinculo.findMany({
+        where: { clubeId, papel: 'INSTRUTOR', ativo: true, classes: { some: { classeId: regularId } } },
+        select: { usuario: { select: { nome: true } } },
+      }),
+      this.prisma.matriculaClasse.count({ where: { clubeId, classeId: regularId, anoClube: ano, status: { not: 'DESISTIU' } } }),
+    ])
+    return {
+      id: regular.id,
+      nome: regular.nome,
+      instrutores: instrutores.map((v) => v.usuario.nome).sort((a, b) => colador.compare(a, b)),
+      quemMontaCronograma: regular.clubes[0]?.quemMontaCronograma ?? 'ADM',
+      totalAlunos,
+    }
   }
 
   /** Requisitos ativos por classe, com os ajustes do clube aplicados. */

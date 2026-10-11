@@ -4,6 +4,7 @@ import { anoClube, hojeNoFuso } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
+import type { Prisma, QuemMonta } from '../generated/prisma/client.js'
 import { ServicoMontagem } from '../cronogramas/montagem/servico-montagem'
 import { ClassesService } from './classes.service'
 
@@ -23,18 +24,44 @@ export class AjustesService {
   async editarClasse(clubeId: string, classeId: string, entrada: z.infer<typeof ClasseClubeEditarEntrada>): Promise<Detalhe> {
     const classe = await this.prisma.classe.findFirst({
       where: { id: classeId, OR: [{ clubeId: null }, { clubeId }] },
-      select: { id: true, nome: true },
+      select: { id: true, nome: true, tipo: true, trilha: true, classeBase: { select: { nome: true } } },
     })
     if (!classe) throw new ErroApp('NAO_ENCONTRADO', CLASSE_NAO_ENCONTRADA)
+    if (entrada.quemMontaCronograma !== undefined && classe.tipo === 'AVANCADA' && classe.trilha === 'INDIVIDUAL' && classe.classeBase) {
+      throw new ErroApp('VALIDACAO', `Altere em ${classe.classeBase.nome}: a avançada segue a regular.`)
+    }
 
     if (entrada.ativa === false) await this.exigirSemMatriculaCursando(clubeId, classe)
 
-    await this.prisma.classeClube.upsert({
-      where: { clubeId_classeId: { clubeId, classeId } },
-      create: { clubeId, classeId, ativa: entrada.ativa ?? true, quemMontaCronograma: entrada.quemMontaCronograma ?? 'ADM' },
-      update: { ativa: entrada.ativa, quemMontaCronograma: entrada.quemMontaCronograma },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.classeClube.upsert({
+        where: { clubeId_classeId: { clubeId, classeId } },
+        create: { clubeId, classeId, ativa: entrada.ativa ?? true, quemMontaCronograma: entrada.quemMontaCronograma ?? 'ADM' },
+        update: { ativa: entrada.ativa, quemMontaCronograma: entrada.quemMontaCronograma },
+      })
+      if (entrada.quemMontaCronograma !== undefined) await this.repassarQuemMontaParaAvancada(tx, clubeId, classeId, entrada.quemMontaCronograma)
     })
     return this.classes.detalhar(clubeId, classeId)
+  }
+
+  /** A avancada segue a regular em quem monta; `ativa` continua de cada uma. */
+  private async repassarQuemMontaParaAvancada(
+    tx: Prisma.TransactionClient,
+    clubeId: string,
+    regularId: string,
+    quemMontaCronograma: QuemMonta,
+  ): Promise<void> {
+    const avancadas = await tx.classe.findMany({
+      where: { tipo: 'AVANCADA', trilha: 'INDIVIDUAL', classeBaseId: regularId, OR: [{ clubeId: null }, { clubeId }] },
+      select: { id: true },
+    })
+    for (const { id } of avancadas) {
+      await tx.classeClube.upsert({
+        where: { clubeId_classeId: { clubeId, classeId: id } },
+        create: { clubeId, classeId: id, quemMontaCronograma },
+        update: { quemMontaCronograma },
+      })
+    }
   }
 
   /** `null` volta o campo ao oficial; ausente mantem o que o clube ja tinha. Sem nenhum ajuste, a linha fica com os dois campos nulos (nunca é apagada). */
