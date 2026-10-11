@@ -426,6 +426,38 @@ export class ServicoEdicoes {
     )
   }
 
+  /**
+   * Apaga a edição inteira, com chamadas e presenças lançadas. Os pontos já creditados saem do ranking pelo
+   * estorno (o livro de pontos não perde linha); as chaves estrangeiras são Restrict, então desce de baixo para cima.
+   */
+  async excluir(sessao: SessaoLogada, id: string): Promise<void> {
+    const { clubeId } = sessao
+    await this.prisma.$transaction(
+      async (tx) => {
+        await exigirEdicao(tx, clubeId, id)
+        const encontros = await tx.encontroClasseBiblica.findMany({ where: { clubeId, edicaoId: id }, select: { id: true, eventoId: true } })
+        const encontroIds = encontros.map((encontro) => encontro.id)
+        const dosEncontros = { clubeId, encontroId: { in: encontroIds } }
+        const estorno = encontroIds.map((encontroId) => ({ origemId: { startsWith: `${encontroId}:` } }))
+        if (estorno.length > 0) {
+          await tx.lancamentoPontos.updateMany({
+            where: { clubeId, origemTipo: 'CLASSE_BIBLICA', estornadoEm: null, OR: estorno },
+            data: { estornadoEm: new Date() },
+          })
+        }
+        await tx.presencaClasseBiblica.deleteMany({ where: dosEncontros })
+        await tx.chamadaClasseBiblica.deleteMany({ where: dosEncontros })
+        await tx.envioClasseBiblicaProcessado.deleteMany({ where: dosEncontros })
+        await tx.encontroClasseBiblica.deleteMany({ where: { clubeId, edicaoId: id } })
+        await tx.eventoCalendario.deleteMany({ where: { clubeId, id: { in: encontros.map((encontro) => encontro.eventoId) } } })
+        await tx.grupoUnidadeClasseBiblica.deleteMany({ where: { clubeId, edicaoId: id } })
+        await tx.grupoClasseBiblica.deleteMany({ where: { clubeId, edicaoId: id } })
+        await tx.edicaoClasseBiblica.delete({ where: { clubeId_id: { clubeId, id } } })
+      },
+      { timeout: TEMPO_DA_TRANSACAO_MS },
+    )
+  }
+
   async anexarLink(sessao: SessaoLogada, grupoId: string, entrada: z.infer<typeof MaterialCBLinkEntrada>): Promise<Grupo> {
     const { clubeId } = sessao
     await this.exigirGrupo(clubeId, grupoId)

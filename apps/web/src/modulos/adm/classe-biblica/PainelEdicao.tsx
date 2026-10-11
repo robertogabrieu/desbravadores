@@ -12,6 +12,7 @@ import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/EstadosDeCarga'
 import { diaMes } from '../../classe-biblica/formatos'
 import { FUSO_PADRAO_DO_CLUBE, horaCurta, juntarNomes } from '../formatos'
+import { ExcluirEdicao } from './ExcluirEdicao'
 import { FrequenciaDoGrupo } from './FrequenciaDoGrupo'
 import { MaterialDoGrupo } from './MaterialDoGrupo'
 import { DIAS_DA_SEMANA, dataCurta, diasNoPlural, nomeCurtoDaEdicao } from './useRascunhoDaEdicao'
@@ -271,6 +272,13 @@ function Conteudo({ painel }: { painel: PainelDaEdicao }) {
     />
   )
 
+  // Longe da ação primária, no fim da página: só aparece para quem gerencia.
+  const excluir = podeGerenciar && (
+    <div className="border-t border-borda-controle pt-5">
+      <ExcluirEdicao id={edicao.id} nome={edicao.nome} contagens={painel.aoExcluir} />
+    </div>
+  )
+
   if (!grupo) {
     return (
       <div className="flex flex-col gap-5">
@@ -287,6 +295,7 @@ function Conteudo({ painel }: { painel: PainelDaEdicao }) {
             descricao="Os grupos desta edição não têm desbravadores sob a sua responsabilidade. Se isso estiver errado, fale com a direção do clube."
           />
         )}
+        {excluir}
       </div>
     )
   }
@@ -317,6 +326,7 @@ function Conteudo({ painel }: { painel: PainelDaEdicao }) {
           <EncontrosFeitos grupo={grupo} painel={painel} />
         </Secao>
       </div>
+      {excluir}
     </div>
   )
 }

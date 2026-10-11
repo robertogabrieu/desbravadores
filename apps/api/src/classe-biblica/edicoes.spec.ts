@@ -1,5 +1,7 @@
+import type { Server } from 'node:http'
 import type { INestApplication } from '@nestjs/common'
 import { hojeNoFuso, type DatasSaida, type EdicaoSaida, type EdicoesSaida, type ErroApi, type GruposSaida, type PainelSaida } from '@desbravadores/shared'
+import request from 'supertest'
 import type { z } from 'zod'
 import { criarAppDeTeste } from '../../test/app'
 import {
@@ -41,6 +43,8 @@ describe('classe bíblica: edição', () => {
     await app.close()
     await desconectarPrismaDeTeste()
   })
+
+  const excluirEdicao = (url: string, auth: string) => request(app.getHttpServer() as Server).delete(url).set('Authorization', auth)
 
   async function cenario() {
     const clube = await criarClube()
@@ -525,6 +529,60 @@ describe('classe bíblica: edição', () => {
       await api.put(`${BASE}/edicoes/${criada.id}/grupos`, adm.autorizacao, { grupos: [{ nome: 'Daniel', unidadeIds: [aguias.id] }] }).expect(200)
       const grupos = corpo<Grupos>(await api.get(`${BASE}/edicoes/${criada.id}/grupos`, adm.autorizacao).expect(200))
       expect(grupos.unidades.find((u) => u.id === aguias.id)?.ocupadaPor).toEqual({ tipo: 'GRUPO', nome: 'Daniel' })
+    })
+  })
+
+  describe('excluir', () => {
+    async function comChamada() {
+      const base = await cenario()
+      const edicao = await criarEdicaoCB({ clubeId: base.clube.id, terminada: true, inicio: '2024-01-07', fim: '2024-03-31' })
+      const grupo = await criarGrupoCB({ clubeId: base.clube.id, edicaoId: edicao.id, unidadeIds: [base.aguias.id] })
+      const encontro = await criarEncontroCB({ clubeId: base.clube.id, edicaoId: edicao.id, data: '2024-01-07' })
+      const outro = await criarEncontroCB({ clubeId: base.clube.id, edicaoId: edicao.id, data: '2024-01-14' })
+      const dbv = await criarDbv({ clubeId: base.clube.id })
+      await criarMembro({ dbvId: dbv.id, unidadeId: base.aguias.id, inicio: '2023-01-01' })
+      await criarChamadaCB({ clubeId: base.clube.id, encontroId: encontro.id, grupoId: grupo.id, linhas: [{ dbvId: dbv.id, unidadeId: base.aguias.id }] })
+      return { ...base, edicao, grupo, encontro, outro, dbv }
+    }
+
+    it('o painel conta o que será apagado e a exclusão leva edição, chamadas, presenças e eventos, estornando os pontos', async () => {
+      const { clube, adm, edicao, encontro, outro, dbv } = await comChamada()
+      const prisma = prismaDeTeste()
+      const guardada = await criarEdicaoCB({ clubeId: clube.id, terminada: true, inicio: '2025-01-05', fim: '2025-02-02' })
+      const guardadoEncontro = await criarEncontroCB({ clubeId: clube.id, edicaoId: guardada.id, data: '2025-01-05' })
+      const usuarioId = adm.usuario.id
+      await prisma.lancamentoPontos.create({
+        data: { clubeId: clube.id, dbvId: dbv.id, pontos: 10, data: new Date('2024-01-07'), origemTipo: 'CLASSE_BIBLICA', origemId: `${encontro.id}:${dbv.id}`, lancadoPorId: usuarioId },
+      })
+      const painel = corpo<Painel>(await api.get(`${BASE}/edicoes/${edicao.id}`, adm.autorizacao).expect(200))
+      expect(painel.aoExcluir).toEqual({ encontros: 2, chamadas: 1, presencas: 1 })
+
+      await excluirEdicao(`${BASE}/edicoes/${edicao.id}`, adm.autorizacao).expect(204)
+
+      expect(await prisma.edicaoClasseBiblica.count({ where: { id: edicao.id } })).toBe(0)
+      expect(await prisma.encontroClasseBiblica.count({ where: { edicaoId: edicao.id } })).toBe(0)
+      expect(await prisma.grupoClasseBiblica.count({ where: { edicaoId: edicao.id } })).toBe(0)
+      expect(await prisma.presencaClasseBiblica.count({ where: { encontroId: encontro.id } })).toBe(0)
+      expect(await prisma.chamadaClasseBiblica.count({ where: { encontroId: encontro.id } })).toBe(0)
+      expect(await prisma.eventoCalendario.count({ where: { id: { in: [encontro.eventoId, outro.eventoId] } } })).toBe(0)
+      const lancamento = await prisma.lancamentoPontos.findFirstOrThrow({ where: { origemTipo: 'CLASSE_BIBLICA', dbvId: dbv.id } })
+      expect(lancamento.estornadoEm).not.toBeNull()
+      expect(await prisma.encontroClasseBiblica.count({ where: { id: guardadoEncontro.id } })).toBe(1)
+      await api.get(`${BASE}/edicoes/${edicao.id}`, adm.autorizacao).expect(404)
+    })
+
+    it('edição que não existe responde 404', async () => {
+      const { adm } = await cenario()
+      await excluirEdicao(`${BASE}/edicoes/0197a000-0000-7000-8000-000000000000`, adm.autorizacao).expect(404)
+    })
+
+    it('sem gerenciar responde 403 e outro clube responde 404, sem apagar nada', async () => {
+      const { clube, edicao } = await comChamada()
+      const conselheiro = await criarAcesso({ clubeId: clube.id, papel: 'CONSELHEIRO' })
+      await excluirEdicao(`${BASE}/edicoes/${edicao.id}`, conselheiro.autorizacao).expect(403)
+      const outroAdm = await criarAcesso({ clubeId: (await criarClube()).id, papel: 'ADM' })
+      await excluirEdicao(`${BASE}/edicoes/${edicao.id}`, outroAdm.autorizacao).expect(404)
+      expect(await prismaDeTeste().edicaoClasseBiblica.count({ where: { id: edicao.id } })).toBe(1)
     })
   })
 

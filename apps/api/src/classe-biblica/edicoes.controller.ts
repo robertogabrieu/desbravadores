@@ -1,5 +1,5 @@
 import { mkdirSync } from 'node:fs'
-import { Body, Controller, Get, Param, Patch, Post, Put, UploadedFile, UseFilters, UseInterceptors } from '@nestjs/common'
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, UploadedFile, UseFilters, UseInterceptors } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { EdicaoRascunhoEntrada, GruposEntrada, MaterialCBLinkEntrada, TerminarEntrada, Uuid } from '@desbravadores/shared'
 import { diskStorage } from 'multer'
@@ -50,6 +50,13 @@ export class EdicoesController {
     @Body(new ZodValidationPipe(EdicaoRascunhoEntrada)) entrada: z.infer<typeof EdicaoRascunhoEntrada>,
   ) {
     return this.edicoes.editar(sessao, id, entrada)
+  }
+
+  @Pode('classebiblica.gerenciar')
+  @Delete('edicoes/:id')
+  @HttpCode(204)
+  async excluir(@SessaoDoClube() sessao: SessaoLogada, @Param('id', IdDaRota) id: string): Promise<void> {
+    await this.edicoes.excluir(sessao, id)
   }
 
   /** Guarda própria no serviço: gerenciar, ou a chamada com grupo no escopo (`@Pode` aceita uma chave só). */

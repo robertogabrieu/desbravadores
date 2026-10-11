@@ -25,7 +25,7 @@ import type {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { z } from 'zod'
 import { chavesCalendario } from './calendario'
-import { ErroDaApi, erroDeResposta, lerTokenAcesso, renovarSessao, requisitar } from './cliente'
+import { ErroDaApi, erroDeResposta, lerTokenAcesso, renovarSessao, requisitar, requisitarSemResposta } from './cliente'
 
 export type Edicoes = z.infer<typeof EdicoesSaida>
 export type EdicaoResumoCB = Edicoes['edicoes'][number]
@@ -92,6 +92,20 @@ export function useSalvarRascunhoCB() {
     onSuccess: (_edicao, { id }) => {
       void clienteConsultas.invalidateQueries({ queryKey: chavesClasseBiblica.edicoes })
       void clienteConsultas.invalidateQueries({ queryKey: chavesClasseBiblica.painel(id), exact: true })
+    },
+  })
+}
+
+/** Apaga a edição com encontros, chamadas e presenças (204). A edição some do cache: ler de novo responderia "não encontrada". */
+export function useExcluirEdicaoCB() {
+  const clienteConsultas = useQueryClient()
+  return useMutation({
+    networkMode: 'always',
+    mutationFn: (id: string) => requisitarSemResposta(caminhoDaEdicao(id), { metodo: 'DELETE' }),
+    onSuccess: (_resposta, id) => {
+      clienteConsultas.removeQueries({ queryKey: chavesClasseBiblica.painel(id) })
+      void clienteConsultas.invalidateQueries({ queryKey: chavesClasseBiblica.raiz })
+      return clienteConsultas.invalidateQueries({ queryKey: chavesCalendario.todas })
     },
   })
 }
