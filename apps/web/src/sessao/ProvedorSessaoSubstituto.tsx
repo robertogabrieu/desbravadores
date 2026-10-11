@@ -82,9 +82,12 @@ export function ProvedorSessaoSubstituto({
   // Efeito de layout roda antes dos efeitos dos filhos: a primeira consulta da tela já sai com a credencial.
   useLayoutEffect(() => {
     entrarNoModoSubstituicao(credencial, () => definirEncerrada(true))
-    configurarCliente({ aoFalhaDeRede: () => definirConexao('SEM_CONEXAO') })
+    configurarCliente({
+      aoFalhaDeRede: () => definirConexao('SEM_CONEXAO'),
+      aoServidorRespondeu: () => definirConexao('ONLINE'),
+    })
     return () => {
-      configurarCliente({ aoFalhaDeRede: () => undefined })
+      configurarCliente({ aoFalhaDeRede: () => undefined, aoServidorRespondeu: () => undefined })
       sairDoModoSubstituicao()
     }
   }, [credencial])
