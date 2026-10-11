@@ -153,7 +153,7 @@ describe('Novo evento · formulário com o tipo escolhido', () => {
     expect(screen.queryByLabelText('Terá atividade de campo')).not.toBeInTheDocument()
   })
 
-  it('Férias não pedem horário nem local, e Sem reunião não pede local', async () => {
+  it('Férias, Sem reunião e Feriado não pedem horário nem local', async () => {
     abrir(ESCOLHA)
     await userEvent.click(await screen.findByRole('link', { name: new RegExp(`^${ROTULOS_DO_TIPO.FERIAS}`) }))
     await screen.findByLabelText('Nome')
@@ -163,7 +163,13 @@ describe('Novo evento · formulário com o tipo escolhido', () => {
     await userEvent.click(screen.getByRole('link', { name: 'Trocar tipo' }))
     await userEvent.click(await screen.findByRole('link', { name: new RegExp(`^${ROTULOS_DO_TIPO.SEM_REUNIAO}`) }))
     await screen.findByLabelText('Nome')
-    expect(screen.getByLabelText('Horário')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Horário')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Local')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('link', { name: 'Trocar tipo' }))
+    await userEvent.click(await screen.findByRole('link', { name: new RegExp(`^${ROTULOS_DO_TIPO.FERIADO}`) }))
+    await screen.findByLabelText('Nome')
+    expect(screen.queryByLabelText('Horário')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Local')).not.toBeInTheDocument()
   })
 

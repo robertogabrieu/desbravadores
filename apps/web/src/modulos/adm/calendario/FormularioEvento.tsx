@@ -154,9 +154,9 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar, esco
   const ehFerias = tipo === 'FERIAS'
   const ehExtra = tipo === 'REUNIAO_EXTRA'
   const ehSemReuniao = tipo === 'SEM_REUNIAO'
-  /** Férias não têm hora nem lugar; um dia sem reunião não tem lugar. */
-  const pedeHorario = !ehFerias
-  const pedeLocal = !ehFerias && !ehSemReuniao
+  /** Férias, feriado e dia sem reunião não têm hora nem lugar. */
+  const pedeHorario = !ehFerias && !ehSemReuniao && tipo !== 'FERIADO'
+  const pedeLocal = pedeHorario
   const ehEspecial = tipo === 'EVENTO_ESPECIAL'
   const lista = evento?.lista
   const listaComecada = !!lista && (lista.concluidaEm !== null || lista.foram > 0)
