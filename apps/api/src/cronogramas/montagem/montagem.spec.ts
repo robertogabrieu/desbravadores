@@ -790,6 +790,73 @@ describe('Montagem do cronograma', () => {
       const foraDoVinculo = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [(await classeOficial('Companheiro')).id] })
       expect((await http.get(rotaMontagem(avancada.id), foraDoVinculo.autorizacao)).status).toBe(404)
     })
+
+    it('mutação feita na avançada responde a visão da regular, com o bloco da avançada e o ano do clube', async () => {
+      const { clube, adm, cronograma, avancada, requisitosAvancada } = await cenarioPar()
+      const cronogramaAvancada = await criarCronograma({ clubeId: clube.id, classeId: avancada.id })
+      const saida = corpo<Saida>(await colocar(cronogramaAvancada.id, requisitosAvancada[0], DOMINGO_A, adm.autorizacao))
+      expect(saida.cronograma).toMatchObject({ id: cronograma.id, anoClube: anoCorrente() })
+      expect(saida.avancada?.cronograma?.id).toBe(cronogramaAvancada.id)
+      expect(saida.avancada?.requisitos[0]).toMatchObject({ id: requisitosAvancada[0], data: DOMINGO_A })
+      const retirada = corpo<Saida>(await tirar(cronogramaAvancada.id, requisitosAvancada[0], adm.autorizacao))
+      expect(retirada.cronograma?.id).toBe(cronograma.id)
+      expect(retirada.avancada?.requisitos[0].data).toBeNull()
+    })
+
+    it('a leitura sem cronograma e a da regular informam o ano do clube', async () => {
+      const { adm, amigo, cronograma } = await cenarioPar()
+      expect(corpo<Saida>(await http.get(rotaMontagem(amigo.id), adm.autorizacao)).cronograma).toMatchObject({ id: cronograma.id, anoClube: anoCorrente() })
+    })
+
+    it('editar só a avançada de um par publicado devolve os dois a rascunho; publicar de novo publica os dois', async () => {
+      const { clube, adm, cronograma, requisitos, avancada, requisitosAvancada } = await cenarioPar()
+      const cronogramaAvancada = await criarCronograma({ clubeId: clube.id, classeId: avancada.id })
+      await colocar(cronograma.id, requisitos[0], DOMINGO_A, adm.autorizacao)
+      await http.post(`/api/cronogramas/${cronograma.id}/publicar`, adm.autorizacao, { atualizadoEmVisto: await visto(cronograma.id) })
+      expect((await doAno(cronograma.classeId, clube.id))?.status).toBe('PUBLICADO')
+      expect((await doAno(avancada.id, clube.id))?.status).toBe('PUBLICADO')
+
+      const editada = corpo<Saida>(await colocar(cronogramaAvancada.id, requisitosAvancada[0], DOMINGO_A, adm.autorizacao))
+      expect(editada.cronograma?.status).toBe('RASCUNHO')
+      expect(editada.avancada?.cronograma?.status).toBe('RASCUNHO')
+      expect((await doAno(cronograma.classeId, clube.id))?.status).toBe('RASCUNHO')
+
+      const publicada = await http.post(`/api/cronogramas/${cronograma.id}/publicar`, adm.autorizacao, { atualizadoEmVisto: await visto(cronograma.id) })
+      expect(publicada.status).toBe(200)
+      expect(corpo<Saida>(publicada).cronograma?.status).toBe('PUBLICADO')
+      expect(corpo<Saida>(publicada).avancada?.cronograma?.status).toBe('PUBLICADO')
+    })
+
+    it('editar só a regular de um par publicado devolve a avançada a rascunho', async () => {
+      const { clube, adm, cronograma, requisitos, avancada } = await cenarioPar()
+      await criarCronograma({ clubeId: clube.id, classeId: avancada.id, status: 'PUBLICADO' })
+      await prismaDeTeste().cronograma.update({ where: { id: cronograma.id }, data: { status: 'PUBLICADO' } })
+      await colocar(cronograma.id, requisitos[0], DOMINGO_A, adm.autorizacao)
+      expect((await doAno(avancada.id, clube.id))?.status).toBe('RASCUNHO')
+    })
+
+    it('enviar pela avançada envia o par e responde a visão da regular', async () => {
+      const { clube, amigo, instrutor, avancada, requisitosAvancada } = await cenarioPar()
+      await admDefinirClasseClube({ clubeId: clube.id, classeId: amigo.id, quemMontaCronograma: 'INSTRUTOR' })
+      const cronogramaAvancada = await criarCronograma({ clubeId: clube.id, classeId: avancada.id })
+      await colocar(cronogramaAvancada.id, requisitosAvancada[0], DOMINGO_A, instrutor.autorizacao)
+      const resposta = await http.post(`/api/cronogramas/${cronogramaAvancada.id}/enviar`, instrutor.autorizacao, {
+        atualizadoEmVisto: await visto(cronogramaAvancada.id),
+      })
+      expect(resposta.status).toBe(200)
+      expect(corpo<Saida>(resposta).cronograma?.status).toBe('ENVIADO')
+      expect(corpo<Saida>(resposta).avancada?.cronograma?.status).toBe('ENVIADO')
+    })
+
+    it('regular desativada no clube não é puxada: a avançada responde a própria visão e o par não se move', async () => {
+      const { clube, amigo, adm, cronograma, avancada, requisitosAvancada } = await cenarioPar()
+      const cronogramaAvancada = await criarCronograma({ clubeId: clube.id, classeId: avancada.id })
+      await prismaDeTeste().cronograma.update({ where: { id: cronograma.id }, data: { status: 'PUBLICADO' } })
+      await admDefinirClasseClube({ clubeId: clube.id, classeId: amigo.id, ativa: false })
+      const saida = corpo<Saida>(await colocar(cronogramaAvancada.id, requisitosAvancada[0], DOMINGO_A, adm.autorizacao))
+      expect(saida.cronograma?.id).toBe(cronogramaAvancada.id)
+      expect((await doAno(amigo.id, clube.id))?.status).toBe('PUBLICADO')
+    })
   })
 
   describe('isolamento entre clubes', () => {

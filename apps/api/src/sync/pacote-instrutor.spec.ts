@@ -104,7 +104,7 @@ describe('GET /api/sync/pacote do instrutor (F11)', () => {
     const pacote = await baixar(c.instrutor.autorizacao)
     const instrutor = pacote.instrutor
     expect(instrutor).not.toBeNull()
-    expect(instrutor?.classes.map((x) => x.classe.id)).toEqual([c.classe.id])
+    expect(instrutor?.classes.map((x) => x.classe.id)).toEqual([c.classe.id, (await prismaDeTeste().classe.findFirstOrThrow({ where: { tipo: 'AVANCADA', trilha: 'INDIVIDUAL', clubeId: null, classeBaseId: c.classe.id }, select: { id: true } })).id])
     const classe = instrutor?.classes[0]
     expect(classe?.membros.map((m) => [m.nome, m.tipo])).toEqual([['Ana Souza', 'DBV'], ['Bia Lima', 'DBV'], ['Carla Lider', 'LIDER'], ['Dora Diretoria', 'DIRETORIA']])
     expect(classe?.membros[0]?.concluidos.sort()).toEqual([r1, r2].sort())
@@ -289,7 +289,7 @@ describe('GET /api/sync/pacote do instrutor (F11)', () => {
       const alheia = (await baixar(deOutraClasse.autorizacao)).instrutor?.classes
 
       expect(nossa?.tarefas.map((t) => t.registroAulaId)).toEqual([aula.id])
-      expect(alheia?.map((x) => x.classe.id)).toEqual([c.outra.id])
+      expect(alheia?.map((x) => x.classe.id)).toEqual([c.outra.id, (await prismaDeTeste().classe.findFirstOrThrow({ where: { tipo: 'AVANCADA', trilha: 'INDIVIDUAL', clubeId: null, classeBaseId: c.outra.id }, select: { id: true } })).id])
       expect(alheia?.[0]?.tarefas).toEqual([])
     })
   })

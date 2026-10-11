@@ -70,8 +70,8 @@ describe('instrutor: inicio e pedido de liberacao', () => {
 
       const saida = corpo<Inicio>(await api.get('/api/inicio/instrutor', instrutor.autorizacao).expect(200))
 
-      expect(saida.classes.map((item) => item.classe.id)).toEqual([amigo.id, agrupada.id])
-      const [doAmigo, daAgrupada] = saida.classes
+      expect(saida.classes.map((item) => item.classe.id)).toEqual([amigo.id, (await prismaDeTeste().classe.findFirstOrThrow({ where: { tipo: 'AVANCADA', trilha: 'INDIVIDUAL', clubeId: null, classeBaseId: amigo.id }, select: { id: true } })).id, agrupada.id])
+      const [doAmigo, , daAgrupada] = saida.classes
       expect(doAmigo).toMatchObject({
         totalDbvs: 1,
         progressoMedio: Math.round((1 / requisitos.length) * 100),
@@ -235,7 +235,10 @@ describe('instrutor: inicio e pedido de liberacao', () => {
         const companheiro = await classeOficial('Companheiro')
         const deOutraClasse = await criarAcesso({ clubeId: t.clube.id, papel: 'INSTRUTOR', classeIds: [companheiro.id] })
         const saida = corpo<Inicio>(await api.get('/api/inicio/instrutor', deOutraClasse.autorizacao).expect(200))
-        expect(saida.classes.map((c) => [c.classe.id, c.paraCobrar])).toEqual([[companheiro.id, null]])
+        expect(saida.classes.map((c) => [c.classe.id, c.paraCobrar])).toEqual([
+          [companheiro.id, null],
+          [(await prismaDeTeste().classe.findFirstOrThrow({ where: { tipo: 'AVANCADA', trilha: 'INDIVIDUAL', clubeId: null, classeBaseId: companheiro.id }, select: { id: true } })).id, null],
+        ])
       })
     })
 

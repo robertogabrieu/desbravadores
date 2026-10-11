@@ -138,4 +138,34 @@ describe('regular e avançada andam juntas', () => {
       await api.get(`/api/classes/${classe.id}`, adm.autorizacao).expect(404)
     })
   })
+
+  describe('par ativo', () => {
+    it('vínculo na avançada com a regular desativada no clube não puxa a regular', async () => {
+      const { clube, adm, alvo, regular, avancada } = await cenario()
+      await api.patch(`/api/classes/${regular.id}`, adm.autorizacao, { ativa: false }).expect(200)
+      const saida = corpo<Usuario>(
+        await api.post(`/api/usuarios/${alvo.id}/vinculos`, adm.autorizacao, { papel: 'INSTRUTOR', classeIds: [avancada.id] }).expect(201),
+      )
+      expect(clube.id).toBeDefined()
+      expect(classesDoInstrutor(saida)).toEqual([avancada.id])
+    })
+
+    it('avançada desativada no clube não é acrescentada ao marcar a regular', async () => {
+      const { adm, alvo, regular, avancada } = await cenario()
+      await api.patch(`/api/classes/${avancada.id}`, adm.autorizacao, { ativa: false }).expect(200)
+      const saida = corpo<Usuario>(
+        await api.post(`/api/usuarios/${alvo.id}/vinculos`, adm.autorizacao, { papel: 'INSTRUTOR', classeIds: [regular.id] }).expect(201),
+      )
+      expect(classesDoInstrutor(saida)).toEqual([regular.id])
+    })
+
+    it('instrutor só da regular lê o cronograma publicado e o progresso da avançada; com a avançada desativada, 404', async () => {
+      const { clube, adm, regular, avancada } = await cenario()
+      const instrutor = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [regular.id] })
+      await api.get(`/api/classes/${avancada.id}/cronograma`, instrutor.autorizacao).expect(200)
+      await api.get(`/api/classes/${avancada.id}/progresso`, instrutor.autorizacao).expect(200)
+      await api.patch(`/api/classes/${avancada.id}`, adm.autorizacao, { ativa: false }).expect(200)
+      await api.get(`/api/classes/${avancada.id}/progresso`, instrutor.autorizacao).expect(404)
+    })
+  })
 })
