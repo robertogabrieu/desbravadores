@@ -33,11 +33,11 @@ export function gruposDeUnidades(ativas: Unidade[], doPapel: RefUnidade[]): Grup
   return semGruposVazios([{ titulo: 'Unidades', opcoes }])
 }
 
-type ClasseDoEscopo = Pick<Classe, 'id' | 'nome' | 'tipo' | 'trilha'> & { classeBaseId?: string | null }
+type ClasseDoEscopo = Pick<Classe, 'id' | 'nome' | 'tipo' | 'trilha'> & { avancadaPareadaId?: string | null }
 
 /**
  * A regular leva a avançada dela embaixo (as duas andam juntas); as agrupadas são uma turma à parte.
- * Avançada sem regular na lista (ou inativa, só presente porque o papel a tem) continua visível em "Avançadas".
+ * Avançada fora de par (inclusive a inativa, só presente porque o papel a tem) continua visível em "Avançadas".
  */
 export function gruposDeClasses(classes: Classe[], doPapel: RefClasse[]): GrupoDeEscopo[] {
   const ativas = classes.filter((classe) => classe.ativa)
@@ -50,8 +50,8 @@ export function gruposDeClasses(classes: Classe[], doPapel: RefClasse[]): GrupoD
   const regulares = individuais
     .filter((classe) => classe.tipo === 'REGULAR')
     .map((regular): OpcaoDeEscopo => {
-      // Regular inativa não leva a avançada: ela vale sozinha e aparece como item próprio.
-      const avancada = regular.inativa ? undefined : individuais.find((classe) => classe.tipo !== 'REGULAR' && !classe.inativa && classe.classeBaseId === regular.id)
+      // A API diz qual avançada anda com a regular; regular inativa não leva a avançada e aparece como item próprio.
+      const avancada = regular.inativa ? undefined : individuais.find((classe) => !classe.inativa && classe.id === regular.avancadaPareadaId)
       if (!avancada) return comoOpcao(regular.inativa)(regular)
       avancadasLigadas.add(avancada.id)
       return { ...comoOpcao(regular.inativa)(regular), avancada: { id: avancada.id, nome: avancada.nome } }

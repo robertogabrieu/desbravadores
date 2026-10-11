@@ -7,7 +7,7 @@ import { colador } from '../desbravadores/apoio'
 import { ServicoEscopo } from '../desbravadores/escopo.service'
 import type { Prisma } from '../generated/prisma/client.js'
 import { corTokenDaClasse } from './apresentacao-classe'
-import { temParAtivo } from './par-regular-avancada'
+import { avancadasPareadas, temParAtivo } from './par-regular-avancada'
 
 type Classe = z.infer<typeof ClasseSaida>
 type Detalhe = z.infer<typeof ClasseDetalheSaida>
@@ -34,7 +34,13 @@ function estaAtivo(requisitoAtivo: boolean, ajusteAtivo: boolean | null | undefi
   return requisitoAtivo && ajusteAtivo !== false
 }
 
-function montarClasse(classe: ClasseLida, totalRequisitos: number): Classe {
+/** Quem anda com quem, pela regra central do par: a avançada de cada regular e a regular de cada avançada. */
+interface Pares {
+  avancadaDaRegular: Map<string, string>
+  regularDaAvancada: Map<string, string>
+}
+
+function montarClasse(classe: ClasseLida, totalRequisitos: number, pares: Pares): Classe {
   const doClube = classe.clubes[0]
   return {
     id: classe.id,
@@ -44,6 +50,8 @@ function montarClasse(classe: ClasseLida, totalRequisitos: number): Classe {
     trilha: classe.trilha,
     origem: classe.origem,
     classeBaseId: classe.classeBaseId,
+    avancadaPareadaId: pares.avancadaDaRegular.get(classe.id) ?? null,
+    regularDoParId: pares.regularDaAvancada.get(classe.id) ?? null,
     ordem: classe.ordem,
     corToken: corTokenDaClasse(classe),
     ativa: doClube?.ativa ?? true,
@@ -66,7 +74,16 @@ export class ClassesService {
       orderBy: { ordem: 'asc' },
     })
     const totais = await this.totaisDeRequisitos(clubeId, classes.map((c) => c.id))
-    return classes.map((classe) => montarClasse(classe, totais.get(classe.id) ?? 0))
+    const pares = await this.paresDe(clubeId, classes)
+    return classes.map((classe) => montarClasse(classe, totais.get(classe.id) ?? 0, pares))
+  }
+
+  /** Um só acesso ao banco para todas as classes recebidas; só entram os pares ativos. */
+  private async paresDe(clubeId: string, classes: Array<{ id: string; classeBaseId: string | null }>): Promise<Pares> {
+    const pareadas = await avancadasPareadas(this.prisma, clubeId, classes.flatMap((classe) => [classe.id, ...(classe.classeBaseId ? [classe.classeBaseId] : [])]))
+    const avancadaDaRegular = new Map([...pareadas].map(([regularId, avancada]) => [regularId, avancada.id]))
+    const regularDaAvancada = new Map([...pareadas].map(([regularId, avancada]) => [avancada.id, regularId]))
+    return { avancadaDaRegular, regularDaAvancada }
   }
 
   async detalhar(clubeId: string, id: string): Promise<Detalhe> {
@@ -102,7 +119,7 @@ export class ClassesService {
     }))
     const total = secoes.reduce((soma, secao) => soma + secao.requisitos.filter((r) => r.ativo).length, 0)
     const regular = classe.classeBaseId && (await temParAtivo(this.prisma, clubeId, classe.id)) ? await this.resumirRegular(clubeId, classe.classeBaseId) : null
-    return { ...montarClasse(classe, total), regular, secoes }
+    return { ...montarClasse(classe, total, await this.paresDe(clubeId, [classe])), regular, secoes }
   }
 
   private async resumirRegular(clubeId: string, regularId: string): Promise<ResumoDaRegular | null> {

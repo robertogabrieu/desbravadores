@@ -162,7 +162,7 @@ export function PainelInstrutor({ montagem, classeConsultada, cronograma, ano, a
             >
               <span className="w-10 shrink-0 text-sm font-bold text-marca">{requisito.codigo}</span>
               <span className="min-w-0 flex-1 text-base text-texto">{requisito.texto}</span>
-              {par && <EtiquetaDoLado lado={requisito.lado} />}
+              {par && <EtiquetaDoLado requisito={requisito} />}
               {requisito.campo && <EtiquetaCampo />}
             </button>
           ))}

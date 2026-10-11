@@ -11,6 +11,10 @@ export const ClasseSaida = z.object({
   trilha: Trilha,
   origem: Origem,
   classeBaseId: Uuid.nullable(),
+  /** Na regular: a avançada que anda com ela (par ativo; havendo várias, a de menor `ordem`). `null`/ausente = sem par. */
+  avancadaPareadaId: Uuid.nullable().optional(),
+  /** Na avançada: a regular do par ativo. `null`/ausente = sem par (ela fica sozinha). */
+  regularDoParId: Uuid.nullable().optional(),
   ordem: z.number().int(),
   /** Token CSS: "--classe-amigo"… ; avançada herda da regular; Agrupadas e CLUBE: "--color-primary". */
   corToken: z.string(),

@@ -25,8 +25,8 @@ beforeEach(() => {
 
 const aguias = criarUnidade({ id: uuid(201), nome: 'Águias' })
 const amigo = criarClasse({ id: uuid(101), nome: 'Amigo' })
-const guia = criarClasse({ id: uuid(102), nome: 'Guia' })
-const avancada = criarClasse({ id: uuid(103), nome: 'Guia de Exploração', tipo: 'AVANCADA', classeBaseId: guia.id })
+const guia = criarClasse({ id: uuid(102), nome: 'Guia', avancadaPareadaId: uuid(103) })
+const avancada = criarClasse({ id: uuid(103), nome: 'Guia de Exploração', tipo: 'AVANCADA', classeBaseId: guia.id, regularDoParId: guia.id })
 const agrupada = criarClasse({ id: uuid(104), nome: 'Classe Bíblica', trilha: 'AGRUPADAS' })
 const PASSO_1 = `/adm/usuarios/${uuid(710)}/papeis/novo`
 const FICHA = `/adm/usuarios/${uuid(710)}`

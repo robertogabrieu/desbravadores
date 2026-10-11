@@ -33,9 +33,9 @@ afterEach(() => {
   conexao.modo = 'ONLINE'
 })
 
-const amigo = criarClasse({ id: uuid(101), nome: 'Amigo', idade: 10, ordem: 1 })
+const amigo = criarClasse({ id: uuid(101), nome: 'Amigo', idade: 10, ordem: 1, avancadaPareadaId: uuid(103) })
 const companheiro = criarClasse({ id: uuid(102), nome: 'Companheiro', idade: 11, ordem: 2, ativa: false })
-const avancada = criarClasse({ id: uuid(103), nome: 'Amigo da Natureza', idade: null, tipo: 'AVANCADA', classeBaseId: amigo.id, ordem: 7 })
+const avancada = criarClasse({ id: uuid(103), nome: 'Amigo da Natureza', idade: null, tipo: 'AVANCADA', classeBaseId: amigo.id, regularDoParId: amigo.id, ordem: 7 })
 const agrupadaAvancada = criarClasse({ id: uuid(105), nome: 'Agrupadas — avançada', idade: null, tipo: 'AVANCADA', trilha: 'AGRUPADAS', classeBaseId: uuid(104), ordem: 14 })
 const agrupada = criarClasse({ id: uuid(104), nome: 'Agrupadas (Amigo a Guia)', idade: 16, trilha: 'AGRUPADAS', ordem: 13 })
 
@@ -96,6 +96,14 @@ describe('A5 · classes · quatro estados', () => {
 })
 
 describe('A5 · classes · lista e detalhe', () => {
+  it('a segunda avançada da mesma regular aparece como item próprio, no fim da lista', async () => {
+    const segunda = criarClasse({ id: uuid(110), nome: 'Segunda avançada', idade: null, tipo: 'AVANCADA', classeBaseId: amigo.id, ordem: 8 })
+    servidor.use(handlerClasses([amigo, avancada, segunda]), handlerDetalheDaClasse(detalheDeAmigo))
+    renderizarRotas(rotasAdmClasses, '/adm/classes')
+    const nav = within(await screen.findByRole('navigation', { name: 'Classes' }))
+    expect(nav.getAllByRole('button').map((botao) => botao.textContent)).toEqual(['Amigo10 anos', 'Amigo da Natureza', 'Segunda avançada'])
+  })
+
   it('lista em dois grupos: cada regular com a avançada logo abaixo, e as agrupadas sem par; abre a primeira', async () => {
     abrirClasses()
     const nav = within(await screen.findByRole('navigation', { name: 'Classes' }))

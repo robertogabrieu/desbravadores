@@ -411,5 +411,7 @@ describe('GET /api/classes/:id/cronograma — par regular + avançada', () => {
     expect(daAvancada.cronogramaId).toBeNull()
     const daRegular = corpo<Leitura>(await http.get(rota(c.amigo.id), c.adm.autorizacao))
     expect(daRegular.cronogramaId).toBe(c.cronograma.id)
+    // o cronograma ainda guarda requisitos da avançada: com o par desfeito a regular só vê os dela
+    expect(daRegular.aulas.map((aula) => [aula.data, aula.requisitos.map((r) => r.id)])).toEqual([[dia(5), [c.r1]], [dia(12), [c.r2]]])
   })
 })

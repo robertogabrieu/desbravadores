@@ -47,8 +47,8 @@ function abrir(rota: string, usuario = carla(), ...especiais: HttpHandler[]) {
   return renderizarRotas(rotasAdmUsuarios, rota)
 }
 
-const amigo = criarClasse({ id: uuid(101), nome: 'Amigo' })
-const amigoDaNatureza = criarClasse({ id: uuid(102), nome: 'Amigo da Natureza', tipo: 'AVANCADA', classeBaseId: amigo.id })
+const amigo = criarClasse({ id: uuid(101), nome: 'Amigo', avancadaPareadaId: uuid(102) })
+const amigoDaNatureza = criarClasse({ id: uuid(102), nome: 'Amigo da Natureza', tipo: 'AVANCADA', classeBaseId: amigo.id, regularDoParId: amigo.id })
 const refDe = (c: typeof amigo) => ({ id: c.id, nome: c.nome, tipo: c.tipo, trilha: c.trilha, corToken: c.corToken })
 const ALTERAR_INSTRUTORA = `${FICHA}/papeis/${uuid(603)}`
 

@@ -58,7 +58,7 @@ export function FolhaAdicionar({ dado, livres, comAvancada = false, desabilitado
                     {requisito.codigo} · {requisito.texto}
                   </span>
                   <span className="flex flex-wrap items-center gap-2">
-                    {comAvancada && <EtiquetaDoLado lado={requisito.lado} />}
+                    {comAvancada && <EtiquetaDoLado requisito={requisito} />}
                     {requisito.campo && <EtiquetaCampo />}
                     {dataDeCampo && requisito.campo && <span className="text-xs font-bold text-acampamento">Sugerido para este dia</span>}
                   </span>

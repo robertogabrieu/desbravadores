@@ -34,7 +34,8 @@ beforeEach(() => {
   offline.modo = 'ONLINE'
 })
 
-const CLASSE_AVANCADA = criarClasse({ id: AVANCADA_MONTAGEM.id, nome: 'Amigo da Natureza', tipo: 'AVANCADA', classeBaseId: uuid(100), ordem: 2 })
+const CLASSE_REGULAR = criarClasse({ avancadaPareadaId: AVANCADA_MONTAGEM.id })
+const CLASSE_AVANCADA = criarClasse({ id: AVANCADA_MONTAGEM.id, nome: 'Amigo da Natureza', tipo: 'AVANCADA', classeBaseId: uuid(100), regularDoParId: uuid(100), ordem: 2 })
 
 // Um cronograma só, o da regular. Regular: R1 sem data, R3 em 04/10. Avançada: AN1 e AN5 sem data; AN2, AN3 e AN4 em 04/10; AN6 em 25/10.
 const R1 = criarRequisitoMontagem(1)
@@ -66,7 +67,7 @@ function criarPar(parcial: Partial<Montagem> = {}): Montagem {
 const linha = (data: string) => document.querySelector<HTMLElement>(`li[data-data="${data}"]`) as HTMLElement
 const datasNaOrdem = () => Array.from(document.querySelectorAll('li[data-data]')).map((item) => item.getAttribute('data-data'))
 
-function abrirAdm(montagem: Montagem = criarPar(), rota = '/adm/cronogramas', classes = [criarClasse(), CLASSE_AVANCADA]) {
+function abrirAdm(montagem: Montagem = criarPar(), rota = '/adm/cronogramas', classes = [CLASSE_REGULAR, CLASSE_AVANCADA]) {
   const { handlers, registro } = handlersMontagem(montagem)
   servidor.use(...handlersSessao([criarVinculo('ADM')]), handlerClasses(classes), ...handlers)
   renderizarRotas(rotasAdmCronogramas, rota)
@@ -79,7 +80,7 @@ function abrirInstrutor(montagem: Montagem = criarPar(), rota = '/cronograma/mon
   const { handlers, registro } = handlersMontagem(montagem)
   servidor.use(
     ...handlersSessao([criarVinculo('INSTRUTOR', 1, { classes: [CLASSE_MONTAGEM, CLASSE_AVANCADA_MONTAGEM] })]),
-    handlerClasses([criarClasse(), CLASSE_AVANCADA]),
+    handlerClasses([CLASSE_REGULAR, CLASSE_AVANCADA]),
     ...handlers,
   )
   renderizarRotas(rotasInstrutor, rota)
@@ -96,7 +97,7 @@ describe('Regular e avançada · seletor de classe', () => {
   })
 
   it('regular sem avançada ativa mostra só o nome', async () => {
-    abrirAdm(criarMontagem(), '/adm/cronogramas', [criarClasse(), { ...CLASSE_AVANCADA, ativa: false }])
+    abrirAdm(criarMontagem(), '/adm/cronogramas', [criarClasse(), { ...CLASSE_AVANCADA, ativa: false, regularDoParId: null }])
     const seletor = await screen.findByRole('combobox', { name: 'Classe' })
     expect(await within(seletor).findByRole('option', { name: 'Amigo' })).toBeInTheDocument()
   })
@@ -110,17 +111,18 @@ describe('Regular e avançada · seletor de classe', () => {
 
 describe('Regular e avançada · regular inativa', () => {
   const REGULAR_INATIVA = criarClasse({ ativa: false })
+  const AVANCADA_SOLTA = { ...CLASSE_AVANCADA, regularDoParId: null }
   const montagemDaAvancada = criarMontagem({ classe: CLASSE_AVANCADA_MONTAGEM, requisitos: [AN1], datas: DATAS })
 
   it('Adm: a avançada vale sozinha — aparece no seletor pelo próprio nome, e a regular inativa não', async () => {
-    abrirAdm(montagemDaAvancada, '/adm/cronogramas', [REGULAR_INATIVA, CLASSE_AVANCADA])
+    abrirAdm(montagemDaAvancada, '/adm/cronogramas', [REGULAR_INATIVA, AVANCADA_SOLTA])
     const seletor = await screen.findByRole('combobox', { name: 'Classe' })
     expect(await within(seletor).findByRole('option', { name: 'Amigo da Natureza' })).toBeInTheDocument()
     expect(within(seletor).getAllByRole('option')).toHaveLength(1)
   })
 
   it('Adm: ?classe=<avançada> abre a montagem da própria avançada, sem ir para a regular inativa', async () => {
-    const registro = abrirAdm(montagemDaAvancada, `/adm/cronogramas?classe=${CLASSE_AVANCADA.id}`, [REGULAR_INATIVA, CLASSE_AVANCADA])
+    const registro = abrirAdm(montagemDaAvancada, `/adm/cronogramas?classe=${CLASSE_AVANCADA.id}`, [REGULAR_INATIVA, AVANCADA_SOLTA])
     await screen.findByRole('heading', { name: 'Requisitos da classe' })
     expect(registro.classesLidas).toEqual([CLASSE_AVANCADA.id])
   })
@@ -129,7 +131,7 @@ describe('Regular e avançada · regular inativa', () => {
     const { handlers, registro } = handlersMontagem(montagemDaAvancada)
     servidor.use(
       ...handlersSessao([criarVinculo('INSTRUTOR', 1, { classes: [CLASSE_MONTAGEM, CLASSE_AVANCADA_MONTAGEM] })]),
-      handlerClasses([REGULAR_INATIVA, CLASSE_AVANCADA]),
+      handlerClasses([REGULAR_INATIVA, AVANCADA_SOLTA]),
       ...handlers,
     )
     renderizarRotas(rotasInstrutor, `/cronograma/montar?classe=${CLASSE_AVANCADA.id}`)
@@ -448,7 +450,7 @@ describe('Regular e avançada · instrutor só da avançada', () => {
     const { handlers, registro } = handlersMontagem(criarPar())
     servidor.use(
       ...handlersSessao([criarVinculo('INSTRUTOR', 1, { classes: [CLASSE_AVANCADA_MONTAGEM] })]),
-      handlerClasses([criarClasse(), CLASSE_AVANCADA]),
+      handlerClasses([CLASSE_REGULAR, CLASSE_AVANCADA]),
       ...handlers,
     )
     renderizarRotas(rotasInstrutor, `/cronograma/montar?classe=${CLASSE_AVANCADA.id}`)

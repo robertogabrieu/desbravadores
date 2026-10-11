@@ -142,6 +142,53 @@ describe('regular e avançada andam juntas', () => {
     })
   })
 
+  describe('GET /classes: quem é o par', () => {
+    type Item = { id: string; avancadaPareadaId: string | null; regularDoParId: string | null }
+    const pares = async (autorizacao: string) =>
+      new Map(corpo<Item[]>(await api.get('/api/classes', autorizacao).expect(200)).map((item) => [item.id, item]))
+
+    it('a regular traz a avançada de menor ordem e a avançada traz a regular; a segunda avançada fica sem par', async () => {
+      const { clube, adm, regular, avancada } = await cenario()
+      const oficial = await prismaDeTeste().classe.findUniqueOrThrow({ where: { id: avancada.id } })
+      const segunda = await prismaDeTeste().classe.create({
+        data: { clubeId: clube.id, origem: 'CLUBE', nome: 'Avançada extra', tipo: 'AVANCADA', trilha: 'INDIVIDUAL', classeBaseId: regular.id, ordem: oficial.ordem + 100 },
+      })
+      const lista = await pares(adm.autorizacao)
+      expect(lista.get(regular.id)).toMatchObject({ avancadaPareadaId: avancada.id, regularDoParId: null })
+      expect(lista.get(avancada.id)).toMatchObject({ avancadaPareadaId: null, regularDoParId: regular.id })
+      expect(lista.get(segunda.id)).toMatchObject({ avancadaPareadaId: null, regularDoParId: null })
+      const detalhe = corpo<Item>(await api.get(`/api/classes/${avancada.id}`, adm.autorizacao).expect(200))
+      expect(detalhe).toMatchObject({ regularDoParId: regular.id, avancadaPareadaId: null })
+    })
+
+    it('com a avançada desativada no clube, nenhuma das duas tem par', async () => {
+      const { adm, regular, avancada } = await cenario()
+      await api.patch(`/api/classes/${avancada.id}`, adm.autorizacao, { ativa: false }).expect(200)
+      const lista = await pares(adm.autorizacao)
+      expect(lista.get(regular.id)?.avancadaPareadaId).toBeNull()
+      expect(lista.get(avancada.id)?.regularDoParId).toBeNull()
+    })
+  })
+
+  describe('ativar uma classe completa o vínculo do par', () => {
+    it('reativar a avançada dá a avançada a quem só tinha a regular; reativar a regular dá a regular a quem só tinha a avançada', async () => {
+      const { clube, adm, regular, avancada } = await cenario()
+      await api.patch(`/api/classes/${avancada.id}`, adm.autorizacao, { ativa: false }).expect(200)
+      const soRegular = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [regular.id] })
+      const ligadas = async (vinculoId: string) =>
+        ordenar((await prismaDeTeste().vinculoClasse.findMany({ where: { vinculoId } })).map((ligacao) => ligacao.classeId))
+      expect(await ligadas(soRegular.vinculo.id)).toEqual([regular.id])
+      await api.patch(`/api/classes/${avancada.id}`, adm.autorizacao, { ativa: true }).expect(200)
+      expect(await ligadas(soRegular.vinculo.id)).toEqual(ordenar([regular.id, avancada.id]))
+      await api.get(`/api/classes/${avancada.id}/progresso`, soRegular.autorizacao).expect(200)
+
+      await api.patch(`/api/classes/${regular.id}`, adm.autorizacao, { ativa: false }).expect(200)
+      const soAvancada = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [avancada.id] })
+      await api.patch(`/api/classes/${regular.id}`, adm.autorizacao, { ativa: true }).expect(200)
+      expect(await ligadas(soAvancada.vinculo.id)).toEqual(ordenar([regular.id, avancada.id]))
+    })
+  })
+
   describe('par ativo', () => {
     it('vínculo na avançada com a regular desativada no clube não puxa a regular', async () => {
       const { clube, adm, alvo, regular, avancada } = await cenario()
@@ -162,13 +209,13 @@ describe('regular e avançada andam juntas', () => {
       expect(classesDoInstrutor(saida)).toEqual([regular.id])
     })
 
-    it('instrutor só da regular lê o cronograma publicado e o progresso da avançada; com a avançada desativada, 404', async () => {
-      const { clube, adm, regular, avancada } = await cenario()
-      const instrutor = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [regular.id] })
+    it('instrutor com o par gravado lê o cronograma publicado e o progresso da avançada; com só a regular gravada, 404 (o escopo confia no vínculo)', async () => {
+      const { clube, regular, avancada } = await cenario()
+      const instrutor = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [regular.id, avancada.id] })
       await api.get(`/api/classes/${avancada.id}/cronograma`, instrutor.autorizacao).expect(200)
       await api.get(`/api/classes/${avancada.id}/progresso`, instrutor.autorizacao).expect(200)
-      await api.patch(`/api/classes/${avancada.id}`, adm.autorizacao, { ativa: false }).expect(200)
-      await api.get(`/api/classes/${avancada.id}/progresso`, instrutor.autorizacao).expect(404)
+      const soRegular = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [regular.id] })
+      await api.get(`/api/classes/${avancada.id}/progresso`, soRegular.autorizacao).expect(404)
     })
 
     it('sessão de substituição da regular não alcança a avançada pareada (404); o instrutor titular continua alcançando', async () => {
@@ -193,7 +240,7 @@ describe('regular e avançada andam juntas', () => {
         })
         .expect(404)
 
-      const titular = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [regular.id] })
+      const titular = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [regular.id, avancada.id] })
       await api.get(`/api/classes/${avancada.id}/aulas`, titular.autorizacao).expect(200)
     })
   })

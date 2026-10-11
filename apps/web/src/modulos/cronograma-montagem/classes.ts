@@ -6,19 +6,17 @@ export interface ParDeClasses {
 }
 
 /**
- * A classe regular e a avançada dela, quando as duas existem na trilha INDIVIDUAL; a avançada aponta para a regular por `classeBaseId`.
- * O par só existe com as duas ativas; a lista de Classes passa `incluirInativa` para enxergar também a desativada.
+ * A regular e a avançada que andam juntas. Quem diz quem é o par é a API (`avancadaPareadaId` na regular,
+ * `regularDoParId` na avançada), que já considera classe ativa no sistema e no clube e a avançada de menor ordem.
  */
-export function parDaClasse(classes: Classe[], classeId: string | undefined, incluirInativa = false): ParDeClasses | null {
+export function parDaClasse(classes: Classe[], classeId: string | undefined): ParDeClasses | null {
   const atual = classes.find((classe) => classe.id === classeId)
   if (!atual) return null
-  const regular = atual.tipo === 'REGULAR' ? atual : classes.find((classe) => classe.id === atual.classeBaseId)
-  const avancada =
-    atual.tipo === 'AVANCADA' ? atual : classes.find((classe) => (incluirInativa || classe.ativa) && classe.tipo === 'AVANCADA' && classe.classeBaseId === atual.id)
-  if (!regular || !avancada) return null
-  // Agrupadas tem avançada, mas sem par: o cronograma de cada uma se monta sozinho.
-  if (regular.trilha !== 'INDIVIDUAL' || avancada.trilha !== 'INDIVIDUAL') return null
-  return incluirInativa || regular.ativa ? { regular, avancada } : null
+  const regularId = atual.tipo === 'REGULAR' ? atual.id : atual.regularDoParId
+  const avancadaId = atual.tipo === 'REGULAR' ? atual.avancadaPareadaId : atual.id
+  const regular = classes.find((classe) => classe.id === regularId)
+  const avancada = classes.find((classe) => classe.id === avancadaId)
+  return regular && avancada ? { regular, avancada } : null
 }
 
 /**
@@ -30,8 +28,12 @@ export function regularDaClasse(classes: Classe[], classeId: string | undefined)
   return par && par.avancada.id === classeId ? par.regular.id : classeId
 }
 
-/** "Amigo + Amigo da Natureza" quando a regular tem avançada ativa; senão só o nome. */
-export function nomeDoPar(classes: Classe[], regular: Classe): string {
-  const par = parDaClasse(classes, regular.id)
-  return par ? `${par.regular.nome} + ${par.avancada.nome}` : regular.nome
+/** "Amigo + Amigo da Natureza" quando há avançada no par; senão só o nome da regular. */
+export function nomeDoPar(regular: string, avancada: string | null | undefined): string {
+  return avancada ? `${regular} + ${avancada}` : regular
+}
+
+/** O nome do par da regular, procurando a avançada pareada na lista de classes. */
+export function nomeDoParDe(classes: Classe[], regular: Classe): string {
+  return nomeDoPar(regular.nome, parDaClasse(classes, regular.id)?.avancada.nome)
 }

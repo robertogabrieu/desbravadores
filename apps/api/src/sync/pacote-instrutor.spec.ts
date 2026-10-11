@@ -4,6 +4,7 @@ import type { z } from 'zod'
 import { criarAppDeTeste } from '../../test/app'
 import {
   admCriarEspecialidadeClube,
+  avancadaOficial,
   admCriarRequisitoAjuste,
   classeOficial,
   criarAcesso,
@@ -53,7 +54,8 @@ describe('GET /api/sync/pacote do instrutor (F11)', () => {
     const clube = await criarClube()
     const classe = await classeOficial('Amigo')
     const outra = await classeOficial('Companheiro')
-    const instrutor = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [classe.id] })
+    const avancada = await avancadaOficial(classe.id)
+    const instrutor = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [classe.id, avancada.id] })
     const ana = await criarDbv({ clubeId: clube.id, nome: 'Ana Souza' })
     const bia = await criarDbv({ clubeId: clube.id, nome: 'Bia Lima' })
     const lider = await criarDbv({ clubeId: clube.id, nome: 'Carla Lider', tipo: 'LIDER' })
@@ -283,7 +285,8 @@ describe('GET /api/sync/pacote do instrutor (F11)', () => {
       await criarMatricula({ clubeId: outroClube.id, dbvId: estranho.id, classeId: c.classe.id, anoClube: anoCorrente() })
       const deLa = await criarRegistroAula({ clubeId: outroClube.id, classeId: c.classe.id, data: dia(-3) })
       await criarTarefa({ clubeId: outroClube.id, classeId: c.classe.id, registroAulaId: deLa.id, itens: [{ requisitoId: c.requisitos[1] ?? '' }] })
-      const deOutraClasse = await criarAcesso({ clubeId: c.clube.id, papel: 'INSTRUTOR', classeIds: [c.outra.id] })
+      const avancadaDaOutra = await avancadaOficial(c.outra.id)
+      const deOutraClasse = await criarAcesso({ clubeId: c.clube.id, papel: 'INSTRUTOR', classeIds: [c.outra.id, avancadaDaOutra.id] })
 
       const nossa = (await baixar(c.instrutor.autorizacao)).instrutor?.classes[0]
       const alheia = (await baixar(deOutraClasse.autorizacao)).instrutor?.classes

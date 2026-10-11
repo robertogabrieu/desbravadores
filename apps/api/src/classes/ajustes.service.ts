@@ -7,7 +7,7 @@ import { PrismaService } from '../comum/prisma/prisma.service'
 import type { Prisma, QuemMonta } from '../generated/prisma/client.js'
 import { ServicoMontagem } from '../cronogramas/montagem/servico-montagem'
 import { ClassesService } from './classes.service'
-import { temParAtivo } from './par-regular-avancada'
+import { comParDeClasses, temParAtivo } from './par-regular-avancada'
 
 type Detalhe = z.infer<typeof ClasseDetalheSaida>
 
@@ -40,9 +40,33 @@ export class AjustesService {
         create: { clubeId, classeId, ativa: entrada.ativa ?? true, quemMontaCronograma: entrada.quemMontaCronograma ?? 'ADM' },
         update: { ativa: entrada.ativa, quemMontaCronograma: entrada.quemMontaCronograma },
       })
+      if (entrada.ativa === true) await this.completarVinculosDoPar(tx, clubeId, classeId)
       if (entrada.quemMontaCronograma !== undefined) await this.repassarQuemMontaParaAvancada(tx, clubeId, classeId, entrada.quemMontaCronograma)
     })
     return this.classes.detalhar(clubeId, classeId)
+  }
+
+  /**
+   * Ativar uma classe pode formar par com a do outro lado: os instrutores de um lado ganham o vinculo do outro,
+   * porque o escopo confia no vinculo gravado.
+   */
+  private async completarVinculosDoPar(tx: Prisma.TransactionClient, clubeId: string, classeId: string): Promise<void> {
+    const daqui = [{ clubeId: null }, { clubeId }]
+    const classe = await tx.classe.findFirstOrThrow({
+      where: { id: classeId, OR: daqui },
+      select: { classeBaseId: true, avancadas: { where: { OR: daqui }, select: { id: true } } },
+    })
+    const doPar = [classeId, ...(classe.classeBaseId ? [classe.classeBaseId] : []), ...classe.avancadas.map((avancada) => avancada.id)]
+    const vinculos = await tx.vinculo.findMany({
+      where: { clubeId, papel: 'INSTRUTOR', classes: { some: { classeId: { in: doPar } } } },
+      select: { id: true, classes: { select: { classeId: true } } },
+    })
+    for (const vinculo of vinculos) {
+      const gravadas = vinculo.classes.map((ligacao) => ligacao.classeId)
+      const completas = await comParDeClasses(tx, clubeId, gravadas)
+      const faltam = completas.filter((id) => !gravadas.includes(id))
+      if (faltam.length > 0) await tx.vinculoClasse.createMany({ data: faltam.map((id) => ({ vinculoId: vinculo.id, classeId: id })), skipDuplicates: true })
+    }
   }
 
   /** A avancada segue a regular em quem monta, salvo com a regular desativada; `ativa` continua de cada uma. */

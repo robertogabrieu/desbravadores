@@ -625,6 +625,8 @@ describe('Montagem do cronograma', () => {
         select: { id: true, nome: true },
       })
       const requisitosAvancada = await requisitosDa(avancada.id, 3)
+      // O vínculo gravado já traz o par (é o que a gravação do vínculo faz); o escopo não expande mais.
+      await prismaDeTeste().vinculoClasse.create({ data: { vinculoId: base.instrutor.vinculo.id, classeId: avancada.id } })
       return { ...base, avancada, requisitosAvancada }
     }
     const rotaMontagem = (classeId: string) => `/api/classes/${classeId}/cronograma/montagem`
@@ -866,10 +868,10 @@ describe('Montagem do cronograma', () => {
       expect(await aulasAtivas(cronograma.id)).toHaveLength(0)
     })
 
-    it('instrutor com vínculo só na avançada monta o cronograma do par: coloca e tira requisito', async () => {
+    it('instrutor com o par gravado monta o cronograma do par: coloca e tira requisito', async () => {
       const { clube, amigo, cronograma, avancada, requisitos, requisitosAvancada } = await cenarioPar()
       await admDefinirClasseClube({ clubeId: clube.id, classeId: amigo.id, quemMontaCronograma: 'INSTRUTOR' })
-      const soDaAvancada = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [avancada.id] })
+      const soDaAvancada = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [avancada.id, amigo.id] })
 
       expect((await http.get(rotaMontagem(amigo.id), soDaAvancada.autorizacao)).status).toBe(200)
       expect((await colocar(cronograma.id, requisitosAvancada[0], DOMINGO_A, soDaAvancada.autorizacao)).status).toBe(200)

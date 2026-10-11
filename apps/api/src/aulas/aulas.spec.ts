@@ -326,6 +326,8 @@ describe('PUT /api/sync/aulas/:uuid', () => {
     const c = await cenario()
     const avancada = await avancadaOficial(c.classe.id)
     const [a1] = await requisitosDa(avancada.id, 1)
+    // O escopo confia no vínculo gravado: o instrutor do par tem as duas classes.
+    await prismaDeTeste().vinculoClasse.create({ data: { vinculoId: c.instrutor.vinculo.id, classeId: avancada.id } })
     const cronograma = await criarCronograma({
       clubeId: c.clube.id,
       classeId: c.classe.id,

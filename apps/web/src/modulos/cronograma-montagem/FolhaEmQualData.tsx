@@ -142,7 +142,7 @@ export function FolhaEmQualData({ requisito, vista, datas, datasLivres, desabili
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
           <p className="flex flex-wrap items-center gap-2 text-base text-texto">
-            {vista?.temAvancada && <EtiquetaDoLado lado={requisito.lado} />}
+            {vista?.temAvancada && <EtiquetaDoLado requisito={requisito} />}
             <span>
               <strong className="text-marca">{requisito.codigo}</strong> · {requisito.texto}
             </span>

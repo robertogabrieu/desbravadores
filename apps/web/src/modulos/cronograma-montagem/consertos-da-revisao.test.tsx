@@ -19,10 +19,10 @@ import { criarVinculo, handlersSessao, uuid } from '../../testes/handlers/sessao
 import { simularLargura } from '../../testes/midia'
 import { renderizarRotas } from '../../testes/renderizar'
 import { servidor } from '../../testes/servidor'
-import { nomeDoPar, parDaClasse, regularDaClasse } from './classes'
+import { nomeDoParDe, parDaClasse, regularDaClasse } from './classes'
 import { aceitaRequisitoNovo, dataBloqueada, diaComDadosSomeAoTirar } from './datas'
 import { rotasAdmCronogramas } from './rotas'
-import { diaPodeMudar, montarVista, ordenarPorVazias } from './vista'
+import { aulaDadaPorTodas, contagemDaData, diaPodeMudar, montarVista, ordenarPorVazias, progressoDoLado } from './vista'
 
 const offline = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao }))
 
@@ -36,11 +36,12 @@ beforeEach(() => {
 })
 
 const AULA = uuid(2001)
-const CLASSE_AVANCADA = criarClasse({ id: AVANCADA_MONTAGEM.id, nome: 'Amigo da Natureza', tipo: 'AVANCADA', classeBaseId: uuid(100), ordem: 2 })
+const CLASSE_REGULAR = criarClasse({ avancadaPareadaId: AVANCADA_MONTAGEM.id })
+const CLASSE_AVANCADA = criarClasse({ id: AVANCADA_MONTAGEM.id, nome: 'Amigo da Natureza', tipo: 'AVANCADA', classeBaseId: uuid(100), regularDoParId: uuid(100), ordem: 2 })
 
 const linha = (data: string) => document.querySelector<HTMLElement>(`li[data-data="${data}"]`) as HTMLElement
 
-function abrirAdm(montagem: Montagem, rota = '/adm/cronogramas', classes = [criarClasse(), CLASSE_AVANCADA]) {
+function abrirAdm(montagem: Montagem, rota = '/adm/cronogramas', classes = [CLASSE_REGULAR, CLASSE_AVANCADA]) {
   const { handlers, registro } = handlersMontagem(montagem)
   servidor.use(...handlersSessao([criarVinculo('ADM')]), handlerClasses(classes), ...handlers)
   renderizarRotas(rotasAdmCronogramas, rota)
@@ -66,11 +67,11 @@ describe('Agrupadas não formam par', () => {
   const agrupadaAvancada = criarClasse({ id: uuid(105), nome: 'Agrupadas — avançada', tipo: 'AVANCADA', trilha: 'AGRUPADAS', classeBaseId: uuid(104), ordem: 14 })
   const classes = [agrupada, agrupadaAvancada]
 
-  it('parDaClasse, regularDaClasse e nomeDoPar tratam as duas como classes soltas', () => {
+  it('parDaClasse, regularDaClasse e nomeDoParDe tratam as duas como classes soltas', () => {
     expect(parDaClasse(classes, agrupada.id)).toBeNull()
-    expect(parDaClasse(classes, agrupadaAvancada.id, true)).toBeNull()
+    expect(parDaClasse(classes, agrupadaAvancada.id)).toBeNull()
     expect(regularDaClasse(classes, agrupadaAvancada.id)).toBe(agrupadaAvancada.id)
-    expect(nomeDoPar(classes, agrupada)).toBe('Agrupadas (Amigo a Guia)')
+    expect(nomeDoParDe(classes, agrupada)).toBe('Agrupadas (Amigo a Guia)')
   })
 
   it('o seletor mostra as duas pelo próprio nome e ?classe=<avançada> abre a montagem dela', async () => {
@@ -193,5 +194,55 @@ describe('Dia único do encontro', () => {
     await usuario.click(screen.getByRole('button', { name: 'Remover' }))
     await waitFor(() => expect(registro.chamadas).toHaveLength(1))
     expect(registro.chamadas[0]).toMatchObject({ metodo: 'DELETE', caminho: `/api/aulas-planejadas/${AULA}` })
+  })
+})
+
+describe('Par desfeito: o cronograma ainda guarda requisitos da avançada', () => {
+  const R1 = criarRequisitoMontagem(1, { data: '2026-10-04' })
+  const AN1 = criarRequisitoAvancada(1, { data: '2026-10-04' })
+  const datas = [criarDataMontagem('2026-10-04', { aulaId: AULA, local: 'Sala 2', requisitoIds: [R1.id, AN1.id] })]
+  const desfeito = criarMontagem({ requisitos: [R1, AN1], datas, avancada: null })
+  const classes = [CLASSE_REGULAR, CLASSE_AVANCADA]
+
+  it('o lado é pela dona do cronograma: o da avançada é "Avançada" com o nome da classe dele, e a regular conta só os dela', () => {
+    const vista = montarVista(desfeito, classes)
+    expect(vista.requisitos.map((requisito) => [requisito.lado, requisito.nomeDaClasse])).toEqual([['REGULAR', null], ['AVANCADA', 'Amigo da Natureza']])
+    expect(progressoDoLado(vista, 'REGULAR')).toEqual({ comData: 1, total: 1 })
+    expect(contagemDaData(vista, desfeito.datas[0] ?? criarDataMontagem('2026-10-04'))).toEqual({ regular: 1, avancada: 1 })
+  })
+
+  it('com o par ativo a avançada continua só "Avançada", sem o nome da classe na etiqueta', () => {
+    const vista = montarVista(criarMontagem({ requisitos: [R1, AN1], datas, avancada: AVANCADA_MONTAGEM }), classes)
+    expect(vista.requisitos.map((requisito) => requisito.nomeDaClasse)).toEqual([null, null])
+  })
+
+  it('"Classe dada" só quando toda classe que tem requisito na data já deu aula', () => {
+    const vista = montarVista(desfeito, classes)
+    const [dado] = desfeito.datas
+    if (!dado) throw new Error('sem data')
+    expect(aulaDadaPorTodas({ ...dado, classeIdsComAulaDada: [CLASSE_MONTAGEM.id] }, vista.requisitos)).toBe(false)
+    expect(aulaDadaPorTodas({ ...dado, classeIdsComAulaDada: [CLASSE_MONTAGEM.id, AVANCADA_MONTAGEM.id] }, vista.requisitos)).toBe(true)
+    // Data só com requisito da regular: basta a regular ter dado.
+    expect(aulaDadaPorTodas({ ...dado, classeIdsComAulaDada: [CLASSE_MONTAGEM.id] }, vista.requisitos.slice(0, 1))).toBe(true)
+  })
+
+  it('não avisa que o dia some quando outra classe do encontro já deu aula (o servidor mantém a aula)', () => {
+    const [dado] = desfeito.datas
+    if (!dado) throw new Error('sem data')
+    const unico = { ...dado, requisitoIds: [R1.id] }
+    expect(diaComDadosSomeAoTirar({ datasLivres: false }, unico)).toBe(true)
+    expect(diaComDadosSomeAoTirar({ datasLivres: false }, { ...unico, classeIdsComAulaDada: [AVANCADA_MONTAGEM.id] })).toBe(false)
+  })
+})
+
+describe('O par vem da API', () => {
+  const segunda = criarClasse({ id: uuid(120), nome: 'Segunda avançada', tipo: 'AVANCADA', classeBaseId: uuid(100), ordem: 9 })
+  const lista = [CLASSE_REGULAR, CLASSE_AVANCADA, segunda]
+
+  it('só a avançada indicada pela regular forma par; a segunda avançada é uma classe solta', () => {
+    expect(parDaClasse(lista, CLASSE_REGULAR.id)?.avancada.id).toBe(CLASSE_AVANCADA.id)
+    expect(parDaClasse(lista, segunda.id)).toBeNull()
+    expect(regularDaClasse(lista, segunda.id)).toBe(segunda.id)
+    expect(regularDaClasse(lista, CLASSE_AVANCADA.id)).toBe(CLASSE_REGULAR.id)
   })
 })

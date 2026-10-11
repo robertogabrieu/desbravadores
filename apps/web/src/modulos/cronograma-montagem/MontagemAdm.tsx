@@ -14,7 +14,7 @@ import { Selecao } from '../../ui/Selecao'
 import { ResultadoConsulta } from '../galeria/ResultadoConsulta'
 import { CriarCronograma } from './CriarCronograma'
 import { PainelAdm } from './PainelAdm'
-import { nomeDoPar, parDaClasse, regularDaClasse } from './classes'
+import { nomeDoParDe, parDaClasse, regularDaClasse } from './classes'
 
 /** A7: o Adm escolhe a classe e o ano e monta o cronograma; no celular a escolha fica atrás de um botão de contexto. */
 export function MontagemAdm() {
@@ -51,7 +51,7 @@ export function MontagemAdm() {
       <ResultadoConsulta consulta={montagem} rotuloCarga="Carregando cronograma">
         {(dados) =>
           dados.cronograma === null ? (
-            <CriarCronograma classeId={dados.classe.id} nomeDaClasse={classe ? nomeDoPar(classes.data ?? [], classe) : dados.classe.nome} ano={ano} />
+            <CriarCronograma classeId={dados.classe.id} nomeDaClasse={classe ? nomeDoParDe(classes.data ?? [], classe) : dados.classe.nome} ano={ano} />
           ) : (
             <PainelAdm montagem={dados} cronograma={dados.cronograma} classe={classe} ano={ano} aoAtualizar={() => void montagem.refetch()} />
           )
@@ -65,7 +65,7 @@ export function MontagemAdm() {
       <Selecao rotulo="Classe" value={classeId ?? ''} onChange={(evento) => escolherClasse(evento.target.value)}>
         {escolhaveis.map((item) => (
           <option key={item.id} value={item.id}>
-            {nomeDoPar(classes.data ?? [], item)}
+            {nomeDoParDe(classes.data ?? [], item)}
           </option>
         ))}
       </Selecao>
@@ -79,7 +79,7 @@ export function MontagemAdm() {
     </>
   )
 
-  const contexto = classe ? nomeDoPar(classes.data ?? [], classe) : '—'
+  const contexto = classe ? nomeDoParDe(classes.data ?? [], classe) : '—'
 
   return (
     <div className="flex flex-col gap-4">

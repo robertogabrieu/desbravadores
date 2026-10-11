@@ -176,7 +176,7 @@ export function PainelAdmCelular({ montagem, cronograma, classe, ano, aoAtualiza
               <span className="text-base text-texto">{requisito.texto}</span>
               {(par || requisito.campo) && (
                 <span className="flex flex-wrap items-center gap-2">
-                  {par && <EtiquetaDoLado lado={requisito.lado} />}
+                  {par && <EtiquetaDoLado requisito={requisito} />}
                   {requisito.campo && <EtiquetaCampo />}
                 </span>
               )}

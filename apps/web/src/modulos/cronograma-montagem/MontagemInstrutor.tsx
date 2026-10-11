@@ -12,7 +12,7 @@ import { Selecao } from '../../ui/Selecao'
 import { ResultadoConsulta } from '../galeria/ResultadoConsulta'
 import { PainelInstrutor } from './PainelInstrutor'
 import { SeloDoCronograma } from './SeloDoCronograma'
-import { parDaClasse, regularDaClasse } from './classes'
+import { nomeDoPar, parDaClasse, regularDaClasse } from './classes'
 
 /** I3b: o instrutor liberado monta o cronograma da classe no celular. */
 export function MontagemInstrutor() {
@@ -38,7 +38,7 @@ export function MontagemInstrutor() {
   })
   const nomeDaOpcao = (id: string, nome: string) => {
     const par = parDaClasse(todas.data ?? [], id)
-    return par && par.regular.id === id && doInstrutor(par.avancada.id) ? `${par.regular.nome} + ${par.avancada.nome}` : nome
+    return par && par.regular.id === id && doInstrutor(par.avancada.id) ? nomeDoPar(par.regular.nome, par.avancada.nome) : nome
   }
   const escolherClasse = (id: string) => definirBusca({ classe: id }, { replace: true })
 

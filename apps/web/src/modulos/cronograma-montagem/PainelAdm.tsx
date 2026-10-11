@@ -100,7 +100,7 @@ function PainelAdmComputador({ montagem, cronograma, classe, ano, aoAtualizar }:
         <span className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="text-base text-texto">{requisito.texto}</span>
           <span className="flex flex-wrap items-center gap-2 text-sm text-texto-2">
-            {par && <EtiquetaDoLado lado={requisito.lado} />}
+            {par && <EtiquetaDoLado requisito={requisito} />}
             {requisito.campo && <EtiquetaCampo />}
             {requisito.data ? `agendado · ${diaMes(requisito.data)}` : 'sem data'}
           </span>

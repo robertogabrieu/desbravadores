@@ -78,7 +78,8 @@ export function aceitaRequisitoNovo(montagem: { datasLivres: boolean }, dado: Da
 
 /**
  * Nas individuais, tirar o último requisito do dia apaga o dia de classe: pesa quando o dia tem horário, local
- * ou título próprios, que se perdem. A conta é do total de requisitos da aula, das duas classes.
+ * ou título próprios, que se perdem. A conta é do total de requisitos da aula, das duas classes. Se alguma classe já
+ * deu aula na data, o servidor mantém a aula e nada se perde.
  */
 export const diaComDadosSomeAoTirar = (montagem: { datasLivres: boolean }, dado: DataDaMontagem): boolean =>
-  !montagem.datasLivres && dado.aulaId !== null && dado.requisitoIds.length === 1 && detalheDaAula(dado) !== ''
+  !montagem.datasLivres && dado.aulaId !== null && dado.requisitoIds.length === 1 && dado.classeIdsComAulaDada.length === 0 && detalheDaAula(dado) !== ''

@@ -1,5 +1,7 @@
 import type { DataDaMontagem, Montagem, RequisitoDaMontagem } from '../../api/montagem'
+import type { Classe } from '../../api/leitura'
 import { dataBloqueada } from './datas'
+import { nomeDoPar } from './classes'
 
 export type Lado = 'REGULAR' | 'AVANCADA'
 
@@ -7,6 +9,8 @@ export const ROTULO_DO_LADO: Record<Lado, string> = { REGULAR: 'Regular', AVANCA
 
 export interface RequisitoComLado extends RequisitoDaMontagem {
   lado: Lado
+  /** Só no requisito de uma avançada que já não anda com a regular (par desfeito): o nome da classe dele. */
+  nomeDaClasse: string | null
 }
 
 /** O que a tela mostra: o cronograma único, com os requisitos das duas classes (quando há avançada) já marcados com o lado. */
@@ -22,18 +26,27 @@ export interface VistaDoPar {
   datas: DataDaMontagem[]
 }
 
-export function montarVista(montagem: Montagem): VistaDoPar {
+/**
+ * O lado de um requisito é "Regular" se a classe dele é a dona do cronograma; senão é "Avançada", também depois de o par
+ * se desfazer (o requisito fica no cronograma até ser tirado). `classes` dá o nome dessa classe fora do par.
+ */
+export function montarVista(montagem: Montagem, classes: Classe[] = []): VistaDoPar {
   const avancada = montagem.avancada
-  const requisitos = montagem.requisitos.map((requisito): RequisitoComLado => ({
-    ...requisito,
-    lado: avancada !== null && requisito.classeId === avancada.id ? 'AVANCADA' : 'REGULAR',
-  }))
+  const donaId = montagem.classe.id
+  const requisitos = montagem.requisitos.map((requisito): RequisitoComLado => {
+    const lado: Lado = requisito.classeId === donaId ? 'REGULAR' : 'AVANCADA'
+    const foraDoPar = lado === 'AVANCADA' && requisito.classeId !== avancada?.id
+    return { ...requisito, lado, nomeDaClasse: foraDoPar ? (classes.find((classe) => classe.id === requisito.classeId)?.nome ?? null) : null }
+  })
+  const classeFora = requisitos.find((requisito) => requisito.lado === 'AVANCADA' && requisito.classeId !== avancada?.id)
+  const temAvancada = avancada !== null || classeFora !== undefined
+  const nomeDaAvancada = avancada?.nome ?? classeFora?.nomeDaClasse ?? null
   return {
-    temAvancada: avancada !== null,
-    nomeDoPar: avancada ? `${montagem.classe.nome} + ${avancada.nome}` : montagem.classe.nome,
+    temAvancada,
+    nomeDoPar: nomeDoPar(montagem.classe.nome, nomeDaAvancada),
     nomeDaRegular: montagem.classe.nome,
-    nomeDaAvancada: avancada?.nome ?? null,
-    classeIds: avancada ? [montagem.classe.id, avancada.id] : [montagem.classe.id],
+    nomeDaAvancada,
+    classeIds: avancada ? [donaId, avancada.id] : [donaId],
     requisitos,
     datas: montagem.datas,
   }
@@ -50,6 +63,16 @@ export function contagemDaData(vista: VistaDoPar, dado: DataDaMontagem): { regul
   const ladoPorId = new Map(vista.requisitos.map((requisito) => [requisito.id, requisito.lado]))
   const avancada = dado.requisitoIds.filter((id) => ladoPorId.get(id) === 'AVANCADA').length
   return { regular: dado.requisitoIds.length - avancada, avancada }
+}
+
+/**
+ * "Classe dada" na data: toda classe que tem requisito nela já registrou aula. Sem requisito nenhum na data,
+ * basta alguma classe ter dado a aula.
+ */
+export function aulaDadaPorTodas(dado: DataDaMontagem, requisitosDaData: RequisitoComLado[]): boolean {
+  const classes = new Set(requisitosDaData.map((requisito) => requisito.classeId))
+  if (classes.size === 0) return dado.classeIdsComAulaDada.length > 0
+  return [...classes].every((classeId) => dado.classeIdsComAulaDada.includes(classeId))
 }
 
 export function progressoDoLado(vista: VistaDoPar, lado: Lado): { comData: number; total: number } {

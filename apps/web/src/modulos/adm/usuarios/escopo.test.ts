@@ -3,8 +3,8 @@ import { criarClasse, criarUnidade } from '../../../testes/handlers/leitura'
 import { uuid } from '../../../testes/handlers/sessao'
 import { contarMarcadas, filtrarGrupos, gruposDeClasses, gruposDeUnidades, idsDaOpcao, opcaoMarcada, resumoDasClasses } from './escopo'
 
-const amigo = criarClasse({ id: uuid(101), nome: 'Amigo', tipo: 'REGULAR', trilha: 'INDIVIDUAL' })
-const amigoDaNatureza = criarClasse({ id: uuid(102), nome: 'Amigo da Natureza', tipo: 'AVANCADA', trilha: 'INDIVIDUAL', classeBaseId: uuid(101) })
+const amigo = criarClasse({ id: uuid(101), nome: 'Amigo', tipo: 'REGULAR', trilha: 'INDIVIDUAL', avancadaPareadaId: uuid(102) })
+const amigoDaNatureza = criarClasse({ id: uuid(102), nome: 'Amigo da Natureza', tipo: 'AVANCADA', trilha: 'INDIVIDUAL', classeBaseId: uuid(101), regularDoParId: uuid(101) })
 const agrupadas = criarClasse({ id: uuid(103), nome: 'Agrupadas (Amigo a Guia)', tipo: 'REGULAR', trilha: 'AGRUPADAS' })
 const agrupadasAvancada = criarClasse({ id: uuid(104), nome: 'Agrupadas — avançada', tipo: 'AVANCADA', trilha: 'AGRUPADAS' })
 

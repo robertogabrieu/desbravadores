@@ -1,9 +1,13 @@
 import { cn } from '../../ui/cn'
 import { ROTULO_DO_LADO } from './vista'
-import type { Lado } from './vista'
+import type { RequisitoComLado } from './vista'
 
-/** "Regular" ou "Avançada", escrita: a da avançada tem borda tracejada, para não depender da cor. */
-export function EtiquetaDoLado({ lado, className }: { lado: Lado; className?: string }) {
+/**
+ * "Regular" ou "Avançada", escrita: a da avançada tem borda tracejada, para não depender da cor.
+ * Requisito de avançada fora do par leva também o nome da classe dele.
+ */
+export function EtiquetaDoLado({ requisito, className }: { requisito: Pick<RequisitoComLado, 'lado' | 'nomeDaClasse'>; className?: string }) {
+  const { lado, nomeDaClasse } = requisito
   return (
     <span
       data-lado={lado}
@@ -13,7 +17,7 @@ export function EtiquetaDoLado({ lado, className }: { lado: Lado; className?: st
         className,
       )}
     >
-      {ROTULO_DO_LADO[lado]}
+      {nomeDaClasse ? `${ROTULO_DO_LADO[lado]} · ${nomeDaClasse}` : ROTULO_DO_LADO[lado]}
     </span>
   )
 }

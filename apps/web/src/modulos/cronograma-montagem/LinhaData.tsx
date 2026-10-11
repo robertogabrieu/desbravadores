@@ -9,7 +9,7 @@ import { EtiquetaDoLado } from './EtiquetaDoLado'
 import { MedidorDeOcupacao } from './MedidorDeOcupacao'
 import { dataBloqueada, detalheDaAula, partesDaData, textoDaData } from './datas'
 import type { DataDaMontagem } from '../../api/montagem'
-import { classeDada, diaPodeMudar, type RequisitoComLado } from './vista'
+import { aulaDadaPorTodas, classeDada, diaPodeMudar, type RequisitoComLado } from './vista'
 
 const HACHURA =
   'bg-[repeating-linear-gradient(135deg,var(--color-surface-muted),var(--color-surface-muted)_8px,var(--color-divider)_8px,var(--color-divider)_16px)]'
@@ -41,8 +41,8 @@ export function LinhaData({ dado, requisitos, comAvancada = false, destaqueCampo
   const detalhe = detalheDaAula(dado)
   const bloqueada = dataBloqueada(dado)
   const podeEditar = diaPodeMudar(dado)
-  // Classe dada só em uma das duas: o selo vai nos requisitos dela; nas duas, na data.
-  const dadaNosDois = dado.classeIdsComAulaDada.length === (comAvancada ? 2 : 1)
+  // Classe dada só em parte das classes da data: o selo vai nos requisitos delas; em todas, na data.
+  const dadaNosDois = aulaDadaPorTodas(dado, requisitos)
 
   return (
     <li
@@ -75,7 +75,7 @@ export function LinhaData({ dado, requisitos, comAvancada = false, destaqueCampo
           const dada = classeDada(dado, requisito.classeId)
           return (
           <div key={requisito.id} className="flex items-center gap-2 rounded-controle bg-marca-suave px-3 py-1.5 text-sm font-semibold text-marca">
-            {comAvancada && <EtiquetaDoLado lado={requisito.lado} />}
+            {comAvancada && <EtiquetaDoLado requisito={requisito} />}
             <span className="min-w-0 flex-1">
               {requisito.codigo} · {requisito.texto}
             </span>

@@ -11,7 +11,7 @@ import {
 } from '@desbravadores/shared'
 import { z } from 'zod'
 import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
-import { avancadaPareadaDe, regularDoPar } from '../classes/par-regular-avancada'
+import { regularDoPar } from '../classes/par-regular-avancada'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import type { Trilha } from '../generated/prisma/client.js'
 import { ErroApp } from '../comum/erros'
@@ -71,7 +71,7 @@ export class ServicoCronograma {
     const classe = await this.classeDoEscopo(sessao, classeId)
     const relogio = await this.escopo.relogio(clubeId)
     const ano = anoClube ?? relogio.anoClube
-    const { donaId, emPar } = await this.parDaClasse(clubeId, classeId)
+    const { donaId } = await this.parDaClasse(clubeId, classeId)
     const podeMontar = await this.podeMontar(sessao, donaId)
 
     const cronograma = await this.prisma.cronograma.findFirst({
@@ -90,7 +90,7 @@ export class ServicoCronograma {
     if (!podeMontar && !publicacao) return vazio
 
     const doCronograma = podeMontar ? await this.aulasDoVivo(clubeId, cronograma.id) : (publicacao?.aulas ?? [])
-    const planejadas = emPar ? await this.soDaClasse(clubeId, donaId, classeId, doCronograma) : doCronograma
+    const planejadas = await this.soDaClasse(clubeId, donaId, classeId, doCronograma)
     const aulas = await this.montarAulas({ clubeId, classeId, trilha: classe.trilha, planejadas, ano, relogio })
     return {
       ...base,
@@ -104,17 +104,15 @@ export class ServicoCronograma {
 
   /**
    * O cronograma do par e um so, o da regular: `donaId` e a regular, tambem quando a classe e a avancada de par ativo.
-   * `emPar` diz que as aulas do cronograma misturam requisitos das duas classes e precisam ser filtradas.
+   * Mesmo com o par desfeito o cronograma pode ter requisitos das duas classes: por isso a leitura sempre filtra.
    */
-  async parDaClasse(clubeId: string, classeId: string): Promise<{ donaId: string; emPar: boolean }> {
-    const regularId = await regularDoPar(this.prisma, clubeId, classeId)
-    if (regularId) return { donaId: regularId, emPar: true }
-    return { donaId: classeId, emPar: (await avancadaPareadaDe(this.prisma, clubeId, classeId)) !== null }
+  async parDaClasse(clubeId: string, classeId: string): Promise<{ donaId: string }> {
+    return { donaId: (await regularDoPar(this.prisma, clubeId, classeId)) ?? classeId }
   }
 
   /**
-   * Das aulas do cronograma do par, so as que tem requisito da classe, e com so os requisitos dela.
-   * A aula ainda sem requisito nenhum e da regular (dona do cronograma): fica para ela e nao aparece na avancada.
+   * Das aulas do cronograma, so as que tem requisito da classe, e com so os requisitos dela; a aula so com requisito
+   * de outra classe nao aparece. A aula ainda sem requisito nenhum e da dona do cronograma: nao aparece na outra classe.
    */
   async soDaClasse<T extends { requisitoIds: string[] }>(clubeId: string, donaId: string, classeId: string, aulas: T[]): Promise<T[]> {
     const ids = [...new Set(aulas.flatMap((aula) => aula.requisitoIds))]
@@ -130,11 +128,11 @@ export class ServicoCronograma {
 
   /** A ultima publicacao do cronograma do ano que cobre a classe (o da regular, no par), ja filtrada para a classe. */
   async publicadaDaClasse(clubeId: string, classeId: string, ano: number): Promise<PublicacaoLida | null> {
-    const { donaId, emPar } = await this.parDaClasse(clubeId, classeId)
+    const { donaId } = await this.parDaClasse(clubeId, classeId)
     const cronograma = await this.prisma.cronograma.findFirst({ where: { clubeId, classeId: donaId, anoClube: ano }, select: { id: true } })
     if (!cronograma) return null
     const publicacao = await this.ultimaPublicacao(clubeId, cronograma.id)
-    if (!publicacao || !emPar) return publicacao
+    if (!publicacao) return publicacao
     return { ...publicacao, aulas: await this.soDaClasse(clubeId, donaId, classeId, publicacao.aulas) }
   }
 
