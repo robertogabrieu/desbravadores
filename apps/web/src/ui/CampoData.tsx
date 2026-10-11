@@ -6,7 +6,7 @@ import { ptBR } from 'react-day-picker/locale'
 import 'react-day-picker/style.css'
 import { CampoRotulado, descreverCampo, estiloControle } from './Campo'
 import { cn } from './cn'
-import { dataParaIso, isoParaData, isoParaTexto, mascararData, textoParaIso } from './mascaraData'
+import { dataParaIso, editarData, isoParaData, isoParaTexto, textoParaIso } from './mascaraData'
 
 interface Propriedades extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'value' | 'onChange' | 'min' | 'max' | 'ref'> {
   rotulo: string
@@ -67,9 +67,9 @@ export function CampoData({ rotulo, ajuda, erro, value, onChange, min, max, comp
 
   const aoDigitar = (evento: ChangeEvent<HTMLInputElement>) => {
     const campoDigitado = evento.target
+    const nativo = evento.nativeEvent as InputEvent
     const bruto = campoDigitado.value
-    const novo = mascararData(bruto)
-    const cursor = mascararData(bruto.slice(0, campoDigitado.selectionStart ?? bruto.length)).length
+    const { texto: novo, cursor } = editarData(bruto, campoDigitado.selectionStart ?? bruto.length, nativo.inputType, nativo.data)
     // O valor do DOM já fica igual ao estado, para o React não reescrevê-lo e levar o cursor ao fim.
     campoDigitado.value = novo
     campoDigitado.setSelectionRange(cursor, cursor)
@@ -119,10 +119,9 @@ export function CampoData({ rotulo, ajuda, erro, value, onChange, min, max, comp
             inputMode="numeric"
             autoComplete="off"
             placeholder="DD/MM/AAAA"
-            aria-label={compacto ? rotulo : undefined}
-            maxLength={10}
+            aria-label={compacto ? (mensagem ? `${rotulo}, ${mensagem}` : rotulo) : undefined}
             aria-invalid={mensagem ? true : undefined}
-            aria-describedby={descreverCampo(idCampo, ajuda, compacto ? undefined : mensagem)}
+            aria-describedby={descreverCampo(idCampo, compacto ? undefined : ajuda, compacto ? undefined : mensagem)}
             className={cn(estiloControle, className)}
             value={texto}
             onChange={aoDigitar}
