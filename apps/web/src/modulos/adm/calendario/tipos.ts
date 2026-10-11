@@ -1,4 +1,4 @@
-import { BookOpen, CalendarPlus, Sun } from 'lucide-react'
+import { BookOpen, CalendarPlus, Sparkles, Sun } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { z } from 'zod'
 import type { TipoEvento } from '@desbravadores/shared'
@@ -12,6 +12,7 @@ export const ROTULOS_DO_TIPO: Record<TipoDeEvento, string> = {
   FERIAS: 'Férias',
   ACAMPAMENTO: 'Acampamento / campo',
   EVENTO: 'Evento do clube',
+  EVENTO_ESPECIAL: 'Evento especial',
   FERIADO: 'Feriado',
   SEM_REUNIAO: 'Sem reunião',
   CLASSE_BIBLICA: 'Classe Bíblica',
@@ -26,6 +27,7 @@ export const CORES_DO_TIPO: Record<TipoDeEvento, string> = {
   SEM_REUNIAO: 'bg-[var(--cal-sem-bg)] text-[var(--cal-sem-fg)]',
   ACAMPAMENTO: 'bg-[var(--cal-acamp-bg)] text-[var(--cal-acamp-fg)]',
   EVENTO: 'bg-[var(--cal-evento-bg)] text-[var(--cal-evento-fg)]',
+  EVENTO_ESPECIAL: 'bg-[var(--cal-especial-bg)] text-[var(--cal-especial-fg)]',
   FERIADO: 'bg-[var(--cal-feriado-bg)] text-[var(--cal-feriado-fg)]',
   CLASSE_BIBLICA: 'bg-[var(--cal-evento-bg)] text-[var(--cal-evento-fg)]',
 }
@@ -33,6 +35,7 @@ export const CORES_DO_TIPO: Record<TipoDeEvento, string> = {
 export const ICONE_DO_TIPO: Partial<Record<TipoDeEvento, LucideIcon>> = {
   REUNIAO_EXTRA: CalendarPlus,
   FERIAS: Sun,
+  EVENTO_ESPECIAL: Sparkles,
   CLASSE_BIBLICA: BookOpen,
 }
 
@@ -52,6 +55,7 @@ export const PONTO_DO_TIPO: Record<TipoDeEvento, string> = {
   SEM_REUNIAO: 'bg-[var(--cal-sem-fg)]',
   ACAMPAMENTO: 'bg-[var(--cal-acamp-fg)]',
   EVENTO: 'bg-[var(--cal-evento-fg)]',
+  EVENTO_ESPECIAL: 'bg-[var(--cal-especial-fg)]',
   FERIADO: 'bg-[var(--cal-feriado-fg)]',
   CLASSE_BIBLICA: 'bg-[var(--cal-evento-fg)]',
 }

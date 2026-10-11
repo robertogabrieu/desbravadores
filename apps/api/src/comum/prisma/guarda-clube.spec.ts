@@ -113,6 +113,7 @@ describe('guarda de clube: modelos de clube', () => {
         'EncontroClasseBiblica',
         'ChamadaClasseBiblica',
         'PresencaClasseBiblica',
+        'PresencaEventoEspecial',
         'EnvioClasseBiblicaProcessado',
         'Substituicao',
         'CategoriaBiblioteca',

@@ -118,6 +118,7 @@ export class VisaoGeralService {
       })),
       cronogramasEnviados,
       atividades,
+      eventosSemLista: [], // preenchido pelo pacote de evento (pendenciaDeLista)
     }
   }
 

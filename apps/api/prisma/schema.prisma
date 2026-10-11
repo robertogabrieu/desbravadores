@@ -101,6 +101,8 @@ enum GatilhoCriterio {
   MANUAL
   CLASSE_BIBLICA_PRESENCA
   CLASSE_BIBLICA_PARTICIPACAO
+  EVENTO_ESPECIAL_PARTICIPACAO
+  EVENTO_ESPECIAL_UNIFORME
 }
 
 enum FinalidadeToken {
@@ -129,6 +131,7 @@ enum OrigemPontos {
   ESPECIALIDADE
   MANUAL
   CLASSE_BIBLICA
+  EVENTO_ESPECIAL
 }
 
 // FASE 1
@@ -137,10 +140,17 @@ enum TipoPedidoAdm {
 }
 
 // FASE 2-3
+enum UniformeEvento {
+  GALA
+  CAMPO
+}
+
+// FASE 2-3
 enum TipoEvento {
   SEM_REUNIAO
   ACAMPAMENTO
   EVENTO
+  EVENTO_ESPECIAL
   FERIADO
   FERIAS
   REUNIAO_EXTRA
@@ -232,6 +242,7 @@ model Clube {
   encontrosClasseBiblica   EncontroClasseBiblica[]
   chamadasClasseBiblica    ChamadaClasseBiblica[]
   presencasClasseBiblica   PresencaClasseBiblica[]
+  presencasEventoEspecial  PresencaEventoEspecial[]
   enviosClasseBiblica      EnvioClasseBiblicaProcessado[]
   substituicoes            Substituicao[]
   categoriasBiblioteca     CategoriaBiblioteca[]
@@ -304,6 +315,7 @@ model Usuario {
   encontrosCancelados           EncontroClasseBiblica[]
   chamadasClasseBiblica         ChamadaClasseBiblica[]
   presencasClasseBiblica        PresencaClasseBiblica[]
+  presencasEventoAlteradas      PresencaEventoEspecial[]
   substituicoesCobertas         Substituicao[]           @relation("SubstituicaoSubstituto")
   substituicoesCriadas          Substituicao[]           @relation("SubstituicaoCriadaPor")
   substituicoesCanceladas       Substituicao[]           @relation("SubstituicaoCanceladaPor")
@@ -468,6 +480,7 @@ model Desbravador {
   observacoes              Observacao[]
   convitesAcesso           ConviteAcesso[]
   presencasClasseBiblica   PresencaClasseBiblica[]
+  presencasEventoEspecial  PresencaEventoEspecial[]
 
   @@unique([clubeId, id])
   @@unique([clubeId, usuarioId], where: { usuarioId: { not: null } }, map: "desbravador_conta_por_clube")
@@ -883,25 +896,32 @@ model EnvioProcessado {
 
 // FASE 2-3
 model EventoCalendario {
-  id           String     @id @default(uuid(7)) @db.Uuid
-  clubeId      String     @db.Uuid
-  nome         String
-  tipo         TipoEvento
-  inicio       DateTime   @db.Date
-  fim          DateTime   @db.Date
-  horario      String?
-  local        String?
-  temReuniao   Boolean
-  temClasse    Boolean
-  bomParaCampo Boolean
-  criadoPorId  String     @db.Uuid
-  criadoEm     DateTime   @default(now()) @db.Timestamptz
-  atualizadoEm DateTime   @updatedAt @db.Timestamptz
-  removidoEm   DateTime?  @db.Timestamptz
+  id                 String          @id @default(uuid(7)) @db.Uuid
+  clubeId            String          @db.Uuid
+  nome               String
+  tipo               TipoEvento
+  inicio             DateTime        @db.Date
+  fim                DateTime        @db.Date
+  horario            String?
+  local              String?
+  temReuniao         Boolean
+  temClasse          Boolean
+  bomParaCampo       Boolean
+  // Só no EVENTO_ESPECIAL (obrigatório nele, conferido na validação, sem CHECK no banco); nulos nos outros tipos
+  uniforme           UniformeEvento?
+  pontosParticipacao Int?
+  pontosUniforme     Int?
+  // Nulo = sem lista ou lista em rascunho; os pontos só entram quando a lista é concluída
+  listaConcluidaEm   DateTime?       @db.Timestamptz
+  criadoPorId        String          @db.Uuid
+  criadoEm           DateTime        @default(now()) @db.Timestamptz
+  atualizadoEm       DateTime        @updatedAt @db.Timestamptz
+  removidoEm         DateTime?       @db.Timestamptz
 
-  clube                 Clube                  @relation(fields: [clubeId], references: [id], onDelete: Restrict)
-  criadoPor             Usuario                @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
+  clube                 Clube                    @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  criadoPor             Usuario                  @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
   encontroClasseBiblica EncontroClasseBiblica?
+  presencas             PresencaEventoEspecial[]
 
   @@unique([clubeId, id])
   @@index([clubeId, inicio, fim])
@@ -1415,6 +1435,26 @@ model PresencaClasseBiblica {
   @@id([encontroId, dbvId])
   @@index([clubeId, dbvId])
   @@index([clubeId, grupoId])
+}
+
+// Quem foi a um evento especial (e quem foi com o uniforme pedido). Nunca se apaga linha: desmarcar grava
+// foi=false e comUniforme=false. Os pontos só entram quando EventoCalendario.listaConcluidaEm é preenchido.
+model PresencaEventoEspecial {
+  clubeId       String   @db.Uuid
+  eventoId      String   @db.Uuid
+  dbvId         String   @db.Uuid
+  foi           Boolean
+  comUniforme   Boolean  @default(false)
+  alteradaPorId String   @db.Uuid
+  alteradaEm    DateTime @default(now()) @db.Timestamptz
+
+  clube       Clube            @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  evento      EventoCalendario @relation(fields: [clubeId, eventoId], references: [clubeId, id], onDelete: Restrict)
+  dbv         Desbravador      @relation(fields: [clubeId, dbvId], references: [clubeId, id], onDelete: Restrict)
+  alteradaPor Usuario          @relation(fields: [alteradaPorId], references: [id], onDelete: Restrict)
+
+  @@id([eventoId, dbvId])
+  @@index([clubeId, dbvId])
 }
 
 model EnvioClasseBiblicaProcessado {

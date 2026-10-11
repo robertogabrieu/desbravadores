@@ -51,8 +51,8 @@ export const PacoteInstrutor = z.object({
   pontosEspecialidade: z.object({ pontos: z.number().int(), ativo: z.boolean() }).default({ pontos: 0, ativo: false }),
 })
 
-/** Evento do calendário no pacote offline: o que a regra do dia precisa, sem o id. */
-export const EventoDoPacote = EventoSaida.omit({ id: true })
+/** Evento do calendário no pacote offline: o que a regra do dia precisa, sem o id e sem o resumo da lista (só do Adm). */
+export const EventoDoPacote = EventoSaida.omit({ id: true, lista: true })
 
 export const PacoteSaida = z.object({
   /** SHA-256 do JSON canônico do conteúdo (sem geradoEm; unidades e membros por nome, reuniões por data). */

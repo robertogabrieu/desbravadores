@@ -43,6 +43,7 @@ export const MODELOS_DE_CLUBE = [
   'EncontroClasseBiblica',
   'ChamadaClasseBiblica',
   'PresencaClasseBiblica',
+  'PresencaEventoEspecial',
   'EnvioClasseBiblicaProcessado',
   'Substituicao',
   'CategoriaBiblioteca',

@@ -1,6 +1,6 @@
 import type { z } from 'zod'
 import type { SITUACOES_AULA, SituacaoData } from '../contratos/cronograma'
-import type { TipoEvento, Trilha } from '../enums'
+import type { TipoEvento, Trilha, UniformeEvento } from '../enums'
 
 export type SituacaoDeData = z.infer<typeof SituacaoData>
 export type ExtraDaData = NonNullable<SituacaoDeData['extra']>
@@ -17,6 +17,10 @@ export interface EventoDoCalendario {
   temReuniao: boolean
   temClasse: boolean
   bomParaCampo: boolean
+  /** Do evento especial; nulos (ou ausentes) nos outros tipos. */
+  uniforme?: z.infer<typeof UniformeEvento> | null
+  pontosParticipacao?: number | null
+  pontosUniforme?: number | null
   removido?: boolean
 }
 
@@ -180,13 +184,20 @@ export function horarioELocalDoDia(situacao: Pick<SituacaoDeData, 'extra'>, padr
 }
 
 export interface ProblemaDeEvento {
-  campo: 'fim' | 'temReuniao'
+  campo: 'fim' | 'temReuniao' | 'uniforme' | 'pontosParticipacao' | 'pontosUniforme'
   mensagem: string
+}
+
+const PONTOS_MAXIMO_DO_EVENTO = 1000
+
+function pontosValidos(pontos: number | null | undefined): boolean {
+  return typeof pontos === 'number' && Number.isInteger(pontos) && pontos >= 0 && pontos <= PONTOS_MAXIMO_DO_EVENTO
 }
 
 /** Roda DEPOIS do padrão do tipo (API e formulário). "Duas extras na data" é da API, dentro da transação. */
 export function validarEvento(
-  entrada: Pick<EventoDoCalendario, 'tipo' | 'inicio' | 'fim' | 'temReuniao' | 'temClasse'>,
+  entrada: Pick<EventoDoCalendario, 'tipo' | 'inicio' | 'fim' | 'temReuniao' | 'temClasse'>
+    & Pick<EventoDoCalendario, 'uniforme' | 'pontosParticipacao' | 'pontosUniforme'>,
 ): ProblemaDeEvento[] {
   const problemas: ProblemaDeEvento[] = []
   if (entrada.fim < entrada.inicio) problemas.push({ campo: 'fim', mensagem: 'O fim não pode ser antes do início' })
@@ -195,6 +206,20 @@ export function validarEvento(
   }
   if (entrada.tipo === 'REUNIAO_EXTRA' && !entrada.temReuniao && !entrada.temClasse) {
     problemas.push({ campo: 'temReuniao', mensagem: 'Marque Terá reunião, Terá classe ou as duas.' })
+  }
+  // Fora do evento especial os três campos são descartados por quem grava: aqui não são conferidos.
+  if (entrada.tipo === 'EVENTO_ESPECIAL') {
+    if (!entrada.uniforme) problemas.push({ campo: 'uniforme', mensagem: 'Escolha o uniforme do evento.' })
+    if (entrada.pontosParticipacao == null) {
+      problemas.push({ campo: 'pontosParticipacao', mensagem: 'Informe os pontos de quem for ao evento. Pode ser 0.' })
+    } else if (!pontosValidos(entrada.pontosParticipacao)) {
+      problemas.push({ campo: 'pontosParticipacao', mensagem: 'Use um número inteiro de 0 a 1000' })
+    }
+    if (entrada.pontosUniforme == null) {
+      problemas.push({ campo: 'pontosUniforme', mensagem: 'Informe os pontos de quem for com o uniforme. Pode ser 0.' })
+    } else if (!pontosValidos(entrada.pontosUniforme)) {
+      problemas.push({ campo: 'pontosUniforme', mensagem: 'Use um número inteiro de 0 a 1000' })
+    }
   }
   return problemas
 }
