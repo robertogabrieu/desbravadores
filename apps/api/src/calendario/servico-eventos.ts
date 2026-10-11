@@ -12,6 +12,7 @@ import {
   type EventoEntrada,
   type EventoGravadoSaida,
   type EventoSaida,
+  type ResumoDaLista as ResumoDaListaContrato,
 } from '@desbravadores/shared'
 import { z } from 'zod'
 import { ServicoAtividade } from '../atividades/servico-atividade'
@@ -21,12 +22,18 @@ import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { daDataCivil, paraDataCivil } from '../desbravadores/apoio'
 import type { EventoCalendario, Prisma, Trilha } from '../generated/prisma/client.js'
+import { ServicoPontosEvento } from '../eventos-especiais/servico-pontos-evento'
+import { travarPresencaDoEvento } from '../eventos-especiais/travas'
 import { ServicoNotificacoes } from '../notificacoes/servico-notificacoes'
 
 type Entrada = z.infer<typeof EventoEntrada>
 type Gravado = z.infer<typeof EventoGravadoSaida>
 type Saida = z.infer<typeof EventoSaida>
 type AulaAfetada = z.infer<typeof AulaAfetadaContrato>
+type ResumoDaLista = z.infer<typeof ResumoDaListaContrato>
+
+const TIPO_DA_ATIVIDADE_DO_UNIFORME = 'EVENTO_UNIFORME_TROCADO'
+const UNIFORME_EM_TEXTO = { GALA: 'gala', CAMPO: 'campo' } as const
 
 /** Uma aula vista por uma das fontes (cronograma vivo ou última publicação). */
 interface AulaVista {
@@ -43,6 +50,9 @@ const RetratoLido = z.object({ aulas: z.array(z.object({ id: Uuid, data: DataCiv
 
 const NAO_ENCONTRADO = 'Evento não encontrado.'
 const DA_CLASSE_BIBLICA = 'Este encontro é da Classe Bíblica: remarque ou cancele pela edição.'
+const TIPO_TRAVADO = 'O tipo não muda depois que a lista é começada.'
+const DATA_QUE_NAO_CHEGOU =
+  'Esta data ainda não chegou e a lista deste evento já tem marcas. Escolha uma data que já passou, ou exclua o evento e cadastre de novo.'
 
 /** O encontro ligado ao evento; a relação é pela chave (clubeId, eventoId), e os grupos levam o clube no where. */
 function comEncontro(clubeId: string) {
@@ -90,7 +100,34 @@ function paraSaida(evento: EventoCalendario): Saida {
     temClasse: evento.temClasse,
     bomParaCampo: evento.bomParaCampo,
     classeBiblica: null,
+    uniforme: evento.uniforme,
+    pontosParticipacao: evento.pontosParticipacao,
+    pontosUniforme: evento.pontosUniforme,
   }
+}
+
+/** As colunas do evento a partir da entrada, campo a campo: os três do evento especial vão a `null` nos outros tipos. */
+function paraColunas(entrada: Entrada) {
+  const especial = entrada.tipo === 'EVENTO_ESPECIAL'
+  return {
+    nome: entrada.nome,
+    tipo: entrada.tipo,
+    inicio: daDataCivil(entrada.inicio),
+    fim: daDataCivil(entrada.fim),
+    horario: entrada.horario,
+    local: entrada.local,
+    temReuniao: entrada.temReuniao,
+    temClasse: entrada.temClasse,
+    bomParaCampo: entrada.bomParaCampo,
+    uniforme: especial ? (entrada.uniforme ?? null) : null,
+    pontosParticipacao: especial ? (entrada.pontosParticipacao ?? null) : null,
+    pontosUniforme: especial ? (entrada.pontosUniforme ?? null) : null,
+  }
+}
+
+/** O resumo da lista entra no evento só quando a sessão o pediu (Adm) e o evento é especial. */
+function comResumo(evento: Saida, resumo: ResumoDaLista | undefined): Saida {
+  return resumo ? { ...evento, lista: resumo } : evento
 }
 
 function paraCalendario(evento: Saida): EventoDoCalendario {
@@ -107,9 +144,11 @@ export class ServicoEventos {
     private readonly prisma: PrismaService,
     private readonly notificacoes: ServicoNotificacoes,
     private readonly atividades: ServicoAtividade,
+    private readonly pontosDoEvento: ServicoPontosEvento,
   ) {}
 
-  async doAno(clubeId: string, ano: number): Promise<z.infer<typeof CalendarioSaida>> {
+  /** `comLista`: sessão Adm, a única que recebe o resumo da lista do evento especial. */
+  async doAno(clubeId: string, ano: number, comLista: boolean): Promise<z.infer<typeof CalendarioSaida>> {
     const inicio = `${ano}-01-01`
     const fim = `${ano}-12-31`
     const registros = await this.prisma.eventoCalendario.findMany({
@@ -117,15 +156,36 @@ export class ServicoEventos {
       orderBy: [{ inicio: 'asc' }, { nome: 'asc' }, { id: 'asc' }],
       include: comEncontro(clubeId),
     })
-    const eventos = registros.map(paraSaidaComEncontro)
+    const resumos = comLista ? await this.resumosDasListas(clubeId, registros) : new Map<string, ResumoDaLista>()
+    const eventos = registros.map((registro) => comResumo(paraSaidaComEncontro(registro), resumos.get(registro.id)))
     const configuracao = await this.prisma.configuracaoClube.findUniqueOrThrow({ where: { clubeId } })
     return { eventos, diasDeReuniao: diasDeReuniao(inicio, fim, configuracao.diaReuniao, eventos.map(paraCalendario)) }
   }
 
-  async obter(clubeId: string, id: string): Promise<Saida> {
+  async obter(clubeId: string, id: string, comLista: boolean): Promise<Saida> {
     const evento = await this.prisma.eventoCalendario.findFirst({ where: { id, clubeId, removidoEm: null }, include: comEncontro(clubeId) })
     if (!evento) throw new ErroApp('NAO_ENCONTRADO', NAO_ENCONTRADO)
-    return paraSaidaComEncontro(evento)
+    const resumos = comLista ? await this.resumosDasListas(clubeId, [evento]) : new Map<string, ResumoDaLista>()
+    return comResumo(paraSaidaComEncontro(evento), resumos.get(evento.id))
+  }
+
+  /** Quantos foram e quantos foram com o uniforme em cada evento especial; o evento sem linhas fica em zero. */
+  private async resumosDasListas(clubeId: string, eventos: EventoCalendario[]): Promise<Map<string, ResumoDaLista>> {
+    const especiais = eventos.filter((evento) => evento.tipo === 'EVENTO_ESPECIAL')
+    if (especiais.length === 0) return new Map()
+    const marcas = await this.prisma.presencaEventoEspecial.groupBy({
+      by: ['eventoId', 'comUniforme'],
+      where: { clubeId, foi: true, eventoId: { in: especiais.map((evento) => evento.id) } },
+      _count: { _all: true },
+    })
+    return new Map(
+      especiais.map((evento) => {
+        const doEvento = marcas.filter((marca) => marca.eventoId === evento.id)
+        const foram = doEvento.reduce((total, marca) => total + marca._count._all, 0)
+        const uniformizados = doEvento.filter((marca) => marca.comUniforme).reduce((total, marca) => total + marca._count._all, 0)
+        return [evento.id, { concluidaEm: evento.listaConcluidaEm?.toISOString() ?? null, foram, uniformizados }]
+      }),
+    )
   }
 
   criar(sessao: SessaoLogada, entrada: Entrada): Promise<Gravado> {
@@ -137,15 +197,19 @@ export class ServicoEventos {
   }
 
   async remover(sessao: SessaoLogada, id: string): Promise<void> {
-    await this.transacao(sessao, id, null, async (tx) => {
+    await this.transacao(sessao, id, null, async (tx, antes) => {
       await tx.eventoCalendario.update({ where: { id, clubeId: sessao.clubeId }, data: { removidoEm: new Date() } })
+      // Apagar o evento tira do ranking o que a lista deu; os lançamentos ficam guardados, estornados.
+      if (antes?.tipo === 'EVENTO_ESPECIAL') {
+        await this.pontosDoEvento.estornar(tx, { clubeId: sessao.clubeId, eventoId: antes.id, lancadoPorId: sessao.usuarioId })
+      }
     })
   }
 
   private async gravar(sessao: SessaoLogada, id: string | null, entrada: Entrada): Promise<Gravado> {
-    const dados = { ...entrada, inicio: daDataCivil(entrada.inicio), fim: daDataCivil(entrada.fim) }
+    const dados = paraColunas(entrada)
     let gravado: EventoCalendario | undefined
-    const aulasAfetadas = await this.transacao(sessao, id, entrada, async (tx) => {
+    const aulasAfetadas = await this.transacao(sessao, id, entrada, async (tx, antes) => {
       gravado = id
         ? await tx.eventoCalendario.update({ where: { id, clubeId: sessao.clubeId }, data: dados })
         : await tx.eventoCalendario.create({ data: { ...dados, clubeId: sessao.clubeId, criadoPorId: sessao.usuarioId } })
@@ -158,9 +222,55 @@ export class ServicoEventos {
           link: `/adm/calendario/eventos/${gravado.id}`,
         })
       }
+      if (antes?.listaConcluidaEm) await this.acertarEventoConcluido(tx, sessao, antes, gravado)
     })
     if (!gravado) throw new Error('Evento não gravado')
     return { evento: paraSaida(gravado), aulasAfetadas }
+  }
+
+  /**
+   * Evento com a lista concluída que foi gravado: o valor ou o dia dos pontos refaz os lançamentos de todo mundo, e a
+   * troca de uniforme (as marcas passam a valer como o outro uniforme, com os pontos já dados) fica em `Atividade`.
+   */
+  private async acertarEventoConcluido(tx: Prisma.TransactionClient, sessao: SessaoLogada, antes: EventoCalendario, depois: EventoCalendario): Promise<void> {
+    const mudouOValor =
+      antes.pontosParticipacao !== depois.pontosParticipacao ||
+      antes.pontosUniforme !== depois.pontosUniforme ||
+      antes.inicio.getTime() !== depois.inicio.getTime()
+    if (mudouOValor) {
+      await this.pontosDoEvento.refazer(tx, { clubeId: sessao.clubeId, evento: depois, lancadoPorId: sessao.usuarioId })
+    }
+    if (antes.uniforme && depois.uniforme && antes.uniforme !== depois.uniforme) {
+      await tx.atividade.create({
+        data: {
+          clubeId: sessao.clubeId,
+          autorId: sessao.usuarioId,
+          tipo: TIPO_DA_ATIVIDADE_DO_UNIFORME,
+          descricao: `Uniforme de ${depois.nome} trocado de ${UNIFORME_EM_TEXTO[antes.uniforme]} para ${UNIFORME_EM_TEXTO[depois.uniforme]} com a lista já concluída.`,
+          link: `/adm/calendario/eventos/${depois.id}`,
+        },
+      })
+    }
+  }
+
+  /**
+   * O que a lista do evento especial proíbe, lido com a trava do evento já tomada: depois que a lista começou (há
+   * linhas) ou foi concluída, o tipo não muda e o início não vai para uma data que ainda não chegou.
+   */
+  private async exigirListaCompativel(tx: Prisma.TransactionClient, clubeId: string, antes: EventoCalendario, depois: Entrada, hoje: string): Promise<void> {
+    if (antes.tipo !== 'EVENTO_ESPECIAL') return
+    const listaComecada = antes.listaConcluidaEm !== null || (await tx.presencaEventoEspecial.count({ where: { clubeId, eventoId: antes.id } })) > 0
+    if (!listaComecada) return
+    if (depois.tipo !== 'EVENTO_ESPECIAL') throw new ErroApp('REGRA', TIPO_TRAVADO, { tipo: TIPO_TRAVADO })
+    if (depois.inicio > hoje) throw new ErroApp('REGRA', DATA_QUE_NAO_CHEGOU, { inicio: DATA_QUE_NAO_CHEGOU })
+  }
+
+  /** O evento como está, lido depois da trava do evento (a lista pode ter sido concluída enquanto esperávamos). */
+  private async eventoAntes(tx: Prisma.TransactionClient, clubeId: string, id: string): Promise<EventoCalendario> {
+    const evento = await this.eventoDoClube(tx, clubeId, id)
+    if (evento.tipo !== 'EVENTO_ESPECIAL') return evento
+    await travarPresencaDoEvento(tx, id)
+    return this.eventoDoClube(tx, clubeId, id)
   }
 
   private async eventoDoClube(tx: Prisma.TransactionClient, clubeId: string, id: string): Promise<EventoCalendario> {
@@ -178,14 +288,14 @@ export class ServicoEventos {
     sessao: SessaoLogada,
     id: string | null,
     depois: Entrada | null,
-    gravacao: (tx: Prisma.TransactionClient) => Promise<void>,
+    gravacao: (tx: Prisma.TransactionClient, antes: EventoCalendario | null) => Promise<void>,
   ): Promise<AulaAfetada[]> {
     const { clubeId } = sessao
     // Serializa as gravações de eventos do clube: o "antes/depois" só vale lendo os vizinhos já confirmados pela gravação anterior.
     return this.prisma.$transaction(
       async (tx) => {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('eventos-do-clube'), hashtext(${clubeId}))`
-        const antes = id ? await this.eventoDoClube(tx, clubeId, id) : null
+        const antes = id ? await this.eventoAntes(tx, clubeId, id) : null
         // O encontro é da edição: remarcar ou cancelar por aqui burlaria "com chamada não remarca".
         if (antes?.tipo === 'CLASSE_BIBLICA' || depois?.tipo === 'CLASSE_BIBLICA') throw new ErroApp('REGRA', DA_CLASSE_BIBLICA)
         if (depois?.tipo === 'REUNIAO_EXTRA') await this.exigirUmaExtraPorData(tx, clubeId, depois.inicio, antes?.id)
@@ -198,6 +308,7 @@ export class ServicoEventos {
         // Tudo lê pela própria `tx`: com o lock preso, outra conexão do pool esgotaria o pool sob concorrência.
         const configuracao = await tx.configuracaoClube.findUniqueOrThrow({ where: { clubeId } })
         const hoje = hojeNoFuso(configuracao.fuso, new Date())
+        if (antes && depois) await this.exigirListaCompativel(tx, clubeId, antes, depois, hoje)
         const aulas = await this.aulasVistas(tx, clubeId, inicio, fim)
         const registros = await this.registrosNoIntervalo(tx, clubeId, inicio, fim)
         const vizinhos = await tx.eventoCalendario.findMany({
@@ -240,7 +351,7 @@ export class ServicoEventos {
           if (entrouEmConflito || perdeuAClasse(aula)) entraram.set(aula.aulaId, aula)
         }
 
-        await gravacao(tx)
+        await gravacao(tx, antes)
         return this.avisar(tx, sessao, [...entraram.values()])
       },
       { timeout: 20_000 },

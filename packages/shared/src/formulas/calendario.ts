@@ -223,3 +223,28 @@ export function validarEvento(
   }
   return problemas
 }
+
+/** Quantos dias depois do fim um evento especial sem lista ainda cobra o registro de quem foi. */
+export const DIAS_DE_COBRANCA_DA_LISTA = 60
+
+/** O que a cobrança da lista precisa do evento; `lista` é o resumo que o `EventoSaida` traz ao Adm. */
+export interface EventoParaPendencia {
+  tipo: EventoDoCalendario['tipo']
+  fim: string
+  pontosParticipacao?: number | null
+  pontosUniforme?: number | null
+  lista?: { concluidaEm: string | null } | null
+}
+
+/**
+ * "Falta registrar quem foi": o evento especial já terminou (`fim` antes de hoje), terminou há no máximo
+ * 60 dias, vale pontos (a soma dos dois é maior que 0) e a lista não foi concluída. Uma regra só, para a
+ * Visão geral da API e para as telas.
+ */
+export function pendenciaDeLista(evento: EventoParaPendencia, hoje: string): boolean {
+  if (evento.tipo !== 'EVENTO_ESPECIAL') return false
+  if (evento.lista?.concluidaEm) return false
+  if (evento.fim >= hoje) return false
+  if (evento.fim < somarDias(hoje, -DIAS_DE_COBRANCA_DA_LISTA)) return false
+  return (evento.pontosParticipacao ?? 0) + (evento.pontosUniforme ?? 0) > 0
+}
