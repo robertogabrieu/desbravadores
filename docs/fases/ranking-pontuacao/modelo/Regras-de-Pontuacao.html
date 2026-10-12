@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Regras de pontuação</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Layout: tela de Adm no desktop (menu lateral + conteúdo). Valores = tokens do projeto (docs/design/tokens.css).
+   Tela única de tema claro, como o app. Abaixo de 900px o menu some e as linhas empilham. */
+:root{
+  --verde:#1F4D3A; --verde-esc:#163828; --verde-suave:#E3EEE7; --verde-claro:#CFE0D6;
+  --fundo:#F4F1EA; --fundo-fundo:#E8E3D7; --superficie:#fff; --texto:#1B221F; --texto2:#5B645F; --texto3:#4A524E;
+  --borda:#D9D3C5; --divisor:#EFEBE1; --perigo:#B42318; --aviso:#9A3412; --aviso-fundo:#FBEFE3; --ok:#1F7A45;
+  color-scheme: light;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--fundo);color:var(--texto);font-family:'Figtree',system-ui,sans-serif;font-size:16px;line-height:1.45}
+h1,h2,h3{font-family:'Bricolage Grotesque',system-ui,sans-serif;margin:0;text-wrap:balance}
+button{font-family:inherit}
+a{color:var(--verde)}
+:focus-visible{outline:3px solid #2F5FB3;outline-offset:2px}
+
+/* barra do protótipo: não faz parte da interface */
+.proto{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 16px;background:#1B221F;color:#fff}
+.proto b{font-size:13px;letter-spacing:.04em;text-transform:uppercase;margin-right:4px}
+.proto button{min-height:36px;padding:0 14px;border-radius:999px;border:1px dashed #8A8375;background:transparent;color:#fff;font-weight:600;font-size:14px;cursor:pointer}
+.proto button[aria-pressed="true"]{background:#fff;color:#1B221F;border-style:solid}
+
+.app{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:calc(100vh - 56px)}
+.menu{background:var(--verde);color:#fff;padding:20px 12px;display:flex;flex-direction:column;gap:4px}
+.menu .marca{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:18px;padding:0 12px 16px}
+.menu .marca small{display:block;font-family:'Figtree';font-weight:500;font-size:13px;color:var(--verde-claro)}
+.nav{display:flex;align-items:center;min-height:44px;padding:0 12px;border-radius:12px;color:var(--verde-claro);font-weight:600;text-decoration:none}
+.nav.on{background:var(--verde-esc);color:#fff}
+
+.sem-conexao{display:none;background:#1B221F;color:#fff;padding:10px 24px;font-weight:600;font-size:15px}
+.main{padding:32px 40px 64px;display:flex;flex-direction:column;gap:24px;max-width:1040px;width:100%}
+.migalha{font-size:14px;color:var(--texto2);margin:0}
+.migalha a{font-weight:600}
+h1{font-size:30px;font-weight:800}
+.sub{margin:4px 0 0;color:var(--texto3);max-width:62ch}
+
+.resumo{background:var(--superficie);border:1px solid var(--borda);border-radius:16px;padding:16px 20px;display:flex;flex-wrap:wrap;gap:8px 32px;align-items:baseline}
+.resumo .n{font-family:'Bricolage Grotesque',sans-serif;font-size:26px;font-weight:800}
+.resumo span{color:var(--texto3)}
+
+.confirma{display:none;background:var(--verde-suave);color:var(--verde);border-radius:12px;padding:12px 16px;font-weight:700;align-items:center;gap:10px}
+
+.grupo{display:flex;flex-direction:column;gap:8px}
+.grupo-cab{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+.grupo-cab h2{font-size:20px;font-weight:700}
+.grupo-cab p{margin:0;color:var(--texto2);font-size:14px}
+.lista{background:var(--superficie);border:1px solid var(--borda);border-radius:16px;overflow:hidden}
+.linha{display:grid;grid-template-columns:116px minmax(0,1fr) 120px 150px;gap:16px;align-items:center;padding:12px 20px;border-top:1px solid var(--divisor)}
+.linha:first-child{border-top:0}
+.linha.destaque{background:#F3F8F5}
+.nome{font-weight:700}
+.desc{font-size:14px;color:var(--texto2)}
+.pts{font-family:'Bricolage Grotesque',sans-serif;font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.pts small{font-family:'Figtree';font-size:13px;font-weight:600;color:var(--texto2)}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:13px;font-weight:700;white-space:nowrap}
+.chip.on{background:var(--verde-suave);color:var(--verde)}
+.chip.off{background:var(--divisor);color:var(--texto3)}
+.desligada .nome{color:var(--texto2)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:12px;font-size:16px;font-weight:600;border:1px solid var(--borda);background:#fff;color:var(--texto);cursor:pointer;text-decoration:none}
+.btn:hover{background:var(--fundo)}
+.btn.pri{background:var(--verde);border-color:var(--verde);color:#fff;font-weight:700}
+.btn.pri:hover{background:var(--verde-esc)}
+.btn.txt{border-color:transparent;background:transparent;color:var(--verde)}
+.btn[disabled]{color:var(--texto2);background:var(--divisor);cursor:not-allowed}
+.btn.link{border-color:transparent;color:var(--verde);padding:0 8px;justify-content:flex-start;text-align:left;line-height:1.2}
+.motivo{font-size:13px;color:var(--texto2);margin:0}
+.aviso-linha{display:flex;gap:10px;align-items:flex-start;background:var(--aviso-fundo);color:var(--aviso);border-radius:12px;padding:12px 16px;font-weight:600}
+
+/* estados */
+.estado{background:var(--superficie);border:1px solid var(--borda);border-radius:16px;padding:40px 24px;text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center}
+.estado h2{font-size:20px}
+.estado p{margin:0;color:var(--texto3);max-width:48ch}
+.esq{height:64px;border-top:1px solid var(--divisor);background:linear-gradient(90deg,#fff 0,#F4F1EA 50%,#fff 100%);background-size:200% 100%;animation:b 1.4s linear infinite}
+.esq:first-child{border-top:0}
+@keyframes b{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.esq{animation:none}}
+
+/* painel lateral de edição */
+.veu{display:none;position:fixed;inset:0;background:rgba(27,34,31,.45);z-index:20}
+.painel{position:fixed;top:0;right:0;bottom:0;width:min(460px,100%);background:#fff;z-index:21;display:none;flex-direction:column;box-shadow:-8px 0 24px rgba(27,34,31,.2)}
+.painel header{padding:24px 24px 16px;border-bottom:1px solid var(--divisor)}
+.painel header .quem{font-size:13px;font-weight:700;color:var(--texto2);text-transform:uppercase;letter-spacing:.04em}
+.painel header h2{font-size:24px;font-weight:800;margin-top:4px}
+.painel .corpo{padding:24px;display:flex;flex-direction:column;gap:24px;overflow:auto;flex-grow:1}
+.painel footer{padding:16px 24px 24px;border-top:1px solid var(--divisor);display:flex;flex-direction:column;gap:12px;background:#fff}
+.campo{display:flex;flex-direction:column;gap:8px}
+.campo label,.campo .rot{font-weight:800;font-size:15px}
+.passo{display:flex;align-items:center;gap:8px}
+.passo button{width:48px;min-height:48px;border:1px solid var(--borda);background:#fff;border-radius:12px;font-size:24px;font-weight:700;cursor:pointer;color:var(--texto)}
+.passo input{width:112px;min-height:48px;border:1px solid var(--borda);border-radius:9px;text-align:center;font-size:22px;font-weight:700;font-family:inherit;font-variant-numeric:tabular-nums}
+.passo span{color:var(--texto2);font-weight:600}
+.ajuda{font-size:14px;color:var(--texto2);margin:0}
+.erro{display:none;font-size:14px;font-weight:700;color:var(--perigo);margin:0}
+.liga{display:flex;gap:12px;align-items:flex-start;min-height:44px;cursor:pointer}
+.liga input{width:24px;height:24px;margin:2px 0 0;accent-color:var(--verde)}
+.liga b{display:block}
+.efeito{background:var(--fundo);border-radius:12px;padding:12px 16px;font-size:15px}
+.efeito b{font-variant-numeric:tabular-nums}
+.regra-futuro{margin:0;font-size:15px;color:var(--texto);font-weight:600}
+
+@media (max-width:900px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .menu{display:none}
+  .main{padding:24px 16px 48px}
+  .linha{grid-template-columns:minmax(0,1fr) auto;gap:8px 12px}
+  .linha .c-status{grid-column:1;grid-row:1}
+  .linha .c-nome{grid-column:1 / 3;grid-row:2}
+  .linha .c-pts{grid-column:2;grid-row:1;justify-self:end}
+  .linha .c-acao{grid-column:1 / 3;grid-row:3}
+}
+</style>
+</head>
+<body>
+
+<div class="proto" role="group" aria-label="Estados do protótipo">
+  <b>Protótipo · alternar estado</b>
+  <button data-estado="normal" aria-pressed="true">Tela</button>
+  <button data-estado="carregando" aria-pressed="false">Carregando</button>
+  <button data-estado="erro" aria-pressed="false">Erro</button>
+  <button data-estado="offline" aria-pressed="false">Sem conexão</button>
+  <button data-estado="leitura" aria-pressed="false">Sem permissão para editar</button>
+  <button data-estado="semeventos" aria-pressed="false">Sem eventos especiais</button>
+</div>
+
+<div class="app">
+  <nav class="menu" aria-label="Menu do Adm">
+    <div class="marca">Aplicativo do Desbravador<small>Clube Aurora</small></div>
+    <a class="nav" href="#">Visão geral</a>
+    <a class="nav" href="#">Desbravadores</a>
+    <a class="nav" href="#">Usuários</a>
+    <a class="nav" href="#">Unidades</a>
+    <a class="nav" href="#">Classes e especialidades</a>
+    <a class="nav" href="#">Calendário do clube</a>
+    <a class="nav" href="#">Cronogramas</a>
+    <a class="nav" href="#">Biblioteca</a>
+    <a class="nav on" href="#" aria-current="page">Ranking</a>
+    <a class="nav" href="#">Relatórios</a>
+  </nav>
+
+  <div>
+    <div class="sem-conexao" id="faixa-offline" role="status">Sem conexão. Você pode conferir as regras, mas só consegue editar quando a internet voltar.</div>
+    <main class="main" id="main">
+      <div>
+        <p class="migalha"><a href="#">Ranking</a> › Regras de pontuação</p>
+        <h1>Regras de pontuação</h1>
+        <p class="sub">Tudo que dá ponto no ranking, em um só lugar. Para mudar quanto vale cada coisa, toque em Editar.</p>
+      </div>
+      <div id="conteudo"></div>
+    </main>
+  </div>
+</div>
+
+<div class="veu" id="veu"></div>
+<aside class="painel" id="painel" role="dialog" aria-modal="true" aria-labelledby="p-titulo">
+  <header>
+    <div class="quem" id="p-quem"></div>
+    <h2 id="p-titulo"></h2>
+    <p class="ajuda" id="p-desc" style="margin-top:4px"></p>
+  </header>
+  <div class="corpo">
+    <div class="campo">
+      <label for="p-valor" id="p-rotulo-valor"></label>
+      <div class="passo">
+        <button type="button" id="p-menos" aria-label="Diminuir 1 ponto">−</button>
+        <input id="p-valor" inputmode="numeric" autocomplete="off" aria-describedby="p-erro p-ajuda-valor">
+        <button type="button" id="p-mais" aria-label="Aumentar 1 ponto">+</button>
+        <span>pontos</span>
+      </div>
+      <p class="ajuda" id="p-ajuda-valor">Digite um número de 0 a 1000.</p>
+      <p class="erro" id="p-erro" role="alert">Use um número inteiro entre 0 e 1000.</p>
+    </div>
+    <label class="liga" for="p-liga">
+      <input type="checkbox" id="p-liga">
+      <span><b id="p-liga-rot"></b><span class="ajuda" id="p-liga-ajuda"></span></span>
+    </label>
+    <div class="efeito" id="p-efeito"></div>
+  </div>
+  <footer>
+    <p class="regra-futuro">Vale a partir de agora. Os pontos que já foram lançados não mudam.</p>
+    <button class="btn pri" id="p-salvar" type="button">Salvar pontos</button>
+    <button class="btn txt" id="p-cancelar" type="button">Cancelar</button>
+  </footer>
+</aside>
+
+<script>
+(function(){
+  /* dados de exemplo (fictícios) */
+  var R = [
+    {id:'presenca', g:'reuniao', nome:'Presença', desc:'O desbravador foi marcado como presente na chamada.', pts:10, on:true},
+    {id:'pontual', g:'reuniao', nome:'Pontualidade', desc:'Chegou presente e sem atraso.', pts:5, on:true},
+    {id:'uniforme', g:'reuniao', nome:'Uniforme completo', desc:'Veio com o uniforme completo do dia.', pts:5, on:true},
+    {id:'biblia', g:'reuniao', nome:'Bíblia', desc:'Trouxe a Bíblia.', pts:3, on:true},
+    {id:'licao', g:'reuniao', nome:'Lição ou devocional em dia', desc:'Fez o estudo da semana.', pts:3, on:false},
+    {id:'requisito', g:'aulas', nome:'Requisito de classe concluído', desc:'Cada requisito que o instrutor marca como feito.', pts:4, on:true},
+    {id:'espec', g:'aulas', nome:'Especialidade concluída', desc:'Cada especialidade que o instrutor marca como concluída.', pts:15, on:true},
+    {id:'cb-pres', g:'cb', nome:'Presença na Classe Bíblica', desc:'Estar presente num encontro da Classe Bíblica.', pts:10, on:true},
+    {id:'cb-part', g:'cb', nome:'Participação ativa na Classe Bíblica', desc:'Participar ativamente do encontro.', pts:5, on:true},
+  ];
+  var G = [
+    {k:'reuniao', t:'Na reunião de domingo', q:'Quem lança: o conselheiro, na chamada', quem:'o conselheiro, na chamada da reunião'},
+    {k:'aulas', t:'Nas aulas', q:'Quem lança: o instrutor, ao marcar o que foi feito', quem:'o instrutor, ao marcar o que foi feito'},
+    {k:'cb', t:'Na Classe Bíblica', q:'Quem lança: o responsável pela chamada da classe', quem:'o responsável pela chamada'},
+    {k:'evento', t:'Em eventos especiais', q:'Cada evento define os próprios pontos, no calendário. Lançado na lista de quem foi.', quem:'a lista de quem foi ao evento', eventos:true}
+  ];
+  /* eventos especiais do ano (exemplos fictícios); os pontos de cada um vêm do formulário do calendário */
+  var EV = [
+    {nome:'Culto de Sábado Santo', quando:'sábado, 04/04/2026', ir:20, unif:5, tipoUnif:'gala', feito:true, foram:38},
+    {nome:'Campori Regional', quando:'21 a 23/08/2026', ir:40, unif:10, tipoUnif:'atividade', feito:true, foram:31},
+    {nome:'Sábado de Missões', quando:'sábado, 24/10/2026', ir:15, unif:5, tipoUnif:'gala', feito:false},
+    {nome:'Encerramento do ano', quando:'sábado, 12/12/2026', ir:20, unif:5, tipoUnif:'gala', feito:false}
+  ];
+  var semEventos = false;
+  var estado = 'normal', editando = null, ultimo = null, aviso = '';
+  var $ = function(s){return document.querySelector(s)};
+  var icone = {
+    ok:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>',
+    off:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg>',
+    lapis:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+    ext:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>'
+  };
+  function por(id){return R.filter(function(r){return r.id===id})[0]}
+  function perfeita(){return R.filter(function(r){return r.g==='reuniao'&&r.on}).reduce(function(a,r){return a+r.pts},0)}
+  function ligadas(){return R.filter(function(r){return r.on}).length}
+
+  function acao(r){
+    if(r.externo) return '<a class="btn link" href="#" aria-label="Editar '+r.nome+' em Configurações do clube">Editar em Configurações do clube '+icone.ext+'</a>';
+    if(estado==='leitura') return '<span class="motivo">Só quem tem a permissão “Configurar o ranking” pode editar.</span>';
+    if(estado==='offline') return '<button class="btn" disabled aria-label="Editar '+r.nome+' (indisponível sem conexão)">'+icone.lapis+' Editar</button>';
+    return '<button class="btn" data-editar="'+r.id+'" aria-label="Editar '+r.nome+'">'+icone.lapis+' Editar</button>';
+  }
+  function linha(r){
+    return '<div class="linha'+(r.on?'':' desligada')+(ultimo===r.id?' destaque':'')+'">'+
+      '<div class="c-status">'+(r.on?'<span class="chip on">'+icone.ok+' Ligada</span>':'<span class="chip off">'+icone.off+' Desligada</span>')+'</div>'+
+      '<div class="c-nome"><div class="nome">'+r.nome+'</div><div class="desc">'+r.desc+'</div></div>'+
+      '<div class="c-pts pts">+'+r.pts+' <small>pontos</small></div>'+
+      '<div class="c-acao">'+acao(r)+'</div></div>';
+  }
+  function linhaEvento(e){
+    var acaoEv = estado==='leitura'
+      ? '<span class="motivo">Só quem edita o calendário pode mudar.</span>'
+      : (estado==='offline'
+        ? '<button class="btn" disabled aria-label="Editar '+e.nome+' no calendário (indisponível sem conexão)">'+icone.lapis+' Editar</button>'
+        : '<a class="btn link" href="#" aria-label="Editar '+e.nome+' no calendário">Editar no calendário '+icone.ext+'</a>');
+    return '<div class="linha">'+
+      '<div class="c-status">'+(e.feito?'<span class="chip on">'+icone.ok+' Pontos lançados</span>':'<span class="chip off">'+icone.off+' Ainda vai ser</span>')+'</div>'+
+      '<div class="c-nome"><div class="nome">'+e.nome+'</div><div class="desc">'+e.quando+' · mais '+e.unif+' pontos com o uniforme de '+e.tipoUnif+(e.feito?' · '+e.foram+' foram':'')+'</div></div>'+
+      '<div class="c-pts pts">+'+e.ir+' <small>por ir</small></div>'+
+      '<div class="c-acao">'+acaoEv+'</div></div>';
+  }
+  function grupoEventos(g){
+    var corpo = semEventos
+      ? '<div class="estado" style="border:0"><h2>Nenhum evento especial neste ano</h2><p>Os pontos de um evento especial são definidos ao criá-lo no calendário.</p><a class="btn pri" href="#">Criar evento no calendário</a></div>'
+      : EV.map(linhaEvento).join('');
+    return '<section class="grupo" aria-labelledby="g-'+g.k+'"><div class="grupo-cab"><h2 id="g-'+g.k+'">'+g.t+'</h2><p>'+g.q+'</p></div><div class="lista">'+corpo+'</div></section>';
+  }
+  function render(){
+    var c = $('#conteudo');
+    $('#faixa-offline').style.display = estado==='offline' ? 'block' : 'none';
+    if(estado==='carregando'){
+      c.innerHTML='<div class="lista" aria-busy="true" role="status" aria-label="Carregando as regras"><div class="esq"></div><div class="esq"></div><div class="esq"></div><div class="esq"></div><div class="esq"></div><div class="esq"></div></div>';
+      return;
+    }
+    if(estado==='erro'){
+      c.innerHTML='<div class="estado" role="alert"><h2>Não deu para carregar as regras</h2><p>Nada foi alterado. Confira a internet e tente de novo.</p><button class="btn pri" type="button" data-estado-btn="normal">Tentar de novo</button></div>';
+      return;
+    }
+    var h = '';
+    if(aviso) h += '<div class="confirma" style="display:flex" role="status">'+icone.ok+' '+aviso+'</div>';
+    if(estado==='leitura') h += '<div class="aviso-linha">Você pode conferir tudo, mas não editar. Peça a quem administra o clube a permissão “Configurar o ranking”.</div>';
+    h += '<div class="resumo"><div><span class="n">'+ligadas()+' de '+R.length+'</span> <span>regras fixas estão ligadas</span></div>'+
+         '<div><span class="n">'+perfeita()+' pontos</span> <span>é o que um desbravador ganha numa reunião perfeita</span></div></div>';
+    G.forEach(function(g){
+      if(g.eventos){ h += grupoEventos(g); return; }
+      var rs = R.filter(function(r){return r.g===g.k});
+      h += '<section class="grupo" aria-labelledby="g-'+g.k+'"><div class="grupo-cab"><h2 id="g-'+g.k+'">'+g.t+'</h2><p>'+g.q+'</p></div><div class="lista">'+rs.map(linha).join('')+'</div></section>';
+    });
+    c.innerHTML = h;
+    c.style.display='flex'; c.style.flexDirection='column'; c.style.gap='24px';
+  }
+
+  /* painel */
+  function efeito(r,v){
+    if(r.g==='reuniao'){
+      var base = perfeita() - (r.on?r.pts:0);
+      var novo = base + (r.ligaNova===false?0:v);
+      return 'Uma reunião perfeita vai de <b>'+perfeita()+'</b> para <b>'+novo+'</b> pontos.';
+    }
+    return 'Cada vez que isso acontecer, o desbravador ganha <b>'+v+'</b> pontos.';
+  }
+  function abrir(id){
+    var r = por(id); editando = r; r.ligaNova = r.on;
+    var q = G.filter(function(g){return g.k===r.g})[0];
+    $('#p-quem').textContent = 'Lançado por ' + q.quem;
+    $('#p-titulo').textContent = r.nome;
+    $('#p-desc').textContent = r.desc;
+    $('#p-rotulo-valor').textContent = 'Pontos por '+r.nome.toLowerCase();
+    $('#p-valor').value = r.pts;
+    $('#p-liga').checked = r.on;
+    $('#p-liga-rot').textContent = 'Esta regra dá ponto';
+    $('#p-liga-ajuda').textContent = r.on ? 'Desligue para parar de dar ponto. O valor fica guardado.' : 'Ligue para voltar a dar ponto. Está desligada agora.';
+    $('#p-erro').style.display='none';
+    atualizaEfeito();
+    $('#veu').style.display='block'; $('#painel').style.display='flex';
+    $('#p-valor').focus(); $('#p-valor').select();
+  }
+  function fechar(){ $('#veu').style.display='none'; $('#painel').style.display='none'; editando=null; }
+  function lerValor(){
+    var t = $('#p-valor').value.trim();
+    if(!/^\d+$/.test(t)) return null;
+    var n = parseInt(t,10); return n>=0 && n<=1000 ? n : null;
+  }
+  function atualizaEfeito(){
+    var v = lerValor(), r = editando;
+    if(v===null){ $('#p-erro').style.display='block'; $('#p-efeito').innerHTML='Corrija o valor para ver o efeito.'; return; }
+    $('#p-erro').style.display='none';
+    r.ligaNova = $('#p-liga').checked;
+    $('#p-efeito').innerHTML = r.ligaNova ? efeito(r,v) : 'Desligada: <b>'+r.nome+'</b> deixa de dar ponto.';
+  }
+  function salvar(){
+    var v = lerValor(); if(v===null){ $('#p-valor').focus(); return; }
+    var r = editando; r.pts = v; r.on = $('#p-liga').checked; ultimo = r.id;
+    aviso = r.on ? (r.nome+' agora vale '+v+' pontos. Vale a partir de agora; o que já foi lançado não mudou.')
+                 : (r.nome+' foi desligada. Ninguém mais ganha ponto por isso a partir de agora.');
+    fechar(); render();
+    var el = document.querySelector('[data-editar="'+r.id+'"]'); if(el) el.focus();
+  }
+
+  document.addEventListener('click', function(e){
+    var t = e.target.closest('[data-editar],[data-estado],[data-estado-btn]'); if(!t) return;
+    if(t.dataset.editar) return abrir(t.dataset.editar);
+    var novo = t.dataset.estado || t.dataset.estadoBtn;
+    semEventos = novo==='semeventos'; estado = semEventos ? 'normal' : novo; aviso=''; ultimo=null;
+    document.querySelectorAll('.proto button').forEach(function(b){b.setAttribute('aria-pressed', b.dataset.estado===novo?'true':'false')});
+    render();
+  });
+  $('#veu').addEventListener('click', fechar);
+  $('#p-cancelar').addEventListener('click', fechar);
+  $('#p-salvar').addEventListener('click', salvar);
+  $('#p-valor').addEventListener('input', atualizaEfeito);
+  $('#p-liga').addEventListener('change', atualizaEfeito);
+  $('#p-mais').addEventListener('click', function(){ var v = lerValor(); $('#p-valor').value = Math.min(1000,(v===null?0:v)+1); atualizaEfeito(); });
+  $('#p-menos').addEventListener('click', function(){ var v = lerValor(); $('#p-valor').value = Math.max(0,(v===null?0:v)-1); atualizaEfeito(); });
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape' && editando) fechar(); });
+  render();
+})();
+</script>
+</body>
+</html>
