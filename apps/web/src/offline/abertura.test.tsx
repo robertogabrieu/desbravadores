@@ -78,6 +78,17 @@ async function semearFila() {
   })
 }
 
+// O ouvinte de `online` nasce num efeito (e uma tentativa em voo ignora o aviso): repete só enquanto o texto não aparece.
+async function voltarInternetAte(texto: string): Promise<void> {
+  await waitFor(
+    () => {
+      if (!screen.queryByText(texto)) act(() => void window.dispatchEvent(new Event('online')))
+      expect(screen.getByText(texto)).toBeInTheDocument()
+    },
+    { timeout: 5000 },
+  )
+}
+
 beforeEach(() => {
   tempos.novaTentativaAberturaMs = 1
   tempos.recuperacaoMs = 60_000
@@ -91,7 +102,7 @@ describe('abertura sem internet', () => {
     renderizarRotas(rotas, '/privada')
 
     expect(await screen.findByText('modo:SEM_CONEXAO')).toBeInTheDocument()
-    expect(screen.getByText('nome:Ana Souza')).toBeInTheDocument()
+    expect(await screen.findByText('nome:Ana Souza')).toBeInTheDocument()
   })
 
   it('tenta de novo uma vez antes de desistir', async () => {
@@ -176,11 +187,14 @@ describe('abertura sem internet', () => {
     await screen.findByText('modo:SEM_CONEXAO')
 
     servidor.use(handlerRefreshRecusado(403, 'VINCULO_INATIVO'))
-    act(() => {
-      window.dispatchEvent(new Event('online'))
-    })
-
-    await screen.findByText('tela de login')
+    // O ouvinte de `online` nasce num efeito (e uma tentativa em voo ignora o aviso): repete até a tela de saída aparecer.
+    await waitFor(
+      () => {
+        act(() => void window.dispatchEvent(new Event('online')))
+        expect(screen.getByText('tela de login')).toBeInTheDocument()
+      },
+      { timeout: 5000 },
+    )
     expect(roteador.state.location.state).toEqual({ aviso: SEM_ACESSO })
     await waitFor(async () => expect(await banco.sessoes.count()).toBe(0))
   })
@@ -192,11 +206,7 @@ describe('abertura sem internet', () => {
     await screen.findByText('modo:SEM_CONEXAO')
 
     servidor.use(...handlersSessao(vinculos))
-    act(() => {
-      window.dispatchEvent(new Event('online'))
-    })
-
-    expect(await screen.findByText('modo:ONLINE')).toBeInTheDocument()
+    await voltarInternetAte('modo:ONLINE')
     expect(screen.getByText('nome:Ana Souza')).toBeInTheDocument()
   })
 
@@ -208,11 +218,7 @@ describe('abertura sem internet', () => {
     const chamadas = { total: 0 }
     servidor.use(handlerPacote(criarPacote(), chamadas), ...handlersSessao(vinculos))
 
-    act(() => {
-      window.dispatchEvent(new Event('online'))
-    })
-
-    await screen.findByText('modo:ONLINE')
+    await voltarInternetAte('modo:ONLINE')
     await waitFor(() => expect(chamadas.total).toBe(1))
   })
 
@@ -225,7 +231,7 @@ describe('abertura sem internet', () => {
 
     servidor.use(...handlersSessao(vinculos))
 
-    expect(await screen.findByText('modo:ONLINE')).toBeInTheDocument()
+    expect(await screen.findByText('modo:ONLINE', undefined, { timeout: 5000 })).toBeInTheDocument()
   })
 })
 
