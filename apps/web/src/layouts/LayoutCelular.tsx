@@ -1,4 +1,4 @@
-import { CalendarDays, GraduationCap, House, Trophy, Users } from 'lucide-react'
+import { CalendarDays, CalendarRange, GraduationCap, House, Trophy, Users } from 'lucide-react'
 import { Outlet } from 'react-router-dom'
 import { SinoNotificacoes } from '../modulos/notificacoes/SinoNotificacoes'
 import { vinculosDoClube } from '../modulos/acesso/papeis'
@@ -14,10 +14,11 @@ import { SeloPapel } from './SeloPapel'
 
 const INICIO: ItemDeNavegacao = { rotulo: 'Início', icone: House, para: '/inicio' }
 const RANKING: ItemDeNavegacao = { rotulo: 'Ranking', icone: Trophy, para: '/ranking' }
+const CALENDARIO: ItemDeNavegacao = { rotulo: 'Calendário', icone: CalendarRange, para: '/calendario' }
 
 const ITENS_POR_PAPEL = {
-  CONSELHEIRO: [INICIO, { rotulo: 'Unidade', icone: Users, para: '/unidade' }, { rotulo: 'Reuniões', icone: CalendarDays, para: '/reunioes' }, RANKING],
-  INSTRUTOR: [INICIO, { rotulo: 'Classes', icone: GraduationCap, para: '/classes' }, { rotulo: 'Cronograma', icone: CalendarDays, para: '/cronograma' }, RANKING],
+  CONSELHEIRO: [INICIO, { rotulo: 'Unidade', icone: Users, para: '/unidade' }, { rotulo: 'Reuniões', icone: CalendarDays, para: '/reunioes' }, CALENDARIO, RANKING],
+  INSTRUTOR: [INICIO, { rotulo: 'Classes', icone: GraduationCap, para: '/classes' }, { rotulo: 'Cronograma', icone: CalendarDays, para: '/cronograma' }, CALENDARIO, RANKING],
   ADM: [INICIO],
 } satisfies Record<string, ItemDeNavegacao[]>
 

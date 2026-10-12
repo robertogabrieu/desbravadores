@@ -328,3 +328,51 @@ describe('atalho "Gerar link de substituto"', () => {
     expect(screen.getByRole('link', { name: 'Cadastrar unidade' })).toHaveAttribute('href', '/adm/unidades/nova')
   })
 })
+
+describe('eventos especiais sem lista', () => {
+  const semLista = criarVisaoGeral({
+    eventosSemLista: [
+      { eventoId: uuid(61), nome: 'Culto de Ação de Graças', inicio: '2026-10-03', fim: '2026-10-03' },
+      { eventoId: uuid(62), nome: 'Aniversário do clube', inicio: '2026-10-10', fim: '2026-10-10' },
+    ],
+  })
+
+  it('celular: o item entra em "Precisa de atenção", leva à ficha e o total soma com os cronogramas', async () => {
+    simularLargura(390)
+    servidor.use(handlerVisaoGeral({ ...comAlerta, eventosSemLista: semLista.eventosSemLista }), handlerConfiguracao(criarConfiguracao({ limiarFrequenciaAlerta: 75 })))
+    abrir()
+    const atencao = await screen.findByRole('region', { name: 'Precisa de atenção · 4' })
+    const item = within(atencao).getByRole('link', { name: /Culto de Ação de Graças/ })
+    expect(item).toHaveAttribute('href', `/adm/calendario/eventos/${uuid(61)}`)
+    expect(within(item).getByText('Falta registrar quem foi')).toBeInTheDocument()
+    expect(within(item).getByText('Culto de Ação de Graças · sábado, 3 de outubro')).toBeInTheDocument()
+    expect(within(item).getByText('Registrar')).toBeInTheDocument()
+  })
+
+  it('celular: só com evento sem lista a seção existe, com total 2', async () => {
+    simularLargura(390)
+    servidor.use(handlerVisaoGeral(semLista))
+    abrir()
+    expect(await screen.findByRole('region', { name: 'Precisa de atenção · 2' })).toBeInTheDocument()
+  })
+
+  it('computador: cartão próprio "Eventos sem lista" com a contagem e o botão Registrar quem foi', async () => {
+    simularLargura(1280)
+    servidor.use(handlerVisaoGeral(semLista))
+    abrir()
+    const cartaoDosEventos = await screen.findByRole('region', { name: 'Eventos sem lista · 2' })
+    const dentro = within(cartaoDosEventos)
+    expect(dentro.getByText('Estes eventos especiais já terminaram e valem pontos, mas ninguém registrou quem foi.')).toBeInTheDocument()
+    expect(dentro.getByText('sábado, 3 de outubro')).toBeInTheDocument()
+    expect(dentro.getAllByRole('link', { name: /Registrar quem foi/ })[0]).toHaveAttribute('href', `/adm/calendario/eventos/${uuid(61)}`)
+    expect(screen.queryByRole('region', { name: /Precisa de atenção/ })).not.toBeInTheDocument()
+  })
+
+  it('computador: sem evento sem lista o cartão não aparece', async () => {
+    simularLargura(1280)
+    servidor.use(handlerVisaoGeral())
+    abrir()
+    await screen.findByRole('group', { name: 'Desbravadores' })
+    expect(screen.queryByText(/Eventos sem lista/)).not.toBeInTheDocument()
+  })
+})

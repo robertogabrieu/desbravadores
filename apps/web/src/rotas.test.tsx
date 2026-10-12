@@ -122,3 +122,25 @@ describe('rotas da Classe Bíblica', () => {
     expect(screen.queryByRole('heading', { name: 'Classe Bíblica', level: 1 })).not.toBeInTheDocument()
   })
 })
+
+describe('rotas do calendário de leitura', () => {
+  it.each<Papel>(['CONSELHEIRO', 'INSTRUTOR'])('%s abre /calendario', async (papel) => {
+    entrar(papel)
+    const { roteador } = renderizarRotas(rotas, '/calendario')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Calendário do clube' })).toBeInTheDocument()
+    expect(roteador.state.location.pathname).toBe('/calendario')
+  })
+
+  it('o Adm que abre /calendario cai no início do painel', async () => {
+    entrar('ADM')
+    const { roteador } = renderizarRotas(rotas, '/calendario')
+    await waitFor(() => expect(roteador.state.location.pathname).toBe('/adm/desbravadores'))
+    expect(screen.queryByRole('heading', { level: 1, name: 'Calendário do clube' })).not.toBeInTheDocument()
+  })
+
+  it.each<Papel>(['CONSELHEIRO', 'INSTRUTOR'])('%s na lista de presença do Adm volta para o início', async (papel) => {
+    entrar(papel)
+    const { roteador } = renderizarRotas(rotas, '/adm/calendario/eventos/x/presenca')
+    await waitFor(() => expect(roteador.state.location.pathname).toBe('/inicio'))
+  })
+})

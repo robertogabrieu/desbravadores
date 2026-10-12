@@ -1,4 +1,4 @@
-import { CalendarClock, Plus, TriangleAlert } from 'lucide-react'
+import { CalendarClock, ClipboardCheck, Plus, TriangleAlert } from 'lucide-react'
 import { useId, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
@@ -15,6 +15,7 @@ import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/Esta
 import { LinhaQueNavega } from '../../../ui/LinhaQueNavega'
 import { cn } from '../../../ui/cn'
 import { LARGURA_DO_CELULAR } from '../../../ui/larguraDoCelular'
+import { diaDaSemanaEDoMes } from '../calendario/datas'
 import { useEstadoDeVolta } from '../navegacao'
 import { AtalhoDeSubstituto } from './AtalhoDeSubstituto'
 
@@ -109,6 +110,36 @@ function CronogramasAguardando({ visao }: { visao: Visao }) {
   )
 }
 
+/** Só no computador: no celular o mesmo aviso é um item de "Precisa de atenção". Sem evento pendente, o cartão não existe. */
+function EventosSemLista({ visao }: { visao: Visao }) {
+  const idDoTitulo = useId()
+  const total = visao.eventosSemLista.length
+  if (total === 0) return null
+  return (
+    <Cartao role="region" aria-labelledby={idDoTitulo} className="flex flex-col gap-3">
+      <h2 id={idDoTitulo} className="font-titulo text-lg font-bold text-texto">
+        Eventos sem lista · {total}
+      </h2>
+      <p className="text-base text-texto-2">Estes eventos especiais já terminaram e valem pontos, mas ninguém registrou quem foi.</p>
+      <ul className="flex flex-col gap-2">
+        {visao.eventosSemLista.map((evento) => (
+          <li key={evento.eventoId}>
+            <LinhaQueNavega to={caminhoDoEvento(evento.eventoId)}>
+              <span className="flex flex-wrap items-center justify-between gap-2">
+                <span className="flex flex-col">
+                  <span className="text-base font-semibold text-texto">{evento.nome}</span>
+                  <span className="text-sm text-texto-2">{diaDaSemanaEDoMes(evento.inicio).toLowerCase()}</span>
+                </span>
+                <span className="text-base font-semibold text-marca">Registrar quem foi</span>
+              </span>
+            </LinhaQueNavega>
+          </li>
+        ))}
+      </ul>
+    </Cartao>
+  )
+}
+
 function AtividadeRecente({ visao }: { visao: Visao }) {
   return (
     <Cartao className="flex flex-col gap-3">
@@ -146,6 +177,7 @@ function NovoDesbravador({ className }: { className?: string }) {
   )
 }
 
+const caminhoDoEvento = (eventoId: string): string => `/adm/calendario/eventos/${eventoId}`
 const caminhoDaRevisao = (classeId: string): string => `/adm/cronogramas?classe=${classeId}`
 
 /** `limiar` ausente (configuração ainda carregando ou com erro): nenhuma unidade fica abaixo. */
@@ -156,7 +188,7 @@ function estaAbaixoDoLimiar(unidade: Visao['unidadesResumo'][number], limiar: nu
 /** No celular, o que pede ação do Adm sobe para logo abaixo do título; sem nada pendente, a seção não existe. */
 function PrecisaDeAtencao({ visao, limiar }: { visao: Visao; limiar: number | undefined }) {
   const unidadesAbaixo = visao.unidadesResumo.filter((unidade) => estaAbaixoDoLimiar(unidade, limiar))
-  const total = unidadesAbaixo.length + visao.cronogramasEnviados.length
+  const total = unidadesAbaixo.length + visao.cronogramasEnviados.length + visao.eventosSemLista.length
   if (total === 0) return null
   return (
     <section aria-label={`Precisa de atenção · ${total}`} className="flex flex-col gap-3">
@@ -185,6 +217,20 @@ function PrecisaDeAtencao({ visao, limiar }: { visao: Visao; limiar: number | un
                   <span className="text-sm text-texto-2">{`Enviado por ${item.enviadoPor} em ${formatarDiaMes(item.enviadoEm)}`}</span>
                 </span>
                 <span className="text-base font-semibold text-marca">Revisar</span>
+              </span>
+            </LinhaQueNavega>
+          </li>
+        ))}
+        {visao.eventosSemLista.map((evento) => (
+          <li key={evento.eventoId}>
+            <LinhaQueNavega to={caminhoDoEvento(evento.eventoId)} forma="cartao">
+              <span className="flex items-center gap-3">
+                <ClipboardCheck aria-hidden className="size-5 shrink-0 text-alerta" />
+                <span className="flex flex-1 flex-col">
+                  <span className="text-base font-semibold text-texto">Falta registrar quem foi</span>
+                  <span className="text-sm text-texto-2">{`${evento.nome} · ${diaDaSemanaEDoMes(evento.inicio).toLowerCase()}`}</span>
+                </span>
+                <span className="text-base font-semibold text-marca">Registrar</span>
               </span>
             </LinhaQueNavega>
           </li>
@@ -270,6 +316,7 @@ function Conteudo({ visao, celular }: { visao: Visao; celular: boolean }) {
       <Indicadores visao={visao} celular={false} />
       <AtalhoDeSubstituto visao={visao} />
       <CronogramasAguardando visao={visao} />
+      <EventosSemLista visao={visao} />
       <div className="grid gap-4 lg:grid-cols-2">
         <ProgressoPorClasse visao={visao} recolhido={false} />
         <AtividadeRecente visao={visao} />

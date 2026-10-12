@@ -8,6 +8,7 @@ import { BibliotecaModule } from './biblioteca/biblioteca.module'
 import { CalendarioModule } from './calendario/calendario.module'
 import { ClasseBiblicaModule } from './classe-biblica/classe-biblica.module'
 import { EventosModule } from './calendario/eventos.module'
+import { EventosEspeciaisModule } from './eventos-especiais/eventos-especiais.module'
 import { AjustesClassesModule } from './classes/ajustes.module'
 import { ClassesModule } from './classes/classes.module'
 import { ClubeModule } from './clube/clube.module'
@@ -69,6 +70,7 @@ import { VisaoGeralModule } from './visao-geral/visao-geral.module'
     NotificacoesModule,
     AtividadesModule,
     EventosModule,
+    EventosEspeciaisModule,
     MontagemModule,
     AjustesClassesModule,
     EspecialidadesClubeModule,

@@ -10,17 +10,22 @@ import {
   criarAcesso,
   criarClube,
   criarCronograma,
+  criarDbv,
   criarEdicaoCB,
   criarEncontroCB,
   criarEvento,
   criarGrupoCB,
+  criarMembro,
+  criarPresencaEvento,
   criarRegistroAula,
+  criarUnidade,
   desconectarPrismaDeTeste,
   prismaDeTeste,
   publicarCronograma,
 } from '../../test/fabricas'
 import { testarIsolamento } from '../../test/isolamento'
 import { clienteHttp, corpo, hoje } from '../../test/p6'
+import { ServicoPontosEvento } from '../eventos-especiais/servico-pontos-evento'
 
 type Gravado = z.infer<typeof EventoGravadoSaida>
 type Saida = z.infer<typeof EventoSaida>
@@ -507,6 +512,306 @@ describe('calendário do clube — eventos', () => {
         return { metodo: 'get', caminho: `/api/calendario/eventos/${alvo.id}` }
       },
       esperado: { tipo: 'NAO_ENCONTRADO' },
+    })
+  })
+
+  describe('evento especial', () => {
+    const especial = (sobrescrever: Record<string, unknown> = {}) =>
+      evento({ nome: 'Gala de Outubro', tipo: 'EVENTO_ESPECIAL', uniforme: 'GALA', pontosParticipacao: 20, pontosUniforme: 10, ...sobrescrever })
+
+    const regra = (resposta: request.Response) => ({ status: resposta.status, codigo: (resposta.body as { codigo?: string }).codigo })
+
+    const lancamentosDo = (eventoId: string) =>
+      prismaDeTeste().lancamentoPontos.findMany({
+        where: { origemTipo: 'EVENTO_ESPECIAL', origemId: { startsWith: `${eventoId}:` } },
+        orderBy: [{ dbvId: 'asc' }, { pontos: 'asc' }, { id: 'asc' }],
+      })
+    const ativosDo = async (eventoId: string) => (await lancamentosDo(eventoId)).filter((l) => l.estornadoEm === null)
+    const somaDe = (linhas: { pontos: number }[]) => linhas.reduce((total, l) => total + l.pontos, 0)
+
+    /** Evento especial de 3 dias atrás, com `pessoas` na lista (as de índice par com uniforme), concluída e já pontuada. */
+    async function comListaConcluida(pessoas = 3, concluida = true) {
+      const base = await cenario()
+      const { clube, adm } = base
+      const unidade = await criarUnidade({ clubeId: clube.id })
+      const registro = await criarEvento({
+        clubeId: clube.id,
+        tipo: 'EVENTO_ESPECIAL',
+        inicio: dia(-3),
+        uniforme: 'GALA',
+        pontosParticipacao: 20,
+        pontosUniforme: 10,
+        listaConcluidaEm: concluida ? new Date() : null,
+      })
+      const dbvs = []
+      for (let i = 0; i < pessoas; i++) {
+        const dbv = await criarDbv({ clubeId: clube.id })
+        await criarMembro({ dbvId: dbv.id, unidadeId: unidade.id, inicio: '2026-02-01' })
+        await criarPresencaEvento({ clubeId: clube.id, eventoId: registro.id, dbvId: dbv.id, foi: true, comUniforme: i % 2 === 0 })
+        dbvs.push(dbv)
+      }
+      if (concluida) {
+        const pontos = app.get(ServicoPontosEvento)
+        await prismaDeTeste().$transaction((tx) => pontos.refazer(tx, { clubeId: clube.id, evento: registro, lancadoPorId: adm.usuario.id }), {
+          timeout: 60_000,
+        })
+      }
+      return { ...base, unidade, registro, dbvs }
+    }
+
+    const editarEspecial = (id: string, autorizacao: string, sobrescrever: Record<string, unknown> = {}) =>
+      http.patch(`/api/calendario/eventos/${id}`, autorizacao, especial({ inicio: dia(-3), fim: dia(-3), ...sobrescrever }))
+
+    it('cria com os campos planos, grava nas colunas e nasce com as marcações neutras', async () => {
+      const { adm } = await cenario()
+      const resposta = await http.post('/api/calendario/eventos', adm.autorizacao, especial())
+      expect(resposta.status).toBe(201)
+      const { evento: criado, aulasAfetadas } = corpo<Gravado>(resposta)
+      expect(criado).toMatchObject({
+        tipo: 'EVENTO_ESPECIAL',
+        uniforme: 'GALA',
+        pontosParticipacao: 20,
+        pontosUniforme: 10,
+        temReuniao: true,
+        temClasse: true,
+        bomParaCampo: false,
+      })
+      expect(aulasAfetadas).toEqual([])
+      const linha = await prismaDeTeste().eventoCalendario.findUniqueOrThrow({ where: { id: criado.id } })
+      expect(linha).toMatchObject({ uniforme: 'GALA', pontosParticipacao: 20, pontosUniforme: 10, listaConcluidaEm: null })
+    })
+
+    it('pontos 0 valem; uniforme é obrigatório e os pontos vão de 0 a 1000, com o erro na chave do campo', async () => {
+      const { adm } = await cenario()
+      const zero = await http.post('/api/calendario/eventos', adm.autorizacao, especial({ pontosParticipacao: 0, pontosUniforme: 1000 }))
+      expect(zero.status).toBe(201)
+      expect(corpo<Gravado>(zero).evento).toMatchObject({ pontosParticipacao: 0, pontosUniforme: 1000 })
+
+      const semUniforme = await http.post('/api/calendario/eventos', adm.autorizacao, especial({ uniforme: null }))
+      expect(semUniforme.status).toBe(400)
+      expect(semUniforme.body).toMatchObject({ codigo: 'VALIDACAO', campos: { uniforme: 'Escolha o uniforme do evento.' } })
+      const ausente = await http.post('/api/calendario/eventos', adm.autorizacao, especial({ uniforme: undefined }))
+      expect(ausente.body).toMatchObject({ campos: { uniforme: 'Escolha o uniforme do evento.' } })
+
+      const semPontos = await http.post('/api/calendario/eventos', adm.autorizacao, especial({ pontosParticipacao: null, pontosUniforme: undefined }))
+      expect(semPontos.status).toBe(400)
+      expect(semPontos.body).toMatchObject({ campos: { pontosParticipacao: expect.any(String) as string, pontosUniforme: expect.any(String) as string } })
+
+      for (const invalido of [-1, 1001, 2.5]) {
+        const resposta = await http.post('/api/calendario/eventos', adm.autorizacao, especial({ pontosUniforme: invalido }))
+        expect(resposta.status).toBe(400)
+        expect(resposta.body).toMatchObject({ codigo: 'VALIDACAO', campos: { pontosUniforme: expect.any(String) as string } })
+      }
+    })
+
+    it('fora do tipo especial os três campos são descartados, na criação e ao trocar o tipo', async () => {
+      const { adm } = await cenario()
+      const comum = await http.post('/api/calendario/eventos', adm.autorizacao, evento({ uniforme: 'CAMPO', pontosParticipacao: 20, pontosUniforme: 10 }))
+      expect(comum.status).toBe(201)
+      expect(corpo<Gravado>(comum).evento).toMatchObject({ uniforme: null, pontosParticipacao: null, pontosUniforme: null })
+
+      const criado = corpo<Gravado>(await http.post('/api/calendario/eventos', adm.autorizacao, especial())).evento
+      const trocado = await http.patch(`/api/calendario/eventos/${criado.id}`, adm.autorizacao, evento({ uniforme: 'GALA', pontosParticipacao: 5 }))
+      expect(trocado.status).toBe(200)
+      const linha = await prismaDeTeste().eventoCalendario.findUniqueOrThrow({ where: { id: criado.id } })
+      expect(linha).toMatchObject({ tipo: 'ACAMPAMENTO', uniforme: null, pontosParticipacao: null, pontosUniforme: null })
+    })
+
+    it('bundle antigo (cancelaReuniao ou bloqueiaAula) segue recusado no evento especial', async () => {
+      const { adm } = await cenario()
+      const resposta = await http.post('/api/calendario/eventos', adm.autorizacao, especial({ cancelaReuniao: true }))
+      expect(resposta.status).toBe(400)
+      expect(resposta.body).toMatchObject({ codigo: 'VALIDACAO', mensagem: 'Atualize o app para salvar este evento.' })
+    })
+
+    it('ao salvar não avisa ninguém; só com "Terá classe" desmarcada o instrutor é avisado', async () => {
+      const { amigo, adm, instrutor, requisitos, clube } = await cenario()
+      const domingo = proximoDomingo()
+      await criarCronograma({ clubeId: clube.id, classeId: amigo.id, aulas: [{ data: domingo, requisitoIds: requisitos }] })
+      const avisosDe = (usuarioIds: string[]) => prismaDeTeste().notificacao.count({ where: { usuarioId: { in: usuarioIds } } })
+      const todos = [adm.usuario.id, instrutor.usuario.id]
+
+      const neutro = await http.post('/api/calendario/eventos', adm.autorizacao, especial({ inicio: domingo, fim: domingo }))
+      expect(neutro.status).toBe(201)
+      expect(corpo<Gravado>(neutro).aulasAfetadas).toEqual([])
+      expect(await avisosDe(todos)).toBe(0)
+
+      const semClasse = await http.post('/api/calendario/eventos', adm.autorizacao, especial({ inicio: domingo, fim: domingo, temClasse: false }))
+      expect(corpo<Gravado>(semClasse).aulasAfetadas).toHaveLength(1)
+      expect((await notificacoesDe(instrutor.usuario.id)).map((n) => n.link)).toEqual([`/cronograma?classe=${amigo.id}`])
+    })
+
+    it('a montagem do cronograma lista o evento especial pelo nome na data', async () => {
+      const { clube, amigo, adm } = await cenario()
+      const domingo = proximoDomingo()
+      await criarCronograma({ clubeId: clube.id, classeId: amigo.id, aulas: [] })
+      await http.post('/api/calendario/eventos', adm.autorizacao, especial({ nome: 'Gala da Primavera', inicio: domingo, fim: domingo }))
+      const montagem = corpo<{ datas: { data: string; situacao: { eventos: string[] } }[] }>(
+        await http.get(`/api/classes/${amigo.id}/cronograma/montagem`, adm.autorizacao).expect(200),
+      )
+      expect(montagem.datas.find((d) => d.data === domingo)?.situacao.eventos).toEqual(['Gala da Primavera'])
+    })
+
+    it('GET devolve os campos a todos e o resumo da lista só ao Adm, só no evento especial', async () => {
+      const { clube, adm, instrutor, registro } = await comListaConcluida(3)
+      await criarPresencaEvento({ clubeId: clube.id, eventoId: registro.id, dbvId: (await criarDbv({ clubeId: clube.id })).id, foi: false })
+      const comum = await criarEvento({ clubeId: clube.id, tipo: 'EVENTO', inicio: dia(-2) })
+      const conselheiro = await criarAcesso({ clubeId: clube.id, papel: 'CONSELHEIRO' })
+      const ano = dia(-3).slice(0, 4)
+
+      const doAdm = corpo<Saida>(await http.get(`/api/calendario/eventos/${registro.id}`, adm.autorizacao).expect(200))
+      expect(doAdm).toMatchObject({ uniforme: 'GALA', pontosParticipacao: 20, pontosUniforme: 10, lista: { foram: 3, uniformizados: 2 } })
+      expect(doAdm.lista?.concluidaEm).toEqual(expect.any(String))
+      const noAno = corpo<Ano>(await http.get(`/api/calendario?ano=${ano}`, adm.autorizacao)).eventos
+      expect(noAno.find((e) => e.id === registro.id)?.lista).toMatchObject({ foram: 3, uniformizados: 2 })
+      expect(noAno.find((e) => e.id === comum.id)?.lista ?? null).toBeNull()
+
+      for (const acesso of [instrutor, conselheiro]) {
+        const lido = corpo<Saida>(await http.get(`/api/calendario/eventos/${registro.id}`, acesso.autorizacao).expect(200))
+        expect(lido).toMatchObject({ uniforme: 'GALA', pontosParticipacao: 20, pontosUniforme: 10 })
+        expect(lido).not.toHaveProperty('lista')
+        const lidoNoAno = corpo<Ano>(await http.get(`/api/calendario?ano=${ano}`, acesso.autorizacao)).eventos.find((e) => e.id === registro.id)
+        expect(lidoNoAno).toMatchObject({ pontosParticipacao: 20 })
+        expect(lidoNoAno).not.toHaveProperty('lista')
+      }
+    })
+
+    it('lista em rascunho aparece com concluidaEm nulo', async () => {
+      const { adm, registro } = await comListaConcluida(2, false)
+      const lido = corpo<Saida>(await http.get(`/api/calendario/eventos/${registro.id}`, adm.autorizacao).expect(200))
+      expect(lido.lista).toEqual({ concluidaEm: null, foram: 2, uniformizados: 1 })
+    })
+
+    it('evento de outro clube responde 404 na leitura, na edição e na exclusão, e não mexe nos pontos dele', async () => {
+      const outro = await comListaConcluida(2)
+      const { adm } = await cenario()
+      const antes = await lancamentosDo(outro.registro.id)
+      await http.get(`/api/calendario/eventos/${outro.registro.id}`, adm.autorizacao).expect(404)
+      expect((await editarEspecial(outro.registro.id, adm.autorizacao, { pontosParticipacao: 99 })).status).toBe(404)
+      expect((await apagar(`/api/calendario/eventos/${outro.registro.id}`, adm.autorizacao)).status).toBe(404)
+      expect(await lancamentosDo(outro.registro.id)).toEqual(antes)
+    })
+
+    describe('lista começada ou concluída', () => {
+      it('mudar o tipo com a lista começada ou concluída → REGRA, e nada muda', async () => {
+        const concluida = await comListaConcluida(2)
+        const resposta = await http.patch(`/api/calendario/eventos/${concluida.registro.id}`, concluida.adm.autorizacao, evento({ inicio: dia(-3), fim: dia(-3) }))
+        expect(regra(resposta)).toEqual({ status: 422, codigo: 'REGRA' })
+        expect(resposta.body).toMatchObject({ mensagem: 'O tipo não muda depois que a lista é começada.' })
+
+        const rascunho = await comListaConcluida(2, false)
+        const outra = await http.patch(`/api/calendario/eventos/${rascunho.registro.id}`, rascunho.adm.autorizacao, evento({ inicio: dia(-3), fim: dia(-3) }))
+        expect(regra(outra)).toEqual({ status: 422, codigo: 'REGRA' })
+        const linha = await prismaDeTeste().eventoCalendario.findUniqueOrThrow({ where: { id: rascunho.registro.id } })
+        expect(linha).toMatchObject({ tipo: 'EVENTO_ESPECIAL', uniforme: 'GALA', pontosParticipacao: 20 })
+      })
+
+      it('lista concluída sem nenhuma linha também trava o tipo', async () => {
+        const { clube, adm } = await cenario()
+        const vazio = await criarEvento({
+          clubeId: clube.id,
+          tipo: 'EVENTO_ESPECIAL',
+          inicio: dia(-3),
+          uniforme: 'CAMPO',
+          pontosParticipacao: 5,
+          pontosUniforme: 5,
+          listaConcluidaEm: new Date(),
+        })
+        const resposta = await http.patch(`/api/calendario/eventos/${vazio.id}`, adm.autorizacao, evento({ inicio: dia(-3), fim: dia(-3) }))
+        expect(regra(resposta)).toEqual({ status: 422, codigo: 'REGRA' })
+      })
+
+      it('mudar o início para o futuro com a lista começada ou concluída → REGRA; sem lista, ou para outro dia passado, passa', async () => {
+        for (const concluida of [true, false]) {
+          const cena = await comListaConcluida(2, concluida)
+          const futuro = await editarEspecial(cena.registro.id, cena.adm.autorizacao, { inicio: dia(5), fim: dia(5) })
+          expect(regra(futuro)).toEqual({ status: 422, codigo: 'REGRA' })
+          expect((futuro.body as { mensagem: string }).mensagem).toMatch(/^Esta data ainda não chegou e a lista deste evento já tem marcas/)
+          expect(futuro.body).toMatchObject({ campos: { inicio: expect.stringMatching(/^Esta data ainda não chegou/) as string } })
+          const linha = await prismaDeTeste().eventoCalendario.findUniqueOrThrow({ where: { id: cena.registro.id } })
+          expect(linha.inicio.toISOString().slice(0, 10)).toBe(dia(-3))
+
+          const passado = await editarEspecial(cena.registro.id, cena.adm.autorizacao, { inicio: dia(-4), fim: dia(-4) })
+          expect(passado.status).toBe(200)
+        }
+        const { adm } = await cenario()
+        const criado = corpo<Gravado>(await http.post('/api/calendario/eventos', adm.autorizacao, especial())).evento
+        const adiado = await http.patch(`/api/calendario/eventos/${criado.id}`, adm.autorizacao, especial({ inicio: dia(20), fim: dia(20) }))
+        expect(adiado.status).toBe(200)
+      })
+
+      it('mudar os pontos com a lista concluída estorna e relança todo mundo, na mesma gravação', async () => {
+        const { registro, adm, dbvs } = await comListaConcluida(3)
+        expect(somaDe(await ativosDo(registro.id))).toBe(80)
+
+        const resposta = await editarEspecial(registro.id, adm.autorizacao, { pontosParticipacao: 25 })
+
+        expect(resposta.status).toBe(200)
+        const ativos = await ativosDo(registro.id)
+        expect(somaDe(ativos)).toBe(95)
+        expect(new Set(ativos.map((l) => l.dbvId))).toEqual(new Set(dbvs.map((d) => d.id)))
+        const estornados = (await lancamentosDo(registro.id)).filter((l) => l.estornadoEm !== null)
+        expect(somaDe(estornados)).toBe(80)
+      })
+
+      it('mudar o dia com a lista concluída leva os lançamentos para o dia novo; renomear não mexe em nada', async () => {
+        const { registro, adm } = await comListaConcluida(2)
+        const antes = await lancamentosDo(registro.id)
+
+        await editarEspecial(registro.id, adm.autorizacao, { nome: 'Outro nome' }).expect(200)
+        expect(await lancamentosDo(registro.id)).toEqual(antes)
+
+        await editarEspecial(registro.id, adm.autorizacao, { inicio: dia(-4), fim: dia(-4) }).expect(200)
+        const ativos = await ativosDo(registro.id)
+        expect(ativos.length).toBeGreaterThan(0)
+        expect(ativos.every((l) => l.data.toISOString().slice(0, 10) === dia(-4))).toBe(true)
+      })
+
+      it('sem lista concluída, mudar os pontos não lança nada', async () => {
+        const { registro, adm } = await comListaConcluida(2, false)
+        await editarEspecial(registro.id, adm.autorizacao, { pontosParticipacao: 99 }).expect(200)
+        expect(await lancamentosDo(registro.id)).toEqual([])
+      })
+
+      it('refazer 60 pessoas cabe na transação (mede o tempo)', async () => {
+        const { registro, adm } = await comListaConcluida(60)
+        const inicio = Date.now()
+        const resposta = await editarEspecial(registro.id, adm.autorizacao, { pontosParticipacao: 25 })
+        const duracao = Date.now() - inicio
+        process.stdout.write(`[medida] refazer 60 pessoas: ${duracao} ms\n`)
+        expect(resposta.status).toBe(200)
+        expect(duracao).toBeLessThan(15_000)
+        expect(somaDe(await ativosDo(registro.id))).toBe(60 * 25 + 30 * 10)
+      }, 120_000)
+
+      it('apagar com a lista concluída estorna os pontos e guarda as linhas; sem lista, nada a estornar', async () => {
+        const { registro, adm, clube } = await comListaConcluida(3)
+        expect((await apagar(`/api/calendario/eventos/${registro.id}`, adm.autorizacao)).status).toBe(204)
+        expect(await ativosDo(registro.id)).toEqual([])
+        expect((await lancamentosDo(registro.id)).length).toBeGreaterThan(0)
+        expect(await prismaDeTeste().presencaEventoEspecial.count({ where: { clubeId: clube.id, eventoId: registro.id } })).toBe(3)
+
+        const rascunho = await comListaConcluida(2, false)
+        expect((await apagar(`/api/calendario/eventos/${rascunho.registro.id}`, rascunho.adm.autorizacao)).status).toBe(204)
+      })
+
+      it('trocar o uniforme com a lista concluída grava Atividade; começada, não; as marcas ficam como estavam', async () => {
+        const concluida = await comListaConcluida(2)
+        await editarEspecial(concluida.registro.id, concluida.adm.autorizacao, { uniforme: 'CAMPO' }).expect(200)
+        const atividades = await prismaDeTeste().atividade.findMany({
+          where: { clubeId: concluida.clube.id, link: `/adm/calendario/eventos/${concluida.registro.id}` },
+        })
+        expect(atividades).toHaveLength(1)
+        expect(atividades[0]?.descricao).toMatch(/gala/i)
+        expect(atividades[0]?.descricao).toMatch(/campo/i)
+        expect(somaDe(await ativosDo(concluida.registro.id))).toBe(50)
+
+        const rascunho = await comListaConcluida(2, false)
+        await editarEspecial(rascunho.registro.id, rascunho.adm.autorizacao, { uniforme: 'CAMPO' }).expect(200)
+        expect(await prismaDeTeste().atividade.count({ where: { clubeId: rascunho.clube.id } })).toBe(0)
+        const marcas = await prismaDeTeste().presencaEventoEspecial.findMany({ where: { eventoId: rascunho.registro.id } })
+        expect(marcas.filter((m) => m.comUniforme)).toHaveLength(1)
+      })
     })
   })
 })

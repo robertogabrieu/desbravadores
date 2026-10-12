@@ -8,11 +8,14 @@ import {
   criarAcesso,
   criarAlbum,
   criarClube,
+  credencialDeSubstituicao,
   criarDbv,
   criarEvento,
   criarMatricula,
   criarMembro,
+  criarPresencaEvento,
   criarReuniao,
+  criarSubstituicao,
   criarUnidade,
   desconectarPrismaDeTeste,
   prismaDeTeste,
@@ -214,6 +217,9 @@ describe('GET /api/sync/pacote', () => {
         temReuniao: extra.temReuniao,
         temClasse: extra.temClasse,
         bomParaCampo: extra.bomParaCampo,
+        uniforme: null,
+        pontosParticipacao: null,
+        pontosUniforme: null,
       })
       expect(pacote.calendario.map((evento) => evento.nome).sort()).toEqual(['Encontro', ferias.nome, noLimite.nome].sort())
     })
@@ -240,6 +246,77 @@ describe('GET /api/sync/pacote', () => {
         const pacote = await baixar(acesso.autorizacao)
         expect(pacote.calendario).toHaveLength(1)
       }
+    })
+
+    it('evento especial leva uniforme e pontos; os outros tipos levam null nos tres campos; a lista nunca vai', async () => {
+      const { clube, acesso } = await clubeComConselheiro()
+      const especial = await criarEvento({
+        clubeId: clube.id, tipo: 'EVENTO_ESPECIAL', inicio: emDias(5), uniforme: 'CAMPO', pontosParticipacao: 20, pontosUniforme: 0,
+      })
+      const comum = await criarEvento({ clubeId: clube.id, tipo: 'ACAMPAMENTO', inicio: emDias(6) })
+      const dbv = await criarDbv({ clubeId: clube.id })
+      await criarPresencaEvento({ clubeId: clube.id, eventoId: especial.id, dbvId: dbv.id })
+      await prismaDeTeste().eventoCalendario.update({ where: { id: especial.id }, data: { listaConcluidaEm: new Date() } })
+
+      const pacote = await baixar(acesso.autorizacao)
+
+      const doEspecial = pacote.calendario.find((evento) => evento.nome === especial.nome)
+      const doComum = pacote.calendario.find((evento) => evento.nome === comum.nome)
+      expect(doEspecial).toMatchObject({ tipo: 'EVENTO_ESPECIAL', uniforme: 'CAMPO', pontosParticipacao: 20, pontosUniforme: 0 })
+      expect(doComum).toMatchObject({ uniforme: null, pontosParticipacao: null, pontosUniforme: null })
+      for (const evento of pacote.calendario) expect(evento).not.toHaveProperty('lista')
+      expect(JSON.stringify(pacote)).not.toContain('"lista"')
+      expect(JSON.stringify(pacote)).not.toContain(dbv.id)
+    })
+
+    it('o substituto recebe uniforme e pontos e nunca a lista', async () => {
+      const { clube, unidade } = await clubeComConselheiro()
+      const especial = await criarEvento({
+        clubeId: clube.id, tipo: 'EVENTO_ESPECIAL', inicio: emDias(5), uniforme: 'GALA', pontosParticipacao: 20, pontosUniforme: 10,
+      })
+      const dbv = await criarDbv({ clubeId: clube.id })
+      await criarPresencaEvento({ clubeId: clube.id, eventoId: especial.id, dbvId: dbv.id })
+      const substituicao = await criarSubstituicao({ clubeId: clube.id, tipo: 'CHAMADA', unidadeId: unidade.id })
+
+      const pacote = await baixar(credencialDeSubstituicao(substituicao).autorizacao)
+
+      expect(pacote.calendario.find((evento) => evento.nome === especial.nome)).toMatchObject({ uniforme: 'GALA', pontosParticipacao: 20, pontosUniforme: 10 })
+      expect(JSON.stringify(pacote)).not.toContain('"lista"')
+      expect(JSON.stringify(pacote)).not.toContain(dbv.id)
+    })
+
+    it('tocar a lista nao muda a versao do pacote; mudar os pontos muda', async () => {
+      const { clube, acesso } = await clubeComConselheiro()
+      const especial = await criarEvento({
+        clubeId: clube.id, tipo: 'EVENTO_ESPECIAL', inicio: emDias(5), uniforme: 'GALA', pontosParticipacao: 20, pontosUniforme: 10,
+      })
+      const antes = await baixar(acesso.autorizacao)
+
+      const dbv = await criarDbv({ clubeId: clube.id })
+      await criarPresencaEvento({ clubeId: clube.id, eventoId: especial.id, dbvId: dbv.id, comUniforme: true })
+      await prismaDeTeste().eventoCalendario.update({ where: { id: especial.id }, data: { listaConcluidaEm: new Date() } })
+      const aposLista = await baixar(acesso.autorizacao)
+      expect(aposLista.versao).toBe(antes.versao)
+
+      await prismaDeTeste().eventoCalendario.update({ where: { id: especial.id }, data: { pontosParticipacao: 25 } })
+      expect((await baixar(acesso.autorizacao)).versao).not.toBe(antes.versao)
+    })
+
+    it('um pacote guardado antes da mudanca (sem os tres campos) continua valido no parse', async () => {
+      const { clube, acesso } = await clubeComConselheiro()
+      await criarEvento({ clubeId: clube.id, tipo: 'ACAMPAMENTO', inicio: emDias(6) })
+      const pacote = await baixar(acesso.autorizacao)
+      const comoEraAntes = (evento: Pacote['calendario'][number]): Record<string, unknown> => {
+        const velho: Record<string, unknown> = { ...evento }
+        for (const campo of ['uniforme', 'pontosParticipacao', 'pontosUniforme']) delete velho[campo]
+        return velho
+      }
+      const antigo = { ...pacote, calendario: pacote.calendario.map(comoEraAntes) }
+      for (const evento of antigo.calendario) expect(evento).not.toHaveProperty('uniforme')
+
+      const lido = PacoteSaida.parse(antigo)
+
+      expect(lido.calendario).toHaveLength(1)
     })
 
     it('versao muda quando o calendario muda', async () => {

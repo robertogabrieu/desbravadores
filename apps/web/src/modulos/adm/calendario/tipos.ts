@@ -1,4 +1,4 @@
-import { BookOpen, CalendarPlus, Sun } from 'lucide-react'
+import { BookOpen, CalendarDays, CalendarPlus, CalendarX, Flag, Sparkles, Sun, Tent } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { z } from 'zod'
 import type { TipoEvento } from '@desbravadores/shared'
@@ -9,11 +9,12 @@ export type TipoDeEvento = z.infer<typeof TipoEvento>
 /** Na ordem da legenda do calendário. */
 export const ROTULOS_DO_TIPO: Record<TipoDeEvento, string> = {
   REUNIAO_EXTRA: 'Reunião extra',
-  FERIAS: 'Férias',
-  ACAMPAMENTO: 'Acampamento / campo',
-  EVENTO: 'Evento do clube',
-  FERIADO: 'Feriado',
   SEM_REUNIAO: 'Sem reunião',
+  FERIAS: 'Férias',
+  FERIADO: 'Feriado',
+  EVENTO: 'Evento do clube',
+  EVENTO_ESPECIAL: 'Evento especial',
+  ACAMPAMENTO: 'Acampamento / campo',
   CLASSE_BIBLICA: 'Classe Bíblica',
 }
 
@@ -26,6 +27,7 @@ export const CORES_DO_TIPO: Record<TipoDeEvento, string> = {
   SEM_REUNIAO: 'bg-[var(--cal-sem-bg)] text-[var(--cal-sem-fg)]',
   ACAMPAMENTO: 'bg-[var(--cal-acamp-bg)] text-[var(--cal-acamp-fg)]',
   EVENTO: 'bg-[var(--cal-evento-bg)] text-[var(--cal-evento-fg)]',
+  EVENTO_ESPECIAL: 'bg-[var(--cal-especial-bg)] text-[var(--cal-especial-fg)]',
   FERIADO: 'bg-[var(--cal-feriado-bg)] text-[var(--cal-feriado-fg)]',
   CLASSE_BIBLICA: 'bg-[var(--cal-evento-bg)] text-[var(--cal-evento-fg)]',
 }
@@ -33,15 +35,33 @@ export const CORES_DO_TIPO: Record<TipoDeEvento, string> = {
 export const ICONE_DO_TIPO: Partial<Record<TipoDeEvento, LucideIcon>> = {
   REUNIAO_EXTRA: CalendarPlus,
   FERIAS: Sun,
+  EVENTO_ESPECIAL: Sparkles,
+  CLASSE_BIBLICA: BookOpen,
+}
+
+/** Ícone de cada tipo na escolha e no selo do formulário; o do calendário (`ICONE_DO_TIPO`) só marca os que precisam de sinal além da cor. */
+export const ICONE_DA_ESCOLHA: Record<TipoDeEvento, LucideIcon> = {
+  REUNIAO_EXTRA: CalendarPlus,
+  FERIAS: Sun,
+  ACAMPAMENTO: Tent,
+  EVENTO: CalendarDays,
+  EVENTO_ESPECIAL: Sparkles,
+  FERIADO: Flag,
+  SEM_REUNIAO: CalendarX,
   CLASSE_BIBLICA: BookOpen,
 }
 
 /** Texto de apoio sob o seletor de Tipo; `diaReuniao` ausente (configuração não carregada) cai em "dias de reunião". */
 export const TEXTO_DO_TIPO: Partial<Record<TipoDeEvento, (diaReuniao: number | undefined) => string>> = {
-  EVENTO: (diaReuniao) =>
-    `Evento do clube: a reunião acontece e não há classe, salvo se você marcar. Para um período sem reuniões, escolha Férias; para uma reunião fora ${dosDiasDeReuniao(diaReuniao).do}, Reunião extra.`,
+  EVENTO: () =>
+    'Evento do clube: só marca a data no calendário; não vale pontos nem tem lista de quem foi.',
+  EVENTO_ESPECIAL: () =>
+    'Evento especial: vale pontos no ranking, tem lista de quem foi e pede uniforme de gala ou de campo. A reunião e a classe do dia continuam, salvo se você desmarcar abaixo.',
   FERIAS: (diaReuniao) => `Férias: sem reunião e sem classe ${dosDiasDeReuniao(diaReuniao).nos} do período; acampamentos continuam valendo.`,
   REUNIAO_EXTRA: (diaReuniao) => `Reunião extra: uma data fora ${dosDiasDeReuniao(diaReuniao).do}, com chamada da unidade, classe ou as duas.`,
+  ACAMPAMENTO: () => 'Acampamento: um ou mais dias fora da sede, sem reunião; a classe só acontece como atividade de campo.',
+  FERIADO: () => 'Feriado: marca a data no calendário; a reunião e a classe do dia continuam, salvo se você desmarcar abaixo.',
+  SEM_REUNIAO: () => 'Sem reunião: o clube não se reúne nesses dias e não há classe nem atividade de campo.',
 }
 
 /** Ponto do dia na grade do celular, na cor forte do tipo; a reunião extra é um anel, para não se confundir com a regular. */
@@ -52,6 +72,7 @@ export const PONTO_DO_TIPO: Record<TipoDeEvento, string> = {
   SEM_REUNIAO: 'bg-[var(--cal-sem-fg)]',
   ACAMPAMENTO: 'bg-[var(--cal-acamp-fg)]',
   EVENTO: 'bg-[var(--cal-evento-fg)]',
+  EVENTO_ESPECIAL: 'bg-[var(--cal-especial-fg)]',
   FERIADO: 'bg-[var(--cal-feriado-fg)]',
   CLASSE_BIBLICA: 'bg-[var(--cal-evento-fg)]',
 }

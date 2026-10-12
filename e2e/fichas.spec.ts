@@ -144,8 +144,8 @@ test.describe('fichas e telas de edição do Adm', () => {
   test('Férias: criadas sem caixas pelo formulário, a ficha diz o que muda no calendário', async ({ page }) => {
     await clubeComAdm(page)
     await page.goto('/adm/calendario/eventos/novo')
+    await page.getByRole('link', { name: /^Férias/ }).click()
     await page.getByLabel('Nome', { exact: true }).fill('Férias de março E2E')
-    await page.getByLabel('Tipo').selectOption({ label: 'Férias' })
     await page.getByLabel('Início').fill(FERIAS_DE)
     await page.getByLabel('Fim').fill(FERIAS_ATE)
 
@@ -165,8 +165,8 @@ test.describe('fichas e telas de edição do Adm', () => {
   test('Reunião extra: criada com o campo Data e duas caixas, a ficha mostra o que ela acrescenta', async ({ page }) => {
     await clubeComAdm(page)
     await page.goto('/adm/calendario/eventos/novo')
+    await page.getByRole('link', { name: /^Reunião extra/ }).click()
     await page.getByLabel('Nome', { exact: true }).fill('Encontro extra E2E')
-    await page.getByLabel('Tipo').selectOption({ label: 'Reunião extra' })
 
     // A extra é de um dia só (campo Data) e nunca é de campo: sobram as duas caixas.
     await expect(page.getByLabel('Data', { exact: true })).toBeVisible()
@@ -295,7 +295,6 @@ test.describe('fichas e telas de edição do Adm', () => {
       await expect(p.getByRole('region', { name: /^Reuniões de/ }).getByText(/Nenhuma reunião em|presentes/)).toBeVisible()
     }
     const formularioComReuniaoExtra = async (p: Page) => {
-      await p.getByLabel('Tipo').selectOption({ label: 'Reunião extra' })
       await expect(p.getByLabel('Data', { exact: true })).toBeVisible()
     }
     const mesComFerias = (p: Page) => expect(p.getByRole('list', { name: /^Eventos de / }).getByRole('link', { name: ferias.nome })).toBeVisible()
@@ -320,7 +319,7 @@ test.describe('fichas e telas de edição do Adm', () => {
       { caminho: '/adm/calendario/eventos/novo' },
       { caminho: `/adm/calendario/eventos/${ferias.id}` },
       { caminho: `/adm/calendario/eventos/${extra.id}` },
-      { caminho: '/adm/calendario/eventos/novo', carregado: formularioComReuniaoExtra },
+      { caminho: '/adm/calendario/eventos/novo?tipo=REUNIAO_EXTRA', carregado: formularioComReuniaoExtra },
       { caminho: `/adm/calendario?mes=${MES_DO_EVENTO}`, carregado: mesComFerias },
       { caminho: `/adm/reunioes/${reuniao.id}` },
       { caminho: `/adm/reunioes/${reuniao.id}/chamada`, carregado: (p) => expect(salvarChamada(p)).toBeVisible() },
