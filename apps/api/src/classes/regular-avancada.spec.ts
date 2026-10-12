@@ -292,4 +292,53 @@ describe('regular e avançada andam juntas', () => {
       expect(editada.regular).toBeNull()
     })
   })
+
+  describe('desativar também forma par', () => {
+    const quemMonta = async (clubeId: string, classeId: string) =>
+      (await prismaDeTeste().classeClube.findUniqueOrThrow({ where: { clubeId_classeId: { clubeId, classeId } } })).quemMontaCronograma
+    const ligadas = async (vinculoId: string) =>
+      ordenar((await prismaDeTeste().vinculoClasse.findMany({ where: { vinculoId } })).map((ligacao) => ligacao.classeId))
+
+    async function comSegundaAvancada() {
+      const base = await cenario()
+      const oficial = await prismaDeTeste().classe.findUniqueOrThrow({ where: { id: base.avancada.id } })
+      const segunda = await prismaDeTeste().classe.create({
+        data: { clubeId: base.clube.id, origem: 'CLUBE', nome: 'Avançada B', tipo: 'AVANCADA', trilha: 'INDIVIDUAL', classeBaseId: base.regular.id, ordem: oficial.ordem + 100 },
+        select: { id: true },
+      })
+      return { ...base, segunda }
+    }
+
+    it('desativar a avançada A faz a B virar o par: vínculos completados e quem monta igualado à regular', async () => {
+      const { clube, adm, regular, avancada, segunda } = await comSegundaAvancada()
+      await prismaDeTeste().classeClube.create({ data: { clubeId: clube.id, classeId: segunda.id, quemMontaCronograma: 'INSTRUTOR' } })
+      const daRegular = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [regular.id] })
+      const soSegunda = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [segunda.id] })
+      expect(await quemMonta(clube.id, segunda.id)).toBe('INSTRUTOR')
+
+      await api.patch(`/api/classes/${avancada.id}`, adm.autorizacao, { ativa: false }).expect(200)
+
+      expect(await ligadas(daRegular.vinculo.id)).toEqual(ordenar([regular.id, segunda.id]))
+      expect(await ligadas(soSegunda.vinculo.id)).toEqual(ordenar([regular.id, segunda.id]))
+      expect(await quemMonta(clube.id, segunda.id)).toBe('ADM')
+    })
+
+    it('ativar e quem monta juntos na avançada que forma par: 400, mensagem do par e nada gravado', async () => {
+      const { clube, adm, avancada } = await cenario()
+      await api.patch(`/api/classes/${avancada.id}`, adm.autorizacao, { ativa: false }).expect(200)
+      const resposta = await api.patch(`/api/classes/${avancada.id}`, adm.autorizacao, { ativa: true, quemMontaCronograma: 'INSTRUTOR' }).expect(400)
+      expect(JSON.stringify(resposta.body)).toContain('Altere em Amigo: a avançada segue a regular.')
+      const linha = await prismaDeTeste().classeClube.findUniqueOrThrow({ where: { clubeId_classeId: { clubeId: clube.id, classeId: avancada.id } } })
+      expect(linha).toMatchObject({ ativa: false, quemMontaCronograma: 'ADM' })
+    })
+
+    it('ativar e quem monta juntos numa avançada que não forma par (regular desativada) grava os dois', async () => {
+      const { clube, adm, regular, avancada } = await cenario()
+      await api.patch(`/api/classes/${regular.id}`, adm.autorizacao, { ativa: false }).expect(200)
+      await api.patch(`/api/classes/${avancada.id}`, adm.autorizacao, { ativa: false }).expect(200)
+      await api.patch(`/api/classes/${avancada.id}`, adm.autorizacao, { ativa: true, quemMontaCronograma: 'INSTRUTOR' }).expect(200)
+      const linha = await prismaDeTeste().classeClube.findUniqueOrThrow({ where: { clubeId_classeId: { clubeId: clube.id, classeId: avancada.id } } })
+      expect(linha).toMatchObject({ ativa: true, quemMontaCronograma: 'INSTRUTOR' })
+    })
+  })
 })
