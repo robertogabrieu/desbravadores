@@ -6,7 +6,6 @@ import type request from 'supertest'
 import { criarAppDeTeste } from '../../test/app'
 import {
   chamadasDaReuniao,
-  configurarClube,
   criarAcesso,
   criarClube,
   criarDbv,
