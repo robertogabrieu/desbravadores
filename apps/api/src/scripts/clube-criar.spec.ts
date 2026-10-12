@@ -8,10 +8,9 @@ const CRITERIOS_ESPERADOS = [
   ['Pontualidade', 5, true, 'PONTUALIDADE', 'CONSELHEIRO', 2],
   ['Uniforme completo', 5, true, 'UNIFORME', 'CONSELHEIRO', 3],
   ['Bíblia', 3, true, 'BIBLIA', 'CONSELHEIRO', 4],
-  ['Lição/devocional', 3, false, 'LICAO', 'CONSELHEIRO', 5],
-  ['Requisito concluído', 4, true, 'REQUISITO', 'INSTRUTOR', 6],
+  ['Lição ou devocional em dia', 3, false, 'LICAO', 'CONSELHEIRO', 5],
+  ['Requisito de classe concluído', 4, true, 'REQUISITO', 'INSTRUTOR', 6],
   ['Especialidade concluída', 15, true, 'ESPECIALIDADE', 'INSTRUTOR', 7],
-  ['Participação em evento', 20, true, 'MANUAL', 'ADM', 8],
 ]
 
 describe('clube:criar (SPEC 5.2 e 5.4)', () => {
@@ -22,7 +21,7 @@ describe('clube:criar (SPEC 5.2 e 5.4)', () => {
   beforeEach(() => email.limpar())
   afterAll(async () => desconectarPrismaDeTeste())
 
-  it('cria clube, configuracao, 14 ClasseClube, 8 criterios e o Adm com vinculo ADM', async () => {
+  it('cria clube, configuracao, 14 ClasseClube, 7 criterios e o Adm com vinculo ADM', async () => {
     const s = sufixo()
     const resultado = await executarClubeCriar(
       prisma,
