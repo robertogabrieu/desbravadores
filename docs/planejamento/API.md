@@ -184,18 +184,18 @@ O link é conferido no banco a cada requisição: GET e HEAD valem até o fim da
 | `GET /classe-biblica/grupos/{grupoId}/frequencia` | Frequência do grupo (guarda no serviço, como o painel) | logado |
 | `GET /classe-biblica/encontros/{id}` · `POST .../remarcar` · `.../cancelar` · `.../desfazer-cancelamento` | Detalhe, remarcação, cancelamento com motivo e desfazer | `classebiblica.gerenciar` |
 | `GET /classe-biblica/encontros/{id}/grupos/{grupoId}/chamada` | Lista da chamada do grupo | `classebiblica.chamada` + escopo |
-| `GET` / `PATCH /classe-biblica/pontos` | Valor e "Contar" dos critérios `CLASSE_BIBLICA_PRESENCA` e `CLASSE_BIBLICA_PARTICIPACAO` | `ranking.configurar` |
 
 ## Ranking
 
 | Método e rota | O que faz | Permissão |
 |---|---|---|
 | `GET /ranking?periodo=MES\|TRIMESTRE\|ANO&unidadeId=` | Posições com pontos e variação | logado |
-| `GET /publico/{clubeSlug}/ranking?periodo=` | Igual, com `nomePublico`, sem ids, só se `rankingNoLogin` | **público** (limite de taxa) |
+| `GET /publico/{clubeSlug}/ranking?periodo=` | Igual, com `nomePublico`, sem ids (rota ainda não existe; o campo `rankingNoLogin` foi removido) | **público** (limite de taxa) |
 | `GET /ranking/unidades` | Média por DBV por unidade | logado |
 | `GET /ranking/criterios` · `PUT /ranking/criterios` | Lê e salva critérios (lista inteira) | ver: logado · salvar: `ranking.configurar` |
 | `POST /ranking/criterios` | Critério personalizado (gatilho MANUAL) | `ranking.configurar` |
-| `PATCH /clube/configuracao` (ranking) | Período, no login, por unidade, desconto por falta | `ranking.configurar` |
+| `GET /ranking/regras` | Regras fixas de pontuação (grupo, valor, ligada) e os eventos especiais com seus pontos | logado (recusa no serviço quem não é Adm) |
+| `PATCH /ranking/regras/{gatilho}` | Muda valor (inteiro de 0 a 1000) e liga/desliga; vale daqui em diante, desligar não estorna o que já foi ganho nas chamadas | `ranking.configurar` |
 | `POST /ranking/lancamentos` | Lançamento manual `{ criterioId, dbvIds[], data }` (**ainda sem rota**; a participação em evento especial tem a dela, em Calendário) | `ranking.lancar_manual` |
 | `DELETE /ranking/lancamentos/{id}` | Estorna lançamento manual (**ainda sem rota**) | `ranking.lancar_manual` |
 

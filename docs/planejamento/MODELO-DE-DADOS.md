@@ -17,10 +17,7 @@ ConfiguracaoClube(clubeId PK,
   inicioAnoClube: MM-DD = "02-01",               # quando começa o "ano do clube"
   limiarFrequenciaAlerta = 70,                   # vermelho abaixo disto
   limiarProgressoAlerta = 40,                    # laranja abaixo disto
-  metaFrequencia = 80,
-  rankingPeriodo: MES|TRIMESTRE|ANO = MES,
-  rankingNoLogin = true, rankingPorUnidade = true,
-  descontarFalta = false, pontosDescontoFalta = 0)
+  metaFrequencia = 80)       # sem colunas de ranking: período, "no login", "por unidade" e desconto por falta foram removidos
 
 Usuario(id, nome, email UNIQUE, senhaHash?, genero?: F|M,   # "Instrutora"/"Instrutor"
   status: CONVIDADO|ATIVO|INATIVO|SUBSTITUTO, ultimoAcessoEm)
@@ -262,7 +259,7 @@ ChamadaAlteracao(id, reuniaoId, dbvId, antes: json, depois: json,
 
 Frequência (função em `shared`): `presenças (PRESENTE+ATRASADO) ÷ reuniões realizadas da
 unidade no período em que o DBV era membro dela`. `FALTA_JUSTIFICADA` conta como falta na
-frequência, mas não sofre desconto de pontos. A chamada não guarda pontos.
+frequência, mas não perde pontos (o sistema não desconta pontos: `LancamentoPontos.pontos` nunca é negativo, garantido por CHECK no banco). A chamada não guarda pontos.
 
 ## Classe Bíblica
 
