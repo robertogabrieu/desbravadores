@@ -15,7 +15,6 @@ import type {
   GruposSaida,
   PacoteClasseBiblica,
   PainelSaida,
-  PontosCBSaida,
 } from '@desbravadores/shared'
 import { uuid } from './sessao'
 
@@ -32,7 +31,6 @@ type Chamada = z.infer<typeof ChamadaCBSaida>
 type EnvioSaida = z.infer<typeof ChamadaCBEnvioSaida>
 type Pacote = z.infer<typeof PacoteClasseBiblica>
 type DoRequisito = z.infer<typeof ClasseBiblicaDoRequisito>
-type Pontos = z.infer<typeof PontosCBSaida>
 
 /** Os números do modelo: Grupo Daniel (Águias 10, Leões 10, Gaviões 11), Grupo Ester (Falcões 9, Panteras 10), Tigres de fora. */
 export const EDICAO_CB_ID = uuid(5001)
@@ -293,16 +291,6 @@ export function criarClasseBiblicaDoRequisito(parcial: Partial<DoRequisito> = {}
   }
 }
 
-export function criarPontosCB(parcial: Partial<Pontos> = {}): Pontos {
-  return {
-    itens: [
-      { gatilho: 'CLASSE_BIBLICA_PRESENCA', nome: 'Presença na Classe Bíblica', pontos: 10, ativo: true },
-      { gatilho: 'CLASSE_BIBLICA_PARTICIPACAO', nome: 'Participou ativamente da Classe Bíblica', pontos: 5, ativo: true },
-    ],
-    ...parcial,
-  }
-}
-
 export function criarEnvioCBSaida(parcial: Partial<EnvioSaida> = {}): EnvioSaida {
   return { linhas: [], conflitos: [], ignorados: [], presentes: 0, participaram: 0, ...parcial }
 }
@@ -316,7 +304,6 @@ export interface DadosClasseBiblica {
   frequencia?: Frequencia
   encontro?: EncontroDetalhe
   chamada?: Chamada
-  pontos?: Pontos
   /** Chamado com o método, o caminho e o corpo (null sem corpo) de cada escrita. */
   aoGravar?: (metodo: string, caminho: string, corpo: unknown) => void
 }
@@ -377,12 +364,6 @@ export function handlersClasseBiblica(dados: DadosClasseBiblica = {}) {
         presentes: linhas.filter((linha) => linha.presente).length,
         participaram: linhas.filter((linha) => linha.presente && linha.participou).length,
       })
-    })),
-    http.get('/api/classe-biblica/pontos', () => HttpResponse.json(dados.pontos ?? criarPontosCB())),
-    http.patch('/api/classe-biblica/pontos', gravar('PATCH', (corpo) => {
-      const entrada = (corpo as { itens: { gatilho: string; pontos: number; ativo: boolean }[] }).itens
-      const atual = dados.pontos ?? criarPontosCB()
-      return { itens: atual.itens.map((item) => ({ ...item, ...entrada.find((novo) => novo.gatilho === item.gatilho) })) }
     })),
   ]
 }

@@ -9,8 +9,6 @@ const LinkHttps = z.url({ protocol: /^https$/, message: 'Use um link https://' }
 /** Derivada, nunca guardada: não terminada até a etapa 3; em andamento até o fim; encerrada depois. */
 export const SITUACOES_EDICAO_CB = ['NAO_TERMINADA', 'EM_ANDAMENTO', 'ENCERRADA'] as const
 export const SituacaoEdicaoCB = z.enum(SITUACOES_EDICAO_CB)
-export const GATILHOS_CB = ['CLASSE_BIBLICA_PRESENCA', 'CLASSE_BIBLICA_PARTICIPACAO'] as const
-export const GatilhoCB = z.enum(GATILHOS_CB)
 
 export const MaterialCB = z.object({
   titulo: z.string(),
@@ -248,16 +246,6 @@ export const ChamadaCBEnvioSaida = z.object({
   participaram: z.number().int(),
 })
 // PUT /sync/classe-biblica/encontros/:id/grupos/:grupoId → ChamadaCBEnvioSaida
-
-// ── Pontos ───────────────────────────────────────────────────────────────────
-
-export const PontosCBSaida = z.object({
-  itens: z.array(z.object({ gatilho: GatilhoCB, nome: z.string(), pontos: z.number().int(), ativo: z.boolean() })),
-})
-export const PontosCBEntrada = z.object({
-  itens: z.array(z.object({ gatilho: GatilhoCB, pontos: z.number().int().min(0).max(1000), ativo: z.boolean() }))
-    .min(1).max(2),
-})
 
 // ── Pacote de sync ───────────────────────────────────────────────────────────
 
