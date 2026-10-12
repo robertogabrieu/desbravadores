@@ -186,12 +186,16 @@ function registrarFalhaDeRede(falha: FalhaDeRede): void {
 
 const ehJson = (contentType: string | null): boolean => (contentType ?? '').toLowerCase().includes('json')
 
-/** Primeiros caracteres do corpo, só se a resposta não for JSON; a cópia deixa o corpo original para quem for lê-lo. */
-async function corpoInicialSeNaoJson(copia: Response): Promise<string | undefined> {
-  if (ehJson(copia.headers.get('content-type'))) return undefined
-  const texto = await copia.text().catch(() => '')
-  return texto.slice(0, TAMANHO_DO_CORPO_INICIAL)
-}
+const EMAIL = /[^\s@<>"'()]+@[^\s@<>"'()]+\.[^\s@<>"'()]+/g
+const SEQUENCIA_DE_TOKEN = /[A-Za-z0-9_-]{20,}/g
+const TAMANHO_DA_MENSAGEM_DO_FETCH = 120
+
+/** HTML de portal ou proxy pode ecoar a URL com token ou um e-mail: ambos saem antes de irem ao Sentry. */
+const mascararSegredos = (texto: string): string => texto.replace(EMAIL, ':email').replace(SEQUENCIA_DE_TOKEN, ':token')
+
+/** Corpo mascarado e cortado, só se a resposta não for JSON. */
+const corpoInicialSeNaoJson = (contentType: string | null, texto: string): string | undefined =>
+  ehJson(contentType) ? undefined : mascararSegredos(texto).slice(0, TAMANHO_DO_CORPO_INICIAL)
 
 interface CorpoLido {
   texto: string
@@ -208,6 +212,8 @@ async function lerCorpo(resposta: Response): Promise<CorpoLido> {
     return { texto, json: undefined }
   }
 }
+
+const mascararMensagemDoFetch = (mensagem: string): string => mascararSegredos(mensagem).slice(0, TAMANHO_DA_MENSAGEM_DO_FETCH)
 
 async function enviar(caminho: string, opcoes: OpcoesRequisicao): Promise<Response> {
   const cabecalhos: Record<string, string> = { ...opcoes.cabecalhos, Accept: 'application/json' }
@@ -230,7 +236,10 @@ async function enviar(caminho: string, opcoes: OpcoesRequisicao): Promise<Respon
         caminho,
         status: 0,
         origem: 'fetch-lancou',
-        erroDoFetch: causa instanceof Error ? { name: causa.name, message: causa.message } : { name: 'desconhecido', message: String(causa) },
+        erroDoFetch:
+          causa instanceof Error
+            ? { name: causa.name, message: mascararMensagemDoFetch(causa.message) }
+            : { name: 'desconhecido', message: mascararMensagemDoFetch(String(causa)) },
       })
     }
     ouvintes.aoFalhaDeRede?.()
@@ -255,8 +264,8 @@ export function erroDeResposta(status: number, corpo: unknown): ErroDaApi {
 }
 
 async function lerErro(resposta: Response, caminho: string, metodo: string): Promise<ErroDaApi> {
-  const copia = resposta.clone()
-  const corpo: unknown = await resposta.json().catch(() => null)
+  const { texto, json } = await lerCorpo(resposta)
+  const corpo = json ?? null
   const erro = erroDeResposta(resposta.status, corpo)
   if (erro.classe === 'REDE') {
     registrarFalhaDeRede({
@@ -265,7 +274,7 @@ async function lerErro(resposta: Response, caminho: string, metodo: string): Pro
       status: resposta.status,
       origem: 'erro-sem-corpo-padrao',
       contentType: resposta.headers.get('content-type'),
-      corpoInicial: await corpoInicialSeNaoJson(copia),
+      corpoInicial: corpoInicialSeNaoJson(resposta.headers.get('content-type'), texto),
     })
   }
   return erro
@@ -279,7 +288,7 @@ function erroForaDoContrato(resposta: Response, texto: string, caminho: string, 
     status: resposta.status,
     origem: 'fora-do-contrato',
     contentType: resposta.headers.get('content-type'),
-    corpoInicial: ehJson(resposta.headers.get('content-type')) ? undefined : texto.slice(0, TAMANHO_DO_CORPO_INICIAL),
+    corpoInicial: corpoInicialSeNaoJson(resposta.headers.get('content-type'), texto),
     issues,
   })
   return new ErroDaApi(resposta.status, { codigo: 'ERRO_INTERNO', mensagem: MENSAGEM_GENERICA }, 'REDE')

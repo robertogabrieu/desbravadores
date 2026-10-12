@@ -276,13 +276,54 @@ describe('diagnóstico de falha de rede no Sentry', () => {
   })
 
   it('4xx sem corpo padrão e não-JSON: leva content-type e só os primeiros 200 caracteres', async () => {
-    servidor.use(http.post('/api/coisa', () => new HttpResponse('<html>' + 'x'.repeat(500), { status: 403, headers: { 'Content-Type': 'text/html' } })))
+    servidor.use(http.post('/api/coisa', () => new HttpResponse('<html>' + 'x '.repeat(250), { status: 403, headers: { 'Content-Type': 'text/html' } })))
 
     await expect(requisitar('/api/coisa', Coisa, { metodo: 'POST' })).rejects.toMatchObject({ classe: 'REDE', status: 403 })
 
     const dados = extra()
     expect(dados).toMatchObject({ metodo: 'POST', status: 403, origem: 'erro-sem-corpo-padrao', contentType: 'text/html' })
     expect(String(dados['corpoInicial'])).toHaveLength(200)
+  })
+
+  it('4xx HTML: mascara token e e-mail no corpo inicial e continua REDE', async () => {
+    const token = 'A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8S9t0UvW'
+    const html = `<a href="/login?orig=https://app/api/acesso/${token}">ana@igreja.org</a>`
+    servidor.use(http.get('/api/coisa', () => new HttpResponse(html, { status: 403, headers: { 'Content-Type': 'text/html' } })))
+
+    await expect(requisitar('/api/coisa', Coisa)).rejects.toMatchObject({ classe: 'REDE', status: 403 })
+
+    const corpo = String(extra()['corpoInicial'])
+    expect(corpo).toContain('/api/acesso/:token')
+    expect(corpo).toContain(':email')
+    expect(corpo).not.toContain(token)
+    expect(corpo).not.toContain('ana@igreja.org')
+  })
+
+  it('4xx com corpo padrão continua RECUSA com a mensagem da API', async () => {
+    servidor.use(http.get('/api/coisa', () => HttpResponse.json({ codigo: 'NAO_ENCONTRADO', mensagem: 'Sumiu' }, { status: 404 })))
+
+    await expect(requisitar('/api/coisa', Coisa)).rejects.toMatchObject({ classe: 'RECUSA', status: 404, erro: { codigo: 'NAO_ENCONTRADO', mensagem: 'Sumiu' } })
+  })
+
+  it('2xx não-JSON (requisitarCru): mascara token e e-mail no corpo inicial', async () => {
+    const token = 'A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8S9t0UvW'
+    servidor.use(http.get('/api/coisa', () => new HttpResponse(`<p>/api/acesso/${token} ana@igreja.org</p>`, { headers: { 'Content-Type': 'text/html' } })))
+
+    await expect(requisitarCru('/api/coisa')).rejects.toMatchObject({ classe: 'REDE' })
+
+    expect(extra()['corpoInicial']).toBe('<p>/api/acesso/:token :email</p>')
+  })
+
+  it('mensagem do fetch: mascara token e e-mail e corta em 120 caracteres', async () => {
+    const token = 'A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8S9t0UvW'
+    servidor.use(http.get('/api/coisa', () => HttpResponse.error()))
+    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new TypeError(`falhou ${token} ana@igreja.org ` + 'palavra '.repeat(40)))
+
+    await requisitar('/api/coisa', Coisa).catch(() => undefined)
+
+    const mensagem = String((extra()['erroDoFetch'] as { message: string }).message)
+    expect(mensagem).toHaveLength(120)
+    expect(mensagem.startsWith('falhou :token :email palavra')).toBe(true)
   })
 
   it('erro com corpo padrão (recusa) não é registrado', async () => {
