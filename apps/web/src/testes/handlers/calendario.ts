@@ -20,6 +20,20 @@ export function criarEvento(n: number, parcial: Partial<EventoCalendario> = {}):
   }
 }
 
+/** Evento especial de gala, 20 + 10 pontos, ainda sem lista: o ponto de partida dos testes da lista e da ficha. */
+export function criarEventoEspecial(n: number, parcial: Partial<EventoCalendario> = {}): EventoCalendario {
+  return criarEvento(n, {
+    nome: `Culto ${n}`,
+    tipo: 'EVENTO_ESPECIAL',
+    temClasse: true,
+    uniforme: 'GALA',
+    pontosParticipacao: 20,
+    pontosUniforme: 10,
+    lista: null,
+    ...parcial,
+  })
+}
+
 export function criarAulaAfetada(n: number, parcial: Partial<AulaAfetada> = {}): AulaAfetada {
   return {
     aulaId: uuid(850 + n),

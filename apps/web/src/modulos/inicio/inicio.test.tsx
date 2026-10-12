@@ -588,3 +588,34 @@ describe('cartão da Classe Bíblica no início do conselheiro', () => {
     expect(await screen.findByRole('link', { name: 'Fazer a chamada do Grupo Daniel' })).toHaveAttribute('href', linkDaniel)
   })
 })
+
+describe('cartão "Próximo evento" no início do conselheiro', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  const GALA = {
+    nome: 'Culto de Investidura', tipo: 'EVENTO_ESPECIAL' as const, inicio: '2026-10-31', fim: '2026-10-31', horario: '18:30', local: 'Igreja Central',
+    temReuniao: true, temClasse: false, bomParaCampo: false, uniforme: 'GALA' as const, pontosParticipacao: 20, pontosUniforme: 10,
+  }
+
+  it('aparece ao lado do cartão da Classe Bíblica, com o próximo evento do pacote', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-11T15:00:00Z'))
+    offline.pacote = criarPacote({ calendario: [GALA], classeBiblica: criarPacoteClasseBiblica() })
+    servidor.use(...handlersSessao([CONSELHEIRO], undefined, ['classebiblica.chamada']), handlerInicioConselheiro())
+    renderizarRotas(rotasInicio, '/inicio')
+    const cartao = await screen.findByRole('region', { name: 'Próximo evento' })
+    expect(within(cartao).getByText('Culto de Investidura')).toBeInTheDocument()
+    expect(within(cartao).getByRole('link', { name: 'Ver o calendário' })).toHaveAttribute('href', '/calendario')
+    expect(screen.getByRole('region', { name: 'Classe Bíblica · domingo 11/10' })).toBeInTheDocument()
+  })
+
+  it('sem evento à vista no pacote, o cartão não aparece', async () => {
+    offline.pacote = criarPacote({ calendario: [] })
+    servidor.use(...handlersSessao([CONSELHEIRO]), handlerInicioConselheiro())
+    renderizarRotas(rotasInicio, '/inicio')
+    await screen.findByText('DBVs na unidade')
+    expect(screen.queryByRole('region', { name: 'Próximo evento' })).not.toBeInTheDocument()
+  })
+})

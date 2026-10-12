@@ -107,6 +107,9 @@ export class SyncService {
       temReuniao: evento.temReuniao,
       temClasse: evento.temClasse,
       bomParaCampo: evento.bomParaCampo,
+      uniforme: evento.uniforme,
+      pontosParticipacao: evento.pontosParticipacao,
+      pontosUniforme: evento.pontosUniforme,
     }))
   }
 

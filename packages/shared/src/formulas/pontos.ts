@@ -11,6 +11,11 @@ export type GatilhoCriterio =
   | 'MANUAL'
   | 'CLASSE_BIBLICA_PRESENCA'
   | 'CLASSE_BIBLICA_PARTICIPACAO'
+  | 'EVENTO_ESPECIAL_PARTICIPACAO'
+  | 'EVENTO_ESPECIAL_UNIFORME'
+
+/** Os dois critérios que carregam os pontos de um evento especial; o valor vem do evento, não do critério. */
+export const GATILHOS_DO_EVENTO = ['EVENTO_ESPECIAL_PARTICIPACAO', 'EVENTO_ESPECIAL_UNIFORME'] as const
 
 export interface Criterio {
   gatilho: GatilhoCriterio

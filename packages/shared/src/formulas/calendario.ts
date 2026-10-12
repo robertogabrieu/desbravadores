@@ -1,6 +1,6 @@
 import type { z } from 'zod'
 import type { SITUACOES_AULA, SituacaoData } from '../contratos/cronograma'
-import type { TipoEvento, Trilha } from '../enums'
+import type { TipoEvento, Trilha, UniformeEvento } from '../enums'
 
 export type SituacaoDeData = z.infer<typeof SituacaoData>
 export type ExtraDaData = NonNullable<SituacaoDeData['extra']>
@@ -17,6 +17,10 @@ export interface EventoDoCalendario {
   temReuniao: boolean
   temClasse: boolean
   bomParaCampo: boolean
+  /** Do evento especial; nulos (ou ausentes) nos outros tipos. */
+  uniforme?: z.infer<typeof UniformeEvento> | null
+  pontosParticipacao?: number | null
+  pontosUniforme?: number | null
   removido?: boolean
 }
 
@@ -180,13 +184,20 @@ export function horarioELocalDoDia(situacao: Pick<SituacaoDeData, 'extra'>, padr
 }
 
 export interface ProblemaDeEvento {
-  campo: 'fim' | 'temReuniao'
+  campo: 'fim' | 'temReuniao' | 'uniforme' | 'pontosParticipacao' | 'pontosUniforme'
   mensagem: string
+}
+
+const PONTOS_MAXIMO_DO_EVENTO = 1000
+
+function pontosValidos(pontos: number | null | undefined): boolean {
+  return typeof pontos === 'number' && Number.isInteger(pontos) && pontos >= 0 && pontos <= PONTOS_MAXIMO_DO_EVENTO
 }
 
 /** Roda DEPOIS do padrão do tipo (API e formulário). "Duas extras na data" é da API, dentro da transação. */
 export function validarEvento(
-  entrada: Pick<EventoDoCalendario, 'tipo' | 'inicio' | 'fim' | 'temReuniao' | 'temClasse'>,
+  entrada: Pick<EventoDoCalendario, 'tipo' | 'inicio' | 'fim' | 'temReuniao' | 'temClasse'>
+    & Pick<EventoDoCalendario, 'uniforme' | 'pontosParticipacao' | 'pontosUniforme'>,
 ): ProblemaDeEvento[] {
   const problemas: ProblemaDeEvento[] = []
   if (entrada.fim < entrada.inicio) problemas.push({ campo: 'fim', mensagem: 'O fim não pode ser antes do início' })
@@ -196,5 +207,44 @@ export function validarEvento(
   if (entrada.tipo === 'REUNIAO_EXTRA' && !entrada.temReuniao && !entrada.temClasse) {
     problemas.push({ campo: 'temReuniao', mensagem: 'Marque Terá reunião, Terá classe ou as duas.' })
   }
+  // Fora do evento especial os três campos são descartados por quem grava: aqui não são conferidos.
+  if (entrada.tipo === 'EVENTO_ESPECIAL') {
+    if (!entrada.uniforme) problemas.push({ campo: 'uniforme', mensagem: 'Escolha o uniforme do evento.' })
+    if (entrada.pontosParticipacao == null) {
+      problemas.push({ campo: 'pontosParticipacao', mensagem: 'Informe os pontos de quem for ao evento. Pode ser 0.' })
+    } else if (!pontosValidos(entrada.pontosParticipacao)) {
+      problemas.push({ campo: 'pontosParticipacao', mensagem: 'Use um número inteiro de 0 a 1000' })
+    }
+    if (entrada.pontosUniforme == null) {
+      problemas.push({ campo: 'pontosUniforme', mensagem: 'Informe os pontos de quem for com o uniforme. Pode ser 0.' })
+    } else if (!pontosValidos(entrada.pontosUniforme)) {
+      problemas.push({ campo: 'pontosUniforme', mensagem: 'Use um número inteiro de 0 a 1000' })
+    }
+  }
   return problemas
+}
+
+/** Quantos dias depois do fim um evento especial sem lista ainda cobra o registro de quem foi. */
+export const DIAS_DE_COBRANCA_DA_LISTA = 60
+
+/** O que a cobrança da lista precisa do evento; `lista` é o resumo que o `EventoSaida` traz ao Adm. */
+export interface EventoParaPendencia {
+  tipo: EventoDoCalendario['tipo']
+  fim: string
+  pontosParticipacao?: number | null
+  pontosUniforme?: number | null
+  lista?: { concluidaEm: string | null } | null
+}
+
+/**
+ * "Falta registrar quem foi": o evento especial já terminou (`fim` antes de hoje), terminou há no máximo
+ * 60 dias, vale pontos (a soma dos dois é maior que 0) e a lista não foi concluída. Uma regra só, para a
+ * Visão geral da API e para as telas.
+ */
+export function pendenciaDeLista(evento: EventoParaPendencia, hoje: string): boolean {
+  if (evento.tipo !== 'EVENTO_ESPECIAL') return false
+  if (evento.lista?.concluidaEm) return false
+  if (evento.fim >= hoje) return false
+  if (evento.fim < somarDias(hoje, -DIAS_DE_COBRANCA_DA_LISTA)) return false
+  return (evento.pontosParticipacao ?? 0) + (evento.pontosUniforme ?? 0) > 0
 }

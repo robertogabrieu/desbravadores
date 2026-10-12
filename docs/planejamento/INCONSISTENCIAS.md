@@ -36,7 +36,7 @@ contagem vem do banco, nenhuma é digitada**.
 | 4 | Notificações (lista do sino) | O sino existe no Início, sem destino |
 | 5 | Detalhe da reunião / correção da chamada | O histórico não abre nada |
 | 6 | Visualizar foto em tela cheia e enviar fotos (câmera, marcar quem aparece) | Botões sem comportamento |
-| 7 | Lançamento manual de pontos (critério do Adm, ex.: evento) | O critério existe e ninguém lança |
+| 7 | Lançamento manual de pontos (critério do Adm, ex.: evento) | O critério existe e ninguém lança. Só a participação em evento especial tem tela (lista "Quem foi"); o lançamento manual avulso segue sem tela |
 | 8 | Novo desbravador, novo usuário, nova unidade, editar/excluir evento, editar requisito | Os botões existem sem formulário |
 | 9 | Montar cronograma na visão do instrutor liberado (sem o menu e os controles do Adm) | A tela atual é do Adm |
 | 10 | Marcar requisito fora da aula (no perfil do DBV) | Reposição e atividade em casa |

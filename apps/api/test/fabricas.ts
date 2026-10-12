@@ -42,6 +42,7 @@ import type {
   TipoNotificacao,
   MatriculaClasse,
   Papel,
+  PresencaEventoEspecial,
   Sexo,
   StatusMatricula,
   StatusUsuario,
@@ -50,6 +51,7 @@ import type {
   TipoPessoa,
   TipoUnidade,
   Trilha,
+  UniformeEvento,
   Unidade,
   Usuario,
   Vinculo,
@@ -508,6 +510,11 @@ export async function criarEvento(dados: {
   inicio: string
   fim?: string
   marcacoes?: Partial<Marcacoes>
+  /** Do evento especial. */
+  uniforme?: UniformeEvento | null
+  pontosParticipacao?: number | null
+  pontosUniforme?: number | null
+  listaConcluidaEm?: Date | null
 }): Promise<EventoCalendario> {
   return prismaDeTeste().eventoCalendario.create({
     data: {
@@ -518,7 +525,33 @@ export async function criarEvento(dados: {
       fim: dataCivil(dados.fim ?? dados.inicio),
       ...MARCACOES_PADRAO[dados.tipo],
       ...dados.marcacoes,
+      uniforme: dados.uniforme ?? null,
+      pontosParticipacao: dados.pontosParticipacao ?? null,
+      pontosUniforme: dados.pontosUniforme ?? null,
+      listaConcluidaEm: dados.listaConcluidaEm ?? null,
       criadoPorId: (await criarUsuario()).id,
+    },
+  })
+}
+
+/** Linha da lista de um evento especial (sem mexer em pontos); `alteradaPorId` padrão: um usuário novo. */
+export async function criarPresencaEvento(dados: {
+  clubeId: string
+  eventoId: string
+  dbvId: string
+  foi?: boolean
+  comUniforme?: boolean
+  alteradaPorId?: string
+}): Promise<PresencaEventoEspecial> {
+  const foi = dados.foi ?? true
+  return prismaDeTeste().presencaEventoEspecial.create({
+    data: {
+      clubeId: dados.clubeId,
+      eventoId: dados.eventoId,
+      dbvId: dados.dbvId,
+      foi,
+      comUniforme: foi && (dados.comUniforme ?? false),
+      alteradaPorId: dados.alteradaPorId ?? (await criarUsuario()).id,
     },
   })
 }

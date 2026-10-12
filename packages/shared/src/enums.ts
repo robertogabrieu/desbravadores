@@ -34,8 +34,11 @@ export const MesCivil = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Mês invál
 export const Horario = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Horário inválido')
 
 // Fases 2 e 3
-export const TIPOS_EVENTO = ['SEM_REUNIAO', 'ACAMPAMENTO', 'EVENTO', 'FERIADO', 'FERIAS', 'REUNIAO_EXTRA', 'CLASSE_BIBLICA'] as const
+export const TIPOS_EVENTO = ['SEM_REUNIAO', 'ACAMPAMENTO', 'EVENTO', 'EVENTO_ESPECIAL', 'FERIADO', 'FERIAS', 'REUNIAO_EXTRA', 'CLASSE_BIBLICA'] as const
 export const TipoEvento = z.enum(TIPOS_EVENTO)
+/** Uniforme que o evento especial pede: toda lista de presença tem a marca "com o uniforme". */
+export const UNIFORMES_EVENTO = ['GALA', 'CAMPO'] as const
+export const UniformeEvento = z.enum(UNIFORMES_EVENTO)
 export const STATUS_CRONOGRAMA = ['RASCUNHO', 'ENVIADO', 'PUBLICADO'] as const
 export const StatusCronograma = z.enum(STATUS_CRONOGRAMA)
 export const ALVOS_OBSERVACAO = ['AULA', 'DBV'] as const
@@ -57,6 +60,8 @@ export const TipoNotificacao = z.enum(TIPOS_NOTIFICACAO)
 export const MARCACOES_PADRAO = {
   SEM_REUNIAO: { temReuniao: false, temClasse: false, bomParaCampo: false },
   EVENTO: { temReuniao: true, temClasse: false, bomParaCampo: false },
+  // Neutras nas três contas do dia, como a Classe Bíblica; o Adm pode desmarcar a reunião ou a classe
+  EVENTO_ESPECIAL: { temReuniao: true, temClasse: true, bomParaCampo: false },
   ACAMPAMENTO: { temReuniao: false, temClasse: true, bomParaCampo: true },
   FERIADO: { temReuniao: true, temClasse: true, bomParaCampo: false },
   FERIAS: { temReuniao: false, temClasse: true, bomParaCampo: false },

@@ -3,8 +3,10 @@ import {
   anoClube,
   frequencia,
   hojeNoFuso,
+  DIAS_DE_COBRANCA_DA_LISTA,
   mediaTurma,
   nomeDoPar,
+  pendenciaDeLista,
   percentualClasse,
   type SituacaoChamada,
   type VisaoGeralSaida,
@@ -89,13 +91,14 @@ export class VisaoGeralService {
     const configuracao = await this.prisma.configuracaoClube.findUniqueOrThrow({ where: { clubeId } })
     const periodos = calcularPeriodos(hojeNoFuso(configuracao.fuso, new Date()), configuracao.inicioAnoClube)
 
-    const [numeros, chamadas, classes, unidades, cronogramasEnviados, atividades] = await Promise.all([
+    const [numeros, chamadas, classes, unidades, cronogramasEnviados, atividades, eventosSemLista] = await Promise.all([
       this.numerosDoClube(clubeId, periodos),
       this.chamadasDosDoisMeses(clubeId, periodos),
       this.progressoDasClasses(clubeId, periodos.anoClube),
       this.resumoDasUnidades(clubeId),
       this.cronogramasAguardando(clubeId),
       this.atividadeRecente(clubeId),
+      this.eventosSemLista(clubeId, periodos.hoje),
     ])
 
     const doMes = chamadas.filter((linha) => linha.data >= periodos.inicioDoMes)
@@ -120,7 +123,22 @@ export class VisaoGeralService {
       })),
       cronogramasEnviados,
       atividades,
+      eventosSemLista,
     }
+  }
+
+  /** Eventos especiais que terminaram, valem pontos e seguem sem lista concluída; a regra é `pendenciaDeLista`. */
+  private async eventosSemLista(clubeId: string, hoje: string): Promise<Visao['eventosSemLista']> {
+    const maisAntigoQueCobra = new Date(daDataCivil(hoje).getTime() - DIAS_DE_COBRANCA_DA_LISTA * 86_400_000)
+    const candidatos = await this.prisma.eventoCalendario.findMany({
+      where: { clubeId, removidoEm: null, tipo: 'EVENTO_ESPECIAL', listaConcluidaEm: null, fim: { gte: maisAntigoQueCobra } },
+      select: { id: true, nome: true, tipo: true, inicio: true, fim: true, pontosParticipacao: true, pontosUniforme: true },
+      orderBy: [{ inicio: 'asc' }, { id: 'asc' }],
+    })
+    return candidatos
+      .map((evento) => ({ ...evento, inicio: paraDataCivil(evento.inicio), fim: paraDataCivil(evento.fim) }))
+      .filter((evento) => pendenciaDeLista(evento, hoje))
+      .map((evento) => ({ eventoId: evento.id, nome: evento.nome, inicio: evento.inicio, fim: evento.fim }))
   }
 
   private async numerosDoClube(clubeId: string, periodos: Periodos) {

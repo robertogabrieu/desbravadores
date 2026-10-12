@@ -99,6 +99,9 @@ Convenções: listas paginadas com `?pagina=&porPagina=`; datas em `YYYY-MM-DD`;
 | `GET /calendario?ano=` | Eventos + dias de reunião (domingos implícitos e reuniões extras), já resolvidos | logado |
 | `POST /calendario/eventos` | Cria; responde com as aulas em conflito e dispara notificações | `calendario.gerenciar` |
 | `GET /calendario/eventos/{id}` | Um evento do clube (404 se removido ou de outro clube) | logado |
+| `GET /calendario/eventos/{id}/presenca` | Lista "Quem foi" do evento especial: unidades com `foi` e `comUniforme`, resumo, `aberta` (só no dia do início ou depois) e `listaConcluidaEm`; 404 se o evento não é especial | `ranking.lancar_manual` |
+| `PUT /calendario/eventos/{id}/presenca` | `{ marcas: [{ dbvId, foi?, comUniforme? }] }`; grava só o que mudou, tudo ou nada; lista concluída acerta os pontos na hora | `ranking.lancar_manual` |
+| `POST /calendario/eventos/{id}/presenca/concluir` | `{ foram, uniformizados }` (os totais vistos; divergência → 422); lança participação e uniforme, uma vez | `ranking.lancar_manual` |
 | `PATCH` / `DELETE /calendario/eventos/{id}` | Edita / exclui; idem conflitos. Evento `CLASSE_BIBLICA` (criado só pela edição da Classe Bíblica) não se cria, edita nem exclui aqui: 422 "Este encontro é da Classe Bíblica: remarque ou cancele pela edição." | `calendario.gerenciar` |
 | `GET /calendario/proxima-reuniao?unidadeId=` | Data, hora e local da próxima reunião (card do Início) | logado |
 
@@ -193,8 +196,8 @@ O link é conferido no banco a cada requisição: GET e HEAD valem até o fim da
 | `GET /ranking/criterios` · `PUT /ranking/criterios` | Lê e salva critérios (lista inteira) | ver: logado · salvar: `ranking.configurar` |
 | `POST /ranking/criterios` | Critério personalizado (gatilho MANUAL) | `ranking.configurar` |
 | `PATCH /clube/configuracao` (ranking) | Período, no login, por unidade, desconto por falta | `ranking.configurar` |
-| `POST /ranking/lancamentos` | Lançamento manual `{ criterioId, dbvIds[], data }` (ex.: participação em evento) | `ranking.lancar_manual` |
-| `DELETE /ranking/lancamentos/{id}` | Estorna lançamento manual | `ranking.lancar_manual` |
+| `POST /ranking/lancamentos` | Lançamento manual `{ criterioId, dbvIds[], data }` (**ainda sem rota**; a participação em evento especial tem a dela, em Calendário) | `ranking.lancar_manual` |
+| `DELETE /ranking/lancamentos/{id}` | Estorna lançamento manual (**ainda sem rota**) | `ranking.lancar_manual` |
 
 ## Mídia
 
