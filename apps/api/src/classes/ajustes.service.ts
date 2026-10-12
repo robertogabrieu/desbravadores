@@ -4,16 +4,14 @@ import { anoClube, hojeNoFuso } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
-import type { Prisma } from '../generated/prisma/client.js'
+import type { Prisma, QuemMonta } from '../generated/prisma/client.js'
 import { ServicoMontagem } from '../cronogramas/montagem/servico-montagem'
 import { ClassesService } from './classes.service'
-import { completarVinculosDoPar, igualarQuemMontaDoPar, temParAtivo } from './par-regular-avancada'
+import { avancadaPareadaDe, completarVinculosDoPar, igualarQuemMontaDoPar, temParAtivo } from './par-regular-avancada'
 
 type Detalhe = z.infer<typeof ClasseDetalheSaida>
 
 const CLASSE_NAO_ENCONTRADA = 'Classe não encontrada.'
-
-const mensagemAvancadaSegueRegular = (regular: string) => `Altere em ${regular}: a avançada segue a regular.`
 
 @Injectable()
 export class AjustesService {
@@ -31,7 +29,7 @@ export class AjustesService {
     })
     if (!classe) throw new ErroApp('NAO_ENCONTRADO', CLASSE_NAO_ENCONTRADA)
     if (entrada.quemMontaCronograma !== undefined && classe.classeBase && (await temParAtivo(this.prisma, clubeId, classe.id))) {
-      throw new ErroApp('VALIDACAO', mensagemAvancadaSegueRegular(classe.classeBase.nome))
+      throw new ErroApp('VALIDACAO', `Altere em ${classe.classeBase.nome}: a avançada segue a regular.`)
     }
 
     if (entrada.ativa === false) await this.exigirSemMatriculaCursando(clubeId, classe)
@@ -42,27 +40,40 @@ export class AjustesService {
         create: { clubeId, classeId, ativa: entrada.ativa ?? true, quemMontaCronograma: entrada.quemMontaCronograma ?? 'ADM' },
         update: { ativa: entrada.ativa, quemMontaCronograma: entrada.quemMontaCronograma },
       })
-      // Ativar e desativar mexem em quem forma o par: a avançada de menor ordem que sobra passa a ser a pareada.
-      const mudouAtiva = entrada.ativa !== undefined
-      if (mudouAtiva || entrada.quemMontaCronograma !== undefined) {
-        if (entrada.ativa === true && entrada.quemMontaCronograma !== undefined && classe.classeBase && (await temParAtivo(tx, clubeId, classeId))) {
-          throw new ErroApp('VALIDACAO', mensagemAvancadaSegueRegular(classe.classeBase.nome))
-        }
+      if (entrada.ativa === true) {
         const classesDoPar = await this.classesDoPar(tx, clubeId, classeId)
-        if (mudouAtiva) await completarVinculosDoPar(tx, clubeId, classesDoPar)
+        await completarVinculosDoPar(tx, clubeId, classesDoPar)
         await igualarQuemMontaDoPar(tx, clubeId, classesDoPar)
       }
+      if (entrada.quemMontaCronograma !== undefined) await this.repassarQuemMontaParaAvancada(tx, clubeId, classeId, entrada.quemMontaCronograma)
     })
     return this.classes.detalhar(clubeId, classeId)
   }
 
-  /** A classe, a regular dela e todas as avançadas dessa regular: ativar ou desativar uma classe muda quem forma par. */
+  /** A classe, a regular dela e as avançadas dela: ativar a classe pode formar par com qualquer uma. */
   private async classesDoPar(tx: Prisma.TransactionClient, clubeId: string, classeId: string): Promise<string[]> {
     const daqui = [{ clubeId: null }, { clubeId }]
-    const classe = await tx.classe.findFirstOrThrow({ where: { id: classeId, OR: daqui }, select: { classeBaseId: true } })
-    const regularId = classe.classeBaseId ?? classeId
-    const avancadas = await tx.classe.findMany({ where: { classeBaseId: regularId, OR: daqui }, select: { id: true } })
-    return [...new Set([classeId, regularId, ...avancadas.map((avancada) => avancada.id)])]
+    const classe = await tx.classe.findFirstOrThrow({
+      where: { id: classeId, OR: daqui },
+      select: { classeBaseId: true, avancadas: { where: { OR: daqui }, select: { id: true } } },
+    })
+    return [classeId, ...(classe.classeBaseId ? [classe.classeBaseId] : []), ...classe.avancadas.map((avancada) => avancada.id)]
+  }
+
+  /** A avançada pareada segue a regular em quem monta; sem par, a avançada guarda o próprio valor. `ativa` continua de cada uma. */
+  private async repassarQuemMontaParaAvancada(
+    tx: Prisma.TransactionClient,
+    clubeId: string,
+    regularId: string,
+    quemMontaCronograma: QuemMonta,
+  ): Promise<void> {
+    const avancada = await avancadaPareadaDe(tx, clubeId, regularId)
+    if (!avancada) return
+    await tx.classeClube.upsert({
+      where: { clubeId_classeId: { clubeId, classeId: avancada.id } },
+      create: { clubeId, classeId: avancada.id, quemMontaCronograma },
+      update: { quemMontaCronograma },
+    })
   }
 
   /** `null` volta o campo ao oficial; ausente mantem o que o clube ja tinha. Sem nenhum ajuste, a linha fica com os dois campos nulos (nunca é apagada). */

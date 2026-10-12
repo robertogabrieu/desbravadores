@@ -1,4 +1,4 @@
-import type { Classe, Prisma, QuemMonta } from '../generated/prisma/client.js'
+import type { Classe, Prisma } from '../generated/prisma/client.js'
 
 type Cliente = Pick<Prisma.TransactionClient, 'classe'>
 
@@ -138,26 +138,13 @@ export async function igualarQuemMontaDoPar(db: ClienteDeQuemMonta, clubeId: str
   })
   const regularIds = [...new Set(candidatas.flatMap((avancada) => (avancada.classeBaseId ? [avancada.classeBaseId] : [])))]
   const pareadas = await avancadasPareadas(db, clubeId, regularIds)
-  if (pareadas.size === 0) return
-  const dasRegulares = await db.classeClube.findMany({
-    where: { clubeId, classeId: { in: [...pareadas.keys()] } },
-    select: { classeId: true, quemMontaCronograma: true },
-  })
-  const valorDaRegular = new Map(dasRegulares.map((linha) => [linha.classeId, linha.quemMontaCronograma]))
-  const avancadasPorValor = new Map<QuemMonta, string[]>()
   for (const [regularId, avancada] of pareadas) {
-    const quemMontaCronograma = valorDaRegular.get(regularId) ?? 'ADM'
-    avancadasPorValor.set(quemMontaCronograma, [...(avancadasPorValor.get(quemMontaCronograma) ?? []), avancada.id])
-  }
-  // Avançada sem linha ganha uma já com o valor da regular; as que já tinham linha são acertadas por valor.
-  await db.classeClube.createMany({
-    data: [...avancadasPorValor].flatMap(([quemMontaCronograma, ids]) => ids.map((classeId) => ({ clubeId, classeId, quemMontaCronograma }))),
-    skipDuplicates: true,
-  })
-  for (const [quemMontaCronograma, ids] of avancadasPorValor) {
-    await db.classeClube.updateMany({
-      where: { clubeId, classeId: { in: ids }, quemMontaCronograma: { not: quemMontaCronograma } },
-      data: { quemMontaCronograma },
+    const regular = await db.classeClube.findUnique({ where: { clubeId_classeId: { clubeId, classeId: regularId } }, select: { quemMontaCronograma: true } })
+    const quemMontaCronograma = regular?.quemMontaCronograma ?? 'ADM'
+    await db.classeClube.upsert({
+      where: { clubeId_classeId: { clubeId, classeId: avancada.id } },
+      create: { clubeId, classeId: avancada.id, quemMontaCronograma },
+      update: { quemMontaCronograma },
     })
   }
 }
