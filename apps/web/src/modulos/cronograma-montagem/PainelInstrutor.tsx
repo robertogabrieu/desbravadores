@@ -1,5 +1,6 @@
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
+import type { Classe } from '../../api/leitura'
 import type { CronogramaDaMontagem, DataDaMontagem, Montagem } from '../../api/montagem'
 import { Abas } from '../../ui/Abas'
 import { BarraProgresso } from '../../ui/BarraProgresso'
@@ -26,10 +27,12 @@ interface Propriedades {
   cronograma: CronogramaDaMontagem
   ano: number | undefined
   aoAtualizar: () => void
+  /** Todas as classes: dão o nome da avançada que já não anda com a regular (par desfeito). */
+  classes: Classe[]
 }
 
 /** I3b com cronograma: abas Por data / Sem data; "Adicionar requisito" numa data ou o toque num requisito sem data agendam, cada ação grava. */
-export function PainelInstrutor({ montagem, classeConsultada, cronograma, ano, aoAtualizar }: Propriedades) {
+export function PainelInstrutor({ montagem, classeConsultada, cronograma, ano, aoAtualizar, classes }: Propriedades) {
   const acoes = useAcoesDeMontagem(classeConsultada, ano, cronograma.id, montagem)
   const [aba, setAba] = useState('data')
   const [dataAberta, setDataAberta] = useState<DataDaMontagem | null>(null)
@@ -38,7 +41,7 @@ export function PainelInstrutor({ montagem, classeConsultada, cronograma, ano, a
   const [aulaEmEdicao, setAulaEmEdicao] = useState<AulaEmEdicao | null>(null)
   const [confirmandoEnvio, setConfirmandoEnvio] = useState(false)
 
-  const vista = montarVista(montagem)
+  const vista = montarVista(montagem, classes)
   const par = vista.temAvancada
   const [maisVazias, setMaisVazias] = useState(false)
   const semData = vista.requisitos.filter((requisito) => requisito.data === null)

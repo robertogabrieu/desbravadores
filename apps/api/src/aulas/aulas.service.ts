@@ -126,8 +126,7 @@ export class AulasService {
       ? publicada.requisitoIds
       : (await this.prisma.aulaRequisito.findMany({ where: { clubeId, aulaPlanejadaId }, select: { requisitoId: true } })).map((l) => l.requisitoId)
     // No cronograma do par a aula tem requisitos das duas classes; o registro enxerga so os da sua.
-    const daClasse = await this.prisma.requisito.findMany({ where: { id: { in: ligacoes }, secao: { classeId } }, select: { id: true } })
-    const ids = new Set(daClasse.map((requisito) => requisito.id))
-    return ligacoes.filter((id) => ids.has(id))
+    const daClasse = await this.cronogramas.idsDaClasse(classeId, ligacoes)
+    return ligacoes.filter((id) => daClasse.has(id))
   }
 }

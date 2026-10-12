@@ -8,7 +8,7 @@ import {
 } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { refClasse, SELECAO_REF_CLASSE } from '../../classes/apresentacao-classe'
-import { avancadaPareadaDe, regularDoPar } from '../../classes/par-regular-avancada'
+import { avancadaPareadaDe, classeDonaDoCronograma } from '../../classes/par-regular-avancada'
 import type { SessaoLogada } from '../../comum/decorators/sessao.decorator'
 import { ErroApp } from '../../comum/erros'
 import { PrismaService } from '../../comum/prisma/prisma.service'
@@ -69,7 +69,7 @@ export class ServicoMontagemLeitura {
    */
   async classeDoCronograma(clubeId: string, classe: { id: string; classeBaseId: string | null }): Promise<string> {
     if (!classe.classeBaseId) return classe.id
-    return (await regularDoPar(this.prisma, clubeId, classe.id)) ?? classe.id
+    return classeDonaDoCronograma(this.prisma, clubeId, classe.id)
   }
 
   /** As classes do par: a dona do cronograma e, sendo regular com par ativo, a avançada. Só elas aceitam requisito novo. */
@@ -89,14 +89,15 @@ export class ServicoMontagemLeitura {
   async classesDoCronograma(
     clubeId: string,
     cronograma: { id: string; classeId: string },
-    db: Pick<Prisma.TransactionClient, 'classe' | 'aulaRequisito'> = this.prisma,
+    db: Pick<Prisma.TransactionClient, 'classe' | 'secaoRequisito'> = this.prisma,
   ): Promise<string[]> {
     const doPar = await this.classesDoPar(clubeId, cronograma, db)
-    const ligacoes = await db.aulaRequisito.findMany({
-      where: { clubeId, cronogramaId: cronograma.id },
-      select: { requisito: { select: { secao: { select: { classeId: true } } } } },
+    const secoes = await db.secaoRequisito.findMany({
+      where: { requisitos: { some: { aulas: { some: { clubeId, cronogramaId: cronograma.id } } } } },
+      select: { classeId: true },
+      distinct: ['classeId'],
     })
-    return [...new Set([...doPar, ...ligacoes.map((ligacao) => ligacao.requisito.secao.classeId)])]
+    return [...new Set([...doPar, ...secoes.map((secao) => secao.classeId)])]
   }
 
   async montagem(sessao: SessaoLogada, classeId: string, anoClube?: number): Promise<Saida> {

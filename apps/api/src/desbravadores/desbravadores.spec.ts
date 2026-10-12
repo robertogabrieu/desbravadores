@@ -311,6 +311,19 @@ describe('desbravadores: escopo, contato, cadastro, matricula', () => {
       expect(matriculas).toHaveLength(2)
     })
 
+    it('cadastro em Agrupadas com incluirAvancada: matricula a regular e a "Agrupadas — avançada"', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const agrupada = await classeOficial('Agrupadas (Amigo a Guia)', 'AGRUPADAS')
+      const { dados } = corpo<ComAvisos>(
+        await api
+          .post('/api/desbravadores', adm.autorizacao, { ...base, nascimento: nascimentoComIdade(16), classeId: agrupada.id, incluirAvancada: true })
+          .expect(201),
+      )
+      expect(dados.avancadaAtual?.nome).toBe('Agrupadas — avançada')
+      expect(await prismaDeTeste().matriculaClasse.count({ where: { clubeId: clube.id, dbvId: dados.id } })).toBe(2)
+    })
+
     it('DBV sem classe com incluirAvancada=false: pela idade entra so na regular', async () => {
       const clube = await criarClube()
       const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
@@ -775,6 +788,19 @@ describe('desbravadores: escopo, contato, cadastro, matricula', () => {
           .expect(201),
       )
       expect(saida.map((m) => m.classe.id).sort()).toEqual([amigo.id, irma.id].sort())
+    })
+
+    it('agrupadas com incluirAvancada: a matrícula manual cria também a "Agrupadas — avançada"', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const dbv = await criarDbv({ clubeId: clube.id })
+      const agrupada = await classeOficial('Agrupadas (Amigo a Guia)', 'AGRUPADAS')
+      const saida = corpo<z.infer<typeof MatriculaSaida>[]>(
+        await api
+          .post(`/api/desbravadores/${dbv.id}/matriculas`, adm.autorizacao, { classeId: agrupada.id, anoClube: anoCorrente(), incluirAvancada: true })
+          .expect(201),
+      )
+      expect(saida.map((m) => m.classe.nome).sort()).toEqual(['Agrupadas (Amigo a Guia)', 'Agrupadas — avançada'])
     })
 
     it('regular sem incluirAvancada cria so a regular', async () => {

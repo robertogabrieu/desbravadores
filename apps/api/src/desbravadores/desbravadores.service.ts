@@ -23,7 +23,7 @@ import {
 } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
-import { ativaNoClube, avancadaPareadaDe } from '../classes/par-regular-avancada'
+import { ativaNoClube, avancadaParaMatricula } from '../classes/par-regular-avancada'
 import { ErroApp } from '../comum/erros'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { PrismaService } from '../comum/prisma/prisma.service'
@@ -480,7 +480,7 @@ export class DesbravadoresService {
     const { clubeId, dbvId, nascimento, anoClube } = dados
     const classe = await this.classeDaIdade(tx, clubeId, nascimento, anoClube)
     if (!classe) return false
-    const avancada = dados.incluirAvancada ? await avancadaPareadaDe(tx, clubeId, classe.id) : null
+    const avancada = dados.incluirAvancada ? await avancadaParaMatricula(tx, clubeId, classe.id) : null
     const avancadaConcluida = avancada
       ? await tx.matriculaClasse.findFirst({
           where: { clubeId, dbvId, anoClube, classeId: avancada.id, status: { in: ['CONCLUIDA', 'INVESTIDA'] } },
@@ -596,7 +596,7 @@ export class DesbravadoresService {
     }
     const classeIds = [classe.id]
     if (classe.tipo === 'REGULAR' && dados.incluirAvancada) {
-      const avancada = await avancadaPareadaDe(tx, clubeId, classe.id)
+      const avancada = await avancadaParaMatricula(tx, clubeId, classe.id)
       if (avancada) classeIds.push(avancada.id)
     }
     const matriculas: Matricula[] = []

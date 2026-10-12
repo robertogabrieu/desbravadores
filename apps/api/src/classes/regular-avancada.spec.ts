@@ -89,16 +89,24 @@ describe('regular e avançada andam juntas', () => {
   })
 
   describe('quem monta', () => {
-    it('na regular, propaga para a avançada do mesmo clube e não mexe em "ativa" nem em outro clube', async () => {
+    it('na regular, propaga para a avançada pareada do mesmo clube e não mexe em "ativa" nem em outro clube', async () => {
       const { clube, adm, regular, avancada } = await cenario()
       const outro = await criarClube()
+      await api.patch(`/api/classes/${regular.id}`, adm.autorizacao, { quemMontaCronograma: 'INSTRUTOR' }).expect(200)
+
+      const daAvancada = await prismaDeTeste().classeClube.findUniqueOrThrow({ where: { clubeId_classeId: { clubeId: clube.id, classeId: avancada.id } } })
+      expect(daAvancada).toMatchObject({ quemMontaCronograma: 'INSTRUTOR', ativa: true })
+      const doOutro = await prismaDeTeste().classeClube.findUniqueOrThrow({ where: { clubeId_classeId: { clubeId: outro.id, classeId: avancada.id } } })
+      expect(doOutro.quemMontaCronograma).toBe('ADM')
+    })
+
+    it('avançada sem par (desativada no clube) guarda o próprio "quem monta": a regular não repassa', async () => {
+      const { clube, adm, regular, avancada } = await cenario()
       await api.patch(`/api/classes/${avancada.id}`, adm.autorizacao, { ativa: false }).expect(200)
       await api.patch(`/api/classes/${regular.id}`, adm.autorizacao, { quemMontaCronograma: 'INSTRUTOR' }).expect(200)
 
       const daAvancada = await prismaDeTeste().classeClube.findUniqueOrThrow({ where: { clubeId_classeId: { clubeId: clube.id, classeId: avancada.id } } })
-      expect(daAvancada).toMatchObject({ quemMontaCronograma: 'INSTRUTOR', ativa: false })
-      const doOutro = await prismaDeTeste().classeClube.findUniqueOrThrow({ where: { clubeId_classeId: { clubeId: outro.id, classeId: avancada.id } } })
-      expect(doOutro.quemMontaCronograma).toBe('ADM')
+      expect(daAvancada).toMatchObject({ quemMontaCronograma: 'ADM', ativa: false })
     })
 
     it('na avançada, responde 400 com a mensagem e não grava', async () => {

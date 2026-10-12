@@ -53,7 +53,7 @@ export function MontagemAdm() {
           dados.cronograma === null ? (
             <CriarCronograma classeId={dados.classe.id} nomeDaClasse={classe ? nomeDoParDe(classes.data ?? [], classe) : dados.classe.nome} ano={ano} />
           ) : (
-            <PainelAdm montagem={dados} classeConsultada={classeId} cronograma={dados.cronograma} classe={classe} ano={ano} aoAtualizar={() => void montagem.refetch()} />
+            <PainelAdm montagem={dados} classeConsultada={classeId} cronograma={dados.cronograma} classe={classe} ano={ano} classes={classes.data ?? []} aoAtualizar={() => void montagem.refetch()} />
           )
         }
       </ResultadoConsulta>

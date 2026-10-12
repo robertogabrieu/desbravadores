@@ -27,6 +27,8 @@ interface Propriedades {
   classeConsultada: string
   ano: number
   aoAtualizar: () => void
+  /** Todas as classes: dão o nome da avançada que já não anda com a regular (par desfeito). */
+  classes: Classe[]
 }
 
 type Vista = 'sem-data' | 'com-data' | 'por-data'
@@ -61,7 +63,7 @@ function agruparPorMes(datas: DataDaMontagem[]): { chave: string; datas: DataDaM
  * A7 no celular: a lista de requisitos sem data é o começo; tocar num requisito abre "Em qual data?", e depois
  * de colocar a tela já oferece o próximo sem data. "Por data" reúne as datas e o rodapé publica.
  */
-export function PainelAdmCelular({ montagem, cronograma, classe, classeConsultada, ano, aoAtualizar }: Propriedades) {
+export function PainelAdmCelular({ montagem, cronograma, classe, classeConsultada, ano, aoAtualizar, classes }: Propriedades) {
   const acoes = useAcoesDeMontagem(classeConsultada, ano, cronograma.id, montagem)
   const [vista, setVista] = useState<Vista>('sem-data')
   const [folhaParaId, setFolhaParaId] = useState<string | null>(null)
@@ -78,7 +80,7 @@ export function PainelAdmCelular({ montagem, cronograma, classe, classeConsultad
     if (colocacao) confirmacao.current?.focus()
   }, [colocacao])
 
-  const unida = montarVista(montagem)
+  const unida = montarVista(montagem, classes)
   const par = unida.temAvancada
   const requisitoPorId = new Map(unida.requisitos.map((requisito) => [requisito.id, requisito]))
   const folhaPara = (folhaParaId && requisitoPorId.get(folhaParaId)) || null

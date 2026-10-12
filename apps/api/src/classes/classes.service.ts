@@ -7,7 +7,7 @@ import { colador } from '../desbravadores/apoio'
 import { ServicoEscopo } from '../desbravadores/escopo.service'
 import type { Prisma } from '../generated/prisma/client.js'
 import { corTokenDaClasse } from './apresentacao-classe'
-import { avancadasPareadas, temParAtivo } from './par-regular-avancada'
+import { avancadasPareadas } from './par-regular-avancada'
 
 type Classe = z.infer<typeof ClasseSaida>
 type Detalhe = z.infer<typeof ClasseDetalheSaida>
@@ -118,8 +118,10 @@ export class ClassesService {
       }),
     }))
     const total = secoes.reduce((soma, secao) => soma + secao.requisitos.filter((r) => r.ativo).length, 0)
-    const regular = classe.classeBaseId && (await temParAtivo(this.prisma, clubeId, classe.id)) ? await this.resumirRegular(clubeId, classe.classeBaseId) : null
-    return { ...montarClasse(classe, total, await this.paresDe(clubeId, [classe])), regular, secoes }
+    const pares = await this.paresDe(clubeId, [classe])
+    const regularId = pares.regularDaAvancada.get(classe.id)
+    const regular = regularId ? await this.resumirRegular(clubeId, regularId) : null
+    return { ...montarClasse(classe, total, pares), regular, secoes }
   }
 
   private async resumirRegular(clubeId: string, regularId: string): Promise<ResumoDaRegular | null> {
@@ -128,16 +130,17 @@ export class ClassesService {
       select: { id: true, nome: true, clubes: { where: { clubeId }, select: { quemMontaCronograma: true } } },
     })
     if (!regular) return null
-    const [relogio, instrutores] = await Promise.all([
-      this.escopo.relogio(clubeId),
+    const [totalAlunos, instrutores] = await Promise.all([
+      this.escopo.relogio(clubeId).then((relogio) =>
+        this.prisma.matriculaClasse.count({
+          where: { clubeId, classeId: regularId, anoClube: relogio.anoClube, status: { not: 'DESISTIU' } },
+        }),
+      ),
       this.prisma.vinculo.findMany({
         where: { clubeId, papel: 'INSTRUTOR', ativo: true, classes: { some: { classeId: regularId } } },
         select: { usuario: { select: { nome: true } } },
       }),
     ])
-    const totalAlunos = await this.prisma.matriculaClasse.count({
-      where: { clubeId, classeId: regularId, anoClube: relogio.anoClube, status: { not: 'DESISTIU' } },
-    })
     return {
       id: regular.id,
       nome: regular.nome,

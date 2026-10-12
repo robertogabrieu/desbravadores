@@ -7,7 +7,7 @@ import { PrismaService } from '../comum/prisma/prisma.service'
 import type { Prisma, QuemMonta } from '../generated/prisma/client.js'
 import { ServicoMontagem } from '../cronogramas/montagem/servico-montagem'
 import { ClassesService } from './classes.service'
-import { completarVinculosDoPar, temParAtivo } from './par-regular-avancada'
+import { avancadaPareadaDe, completarVinculosDoPar, temParAtivo } from './par-regular-avancada'
 
 type Detalhe = z.infer<typeof ClasseDetalheSaida>
 
@@ -56,27 +56,20 @@ export class AjustesService {
     return [classeId, ...(classe.classeBaseId ? [classe.classeBaseId] : []), ...classe.avancadas.map((avancada) => avancada.id)]
   }
 
-  /** A avancada segue a regular em quem monta, salvo com a regular desativada; `ativa` continua de cada uma. */
+  /** A avançada pareada segue a regular em quem monta; sem par, a avançada guarda o próprio valor. `ativa` continua de cada uma. */
   private async repassarQuemMontaParaAvancada(
     tx: Prisma.TransactionClient,
     clubeId: string,
     regularId: string,
     quemMontaCronograma: QuemMonta,
   ): Promise<void> {
-    // Regular desativada no clube: o par está desfeito e a avançada guarda o "quem monta" que ela mesma escolheu.
-    const daRegular = await tx.classeClube.findUnique({ where: { clubeId_classeId: { clubeId, classeId: regularId } }, select: { ativa: true } })
-    if (daRegular?.ativa === false) return
-    const avancadas = await tx.classe.findMany({
-      where: { tipo: 'AVANCADA', trilha: 'INDIVIDUAL', classeBaseId: regularId, OR: [{ clubeId: null }, { clubeId }] },
-      select: { id: true },
+    const avancada = await avancadaPareadaDe(tx, clubeId, regularId)
+    if (!avancada) return
+    await tx.classeClube.upsert({
+      where: { clubeId_classeId: { clubeId, classeId: avancada.id } },
+      create: { clubeId, classeId: avancada.id, quemMontaCronograma },
+      update: { quemMontaCronograma },
     })
-    for (const { id } of avancadas) {
-      await tx.classeClube.upsert({
-        where: { clubeId_classeId: { clubeId, classeId: id } },
-        create: { clubeId, classeId: id, quemMontaCronograma },
-        update: { quemMontaCronograma },
-      })
-    }
   }
 
   /** `null` volta o campo ao oficial; ausente mantem o que o clube ja tinha. Sem nenhum ajuste, a linha fica com os dois campos nulos (nunca é apagada). */

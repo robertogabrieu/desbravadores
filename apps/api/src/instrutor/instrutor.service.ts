@@ -3,7 +3,7 @@ import { mediaTurma, type InicioInstrutorSaida } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { devedoresPorItem } from '../aulas/tarefas-leitura'
 import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
-import { regularDoPar } from '../classes/par-regular-avancada'
+import { classeDonaDoCronograma } from '../classes/par-regular-avancada'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
@@ -94,7 +94,7 @@ export class InstrutorService {
       throw new ErroApp('NAO_ENCONTRADO', 'Classe não encontrada.')
     }
     // O par tem um cronograma só, o da regular: quem monta e o link do pedido são os dela.
-    const donaId = (await regularDoPar(this.prisma, clubeId, classeId)) ?? classeId
+    const donaId = await classeDonaDoCronograma(this.prisma, clubeId, classeId)
     const ajuste = await this.prisma.classeClube.findUnique({ where: { clubeId_classeId: { clubeId, classeId: donaId } } })
     if (ajuste?.quemMontaCronograma === 'INSTRUTOR') {
       throw new ErroApp('REGRA', 'Você já pode montar o cronograma desta classe.')

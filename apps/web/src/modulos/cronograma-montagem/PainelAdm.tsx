@@ -32,6 +32,8 @@ interface Propriedades {
   classeConsultada: string
   ano: number
   aoAtualizar: () => void
+  /** Todas as classes: dão o nome da avançada que já não anda com a regular (par desfeito). */
+  classes: Classe[]
 }
 
 type Filtro = 'sem-data' | Lado
@@ -45,9 +47,9 @@ export function PainelAdm(propriedades: Propriedades) {
 }
 
 /** Computador: requisitos à esquerda, datas à direita; escolhe um requisito e "Colocar aqui" numa data. */
-function PainelAdmComputador({ montagem, cronograma, classe, classeConsultada, ano, aoAtualizar }: Propriedades) {
+function PainelAdmComputador({ montagem, cronograma, classe, classeConsultada, ano, aoAtualizar, classes }: Propriedades) {
   const acoes = useAcoesDeMontagem(classeConsultada, ano, cronograma.id, montagem)
-  const vista = montarVista(montagem)
+  const vista = montarVista(montagem, classes)
   const par = vista.temAvancada
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null)
   const [filtro, setFiltro] = useState<Filtro>('sem-data')

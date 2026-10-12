@@ -45,11 +45,30 @@ export async function avancadaPareadaDe(db: Cliente, clubeId: string, regularId:
   return (await avancadasPareadas(db, clubeId, [regularId])).get(regularId) ?? null
 }
 
+/**
+ * A avançada que a matrícula junto com a regular escolhe: a mesma regra de desempate do par (menor `ordem`, depois
+ * menor `id`), mas sem a restrição de trilha — as agrupadas matriculam a "Agrupadas — avançada" mesmo sem formar par.
+ */
+export async function avancadaParaMatricula(db: Cliente, clubeId: string, regularId: string): Promise<Classe | null> {
+  return db.classe.findFirst({
+    where: { tipo: 'AVANCADA', classeBaseId: regularId, ativa: true, OR: [{ clubeId: null }, { clubeId }], ...ativaNoClube(clubeId) },
+    orderBy: [{ ordem: 'asc' }, { id: 'asc' }],
+  })
+}
+
 /** A regular desta avançada, quando ela é a avançada pareada de um par ativo; `null` fora disso. */
 export async function regularDoPar(db: Cliente, clubeId: string, avancadaId: string): Promise<string | null> {
   const avancada = await db.classe.findFirst({ where: { ...avancadaComParAtivo(clubeId), id: avancadaId }, select: { classeBaseId: true } })
   if (!avancada?.classeBaseId) return null
   return (await avancadaPareadaDe(db, clubeId, avancada.classeBaseId))?.id === avancadaId ? avancada.classeBaseId : null
+}
+
+/**
+ * A classe dona do cronograma (e do "quem monta"): a regular, quando a classe é a avançada de um par ativo;
+ * senão, ela mesma.
+ */
+export async function classeDonaDoCronograma(db: Cliente, clubeId: string, classeId: string): Promise<string> {
+  return (await regularDoPar(db, clubeId, classeId)) ?? classeId
 }
 
 /** A avançada com o par ativo: ela e a regular ativas no sistema e no clube, e ela é a pareada da regular. */

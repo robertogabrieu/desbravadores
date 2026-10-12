@@ -11,7 +11,7 @@ import {
 } from '@desbravadores/shared'
 import { z } from 'zod'
 import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
-import { regularDoPar } from '../classes/par-regular-avancada'
+import { classeDonaDoCronograma } from '../classes/par-regular-avancada'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import type { Trilha } from '../generated/prisma/client.js'
 import { ErroApp } from '../comum/erros'
@@ -107,7 +107,7 @@ export class ServicoCronograma {
    * Mesmo com o par desfeito o cronograma pode ter requisitos das duas classes: por isso a leitura sempre filtra.
    */
   async parDaClasse(clubeId: string, classeId: string): Promise<{ donaId: string }> {
-    return { donaId: (await regularDoPar(this.prisma, clubeId, classeId)) ?? classeId }
+    return { donaId: await classeDonaDoCronograma(this.prisma, clubeId, classeId) }
   }
 
   /**
@@ -115,15 +115,19 @@ export class ServicoCronograma {
    * de outra classe nao aparece. A aula ainda sem requisito nenhum e da dona do cronograma: nao aparece na outra classe.
    */
   async soDaClasse<T extends { requisitoIds: string[] }>(clubeId: string, donaId: string, classeId: string, aulas: T[]): Promise<T[]> {
-    const ids = [...new Set(aulas.flatMap((aula) => aula.requisitoIds))]
-    const daClasse = new Set(
-      (await this.prisma.requisito.findMany({ where: { id: { in: ids }, secao: { classeId } }, select: { id: true } })).map((r) => r.id),
-    )
+    const daClasse = await this.idsDaClasse(classeId, aulas.flatMap((aula) => aula.requisitoIds))
     return aulas.flatMap((aula): T[] => {
       const requisitoIds = aula.requisitoIds.filter((id) => daClasse.has(id))
       const semRequisitoDeNinguem = aula.requisitoIds.length === 0 && classeId === donaId
       return requisitoIds.length > 0 || semRequisitoDeNinguem ? [{ ...aula, requisitoIds }] : []
     })
+  }
+
+  /** Dos requisitos recebidos, os ids dos que pertencem a esta classe. */
+  async idsDaClasse(classeId: string, requisitoIds: string[]): Promise<Set<string>> {
+    const ids = [...new Set(requisitoIds)]
+    const daClasse = await this.prisma.requisito.findMany({ where: { id: { in: ids }, secao: { classeId } }, select: { id: true } })
+    return new Set(daClasse.map((requisito) => requisito.id))
   }
 
   /** A ultima publicacao do cronograma do ano que cobre a classe (o da regular, no par), ja filtrada para a classe. */
