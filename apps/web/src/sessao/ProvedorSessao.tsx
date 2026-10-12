@@ -12,7 +12,7 @@ import {
 } from '../api/cliente'
 import type { Sessao } from '../api/cliente'
 import { limparDadosDoUsuario, useConexao } from '../offline'
-import { definirConexao, definirExpirada } from '../offline/conexao'
+import { definirConexao, definirExpirada, lerConexao } from '../offline/conexao'
 import { estadoOffline } from '../offline/estado'
 import { gravarIdentidade, lerUltimaIdentidade, tocarContato } from '../offline/identidade'
 import type { RegistroSessao } from '../offline/banco'
@@ -192,6 +192,9 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
       },
       aoFalhaDeRede: () => {
         if (estadoAtual.current.situacao === 'autenticada') definirConexao('SEM_CONEXAO')
+      },
+      aoServidorRespondeu: () => {
+        if (estadoAtual.current.situacao === 'autenticada' && lerConexao() === 'SEM_CONEXAO') definirConexao('ONLINE')
       },
       aoContato: () => {
         const eu = estadoAtual.current.eu

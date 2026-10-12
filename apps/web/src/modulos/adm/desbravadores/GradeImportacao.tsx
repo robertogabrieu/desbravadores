@@ -2,6 +2,7 @@ import { Fragment } from 'react'
 import type { ReactNode } from 'react'
 import type { LinhaParaImportar } from '../../../api/importacao'
 import { estiloControle } from '../../../ui/Campo'
+import { CampoData } from '../../../ui/CampoData'
 import { cn } from '../../../ui/cn'
 import { CAMPO_DO_AVISO, bloqueada, todosOsErros } from './revisao-importacao'
 import type { CampoEditavel, LinhaEmRevisao } from './revisao-importacao'
@@ -108,13 +109,13 @@ export function GradeImportacao({ linhas, unidades, classes, aoEditar, aoMarcar 
                     />
                   </Celula>
                   <Celula>
-                    <input
-                      type="date"
-                      aria-label={`Nascimento, linha ${n}`}
+                    <CampoData
+                      compacto
+                      rotulo={`Nascimento, linha ${n}`}
                       {...daCelula('nascimento')}
-                      className={cn(estiloControle, 'min-w-40')}
+                      className="min-w-40"
                       value={linha.nascimento}
-                      onChange={(e) => aoEditar(n, 'nascimento', e.target.value)}
+                      onChange={(iso) => aoEditar(n, 'nascimento', iso)}
                     />
                   </Celula>
                   <Celula>
@@ -192,13 +193,13 @@ export function GradeImportacao({ linhas, unidades, classes, aoEditar, aoMarcar 
                     />
                   </Celula>
                   <Celula>
-                    <input
-                      type="date"
-                      aria-label={`Entrada no clube, linha ${n}`}
+                    <CampoData
+                      compacto
+                      rotulo={`Entrada no clube, linha ${n}`}
                       {...daCelula('entradaEm')}
-                      className={cn(estiloControle, 'min-w-40')}
+                      className="min-w-40"
                       value={linha.entradaEm}
-                      onChange={(e) => aoEditar(n, 'entradaEm', e.target.value)}
+                      onChange={(iso) => aoEditar(n, 'entradaEm', iso)}
                     />
                   </Celula>
                 </tr>

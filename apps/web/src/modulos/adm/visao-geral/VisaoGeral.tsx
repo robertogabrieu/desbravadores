@@ -17,6 +17,7 @@ import { cn } from '../../../ui/cn'
 import { LARGURA_DO_CELULAR } from '../../../ui/larguraDoCelular'
 import { diaDaSemanaEDoMes } from '../calendario/datas'
 import { useEstadoDeVolta } from '../navegacao'
+import { AtalhoDeSubstituto } from './AtalhoDeSubstituto'
 
 const plural = (n: number, singular: string, muitos: string): string => `${n} ${n === 1 ? singular : muitos}`
 const sinal = (n: number): string => (n > 0 ? `+${n}` : String(n))
@@ -303,6 +304,7 @@ function Conteudo({ visao, celular }: { visao: Visao; celular: boolean }) {
         <PrecisaDeAtencao visao={visao} limiar={limiar} />
         <Indicadores visao={visao} celular />
         <NovoDesbravador className="w-full" />
+        <AtalhoDeSubstituto visao={visao} />
         <UnidadesDoClube visao={visao} limiar={limiar} />
         <ProgressoPorClasse visao={visao} recolhido />
         <AtividadeRecente visao={visao} />
@@ -312,6 +314,7 @@ function Conteudo({ visao, celular }: { visao: Visao; celular: boolean }) {
   return (
     <>
       <Indicadores visao={visao} celular={false} />
+      <AtalhoDeSubstituto visao={visao} />
       <CronogramasAguardando visao={visao} />
       <EventosSemLista visao={visao} />
       <div className="grid gap-4 lg:grid-cols-2">

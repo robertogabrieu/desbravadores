@@ -4,7 +4,6 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { CategoriaBiblioteca, DirecaoNaBiblioteca, ItemBiblioteca } from '../../api/biblioteca'
 import { useBiblioteca, useMoverCategoria, useMoverItem } from '../../api/biblioteca'
-import { useConexao } from '../../offline'
 import { useSessao } from '../../sessao/useSessao'
 import { Botao } from '../../ui/Botao'
 import { cn } from '../../ui/cn'
@@ -104,11 +103,9 @@ function VazioDaBiblioteca({ categorias, gerencia }: { categorias: CategoriaBibl
 }
 
 export function TelaBiblioteca() {
-  const { modo } = useConexao()
   const { pode } = useSessao()
-  const online = modo === 'ONLINE'
   const gerencia = pode('biblioteca.gerenciar')
-  const biblioteca = useBiblioteca(online)
+  const biblioteca = useBiblioteca()
   const moverCategoria = useMoverCategoria()
   const moverItem = useMoverItem()
   const [acao, definirAcao] = useState<Acao | null>(null)
@@ -119,8 +116,9 @@ export function TelaBiblioteca() {
   const aoTerminarDeMover = { onSuccess: () => definirErroAoMover(null), onError: (erro: Error) => definirErroAoMover(mensagemDe(erro)) }
 
   const corpo = (() => {
-    if (!online) return <DisponivelComInternet />
     if (!categorias || !visiveis) {
+      // Navegador sem rede: a consulta fica em pausa em vez de falhar, e o aviso de internet é o desfecho certo.
+      if (biblioteca.fetchStatus === 'paused') return <DisponivelComInternet />
       return biblioteca.isError ? <ErroDeCarga erro={biblioteca.error} aoTentarDeNovo={() => void biblioteca.refetch()} /> : <Carregando rotulo="Carregando a biblioteca" />
     }
     if (gerencia && categorias.length === 0) {
@@ -162,7 +160,7 @@ export function TelaBiblioteca() {
   })()
 
   const botoes =
-    online && gerencia && categorias && categorias.length > 0 ? (
+    gerencia && categorias && categorias.length > 0 ? (
       <div className="flex flex-wrap gap-2">
         <Botao variante="secundario" onClick={() => definirAcao({ tipo: 'nova-categoria' })}>
           Nova categoria
@@ -176,7 +174,7 @@ export function TelaBiblioteca() {
 
   return (
     <div className={cn('flex flex-col gap-6', !gerencia && 'p-4')}>
-      <Cabecalho gerencia={gerencia} resumo={online && visiveis && (!gerencia || visiveis.length > 0) ? resumoDaEstante(visiveis, gerencia) : undefined}>
+      <Cabecalho gerencia={gerencia} resumo={visiveis && (!gerencia || visiveis.length > 0) ? resumoDaEstante(visiveis, gerencia) : undefined}>
         {botoes}
       </Cabecalho>
       {corpo}

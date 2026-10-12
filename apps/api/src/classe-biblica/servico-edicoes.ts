@@ -37,6 +37,8 @@ type Grupo = z.infer<typeof GrupoCB>
 type Banco = Prisma.TransactionClient | PrismaService
 
 const TEMPO_DA_TRANSACAO_MS = 20_000
+const EDICAO_COM_CHAMADA =
+  'Esta edição já tem chamada registrada e não pode ser excluída. Para tirá-la do calendário, cancele os encontros que ainda não aconteceram.'
 const CONFIRA = 'Confira os campos informados.'
 const TRAVADOS_DEPOIS_DE_TERMINAR = 'Início, fim e dia da semana não mudam depois que os encontros foram criados.'
 
@@ -421,6 +423,29 @@ export class ServicoEdicoes {
         await tx.grupoUnidadeClasseBiblica.updateMany({ where: { clubeId, edicaoId: id }, data: { inicio } })
         await tx.edicaoClasseBiblica.update({ where: { clubeId_id: { clubeId, id } }, data: { terminadaEm: new Date(), etapa: 3 } })
         await garantirCriterios(tx, clubeId)
+      },
+      { timeout: TEMPO_DA_TRANSACAO_MS },
+    )
+  }
+
+  /**
+   * Só sai a edição em que ninguém fez chamada: com chamada há presença e pontos, e histórico não se apaga.
+   * As chaves estrangeiras são Restrict, então desce de baixo para cima.
+   */
+  async excluir(sessao: SessaoLogada, id: string): Promise<void> {
+    const { clubeId } = sessao
+    await this.prisma.$transaction(
+      async (tx) => {
+        await exigirEdicao(tx, clubeId, id)
+        const chamada = await tx.chamadaClasseBiblica.findFirst({ where: { clubeId, encontro: { clubeId, edicaoId: id } }, select: { grupoId: true } })
+        if (chamada) throw new ErroApp('CONFLITO', EDICAO_COM_CHAMADA)
+        const encontros = await tx.encontroClasseBiblica.findMany({ where: { clubeId, edicaoId: id }, select: { id: true, eventoId: true } })
+        await tx.envioClasseBiblicaProcessado.deleteMany({ where: { clubeId, encontroId: { in: encontros.map((encontro) => encontro.id) } } })
+        await tx.encontroClasseBiblica.deleteMany({ where: { clubeId, edicaoId: id } })
+        await tx.eventoCalendario.deleteMany({ where: { clubeId, id: { in: encontros.map((encontro) => encontro.eventoId) } } })
+        await tx.grupoUnidadeClasseBiblica.deleteMany({ where: { clubeId, edicaoId: id } })
+        await tx.grupoClasseBiblica.deleteMany({ where: { clubeId, edicaoId: id } })
+        await tx.edicaoClasseBiblica.delete({ where: { clubeId_id: { clubeId, id } } })
       },
       { timeout: TEMPO_DA_TRANSACAO_MS },
     )

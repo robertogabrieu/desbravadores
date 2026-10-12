@@ -56,7 +56,7 @@ function abrir(dados: DadosClasseBiblica = {}, ...extras: RequestHandler[]) {
 async function escolherData(usuario: ReturnType<typeof userEvent.setup>, data: string) {
   const campo = await screen.findByLabelText('Nova data')
   await usuario.clear(campo)
-  await usuario.type(campo, data)
+  await usuario.type(campo, data.split('-').reverse().join('/'))
 }
 
 describe('Remarcar o encontro', () => {
@@ -88,6 +88,18 @@ describe('Remarcar o encontro', () => {
     await usuario.type(horario, '15:00')
     await usuario.click(screen.getByRole('button', { name: 'Remarcar para sábado, 24/10' }))
     await waitFor(() => expect(gravacoes.at(-1)?.corpo).toEqual({ data: '2026-10-24', horario: '15:00' }))
+  })
+
+  it('horário incompleto não envia e mostra o erro no campo', async () => {
+    const usuario = userEvent.setup()
+    const { gravacoes } = abrir()
+    await escolherData(usuario, '2026-10-24')
+    const horario = screen.getByLabelText('Horário')
+    await usuario.clear(horario)
+    await usuario.type(horario, '08:3')
+    await usuario.click(screen.getByRole('button', { name: 'Remarcar para sábado, 24/10' }))
+    expect(await screen.findByText('Horário inválido')).toBeInTheDocument()
+    expect(gravacoes.filter((g) => g.metodo === 'POST')).toHaveLength(0)
   })
 
   it('data em feriado mostra o aviso e deixa seguir', async () => {

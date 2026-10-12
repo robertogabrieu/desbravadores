@@ -10,6 +10,7 @@ import type { Aviso, Desbravador, TipoDesbravador } from '../../../api/desbravad
 import { useClasses, useUnidades, useUsuariosResumo } from '../../../api/leitura'
 import { CaixaMarcacao } from '../../../ui/CaixaMarcacao'
 import { Campo } from '../../../ui/Campo'
+import { CampoData } from '../../../ui/CampoData'
 import { Cartao } from '../../../ui/Cartao'
 import { ResumoDosErros, useErrosAVista } from '../../../ui/ErrosDoFormulario'
 import { FaixaAviso } from '../../../ui/FaixaAviso'
@@ -291,7 +292,7 @@ export function FormularioDesbravador({ desbravador, cancelar, aoConcluir }: Pro
             erro={erros['nomePublico']}
             onChange={(e) => definir('nomePublico', e.target.value)}
           />
-          <Campo rotulo="Nascimento" type="date" value={valores.nascimento} erro={erros['nascimento']} onChange={(e) => definir('nascimento', e.target.value)} />
+          <CampoData rotulo="Nascimento" value={valores.nascimento} erro={erros['nascimento']} onChange={(iso) => definir('nascimento', iso)} />
           <Selecao
             rotulo="Sexo"
             value={valores.sexo}
@@ -303,7 +304,7 @@ export function FormularioDesbravador({ desbravador, cancelar, aoConcluir }: Pro
             <option value="M">Masculino</option>
           </Selecao>
           {!editando && (
-            <Campo rotulo="Entrada no clube" type="date" value={valores.entradaEm} erro={erros['entradaEm']} onChange={(e) => definir('entradaEm', e.target.value)} />
+            <CampoData rotulo="Entrada no clube" value={valores.entradaEm} erro={erros['entradaEm']} onChange={(iso) => definir('entradaEm', iso)} />
           )}
           {ehLider && <CampoContaDeUsuario valor={valores.usuarioId} aoMudar={(id) => definir('usuarioId', id)} />}
         </div>

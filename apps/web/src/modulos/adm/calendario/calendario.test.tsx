@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -196,7 +196,7 @@ describe('A6 · criar', () => {
 
   it('sem ?data= (ou inválida) o novo evento abre no dia de hoje', async () => {
     abrirEm('/adm/calendario/eventos/novo?data=xx&tipo=EVENTO', handlerCalendario())
-    expect(await screen.findByLabelText('Início')).toHaveValue('2026-10-05')
+    expect(await screen.findByLabelText('Início')).toHaveValue('05/10/2026')
   })
 
   it('valida o nome sem chamar a API, e um fim antes do início vira o próprio início', async () => {
@@ -207,7 +207,8 @@ describe('A6 · criar', () => {
     expect(screen.getByText('Informe o nome do evento')).toBeInTheDocument()
     expect(chamadas).toBe(0)
 
-    fireEvent.change(screen.getByLabelText('Fim'), { target: { value: '2000-01-01' } })
+    await userEvent.clear(screen.getByLabelText('Fim'))
+    await userEvent.type(screen.getByLabelText('Fim'), '30/09/2026')
     expect(screen.getByLabelText('Fim')).toHaveValue(screen.getByLabelText<HTMLInputElement>('Início').value)
   })
 
@@ -241,7 +242,7 @@ describe('A6 · editar', () => {
     )
 
     expect(await screen.findByLabelText('Nome')).toHaveValue('Acampamento do clube')
-    expect(screen.getByLabelText('Início')).toHaveValue('2026-10-16')
+    expect(screen.getByLabelText('Início')).toHaveValue('16/10/2026')
     await userEvent.type(screen.getByLabelText('Local'), 'Sítio')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
 
@@ -301,11 +302,12 @@ describe('P3 · formulário', () => {
     await abrirNovoDoTipo('REUNIAO_EXTRA', handlerCalendario(), handlerCriarEvento([], (c) => (corpo = c as Record<string, unknown>)))
     await userEvent.type(screen.getByLabelText('Nome'), 'Encontro')
     expect(await screen.findByText(TEXTO_EXTRA)).toBeInTheDocument()
-    expect(screen.getByLabelText('Data')).toHaveValue('2026-10-01')
+    expect(screen.getByLabelText('Data')).toHaveValue('01/10/2026')
     expect(screen.queryByLabelText('Início')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Fim')).not.toBeInTheDocument()
     expect(screen.getAllByRole('checkbox').map((c) => c.closest('label')?.textContent)).toEqual(CAIXAS.slice(0, 2))
-    fireEvent.change(screen.getByLabelText('Data'), { target: { value: '2026-10-21' } })
+    await userEvent.clear(screen.getByLabelText('Data'))
+    await userEvent.type(screen.getByLabelText('Data'), '21/10/2026')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(corpo).toMatchObject({ tipo: 'REUNIAO_EXTRA', inicio: '2026-10-21', fim: '2026-10-21', temReuniao: true, temClasse: true, bomParaCampo: false }))
   })
@@ -339,9 +341,11 @@ describe('P3 · formulário', () => {
 
   it('extra no dia da reunião avisa sob a Data; fora dele, não', async () => {
     await abrirNovoDoTipo('REUNIAO_EXTRA', handlerCalendario())
-    fireEvent.change(screen.getByLabelText('Data'), { target: { value: '2026-10-18' } })
+    await userEvent.clear(screen.getByLabelText('Data'))
+    await userEvent.type(screen.getByLabelText('Data'), '18/10/2026')
     expect(screen.getByLabelText('Data')).toHaveAccessibleDescription('Domingo já tem reunião: esta reunião extra só muda nome, horário e local.')
-    fireEvent.change(screen.getByLabelText('Data'), { target: { value: '2026-10-21' } })
+    await userEvent.clear(screen.getByLabelText('Data'))
+    await userEvent.type(screen.getByLabelText('Data'), '21/10/2026')
     expect(screen.queryByText(/já tem reunião/)).not.toBeInTheDocument()
   })
 

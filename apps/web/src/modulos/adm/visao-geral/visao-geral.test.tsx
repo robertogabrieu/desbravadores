@@ -5,7 +5,7 @@ import type { ModoConexao } from '../../../offline'
 import { consultaConfiguracaoClube } from '../../../api/clube'
 import { criarConfiguracao, handlerConfiguracao, handlerErroConfiguracao } from '../../../testes/handlers/clube'
 import { criarRefClasse, criarVisaoGeral, handlerErroVisaoGeral, handlerVisaoGeral } from '../../../testes/handlers/visao-geral'
-import { uuid } from '../../../testes/handlers/sessao'
+import { criarVinculo, handlersSessao, uuid } from '../../../testes/handlers/sessao'
 import { renderizarRotas } from '../../../testes/renderizar'
 import { simularLargura } from '../../../testes/midia'
 import { servidor } from '../../../testes/servidor'
@@ -290,6 +290,42 @@ describe('alerta de frequência em texto, não só na cor', () => {
     const unidades = within(await screen.findByRole('region', { name: 'Unidades' }))
     const tigres = within(unidades.getByRole('link', { name: /^Tigres/ }))
     expect(await tigres.findByText('abaixo de 75%')).toBeInTheDocument()
+  })
+})
+
+describe('atalho "Gerar link de substituto"', () => {
+  const comDestinos = criarVisaoGeral({
+    unidadesResumo: [{ id: uuid(11), nome: 'Águias', conselheiros: [], totalDbvs: 8, frequenciaMes: 87 }],
+    progressoClasses: [{ classe: criarRefClasse(1, 'Amigo'), media: 64, totalDbvs: 9, instrutores: [] }],
+  })
+  const comPermissao = () => servidor.use(...handlersSessao([criarVinculo('ADM')], undefined, ['usuario.gerenciar']))
+
+  it('aparece com usuario.gerenciar e leva à geração da unidade ou da classe escolhida', async () => {
+    comPermissao()
+    servidor.use(handlerVisaoGeral(comDestinos), handlerConfiguracao(criarConfiguracao()))
+    abrir()
+    await userEvent.click(await screen.findByRole('button', { name: 'Gerar link de substituto' }))
+    expect(screen.getByRole('link', { name: 'Águias' })).toHaveAttribute('href', `/adm/unidades/${uuid(11)}/substituicao`)
+    expect(screen.getByRole('link', { name: 'Amigo' })).toHaveAttribute('href', `/adm/classes/${uuid(1)}/substituicao`)
+    expect(screen.getByRole('heading', { name: 'Unidades', level: 3 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Classes', level: 3 })).toBeInTheDocument()
+  })
+
+  it('some sem usuario.gerenciar', async () => {
+    servidor.use(...handlersSessao([criarVinculo('ADM')], undefined, []))
+    servidor.use(handlerVisaoGeral(comDestinos), handlerConfiguracao(criarConfiguracao()))
+    abrir()
+    await screen.findByRole('group', { name: 'Desbravadores' })
+    expect(screen.queryByRole('button', { name: 'Gerar link de substituto' })).not.toBeInTheDocument()
+  })
+
+  it('sem unidades nem classes, explica que é preciso cadastrar antes', async () => {
+    comPermissao()
+    servidor.use(handlerVisaoGeral(criarVisaoGeral()), handlerConfiguracao(criarConfiguracao()))
+    abrir()
+    await userEvent.click(await screen.findByRole('button', { name: 'Gerar link de substituto' }))
+    expect(screen.getByText(/cadastre antes uma unidade ou uma classe/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Cadastrar unidade' })).toHaveAttribute('href', '/adm/unidades/nova')
   })
 })
 

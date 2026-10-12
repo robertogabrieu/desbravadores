@@ -92,6 +92,18 @@ describe('Lista de edições', () => {
     expect(await screen.findByRole('link', { name: 'Nova edição' })).toHaveAttribute('href', '/adm/classe-biblica/nova')
   })
 
+  it('a não terminada oferece excluir: sem encontros, o texto diz que não há nada lançado; excluir volta à lista com o aviso', async () => {
+    const usuario = userEvent.setup()
+    const { gravacoes } = abrir('/adm/classe-biblica')
+    const naoTerminada = within(await screen.findByRole('region', { name: 'Classe Bíblica 2027 · 1º semestre' }))
+    await usuario.click(await naoTerminada.findByRole('button', { name: 'Excluir edição' }))
+    expect(screen.getByText('Esta ação não pode ser desfeita. A edição ainda não tem encontros nem chamadas.')).toBeInTheDocument()
+    await usuario.type(screen.getByLabelText('Nome para confirmar'), 'classe bíblica 2027 · 1º semestre')
+    await usuario.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Excluir edição' }))
+    expect(await screen.findByText('A edição "Classe Bíblica 2027 · 1º semestre" foi excluída.')).toBeInTheDocument()
+    expect(gravacoes.map((g) => g.metodo)).toEqual(['DELETE'])
+  })
+
   it('o voltar leva ao Início, como no modelo', async () => {
     abrir('/adm/classe-biblica')
     expect(await screen.findByRole('link', { name: 'Voltar para Início' })).toHaveAttribute('href', '/inicio')
@@ -131,15 +143,15 @@ describe('Etapa 1 — dados', () => {
     const usuario = userEvent.setup()
     abrir('/adm/classe-biblica/nova')
     const inicio = await screen.findByLabelText('Início')
-    fireEvent.change(inicio, { target: { value: '2027-03-07' } })
+    fireEvent.change(inicio, { target: { value: '07/03/2027' } })
     fireEvent.blur(inicio)
     const fim = screen.getByLabelText('Fim')
-    fireEvent.change(fim, { target: { value: '2027-03-01' } })
+    fireEvent.change(fim, { target: { value: '01/03/2027' } })
     fireEvent.blur(fim)
     expect(await screen.findByText('O fim precisa ser depois do início (07/03/2027)')).toBeInTheDocument()
     expect(fim).toHaveAttribute('aria-invalid', 'true')
-    expect(inicio).toHaveValue('2027-03-07')
-    expect(fim).toHaveValue('2027-03-01')
+    expect(inicio).toHaveValue('07/03/2027')
+    expect(fim).toHaveValue('01/03/2027')
     await usuario.click(screen.getByLabelText('Nome da edição'))
   })
 

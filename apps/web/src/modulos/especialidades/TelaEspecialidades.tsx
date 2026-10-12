@@ -117,7 +117,7 @@ function ListaDoDbv({ dbv }: { dbv: Alvo }) {
       <Confirmacao aberta={aMarcar !== null} titulo="Marcar como concluída" rotuloConfirmar="Marcar" aoConfirmar={confirmarMarcar} aoCancelar={fecharMarcar}>
         <div className="flex flex-col gap-3">
           <p>{aMarcar?.nome}</p>
-          <CampoData rotulo="Data de conclusão" value={data} max={hojeDoClube()} onChange={(e) => definirData(e.target.value)} />
+          <CampoData rotulo="Data de conclusão" value={data} max={hojeDoClube()} onChange={definirData} />
           {marcar.isError && <p role="alert" className="text-sm font-medium text-perigo">{mensagemDe(marcar.error)}</p>}
         </div>
       </Confirmacao>

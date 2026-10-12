@@ -136,6 +136,8 @@ export const EncontroDoPainel = z.object({
 })
 export const PainelSaida = z.object({
   edicao: EdicaoSaida,
+  /** O que a exclusão envolve: encontros (inclusive cancelados) e chamadas; com chamada a edição não se exclui. Nulo para quem não gerencia. */
+  aoExcluir: z.object({ encontros: z.number().int(), chamadas: z.number().int() }).nullable(),
   grupos: z.array(z.object({
     id: Uuid,
     nome: z.string(),

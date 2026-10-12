@@ -124,7 +124,7 @@ describe('Chamada nova', () => {
   it('começa sem marcação, com data de hoje, horário padrão e Salvar desabilitado', async () => {
     montar('/reunioes/nova')
     expect(await screen.findByText('Ana Clara')).toBeInTheDocument()
-    expect(screen.getByLabelText('Data')).toHaveValue(HOJE)
+    expect(screen.getByLabelText('Data')).toHaveValue(HOJE.split('-').reverse().join('/'))
     expect(screen.getByLabelText('Horário')).toHaveValue('09:00')
     expect(botaoSalvar()).toBeDisabled()
     expect(screen.getByText('Marque os 3 que faltam')).toBeInTheDocument()
@@ -236,12 +236,22 @@ describe('Chamada nova', () => {
     montar('/reunioes/nova')
     await screen.findByText('Ana Clara')
     const data = screen.getByLabelText('Data')
-    expect(data).toHaveAttribute('min', '2030-02-13')
-    expect(data).toHaveAttribute('max', HOJE)
     await userEvent.clear(data)
-    await userEvent.type(data, '2030-01-01')
+    await userEvent.type(data, '01/01/2030')
     expect(screen.getByText(/Escolha uma data entre 13\/02 e hoje/)).toBeInTheDocument()
     expect(screen.queryByText('Ana Clara')).not.toBeInTheDocument()
+  })
+
+  it('data pela metade não mostra o aviso de faixa, só a data completa fora dela', async () => {
+    montar('/reunioes/nova')
+    await screen.findByText('Ana Clara')
+    const data = screen.getByLabelText('Data')
+    await userEvent.clear(data)
+    await userEvent.type(data, '3')
+    expect(screen.queryByText(/Escolha uma data entre/)).not.toBeInTheDocument()
+    await userEvent.type(data, '1/02/2024')
+    expect(screen.getByRole('alert')).toHaveTextContent('Essa data não existe')
+    expect(screen.queryByText(/Escolha uma data entre 13\/02 e hoje/)).not.toBeInTheDocument()
   })
 
   it('com 2 unidades mostra o seletor e troca a lista', async () => {

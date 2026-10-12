@@ -129,7 +129,7 @@ describe('Registro de aula nova', () => {
   it('abre com todos presentes, os requisitos da aula publicada da data e Salvar habilitado', async () => {
     montar(`/aulas/nova?classe=${CLASSE_COMPANHEIRO.id}&data=${HOJE}`)
     expect(await screen.findByText('Ana Clara')).toBeInTheDocument()
-    expect(screen.getByLabelText('Data')).toHaveValue(HOJE)
+    expect(screen.getByLabelText('Data')).toHaveValue(HOJE.split('-').reverse().join('/'))
     expect(screen.getByText('Texto de R1')).toBeInTheDocument()
     expect(screen.queryByText('Texto de R3')).not.toBeInTheDocument()
     await waitFor(() => expect(botaoSalvar()).toBeEnabled())
@@ -329,7 +329,7 @@ describe('Registro de aula nova', () => {
     vi.setSystemTime(new Date('2030-03-16T01:30:00.000Z'))
     montar(`/aulas/nova?classe=${CLASSE_COMPANHEIRO.id}`)
     await screen.findByText('Ana Clara')
-    expect(screen.getByLabelText('Data')).toHaveValue('2030-03-15')
+    expect(screen.getByLabelText('Data')).toHaveValue('15/03/2030')
   })
 
   it('data fora dos últimos 30 dias mostra erro e não abre a aula', async () => {
@@ -651,7 +651,7 @@ describe('Substituição: alvo fixo, destinos e R1', () => {
     guardar([classe({ classe: OUTRA }), classe()])
     montar(NOVA)
     await screen.findByText('Ana Clara')
-    expect(screen.getByLabelText('Data')).toHaveValue(DATA)
+    expect(screen.getByLabelText('Data')).toHaveValue(DATA.split('-').reverse().join('/'))
     expect(screen.getByRole('combobox', { name: 'Classe' })).toBeInTheDocument()
   })
 

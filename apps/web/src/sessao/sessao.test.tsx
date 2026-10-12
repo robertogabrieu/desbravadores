@@ -154,6 +154,30 @@ describe('guarda de rota', () => {
     })
     expect(await screen.findByText('modo SEM_CONEXAO')).toBeInTheDocument()
   })
+
+  it('uma falha de rede pontual não prende em sem conexão: a próxima resposta 2xx volta a ONLINE', async () => {
+    function Modo() {
+      return <p>{`modo ${useConexao().modo}`}</p>
+    }
+    let cair = true
+    servidor.use(
+      ...handlersSessao([criarVinculo('ADM')]),
+      http.get('/api/pontual', () => (cair ? HttpResponse.error() : HttpResponse.json({ ok: true }))),
+    )
+    renderizarRotas([{ element: <GuardaRota />, children: [{ path: '/privada', element: <Modo /> }] }], '/privada')
+    expect(await screen.findByText('modo ONLINE')).toBeInTheDocument()
+
+    await act(async () => {
+      await requisitarSemResposta('/api/pontual').catch(() => undefined)
+    })
+    expect(await screen.findByText('modo SEM_CONEXAO')).toBeInTheDocument()
+
+    cair = false
+    await act(async () => {
+      await requisitarSemResposta('/api/pontual')
+    })
+    expect(await screen.findByText('modo ONLINE')).toBeInTheDocument()
+  })
 })
 
 describe('sem papel em clube nenhum', () => {

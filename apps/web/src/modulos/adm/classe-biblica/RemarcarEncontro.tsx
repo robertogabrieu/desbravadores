@@ -9,7 +9,9 @@ import { useConexao, usePacote } from '../../../offline'
 import { Botao, estiloDoBotao } from '../../../ui/Botao'
 import { CabecalhoDaPagina } from '../../../ui/CabecalhoDaPagina'
 import { Campo } from '../../../ui/Campo'
+import { CampoHorario } from '../../../ui/CampoHorario'
 import { CampoData } from '../../../ui/CampoData'
+import { horarioValido } from '../../../ui/mascaraHorario'
 import { Confirmacao } from '../../../ui/Confirmacao'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/EstadosDeCarga'
 import { FaixaAviso } from '../../../ui/FaixaAviso'
@@ -56,6 +58,7 @@ function Formulario({ detalhe }: { detalhe: DetalheDoEncontro }) {
   const [faltaData, setFaltaData] = useState(false)
   const [motivo, setMotivo] = useState('')
   const [erroDoMotivo, setErroDoMotivo] = useState<string>()
+  const [erroDoHorario, setErroDoHorario] = useState<string>()
   const [confirmando, setConfirmando] = useState(false)
   const remarcar = useRemarcarEncontroCB()
   const cancelar = useCancelarEncontroCB()
@@ -68,6 +71,7 @@ function Formulario({ detalhe }: { detalhe: DetalheDoEncontro }) {
 
   const enviarRemarcacao = () => {
     if (!data) return setFaltaData(true)
+    if (horario && !horarioValido(horario)) return setErroDoHorario('Horário inválido')
     if (!leitura || leitura.tipo === 'recusa') return
     const entrada = horario && horario !== encontro.horario ? { data, horario } : { data }
     remarcar.mutate({ id: encontro.id, entrada }, { onSuccess: voltarAoPainel })
@@ -108,7 +112,7 @@ function Formulario({ detalhe }: { detalhe: DetalheDoEncontro }) {
                   max={edicao.fim}
                   value={data}
                   erro={erroDaData}
-                  onChange={(e) => { setData(e.target.value); setFaltaData(false) }}
+                  onChange={(iso) => { setData(iso); setFaltaData(false) }}
                 />
                 {leitura?.tipo === 'livre' && (
                   <p className="flex items-center gap-1.5 text-sm font-medium text-sucesso">
@@ -118,7 +122,7 @@ function Formulario({ detalhe }: { detalhe: DetalheDoEncontro }) {
                 )}
                 {leitura?.tipo === 'aviso' && <FaixaAviso>{leitura.texto}</FaixaAviso>}
               </div>
-              <Campo rotulo="Horário" type="time" className="w-40" value={horario} onChange={(e) => setHorario(e.target.value)} />
+              <CampoHorario rotulo="Horário" className="w-40" value={horario} erro={erroDoHorario} onChange={(e) => { setHorario(e.target.value); setErroDoHorario(undefined) }} />
             </div>
           )}
         </div>

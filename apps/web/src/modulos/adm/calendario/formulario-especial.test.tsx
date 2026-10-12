@@ -294,9 +294,9 @@ describe('Evento especial · edição', () => {
     abrir(`/adm/calendario/eventos/${evento.atual.id}/editar`, handlerEvento(evento), handlerEditarEvento())
     const inicio = await screen.findByLabelText('Início')
     await userEvent.clear(inicio)
-    await userEvent.type(inicio, '2026-09-25')
+    await userEvent.type(inicio, '25/09/2026')
     await userEvent.clear(screen.getByLabelText('Fim'))
-    await userEvent.type(screen.getByLabelText('Fim'), '2026-09-25')
+    await userEvent.type(screen.getByLabelText('Fim'), '25/09/2026')
 
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
 
@@ -340,9 +340,9 @@ describe('Evento especial · edição', () => {
     )
     const inicio = await screen.findByLabelText('Início')
     await userEvent.clear(inicio)
-    await userEvent.type(inicio, '2026-11-15')
+    await userEvent.type(inicio, '15/11/2026')
     await userEvent.clear(screen.getByLabelText('Fim'))
-    await userEvent.type(screen.getByLabelText('Fim'), '2026-11-15')
+    await userEvent.type(screen.getByLabelText('Fim'), '15/11/2026')
 
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
 
