@@ -160,10 +160,9 @@ export interface Resumo {
 
 export function resumir(estado: EstadoChamada, pacote: Pacote): Resumo {
   const marcas = Object.values(estado.marcas)
-  const config = { descontarFalta: pacote.clube.descontarFalta, pontosDescontoFalta: pacote.clube.pontosDescontoFalta }
   let pontos = 0
   for (const marca of marcas) {
-    if (marca.situacao) pontos += pontosDaChamada({ ...marca, situacao: marca.situacao }, pacote.criterios, config)
+    if (marca.situacao) pontos += pontosDaChamada({ ...marca, situacao: marca.situacao }, pacote.criterios)
   }
   return {
     presentes: marcas.filter(ehPresente).length,

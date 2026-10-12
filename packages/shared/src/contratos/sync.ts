@@ -63,7 +63,10 @@ export const PacoteSaida = z.object({
   clube: z.object({
     id: Uuid, nome: z.string(), fuso: z.string(),
     diaReuniao: z.number().int().min(0).max(6), horaReuniao: Horario, localReuniaoPadrao: z.string().nullable(),
-    descontarFalta: z.boolean(), pontosDescontoFalta: z.number().int(),
+    /** @deprecated Sem efeito: o desconto por falta não existe mais. Só segue no contrato para o app instalado, que ainda exige o campo. */
+    descontarFalta: z.boolean().optional(),
+    /** @deprecated Sem efeito: o desconto por falta não existe mais. Só segue no contrato para o app instalado, que ainda exige o campo. */
+    pontosDescontoFalta: z.number().int().optional(),
   }),
   /** Os 5 critérios padrão de chamada (um por gatilho), ativos e inativos. */
   criterios: z.array(z.object({

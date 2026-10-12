@@ -64,8 +64,8 @@ export class SyncService {
         diaReuniao: configuracao.diaReuniao,
         horaReuniao: configuracao.horaReuniao,
         localReuniaoPadrao: configuracao.localReuniaoPadrao,
-        descontarFalta: configuracao.descontarFalta,
-        pontosDescontoFalta: configuracao.pontosDescontoFalta,
+        descontarFalta: false,
+        pontosDescontoFalta: 0,
       },
       criterios: GATILHOS_DA_CHAMADA.flatMap((gatilho) => {
         const criterio = criterios.find((c) => c.gatilho === gatilho)

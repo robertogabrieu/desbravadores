@@ -183,9 +183,8 @@ describe('pontos do evento especial', () => {
     expect(outubro.itens.find((i) => i.dbvId === ana.id)?.pontos).toBe(0)
   })
 
-  it('ninguém perde ponto por faltar, nem com o desconto de falta ligado no clube', async () => {
+  it('ninguém perde ponto por faltar', async () => {
     const { clube, evento, caio, lancadoPorId } = await cenario()
-    await prismaDeTeste().configuracaoClube.update({ where: { clubeId: clube.id }, data: { descontarFalta: true, pontosDescontoFalta: 5 } })
 
     await emTransacao((tx) => pontosDoEvento.refazer(tx, { clubeId: clube.id, evento, lancadoPorId }))
 

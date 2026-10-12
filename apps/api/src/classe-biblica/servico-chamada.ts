@@ -173,7 +173,7 @@ export class ServicoChamada {
     return montarSaida(tx, clubeId, encontro.id, grupo.id, acesso, conflitos, ignorados)
   }
 
-  /** Regra 11: presença e participação pelos critérios padrão ativos; falta não desconta e corrigir estorna. */
+  /** Regra 11: presença e participação pelos critérios padrão; critério desligado não cria ponto nem estorna o já lançado; corrigir a marcação estorna. */
   private async sincronizarPontos(
     tx: Tx,
     sessao: SessaoLogada,
@@ -184,15 +184,23 @@ export class ServicoChamada {
     const { clubeId } = sessao
     await garantirCriterios(tx, clubeId)
     const criterios = await tx.criterioRanking.findMany({
-      where: { clubeId, padrao: true, ativo: true, gatilho: { in: ['CLASSE_BIBLICA_PRESENCA', 'CLASSE_BIBLICA_PARTICIPACAO'] } },
-      select: { id: true, gatilho: true, pontos: true },
+      where: { clubeId, padrao: true, gatilho: { in: ['CLASSE_BIBLICA_PRESENCA', 'CLASSE_BIBLICA_PARTICIPACAO'] } },
+      select: { id: true, gatilho: true, pontos: true, ativo: true },
     })
     const presenca = criterios.find((criterio) => criterio.gatilho === 'CLASSE_BIBLICA_PRESENCA')
     const participacao = criterios.find((criterio) => criterio.gatilho === 'CLASSE_BIBLICA_PARTICIPACAO')
     for (const linha of gravadas) {
       const devidos: PontoDevido[] = []
-      if (linha.presente && presenca) devidos.push({ criterioId: presenca.id, pontos: presenca.pontos })
-      if (linha.participou && participacao) devidos.push({ criterioId: participacao.id, pontos: participacao.pontos })
+      const conquistadosDesligados: string[] = []
+      const conquistados = [
+        { conquistou: linha.presente, criterio: presenca },
+        { conquistou: linha.participou, criterio: participacao },
+      ]
+      for (const { conquistou, criterio } of conquistados) {
+        if (!conquistou || !criterio) continue
+        if (criterio.ativo) devidos.push({ criterioId: criterio.id, pontos: criterio.pontos })
+        else conquistadosDesligados.push(criterio.id)
+      }
       await this.pontos.sincronizar(tx, {
         clubeId,
         dbvId: linha.dbvId,
@@ -200,6 +208,7 @@ export class ServicoChamada {
         origemId: `${encontro.id}:${linha.dbvId}`,
         data: paraDataCivil(encontro.data),
         devidos,
+        conquistadosDesligados,
         lancadoPorId: sessao.usuarioId,
       })
     }

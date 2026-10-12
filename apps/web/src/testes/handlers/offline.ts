@@ -20,8 +20,6 @@ export function criarPacote(parcial: Partial<Pacote> = {}): Pacote {
       diaReuniao: 0,
       horaReuniao: '09:00',
       localReuniaoPadrao: null,
-      descontarFalta: false,
-      pontosDescontoFalta: 0,
     },
     criterios: [],
     unidades: [],
