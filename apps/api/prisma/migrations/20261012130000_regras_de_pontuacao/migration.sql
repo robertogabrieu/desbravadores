@@ -14,6 +14,15 @@ END $$;
 -- (b) estorna: a regra de produto é "só acrescenta" e o ranking já ignora estornados
 UPDATE "LancamentoPontos" SET "estornadoEm" = now() WHERE "pontos" < 0 AND "estornadoEm" IS NULL;
 
+-- (b2) critério com pontos negativos (dado antigo) faria o ServicoPontos.sincronizar lançar: zera
+DO $$
+DECLARE negativos integer;
+BEGIN
+  SELECT count(*) INTO negativos FROM "CriterioRanking" WHERE "pontos" < 0;
+  RAISE NOTICE 'regras_de_pontuacao: % criterio(s) com pontos negativos serao zerados', negativos;
+END $$;
+UPDATE "CriterioRanking" SET "pontos" = 0 WHERE "pontos" < 0;
+
 -- (c) colunas e tipo que saem
 ALTER TABLE "ConfiguracaoClube"
   DROP COLUMN IF EXISTS "descontarFalta",

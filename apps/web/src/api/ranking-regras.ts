@@ -22,6 +22,8 @@ export function useRegras() {
 export function useSalvarRegra() {
   const cliente = useQueryClient()
   return useMutation({
+    // Sem isto o react-query pausa a mutação com o navegador offline e o Salvar fica pendente sem erro.
+    networkMode: 'always',
     mutationFn: ({ gatilho, ...entrada }: EdicaoDaRegra) =>
       requisitar(`/api/ranking/regras/${gatilho}`, RegraSaida, { metodo: 'PATCH', corpo: RegraEntrada.parse(entrada) }),
     onSuccess: (salva) => {

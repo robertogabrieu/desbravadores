@@ -158,4 +158,22 @@ describe('migracao regras_de_pontuacao (SPEC 7, item 7)', () => {
     const tipo = await pg.query(`SELECT 1 FROM pg_type WHERE typname = 'PeriodoRanking'`)
     expect(tipo.rows).toEqual([])
   })
+
+  it('6. criterio com pontos negativos (dado antigo) vira 0 e reaplicar nao falha', async () => {
+    const clube = await criarClube()
+    const negativo = await prisma.criterioRanking.create({
+      data: { clubeId: clube.id, nome: 'Antigo negativo', pontos: 5, ordem: 98, gatilho: 'MANUAL', lancadoPor: 'CONSELHEIRO', padrao: false },
+    })
+    const positivo = await prisma.criterioRanking.create({
+      data: { clubeId: clube.id, nome: 'Positivo', pontos: 7, ordem: 97, gatilho: 'MANUAL', lancadoPor: 'CONSELHEIRO', padrao: false },
+    })
+    // O Prisma/validacao nao deixa gravar negativo: o dado antigo entra por SQL cru.
+    await pg.query('UPDATE "CriterioRanking" SET "pontos" = -5 WHERE "id" = $1', [negativo.id])
+
+    await aplicarMigracao()
+    await aplicarMigracao()
+
+    expect((await prisma.criterioRanking.findUniqueOrThrow({ where: { id: negativo.id } })).pontos).toBe(0)
+    expect((await prisma.criterioRanking.findUniqueOrThrow({ where: { id: positivo.id } })).pontos).toBe(7)
+  })
 })
