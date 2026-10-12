@@ -250,6 +250,7 @@ describe('Sem conexão', () => {
   it('lê do pacote e, ao salvar, mostra "Chamada guardada no aparelho" com os totais', async () => {
     montar()
     expect(await screen.findByText('Sem conexão. A chamada fica guardada no aparelho e é enviada quando a internet voltar.')).toBeInTheDocument()
+    await screen.findByRole('listitem', { name: 'Enzo Barros' })
     await tocarNome('Enzo Barros')
     await userEvent.click(participou('Ana Clara Souza'))
     await userEvent.click(rodape().getByRole('button', { name: 'Salvar chamada' }))
