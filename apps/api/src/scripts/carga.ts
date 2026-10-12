@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { z } from 'zod'
 import { CATEGORIAS_INICIAIS, travarBiblioteca } from '../biblioteca/constantes'
-import { completarVinculosDoPar } from '../classes/par-regular-avancada'
+import { completarVinculosDoPar, igualarQuemMontaDoPar } from '../classes/par-regular-avancada'
 import { PrismaSistema } from '../comum/prisma/prisma-sistema'
 import type { Prisma } from '../generated/prisma/client.js'
 
@@ -361,9 +361,12 @@ async function completarClassesDosClubes(tx: Prisma.TransactionClient, resumo: R
   }
 }
 
-/** O par formado ou reativado pela carga vale para quem já instrui um dos lados: o vínculo ganha a outra classe. */
+/** O par formado ou reativado pela carga vale para quem já instrui um dos lados (o vínculo ganha a outra classe) e a avançada passa a seguir a regular em quem monta. */
 async function completarVinculosDosClubes(tx: Prisma.TransactionClient): Promise<void> {
-  for (const clube of await tx.clube.findMany({ select: { id: true } })) await completarVinculosDoPar(tx, clube.id)
+  for (const clube of await tx.clube.findMany({ select: { id: true } })) {
+    await completarVinculosDoPar(tx, clube.id)
+    await igualarQuemMontaDoPar(tx, clube.id)
+  }
 }
 
 /** Clube sem nenhuma categoria da biblioteca (nem removida) recebe as três iniciais; quem já mexeu nas dele não é tocado. */

@@ -303,6 +303,7 @@ describe('instrutor: inicio e pedido de liberacao', () => {
       const enviados = await pedidos(clube.id)
       expect(enviados).toHaveLength(1)
       expect(enviados[0]).toMatchObject({ usuarioId: adm.usuario.id, link: `/adm/classes?classe=${amigo.id}` })
+      expect(enviados[0].texto).toContain(`Amigo + ${avancada.nome}`)
 
       await prismaDeTeste().classeClube.update({
         where: { clubeId_classeId: { clubeId: clube.id, classeId: amigo.id } },

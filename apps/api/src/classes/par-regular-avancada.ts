@@ -123,3 +123,28 @@ export async function completarVinculosDoPar(db: ClienteDeVinculos, clubeId: str
   })
   if (faltam.length > 0) await db.vinculoClasse.createMany({ data: faltam, skipDuplicates: true })
 }
+
+type ClienteDeQuemMonta = Pick<Prisma.TransactionClient, 'classe' | 'classeClube'>
+
+/**
+ * A avançada do par segue a regular em "quem monta": ao formar o par, a linha da avançada passa a ter o valor da
+ * regular (sem linha, vale o padrão ADM). Sem `classeIds`, iguala todos os pares do clube; com `classeIds`, só os
+ * pares de que alguma dessas classes faça parte. `ativa` de cada classe não é tocada.
+ */
+export async function igualarQuemMontaDoPar(db: ClienteDeQuemMonta, clubeId: string, classeIds?: string[]): Promise<void> {
+  const candidatas = await db.classe.findMany({
+    where: { ...avancadaComParAtivo(clubeId), ...(classeIds ? { AND: [{ OR: [{ id: { in: classeIds } }, { classeBaseId: { in: classeIds } }] }] } : {}) },
+    select: { classeBaseId: true },
+  })
+  const regularIds = [...new Set(candidatas.flatMap((avancada) => (avancada.classeBaseId ? [avancada.classeBaseId] : [])))]
+  const pareadas = await avancadasPareadas(db, clubeId, regularIds)
+  for (const [regularId, avancada] of pareadas) {
+    const regular = await db.classeClube.findUnique({ where: { clubeId_classeId: { clubeId, classeId: regularId } }, select: { quemMontaCronograma: true } })
+    const quemMontaCronograma = regular?.quemMontaCronograma ?? 'ADM'
+    await db.classeClube.upsert({
+      where: { clubeId_classeId: { clubeId, classeId: avancada.id } },
+      create: { clubeId, classeId: avancada.id, quemMontaCronograma },
+      update: { quemMontaCronograma },
+    })
+  }
+}

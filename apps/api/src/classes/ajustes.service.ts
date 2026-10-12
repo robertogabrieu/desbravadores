@@ -7,7 +7,7 @@ import { PrismaService } from '../comum/prisma/prisma.service'
 import type { Prisma, QuemMonta } from '../generated/prisma/client.js'
 import { ServicoMontagem } from '../cronogramas/montagem/servico-montagem'
 import { ClassesService } from './classes.service'
-import { avancadaPareadaDe, completarVinculosDoPar, temParAtivo } from './par-regular-avancada'
+import { avancadaPareadaDe, completarVinculosDoPar, igualarQuemMontaDoPar, temParAtivo } from './par-regular-avancada'
 
 type Detalhe = z.infer<typeof ClasseDetalheSaida>
 
@@ -40,7 +40,11 @@ export class AjustesService {
         create: { clubeId, classeId, ativa: entrada.ativa ?? true, quemMontaCronograma: entrada.quemMontaCronograma ?? 'ADM' },
         update: { ativa: entrada.ativa, quemMontaCronograma: entrada.quemMontaCronograma },
       })
-      if (entrada.ativa === true) await completarVinculosDoPar(tx, clubeId, await this.classesDoPar(tx, clubeId, classeId))
+      if (entrada.ativa === true) {
+        const classesDoPar = await this.classesDoPar(tx, clubeId, classeId)
+        await completarVinculosDoPar(tx, clubeId, classesDoPar)
+        await igualarQuemMontaDoPar(tx, clubeId, classesDoPar)
+      }
       if (entrada.quemMontaCronograma !== undefined) await this.repassarQuemMontaParaAvancada(tx, clubeId, classeId, entrada.quemMontaCronograma)
     })
     return this.classes.detalhar(clubeId, classeId)

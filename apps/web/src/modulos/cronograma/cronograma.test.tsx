@@ -134,9 +134,18 @@ describe('cronograma em leitura', () => {
     expect(screen.queryByRole('link', { name: 'Montar cronograma' })).not.toBeInTheDocument()
   })
 
+  it('o pedido segue o podeMontar da API, não o quemMonta da própria classe (avançada de par)', async () => {
+    servidor.use(
+      handlerCronograma(criarCronograma({ cronogramaId: null, status: null, fonte: null, publicadoEm: null, aulas: [] })),
+      handlerClasses([criarClasse({ id: CLASSE_AMIGO.id, quemMontaCronograma: 'INSTRUTOR' })]),
+    )
+    abrir()
+    expect(await screen.findByRole('button', { name: 'Pedir para eu montar' })).toBeInTheDocument()
+  })
+
   it('sem publicação e montagem do Adm: mostra o aviso e pede liberação uma vez', async () => {
     const pedidos: string[] = []
-    servidor.use(handlerCronograma(criarCronograma({ cronogramaId: null, status: null, fonte: null, publicadoEm: null, aulas: [] })), handlerClasses([criarClasse({ id: CLASSE_AMIGO.id, quemMontaCronograma: 'ADM' })]), handlerPedirLiberacao((id) => pedidos.push(id)))
+    servidor.use(handlerCronograma(criarCronograma({ cronogramaId: null, status: null, fonte: null, publicadoEm: null, aulas: [] })), handlerPedirLiberacao((id) => pedidos.push(id)))
     abrir()
     expect(await screen.findByText('O cronograma ainda não foi publicado.')).toBeInTheDocument()
     await userEvent.click(await screen.findByRole('button', { name: 'Pedir para eu montar' }))
@@ -146,7 +155,7 @@ describe('cronograma em leitura', () => {
   })
 
   it('sem publicação e montagem do instrutor: não oferece pedir liberação', async () => {
-    servidor.use(handlerCronograma(criarCronograma({ cronogramaId: null, status: null, fonte: null, publicadoEm: null, aulas: [] })), handlerClasses([criarClasse({ id: CLASSE_AMIGO.id, quemMontaCronograma: 'INSTRUTOR' })]))
+    servidor.use(handlerCronograma(criarCronograma({ podeMontar: true, cronogramaId: null, status: null, fonte: null, publicadoEm: null, aulas: [] })))
     abrir()
     await screen.findByText('O cronograma ainda não foi publicado.')
     await vi.waitFor(() => expect(screen.queryByRole('button', { name: 'Pedir para eu montar' })).not.toBeInTheDocument())

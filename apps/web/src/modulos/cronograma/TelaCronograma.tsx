@@ -4,7 +4,6 @@ import { ErroDaApi } from '../../api/cliente'
 import { useCronograma } from '../../api/cronograma'
 import type { AulaDoCronograma, Cronograma } from '../../api/cronograma'
 import { usePedirLiberacao } from '../../api/instrutor'
-import { useClasses } from '../../api/leitura'
 import { useConexao } from '../../offline'
 import { useSessao } from '../../sessao/useSessao'
 import { Botao } from '../../ui/Botao'
@@ -105,11 +104,9 @@ function CartaoDaAula({ aula, classeId }: { aula: AulaDoCronograma; classeId: st
   )
 }
 
-/** Só aparece para quem não monta e ainda não tem publicação; o Adm é avisado só quando a classe é dele. */
+/** Só aparece para quem não monta e ainda não tem publicação (a API já diz `podeMontar` pela classe dona do cronograma). */
 function PedirParaMontar({ classeId }: { classeId: string }) {
-  const classes = useClasses()
   const pedido = usePedirLiberacao()
-  if (classes.data?.find((classe) => classe.id === classeId)?.quemMontaCronograma !== 'ADM') return null
   if (pedido.isSuccess) return <p role="status" className="text-base font-semibold text-sucesso">Pedido enviado ao Adm do clube.</p>
   return (
     <div className="flex flex-col items-center gap-2">

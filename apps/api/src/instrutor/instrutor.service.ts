@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common'
-import { mediaTurma, type InicioInstrutorSaida } from '@desbravadores/shared'
+import { mediaTurma, nomeDoPar, type InicioInstrutorSaida } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { devedoresPorItem } from '../aulas/tarefas-leitura'
 import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
-import { classeDonaDoCronograma } from '../classes/par-regular-avancada'
+import { avancadaPareadaDe, classeDonaDoCronograma } from '../classes/par-regular-avancada'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
@@ -110,8 +110,9 @@ export class InstrutorService {
         select: { id: true },
       })
       if (recente) return
-      const [classe, autor, adms] = await Promise.all([
-        tx.classe.findFirstOrThrow({ where: { id: classeId, OR: [{ clubeId: null }, { clubeId }] }, select: { nome: true } }),
+      const [classe, avancada, autor, adms] = await Promise.all([
+        tx.classe.findFirstOrThrow({ where: { id: donaId, OR: [{ clubeId: null }, { clubeId }] }, select: { nome: true } }),
+        avancadaPareadaDe(tx, clubeId, donaId),
         tx.usuario.findUniqueOrThrow({ where: { id: sessao.usuarioId }, select: { nome: true } }),
         tx.vinculo.findMany({ where: { clubeId, papel: 'ADM', ativo: true }, select: { usuarioId: true } }),
       ])
@@ -119,7 +120,7 @@ export class InstrutorService {
         clubeId,
         tipo,
         titulo: 'Pedido para montar o cronograma',
-        texto: `${autor.nome} pediu para montar o cronograma de ${classe.nome}.`,
+        texto: `${autor.nome} pediu para montar o cronograma de ${nomeDoPar(classe.nome, avancada?.nome)}.`,
         destinos: adms.map((adm) => ({ usuarioId: adm.usuarioId, link })),
       })
     })

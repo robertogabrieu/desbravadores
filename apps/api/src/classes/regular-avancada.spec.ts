@@ -197,6 +197,33 @@ describe('regular e avançada andam juntas', () => {
     })
   })
 
+  describe('ao formar o par, a avançada passa a seguir a regular em quem monta', () => {
+    const quemMonta = async (clubeId: string, classeId: string) =>
+      (await prismaDeTeste().classeClube.findUniqueOrThrow({ where: { clubeId_classeId: { clubeId, classeId } } })).quemMontaCronograma
+
+    it('reativar a avançada com a regular em ADM e a avançada em INSTRUTOR iguala a avançada a ADM', async () => {
+      const { clube, adm, regular, avancada } = await cenario()
+      await api.patch(`/api/classes/${avancada.id}`, adm.autorizacao, { ativa: false }).expect(200)
+      await api.patch(`/api/classes/${avancada.id}`, adm.autorizacao, { quemMontaCronograma: 'INSTRUTOR' }).expect(200)
+      expect(await quemMonta(clube.id, regular.id)).toBe('ADM')
+      expect(await quemMonta(clube.id, avancada.id)).toBe('INSTRUTOR')
+      await api.patch(`/api/classes/${avancada.id}`, adm.autorizacao, { ativa: true }).expect(200)
+      expect(await quemMonta(clube.id, avancada.id)).toBe('ADM')
+    })
+
+    it('reativar a regular iguala a avançada pareada à regular, que está em INSTRUTOR', async () => {
+      const { clube, adm, regular, avancada } = await cenario()
+      await api.patch(`/api/classes/${regular.id}`, adm.autorizacao, { ativa: false }).expect(200)
+      await api.patch(`/api/classes/${regular.id}`, adm.autorizacao, { quemMontaCronograma: 'INSTRUTOR' }).expect(200)
+      await prismaDeTeste().classeClube.update({
+        where: { clubeId_classeId: { clubeId: clube.id, classeId: avancada.id } },
+        data: { quemMontaCronograma: 'ADM' },
+      })
+      await api.patch(`/api/classes/${regular.id}`, adm.autorizacao, { ativa: true }).expect(200)
+      expect(await quemMonta(clube.id, avancada.id)).toBe('INSTRUTOR')
+    })
+  })
+
   describe('par ativo', () => {
     it('vínculo na avançada com a regular desativada no clube não puxa a regular', async () => {
       const { clube, adm, alvo, regular, avancada } = await cenario()

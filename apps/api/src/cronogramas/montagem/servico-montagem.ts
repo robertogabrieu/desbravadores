@@ -60,13 +60,11 @@ export class ServicoMontagem {
     const classeId = await this.leitura.classeDoCronograma(clubeId, pedida)
     await this.exigirClasseAtiva(clubeId, classeId)
     try {
-      const cronogramaId = await this.prisma.$transaction(async (tx) => {
-        const criado = await tx.cronograma.create({
-          data: { clubeId, classeId, anoClube: entrada.anoClube, inicio: daDataCivil(entrada.inicio), fim: daDataCivil(entrada.fim) },
-          select: { id: true },
-        })
-        return criado.id
+      const criado = await this.prisma.cronograma.create({
+        data: { clubeId, classeId, anoClube: entrada.anoClube, inicio: daDataCivil(entrada.inicio), fim: daDataCivil(entrada.fim) },
+        select: { id: true },
       })
+      const cronogramaId = criado.id
       return await this.leitura.saida(clubeId, cronogramaId)
     } catch (erro) {
       if (ehCorrida(erro)) throw new ErroApp('CONFLITO', 'Já existe um cronograma desta classe neste ano.')
@@ -203,6 +201,7 @@ export class ServicoMontagem {
     for (const cronogramaId of cronogramaIds) {
       const cronograma = await tx.cronograma.findFirstOrThrow({ where: { clubeId, id: cronogramaId }, include: { classe: { select: { trilha: true } } } })
       const aulasDoRequisito = await tx.aulaRequisito.findMany({ where: { clubeId, cronogramaId, requisitoId }, select: { aulaPlanejadaId: true } })
+      const classesDoCronograma = await this.leitura.classesDoCronograma(clubeId, cronograma, tx)
       let retirou = false
       for (const { aulaPlanejadaId } of aulasDoRequisito) {
         const aula = await tx.aulaPlanejada.findFirstOrThrow({ where: { clubeId, id: aulaPlanejadaId } })
@@ -213,7 +212,7 @@ export class ServicoMontagem {
         if (dada) continue
         await tx.aulaRequisito.deleteMany({ where: { clubeId, cronogramaId, requisitoId, aulaPlanejadaId } })
         retirou = true
-        if (cronograma.classe.trilha === 'INDIVIDUAL') await this.removerSeVazia(tx, cronograma, aula)
+        if (cronograma.classe.trilha === 'INDIVIDUAL') await this.removerSeVazia(tx, cronograma, aula, classesDoCronograma)
       }
       if (!retirou) continue
       await tx.cronograma.updateMany({
@@ -426,13 +425,13 @@ export class ServicoMontagem {
 
   /**
    * Aula das individuais que ficou sem requisito deixa de existir, salvo se alguma classe do encontro já deu a aula
-   * naquela data; nas agrupadas só se remove de propósito.
+   * naquela data; nas agrupadas só se remove de propósito. Quem remove várias aulas do mesmo cronograma passa as classes já calculadas.
    */
-  private async removerSeVazia(tx: Tx, cronograma: Cronograma, aula: { id: string; data: Date }): Promise<void> {
+  private async removerSeVazia(tx: Tx, cronograma: Cronograma, aula: { id: string; data: Date }, classesJaCalculadas?: string[]): Promise<void> {
     const { clubeId } = cronograma
     const restantes = await tx.aulaRequisito.count({ where: { clubeId, aulaPlanejadaId: aula.id } })
     if (restantes > 0) return
-    const classeIds = await this.leitura.classesDoCronograma(clubeId, cronograma, tx)
+    const classeIds = classesJaCalculadas ?? (await this.leitura.classesDoCronograma(clubeId, cronograma, tx))
     const dada = await tx.registroAula.findFirst({ where: { clubeId, classeId: { in: classeIds }, data: aula.data }, select: { id: true } })
     if (dada) return
     await tx.aulaPlanejada.updateMany({ where: { clubeId, id: aula.id }, data: { removidaEm: new Date() } })

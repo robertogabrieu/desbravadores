@@ -33,7 +33,7 @@ export function gruposDeUnidades(ativas: Unidade[], doPapel: RefUnidade[]): Grup
   return semGruposVazios([{ titulo: 'Unidades', opcoes }])
 }
 
-type ClasseDoEscopo = Pick<Classe, 'id' | 'nome' | 'tipo' | 'trilha'> & { avancadaPareadaId?: string | null }
+type ClasseDoEscopo = Pick<Classe, 'id' | 'nome' | 'tipo' | 'trilha' | 'avancadaPareadaId'>
 
 /**
  * A regular leva a avançada dela embaixo (as duas andam juntas); as agrupadas são uma turma à parte.
