@@ -1,5 +1,6 @@
 export * from './situacao'
 export * from './pontos'
+export * from './regras-de-pontuacao'
 export * from './progresso'
 export * from './frequencia'
 export * from './nome-publico'
