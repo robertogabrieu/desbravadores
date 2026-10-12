@@ -1,13 +1,17 @@
 import { Injectable } from '@nestjs/common'
-import type { ClasseDetalheSaida, ClasseFiltro, ClasseSaida } from '@desbravadores/shared'
+import type { ClasseDetalheSaida, ClasseFiltro, ClasseRegularResumo, ClasseSaida } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
+import { colador } from '../desbravadores/apoio'
+import { ServicoEscopo } from '../desbravadores/escopo.service'
 import type { Prisma } from '../generated/prisma/client.js'
 import { corTokenDaClasse } from './apresentacao-classe'
+import { avancadasPareadas } from './par-regular-avancada'
 
 type Classe = z.infer<typeof ClasseSaida>
 type Detalhe = z.infer<typeof ClasseDetalheSaida>
+type ResumoDaRegular = z.infer<typeof ClasseRegularResumo>
 
 const SELECAO_CLASSE = (clubeId: string) =>
   ({
@@ -30,7 +34,13 @@ function estaAtivo(requisitoAtivo: boolean, ajusteAtivo: boolean | null | undefi
   return requisitoAtivo && ajusteAtivo !== false
 }
 
-function montarClasse(classe: ClasseLida, totalRequisitos: number): Classe {
+/** Quem anda com quem, pela regra central do par: a avançada de cada regular e a regular de cada avançada. */
+interface Pares {
+  avancadaDaRegular: Map<string, string>
+  regularDaAvancada: Map<string, string>
+}
+
+function montarClasse(classe: ClasseLida, totalRequisitos: number, pares: Pares): Classe {
   const doClube = classe.clubes[0]
   return {
     id: classe.id,
@@ -40,6 +50,8 @@ function montarClasse(classe: ClasseLida, totalRequisitos: number): Classe {
     trilha: classe.trilha,
     origem: classe.origem,
     classeBaseId: classe.classeBaseId,
+    avancadaPareadaId: pares.avancadaDaRegular.get(classe.id) ?? null,
+    regularDoParId: pares.regularDaAvancada.get(classe.id) ?? null,
     ordem: classe.ordem,
     corToken: corTokenDaClasse(classe),
     ativa: doClube?.ativa ?? true,
@@ -50,7 +62,10 @@ function montarClasse(classe: ClasseLida, totalRequisitos: number): Classe {
 
 @Injectable()
 export class ClassesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly escopo: ServicoEscopo,
+  ) {}
 
   async listar(clubeId: string, filtro: z.infer<typeof ClasseFiltro>): Promise<Classe[]> {
     const classes = await this.prisma.classe.findMany({
@@ -59,7 +74,16 @@ export class ClassesService {
       orderBy: { ordem: 'asc' },
     })
     const totais = await this.totaisDeRequisitos(clubeId, classes.map((c) => c.id))
-    return classes.map((classe) => montarClasse(classe, totais.get(classe.id) ?? 0))
+    const pares = await this.paresDe(clubeId, classes)
+    return classes.map((classe) => montarClasse(classe, totais.get(classe.id) ?? 0, pares))
+  }
+
+  /** Um só acesso ao banco para todas as classes recebidas; só entram os pares ativos. */
+  private async paresDe(clubeId: string, classes: Array<{ id: string; classeBaseId: string | null }>): Promise<Pares> {
+    const pareadas = await avancadasPareadas(this.prisma, clubeId, classes.flatMap((classe) => [classe.id, ...(classe.classeBaseId ? [classe.classeBaseId] : [])]))
+    const avancadaDaRegular = new Map([...pareadas].map(([regularId, avancada]) => [regularId, avancada.id]))
+    const regularDaAvancada = new Map([...pareadas].map(([regularId, avancada]) => [avancada.id, regularId]))
+    return { avancadaDaRegular, regularDaAvancada }
   }
 
   async detalhar(clubeId: string, id: string): Promise<Detalhe> {
@@ -94,7 +118,36 @@ export class ClassesService {
       }),
     }))
     const total = secoes.reduce((soma, secao) => soma + secao.requisitos.filter((r) => r.ativo).length, 0)
-    return { ...montarClasse(classe, total), secoes }
+    const pares = await this.paresDe(clubeId, [classe])
+    const regularId = pares.regularDaAvancada.get(classe.id)
+    const regular = regularId ? await this.resumirRegular(clubeId, regularId) : null
+    return { ...montarClasse(classe, total, pares), regular, secoes }
+  }
+
+  private async resumirRegular(clubeId: string, regularId: string): Promise<ResumoDaRegular | null> {
+    const regular = await this.prisma.classe.findFirst({
+      where: { id: regularId, OR: [{ clubeId: null }, { clubeId }] },
+      select: { id: true, nome: true, clubes: { where: { clubeId }, select: { quemMontaCronograma: true } } },
+    })
+    if (!regular) return null
+    const [totalAlunos, instrutores] = await Promise.all([
+      this.escopo.relogio(clubeId).then((relogio) =>
+        this.prisma.matriculaClasse.count({
+          where: { clubeId, classeId: regularId, anoClube: relogio.anoClube, status: { not: 'DESISTIU' } },
+        }),
+      ),
+      this.prisma.vinculo.findMany({
+        where: { clubeId, papel: 'INSTRUTOR', ativo: true, classes: { some: { classeId: regularId } } },
+        select: { usuario: { select: { nome: true } } },
+      }),
+    ])
+    return {
+      id: regular.id,
+      nome: regular.nome,
+      instrutores: instrutores.map((v) => v.usuario.nome).sort((a, b) => colador.compare(a, b)),
+      quemMontaCronograma: regular.clubes[0]?.quemMontaCronograma ?? 'ADM',
+      totalAlunos,
+    }
   }
 
   /** Requisitos ativos por classe, com os ajustes do clube aplicados. */

@@ -23,6 +23,7 @@ import {
 } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
+import { ativaNoClube, avancadaParaMatricula } from '../classes/par-regular-avancada'
 import { ErroApp } from '../comum/erros'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { PrismaService } from '../comum/prisma/prisma.service'
@@ -149,9 +150,6 @@ export function montarSaida(dbv: DesbravadorCompleto, relogio: RelogioDoClube, c
   }
   return saida
 }
-
-/** Classe desligada pelo clube (`ClasseClube.ativa = false`) não existe para matrícula nova. */
-export const ativaNoClube = (clubeId: string) => ({ clubes: { none: { clubeId, ativa: false } } }) satisfies Prisma.ClasseWhereInput
 
 /**
  * Classe regular ativa (e ativa no clube) que a idade de referência pede: na individual, a da idade exata;
@@ -482,7 +480,7 @@ export class DesbravadoresService {
     const { clubeId, dbvId, nascimento, anoClube } = dados
     const classe = await this.classeDaIdade(tx, clubeId, nascimento, anoClube)
     if (!classe) return false
-    const avancada = dados.incluirAvancada ? await this.avancadaVigente(tx, clubeId, classe.id) : null
+    const avancada = dados.incluirAvancada ? await avancadaParaMatricula(tx, clubeId, classe.id) : null
     const avancadaConcluida = avancada
       ? await tx.matriculaClasse.findFirst({
           where: { clubeId, dbvId, anoClube, classeId: avancada.id, status: { in: ['CONCLUIDA', 'INVESTIDA'] } },
@@ -598,21 +596,12 @@ export class DesbravadoresService {
     }
     const classeIds = [classe.id]
     if (classe.tipo === 'REGULAR' && dados.incluirAvancada) {
-      const avancada = await this.avancadaVigente(tx, clubeId, classe.id)
+      const avancada = await avancadaParaMatricula(tx, clubeId, classe.id)
       if (avancada) classeIds.push(avancada.id)
     }
     const matriculas: Matricula[] = []
     for (const classeId of classeIds) matriculas.push(await this.garantirMatricula(tx, { clubeId, dbvId, classeId, anoClube }))
     return matriculas
-  }
-
-  /** A avançada que acompanha a regular no clube: ativa, ligada no clube e, havendo mais de uma, a de menor ordem. */
-  private async avancadaVigente(tx: Cliente, clubeId: string, classeBaseId: string): Promise<{ id: string } | null> {
-    return tx.classe.findFirst({
-      where: { classeBaseId, tipo: 'AVANCADA', OR: [{ clubeId: null }, { clubeId }], ativa: true, ...ativaNoClube(clubeId) },
-      orderBy: { ordem: 'asc' },
-      select: { id: true },
-    })
   }
 
   private async garantirMatricula(

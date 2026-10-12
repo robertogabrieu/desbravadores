@@ -5,6 +5,7 @@ import {
   hojeNoFuso,
   DIAS_DE_COBRANCA_DA_LISTA,
   mediaTurma,
+  nomeDoPar,
   pendenciaDeLista,
   percentualClasse,
   type SituacaoChamada,
@@ -14,6 +15,7 @@ import type { z } from 'zod'
 import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
 import { nomeDoAutor } from '../comum/nome-do-autor'
 import { PrismaService } from '../comum/prisma/prisma.service'
+import { avancadasPareadas } from '../classes/par-regular-avancada'
 import { ServicoCronograma } from '../cronogramas/servico-cronograma'
 import { daDataCivil, paraDataCivil } from '../desbravadores/apoio'
 
@@ -260,9 +262,11 @@ export class VisaoGeralService {
       select: { id: true, enviadoEm: true, atualizadoEm: true, classe: { select: SELECAO_REF_CLASSE }, enviadoPor: { select: { nome: true } } },
       orderBy: [{ enviadoEm: 'asc' }, { id: 'asc' }],
     })
+    // O cronograma do par e um so: aparece uma vez, com o nome das duas classes.
+    const avancadaDaRegular = await avancadasPareadas(this.prisma, clubeId, enviados.map((cronograma) => cronograma.classe.id))
     return enviados.map((cronograma) => ({
       cronogramaId: cronograma.id,
-      classe: refClasse(cronograma.classe),
+      classe: refClasse({ ...cronograma.classe, nome: nomeDoPar(cronograma.classe.nome, avancadaDaRegular.get(cronograma.classe.id)?.nome) }),
       enviadoPor: cronograma.enviadoPor?.nome ?? '',
       enviadoEm: (cronograma.enviadoEm ?? cronograma.atualizadoEm).toISOString(),
     }))

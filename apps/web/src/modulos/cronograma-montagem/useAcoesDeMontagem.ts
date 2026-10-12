@@ -23,13 +23,13 @@ export interface DadosDaAula {
 }
 
 /**
- * Todas as gravações de uma montagem já com cronograma. Cada ação devolve `true` quando gravou; quando
+ * Todas as gravações de uma montagem já com cronograma. O par regular+avançada grava tudo no cronograma único, pelo id dele. Cada ação devolve `true` quando gravou; quando
  * falha, guarda o erro em `erro` (a tela mostra a faixa) e devolve `false`.
  */
 export function useAcoesDeMontagem(classeId: string, ano: number | undefined, cronogramaId: string, montagem: Montagem) {
   const [erro, setErro] = useState<ErroDeAcao | null>(null)
-  const colocarMutacao = useColocarRequisito(classeId, ano, cronogramaId)
-  const tirarMutacao = useTirarRequisito(classeId, ano, cronogramaId)
+  const colocarMutacao = useColocarRequisito(classeId, ano)
+  const tirarMutacao = useTirarRequisito(classeId, ano)
   const criarAulaMutacao = useCriarAula(classeId, ano, cronogramaId)
   const editarMutacao = useEditarAula(classeId, ano)
   const removerAulaMutacao = useRemoverAula(classeId, ano)
@@ -58,8 +58,10 @@ export function useAcoesDeMontagem(classeId: string, ano: number | undefined, cr
     erro,
     ocupada,
     limparErro: () => setErro(null),
-    colocar: (requisitoId: string, data: string) => tentar(() => colocarMutacao.mutateAsync({ requisitoId, data })),
-    tirar: (requisitoId: string) => tentar(() => tirarMutacao.mutateAsync(requisitoId)),
+    colocar: (requisitoId: string, data: string) =>
+      tentar(() => colocarMutacao.mutateAsync({ cronogramaId, requisitoId, data })),
+    tirar: (requisitoId: string) =>
+      tentar(() => tirarMutacao.mutateAsync({ cronogramaId, requisitoId })),
     criarAula: (data: string, dados: DadosDaAula) => tentar(() => criarAulaMutacao.mutateAsync({ data, ...dados })),
     editarAula: (aulaId: string, dados: DadosDaAula) => tentar(() => editarMutacao.mutateAsync({ aulaId, ...dados })),
     removerAula: (aulaId: string) => tentar(() => removerAulaMutacao.mutateAsync(aulaId)),

@@ -5,6 +5,7 @@ import type { z } from 'zod'
 import type request from 'supertest'
 import { criarAppDeTeste } from '../../test/app'
 import {
+  avancadaOficial,
   classeOficial,
   criarAcesso,
   criarClube,
@@ -319,6 +320,31 @@ describe('PUT /api/sync/aulas/:uuid', () => {
     // a mesma aula planejada numa data diferente esta fora do publicado
     const outra = await c.ok(c.enviar({ data: diasAtras(2), aulaPlanejadaId: planejada }))
     expect(outra.avisos).toHaveLength(1)
+  })
+
+  it('par: o envio da avancada liga a aula planejada do cronograma da regular; data errada ou aula nao publicada vira aviso', async () => {
+    const c = await cenario()
+    const avancada = await avancadaOficial(c.classe.id)
+    const [a1] = await requisitosDa(avancada.id, 1)
+    // O escopo confia no vínculo gravado: o instrutor do par tem as duas classes.
+    await prismaDeTeste().vinculoClasse.create({ data: { vinculoId: c.instrutor.vinculo.id, classeId: avancada.id } })
+    const cronograma = await criarCronograma({
+      clubeId: c.clube.id,
+      classeId: c.classe.id,
+      aulas: [{ data: diasAtras(0), requisitoIds: [c.r1, a1 ?? ''] }],
+    })
+    const planejada = cronograma.aulas[0]?.id ?? ''
+    const naoPublicada = await c.ok(c.enviar({ classeId: avancada.id, data: diasAtras(1), aulaPlanejadaId: planejada }))
+    expect(naoPublicada.avisos).toHaveLength(1)
+
+    await publicarCronograma({ cronogramaId: cronograma.id, publicadoPorId: c.adm.usuario.id })
+    const uuid = randomUUID()
+    const ligada = await c.ok(c.enviar({ uuid, classeId: avancada.id, aulaPlanejadaId: planejada }))
+    expect(ligada.avisos).toEqual([])
+    expect((await prismaDeTeste().registroAula.findUniqueOrThrow({ where: { id: uuid } })).aulaPlanejadaId).toBe(planejada)
+
+    const outraData = await c.ok(c.enviar({ classeId: avancada.id, data: diasAtras(2), aulaPlanejadaId: planejada }))
+    expect(outraData.avisos).toHaveLength(1)
   })
 
   it('desmarcar so remove a conclusao desta aula e estorna; as de outra aula ou do fora-da-aula ficam', async () => {

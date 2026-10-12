@@ -6,8 +6,8 @@ import { Campo } from '../../../ui/Campo'
 import { Chip } from '../../../ui/Chip'
 import { estiloDoBotao } from '../../../ui/Botao'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
-import { filtrarGrupos } from './escopo'
-import type { GrupoDeEscopo } from './escopo'
+import { contarMarcadas, filtrarGrupos, idsDaOpcao, opcaoMarcada } from './escopo'
+import type { GrupoDeEscopo, OpcaoDeEscopo } from './escopo'
 
 interface Propriedades {
   papel: 'CONSELHEIRO' | 'INSTRUTOR'
@@ -28,6 +28,8 @@ const naoEnviarComEnter = (evento: KeyboardEvent<HTMLInputElement>) => {
   if (evento.key === 'Enter') evento.preventDefault()
 }
 
+const FRASE_DO_PAR = 'Cada classe já vem com a avançada dela: quem instrui Amigo instrui também Amigo da Natureza.'
+
 const contagem = (n: number): string => (n === 0 ? 'Nenhuma escolhida' : `${n} ${n === 1 ? 'escolhida' : 'escolhidas'}`)
 
 /** Busca, contagem e grupos de chips. Controlado: a página valida e foca o grupo (ref) quando faltar escolha. */
@@ -35,7 +37,11 @@ export const EscolhaDoEscopo = forwardRef<HTMLDivElement, Propriedades>(function
   const [busca, setBusca] = useState('')
   const textos = TEXTOS[papel]
   const visiveis = filtrarGrupos(grupos, busca)
-  const alternar = (id: string, marcado: boolean) => aoMudar(marcado ? [...escolhidos, id] : escolhidos.filter((escolhido) => escolhido !== id))
+  const alternar = (opcao: OpcaoDeEscopo, marcado: boolean) => {
+    const ids = idsDaOpcao(opcao)
+    const semEstes = escolhidos.filter((id) => !ids.includes(id))
+    aoMudar(marcado ? [...semEstes, ...ids] : semEstes)
+  }
 
   if (grupos.length === 0) {
     return (
@@ -56,19 +62,23 @@ export const EscolhaDoEscopo = forwardRef<HTMLDivElement, Propriedades>(function
         <Search aria-hidden className="pointer-events-none absolute bottom-3 left-3 size-5 text-texto-2" />
         <Campo type="search" rotulo={textos.busca} placeholder={textos.placeholder} value={busca} onChange={(e) => setBusca(e.target.value)} onKeyDown={naoEnviarComEnter} className="pl-10" />
       </div>
+      {papel === 'INSTRUTOR' && <p className="text-base text-texto-2">{FRASE_DO_PAR}</p>}
       <p aria-live="polite" className="flex items-center gap-1.5 text-base font-bold text-marca">
         <Check aria-hidden className="size-5" />
-        {contagem(escolhidos.length)}
+        {contagem(contarMarcadas(grupos, escolhidos))}
       </p>
       {visiveis.length === 0 && <p className="text-base text-texto-2">{textos.semBusca}</p>}
       {visiveis.map((grupo) => (
         <fieldset key={grupo.titulo} className="m-0 flex flex-col gap-2.5 border-0 p-0">
           <legend className="mb-2.5 p-0 text-sm font-bold text-texto">{grupo.titulo}</legend>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-start gap-x-2 gap-y-3">
             {grupo.opcoes.map((opcao) => (
-              <Chip key={opcao.id} variante="cheia" selecionado={escolhidos.includes(opcao.id)} aoAlternar={(marcado) => alternar(opcao.id, marcado)}>
-                {opcao.inativa ? `${opcao.nome} (inativa)` : opcao.nome}
-              </Chip>
+              <div key={opcao.id} className="flex flex-col items-start gap-1">
+                <Chip variante="cheia" selecionado={opcaoMarcada(opcao, escolhidos)} aoAlternar={(marcado) => alternar(opcao, marcado)}>
+                  {opcao.inativa ? `${opcao.nome} (inativa)` : opcao.nome}
+                </Chip>
+                {opcao.avancada && <span className="px-4 text-sm text-texto-2">{`+ ${opcao.avancada.nome} (avançada)`}</span>}
+              </div>
             ))}
           </div>
         </fieldset>

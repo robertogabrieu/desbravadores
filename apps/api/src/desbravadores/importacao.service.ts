@@ -25,9 +25,9 @@ import { ErroApp } from '../comum/erros'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import type { TipoUnidade } from '../generated/prisma/client.js'
+import { ativaNoClube } from '../classes/par-regular-avancada'
 import { paraDataCivil } from './apoio'
 import {
-  ativaNoClube,
   DesbravadoresService,
   ORDEM_CLASSE_DA_IDADE,
   ondeClasseDaIdade,

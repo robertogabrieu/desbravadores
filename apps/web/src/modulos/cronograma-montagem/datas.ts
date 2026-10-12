@@ -67,10 +67,19 @@ export const periodoPadrao = (ano: number, inicioAnoClube: string): { inicio: st
 /** "09:15 · Sala 2 · Título" com o que existir. */
 export const detalheDaAula = (d: DataDaMontagem): string => [d.horario, d.local, d.titulo].filter(Boolean).join(' · ')
 
-/** Colocar requisito novo na data: fora bloqueio e aula dada; nas individuais, também fora data em conflito (a API responde 422). */
-export const aceitaRequisitoNovo = (montagem: { datasLivres: boolean }, dado: DataDaMontagem): boolean =>
-  !dataBloqueada(dado) && !dado.aulaDada && (montagem.datasLivres || !dado.conflito)
+/**
+ * Colocar requisito novo na data: fora bloqueio e aula dada; nas individuais, também fora data em conflito (a API responde 422).
+ * A aula dada vale por classe: aceita se alguma das `classeIds` ainda não deu aula nela.
+ */
+export function aceitaRequisitoNovo(montagem: { datasLivres: boolean }, dado: DataDaMontagem, classeIds: string[]): boolean {
+  if (dataBloqueada(dado) || (!montagem.datasLivres && dado.conflito)) return false
+  return classeIds.some((classeId) => !dado.classeIdsComAulaDada.includes(classeId))
+}
 
-/** Nas individuais, tirar o único requisito apaga o dia de classe: pesa quando o dia tem horário, local ou título próprios, que se perdem. */
+/**
+ * Nas individuais, tirar o último requisito do dia apaga o dia de classe: pesa quando o dia tem horário, local
+ * ou título próprios, que se perdem. A conta é do total de requisitos da aula, das duas classes. Se alguma classe já
+ * deu aula na data, o servidor mantém a aula e nada se perde.
+ */
 export const diaComDadosSomeAoTirar = (montagem: { datasLivres: boolean }, dado: DataDaMontagem): boolean =>
-  !montagem.datasLivres && dado.requisitoIds.length === 1 && detalheDaAula(dado) !== ''
+  !montagem.datasLivres && dado.aulaId !== null && dado.requisitoIds.length === 1 && dado.classeIdsComAulaDada.length === 0 && detalheDaAula(dado) !== ''

@@ -1,41 +1,48 @@
 import { Pencil, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import type { DataDaMontagem, RequisitoDaMontagem } from '../../api/montagem'
 import { Botao } from '../../ui/Botao'
 import { Confirmacao } from '../../ui/Confirmacao'
 import { Selo } from '../../ui/Selo'
 import { cn } from '../../ui/cn'
+import { EtiquetaDoLado } from './EtiquetaDoLado'
+import { MedidorDeOcupacao } from './MedidorDeOcupacao'
 import { dataBloqueada, detalheDaAula, partesDaData, textoDaData } from './datas'
+import type { DataDaMontagem } from '../../api/montagem'
+import { aulaDadaPorTodas, classeDada, diaPodeMudar, type RequisitoComLado } from './vista'
 
 const HACHURA =
   'bg-[repeating-linear-gradient(135deg,var(--color-surface-muted),var(--color-surface-muted)_8px,var(--color-divider)_8px,var(--color-divider)_16px)]'
 
 interface Propriedades {
   dado: DataDaMontagem
-  /** Requisitos que estão nesta data, na ordem do caderno. */
-  requisitos: RequisitoDaMontagem[]
+  /** Requisitos que estão nesta data (da regular e, no par, da avançada). */
+  requisitos: RequisitoComLado[]
+  /** Regular com avançada: cada requisito leva a etiqueta da classe e a data mostra o medidor de ocupação. */
+  comAvancada?: boolean
   /** Requisito de campo selecionado e data boa para campo: a linha fica verde. */
   destaqueCampo?: boolean
   /** Sem conexão ou gravando: nenhum botão age. */
   desabilitada: boolean
   /** "Colocar aqui" (A7) ou "+" (I3b): a tela decide se a data admite. */
   acaoDaData?: ReactNode
-  aoTirar: (requisito: RequisitoDaMontagem) => void
+  aoTirar: (requisito: RequisitoComLado) => void
   /** Só no celular: "Mover" ao lado de cada requisito de uma data em conflito. */
-  aoMover?: (requisito: RequisitoDaMontagem) => void
+  aoMover?: (requisito: RequisitoComLado) => void
   aoEditar: (dado: DataDaMontagem) => void
   /** "Remover aula" (com confirmação) nas aulas ainda não dadas. */
   aoRemoverAula: (dado: DataDaMontagem) => void
 }
 
-export function LinhaData({ dado, requisitos, destaqueCampo = false, desabilitada, acaoDaData, aoTirar, aoMover, aoEditar, aoRemoverAula }: Propriedades) {
+export function LinhaData({ dado, requisitos, comAvancada = false, destaqueCampo = false, desabilitada, acaoDaData, aoTirar, aoMover, aoEditar, aoRemoverAula }: Propriedades) {
   const [confirmandoRemocao, setConfirmandoRemocao] = useState(false)
   const { semana, dia, mes } = partesDaData(dado.data)
   const texto = textoDaData(dado)
   const detalhe = detalheDaAula(dado)
   const bloqueada = dataBloqueada(dado)
-  const podeEditar = dado.aulaId !== null && !dado.aulaDada
+  const podeEditar = diaPodeMudar(dado)
+  // Classe dada só em parte das classes da data: o selo vai nos requisitos delas; em todas, na data.
+  const dadaNosDois = aulaDadaPorTodas(dado, requisitos)
 
   return (
     <li
@@ -60,20 +67,25 @@ export function LinhaData({ dado, requisitos, destaqueCampo = false, desabilitad
         {dado.conflito && (
           <span className="text-sm font-bold text-perigo">Conflito: não há classe nesta data. Mova os requisitos.</span>
         )}
-        {dado.aulaDada && <Selo className="self-start">Classe dada</Selo>}
+        {dadaNosDois && <Selo className="self-start">Classe dada</Selo>}
+        {comAvancada && !bloqueada && <MedidorDeOcupacao quantidade={requisitos.length} />}
         {detalhe && <span className="text-sm text-texto-2">{detalhe}</span>}
 
-        {requisitos.map((requisito) => (
+        {requisitos.map((requisito) => {
+          const dada = classeDada(dado, requisito.classeId)
+          return (
           <div key={requisito.id} className="flex items-center gap-2 rounded-controle bg-marca-suave px-3 py-1.5 text-sm font-semibold text-marca">
+            {comAvancada && <EtiquetaDoLado requisito={requisito} />}
             <span className="min-w-0 flex-1">
               {requisito.codigo} · {requisito.texto}
             </span>
-            {aoMover && dado.conflito && !dado.aulaDada && (
+            {dada && !dadaNosDois && <Selo>Classe dada</Selo>}
+            {aoMover && dado.conflito && !dada && !requisito.foraDoPar && (
               <Botao variante="secundario" className="px-3 text-sm" disabled={desabilitada} onClick={() => aoMover(requisito)}>
                 Mover
               </Botao>
             )}
-            {!dado.aulaDada && (
+            {!dada && (
               <button
                 type="button"
                 aria-label={`remover ${requisito.codigo} desta data`}
@@ -86,7 +98,8 @@ export function LinhaData({ dado, requisitos, destaqueCampo = false, desabilitad
               </button>
             )}
           </div>
-        ))}
+          )
+        })}
 
         {podeEditar && (
           <Botao variante="texto" className="self-start px-2" disabled={desabilitada} onClick={() => aoEditar(dado)}>
@@ -116,7 +129,7 @@ export function LinhaData({ dado, requisitos, destaqueCampo = false, desabilitad
         }}
         aoCancelar={() => setConfirmandoRemocao(false)}
       >
-        Os requisitos deste dia de classe voltam a ficar sem data.
+        {comAvancada ? 'Os requisitos das duas classes neste dia voltam a ficar sem data.' : 'Os requisitos deste dia de classe voltam a ficar sem data.'}
       </Confirmacao>
     </li>
   )

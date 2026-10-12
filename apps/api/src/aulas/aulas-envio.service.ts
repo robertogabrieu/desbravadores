@@ -291,8 +291,10 @@ export class AulasEnvioService {
   private async aulaPlanejadaValida(tx: Tx, { sessao, registro, envio }: Contexto): Promise<{ id: string | null; aviso: string | null }> {
     if (envio.aulaPlanejadaId === null) return { id: null, aviso: null }
     const { clubeId } = sessao
+    // No par, a aula e do cronograma da regular: vale pela aula, seja qual for a classe dona do cronograma.
+    const { donaId } = await this.cronogramas.parDaClasse(clubeId, envio.classeId)
     const cronograma = await tx.cronograma.findFirst({
-      where: { clubeId, classeId: envio.classeId, aulas: { some: { clubeId, id: envio.aulaPlanejadaId } } },
+      where: { clubeId, classeId: donaId, aulas: { some: { clubeId, id: envio.aulaPlanejadaId } } },
       select: { id: true },
     })
     const publicacao = cronograma ? await this.cronogramas.ultimaPublicacao(clubeId, cronograma.id) : null

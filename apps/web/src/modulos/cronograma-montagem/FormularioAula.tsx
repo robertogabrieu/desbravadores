@@ -6,13 +6,21 @@ import { CampoData } from '../../ui/CampoData'
 import { CampoHorario } from '../../ui/CampoHorario'
 import { horarioValido } from '../../ui/mascaraHorario'
 import { FolhaLateral } from '../../ui/FolhaLateral'
+import type { DataDaMontagem } from '../../api/montagem'
 import type { DadosDaAula } from './useAcoesDeMontagem'
 
 export interface AulaEmEdicao {
   /** Preenchido ao criar (Agrupadas): a data é escolhida no formulário. */
   data: string | null
+  /** A aula do encontro que a folha grava; null é aula nova. */
   aulaId: string | null
   dados: DadosDaAula
+}
+
+export const AULA_NOVA: AulaEmEdicao = { data: null, aulaId: null, dados: { horario: null, local: null, titulo: null } }
+
+export function aulaEmEdicaoDaData(dado: DataDaMontagem): AulaEmEdicao {
+  return { data: dado.data, aulaId: dado.aulaId, dados: { horario: dado.horario, local: dado.local, titulo: dado.titulo } }
 }
 
 interface Propriedades {

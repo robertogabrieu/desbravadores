@@ -11,7 +11,7 @@ import { useVoltar } from '../navegacao'
 import { ComUsuario } from './FichaUsuario'
 import { EscolhaDoEscopo } from './EscolhaDoEscopo'
 import { EscolhaDoPapel } from './EscolhaDoPapel'
-import { useOpcoesDoEscopo } from './escopo'
+import { resumoDasClasses, useOpcoesDoEscopo } from './escopo'
 import { ESCOPO_VAZIO, entradaDoVinculo, mensagemDeErro, papelDaUrl, papelNoGenero, primeiroNome, rascunhoVazio, urlDoPapel } from './vinculos'
 
 const TODOS_OS_PAPEIS: Papel[] = ['ADM', 'CONSELHEIRO', 'INSTRUTOR']
@@ -138,6 +138,7 @@ function PassoDoEscopo({ usuario, estadoDaFicha, gravando, voltar, papel, passo1
     }
   }
 
+  const resumo = papel === 'INSTRUTOR' ? resumoDasClasses(nome, opcoes.grupos, escolhidos) : null
   const sobretitulo = `Acrescentar papel · passo 2 de 2 · ${papelNoGenero(papel, usuario.genero)}`
   const escolha = (
     <EscolhaDoEscopo ref={grupo} papel={papel} grupos={opcoes.grupos} escolhidos={escolhidos} aoMudar={setEscolhidos} idErro={erro ? idErro : undefined} />
@@ -151,6 +152,7 @@ function PassoDoEscopo({ usuario, estadoDaFicha, gravando, voltar, papel, passo1
       ) : (
         <form onSubmit={(evento) => void salvar(evento)} className="flex flex-col gap-5">
           {escolha}
+          {resumo && <p className="text-base text-texto">{resumo}</p>}
           <p className="text-sm text-texto-2">{`${nome} começa com as permissões de ${papelNoGenero(papel, usuario.genero).toLowerCase()}. Dá para ajustar depois, em Alterar.`}</p>
           {erro && (
             <p id={idErro} role="alert" className="text-sm font-medium text-perigo">

@@ -74,9 +74,9 @@ Convenções: listas paginadas com `?pagina=&porPagina=`; datas em `YYYY-MM-DD`;
 
 | Método e rota | O que faz | Permissão |
 |---|---|---|
-| `GET /classes?tipo=&trilha=` | Classes com cor, idade, trilha, total de requisitos, instrutores, avançada ligada | logado |
-| `GET /classes/{id}` | Seções e requisitos | logado |
-| `PATCH /classes/{id}` | `quemMontaCronograma`, ativa | `classe.gerenciar` |
+| `GET /classes?tipo=&trilha=` | Classes com cor, idade, trilha, total de requisitos, instrutores, avançada ligada (`avancadaPareadaId` na regular, `regularDoParId` na avançada; só com o par ativo) | logado |
+| `GET /classes/{id}` | Seções e requisitos; na avançada com par ativo, `regular` traz nome, instrutores, quem monta e total de alunos da regular | logado |
+| `PATCH /classes/{id}` | `quemMontaCronograma`, ativa. Na avançada com par ativo, `quemMontaCronograma` é recusado (400 `VALIDACAO`): vale o da regular, e mudar na regular grava o mesmo na avançada. Ativar uma classe completa o vínculo dos instrutores do par | `classe.gerenciar` |
 | `POST /classes` | Classe do clube (origem CLUBE) | `classe.gerenciar` |
 | `POST /classes/{id}/requisitos` · `PATCH /requisitos/{id}` | Acrescenta/edita requisito (oficial: só desativar ou marcar CAMPO) | `classe.gerenciar` |
 | `GET /classes/{id}/progresso` | Média da turma, prontos, abaixo do limiar, % por DBV — de uma classe só (a regular e a avançada são chamadas separadas) | `classe.ver_relatorio` + escopo |
@@ -121,6 +121,16 @@ Convenções: listas paginadas com `?pagina=&porPagina=`; datas em `YYYY-MM-DD`;
 
 "Quem monta" = Adm sempre; instrutor da classe só se `Classe.quemMontaCronograma=INSTRUTOR`.
 Instrutor que não monta vê só o cronograma **publicado**.
+
+**Par regular + avançada.** Com o par ativo o cronograma é um só, o da regular: as rotas por
+classe (`/classes/{id}/cronograma…`) aceitam o id de qualquer das duas e operam o da regular. `GET /classes/{id}/cronograma/montagem`
+devolve `classe` (a regular), `avancada` (`{ id, nome }` ou `null`) e `requisitos` das duas classes,
+cada um com `classeId`; cada data traz `classeIdsComAulaDada` no lugar do antigo `aulaDada`. O
+requisito de uma classe que já registrou aula na data não se move nem se tira; horário, local,
+título e remoção da aula só mudam se nenhuma classe a deu. Enviar e publicar valem para o par todo e
+notificam quem instrui qualquer das duas classes. A leitura do cronograma por uma das classes
+(`GET /classes/{id}/cronograma`) devolve só os requisitos dela. O pedido de liberação do instrutor
+da avançada vale para a regular (o aviso ao Adm aponta para ela).
 
 ## Substituição por link
 

@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common'
-import { mediaTurma, type InicioInstrutorSaida } from '@desbravadores/shared'
+import { mediaTurma, nomeDoPar, type InicioInstrutorSaida } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { devedoresPorItem } from '../aulas/tarefas-leitura'
 import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
+import { avancadaPareadaDe, classeDonaDoCronograma } from '../classes/par-regular-avancada'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
@@ -92,23 +93,26 @@ export class InstrutorService {
     if (!(await this.escopo.classesDoInstrutor(sessao)).includes(classeId)) {
       throw new ErroApp('NAO_ENCONTRADO', 'Classe não encontrada.')
     }
-    const ajuste = await this.prisma.classeClube.findUnique({ where: { clubeId_classeId: { clubeId, classeId } } })
+    // O par tem um cronograma só, o da regular: quem monta e o link do pedido são os dela.
+    const donaId = await classeDonaDoCronograma(this.prisma, clubeId, classeId)
+    const ajuste = await this.prisma.classeClube.findUnique({ where: { clubeId_classeId: { clubeId, classeId: donaId } } })
     if (ajuste?.quemMontaCronograma === 'INSTRUTOR') {
       throw new ErroApp('REGRA', 'Você já pode montar o cronograma desta classe.')
     }
 
-    const link = `/adm/classes?classe=${classeId}`
+    const link = `/adm/classes?classe=${donaId}`
     const tipo = 'PEDIDO_LIBERAR_CRONOGRAMA'
     await this.prisma.$transaction(async (tx) => {
       // Serializa pedidos da mesma classe no clube: o segundo já enxerga a notificação do primeiro.
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`pedido-liberacao:${clubeId}:${classeId}`}, 0))`
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`pedido-liberacao:${clubeId}:${donaId}`}, 0))`
       const recente = await tx.notificacao.findFirst({
         where: { clubeId, tipo, link, criadaEm: { gte: new Date(Date.now() - VINTE_E_QUATRO_HORAS) } },
         select: { id: true },
       })
       if (recente) return
-      const [classe, autor, adms] = await Promise.all([
-        tx.classe.findFirstOrThrow({ where: { id: classeId, OR: [{ clubeId: null }, { clubeId }] }, select: { nome: true } }),
+      const [classe, avancada, autor, adms] = await Promise.all([
+        tx.classe.findFirstOrThrow({ where: { id: donaId, OR: [{ clubeId: null }, { clubeId }] }, select: { nome: true } }),
+        avancadaPareadaDe(tx, clubeId, donaId),
         tx.usuario.findUniqueOrThrow({ where: { id: sessao.usuarioId }, select: { nome: true } }),
         tx.vinculo.findMany({ where: { clubeId, papel: 'ADM', ativo: true }, select: { usuarioId: true } }),
       ])
@@ -116,7 +120,7 @@ export class InstrutorService {
         clubeId,
         tipo,
         titulo: 'Pedido para montar o cronograma',
-        texto: `${autor.nome} pediu para montar o cronograma de ${classe.nome}.`,
+        texto: `${autor.nome} pediu para montar o cronograma de ${nomeDoPar(classe.nome, avancada?.nome)}.`,
         destinos: adms.map((adm) => ({ usuarioId: adm.usuarioId, link })),
       })
     })
@@ -124,12 +128,7 @@ export class InstrutorService {
 
   /** As aulas da ultima publicacao do cronograma do ano, por data; vazio se nunca publicou. */
   private async aulasPublicadas(clubeId: string, classeId: string, relogio: RelogioDoClube) {
-    const cronograma = await this.prisma.cronograma.findFirst({
-      where: { clubeId, classeId, anoClube: relogio.anoClube },
-      select: { id: true },
-    })
-    if (!cronograma) return []
-    const publicacao = await this.cronograma.ultimaPublicacao(clubeId, cronograma.id)
+    const publicacao = await this.cronograma.publicadaDaClasse(clubeId, classeId, relogio.anoClube)
     return [...(publicacao?.aulas ?? [])].sort((a, b) => a.data.localeCompare(b.data))
   }
 

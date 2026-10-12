@@ -234,7 +234,7 @@ describe('convidado abre e aceita o link', () => {
       include: { classes: true },
     })
     expect(vinculo.papel).toBe('INSTRUTOR')
-    expect(vinculo.classes.map((v) => v.classeId)).toEqual([amigo.id])
+    expect(vinculo.classes.map((v) => v.classeId).sort()).toEqual([amigo.id, (await prismaDeTeste().classe.findFirstOrThrow({ where: { tipo: 'AVANCADA', trilha: 'INDIVIDUAL', clubeId: null, classeBaseId: amigo.id }, select: { id: true } })).id].sort())
   })
 
   it('e-mail novo com senha fora da regra: 400 e nada criado', async () => {

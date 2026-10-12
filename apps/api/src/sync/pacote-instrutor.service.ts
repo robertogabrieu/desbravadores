@@ -151,9 +151,7 @@ export class PacoteInstrutorService {
 
   /** Da ultima publicacao, nunca do vivo. */
   private async aulasProximas(clubeId: string, classeId: string, ano: number, hoje: string): Promise<ClasseDoPacote['aulasProximas']> {
-    const cronograma = await this.prisma.cronograma.findFirst({ where: { clubeId, classeId, anoClube: ano }, select: { id: true } })
-    if (!cronograma) return []
-    const publicacao = await this.cronogramas.ultimaPublicacao(clubeId, cronograma.id)
+    const publicacao = await this.cronogramas.publicadaDaClasse(clubeId, classeId, ano)
     const limite = somarDias(hoje, DIAS_DE_AULAS_PROXIMAS)
     return (publicacao?.aulas ?? [])
       .filter((aula) => aula.data >= hoje && aula.data <= limite)

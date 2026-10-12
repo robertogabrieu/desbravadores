@@ -13,8 +13,8 @@ import { useVoltar } from '../navegacao'
 import { AjustesDoPapel } from './AjustesDoPapel'
 import { EscolhaDoEscopo } from './EscolhaDoEscopo'
 import { ComUsuario } from './FichaUsuario'
-import { useOpcoesDoEscopo } from './escopo'
-import { ESCOPO_VAZIO, corpoDaEdicao, mensagemDeErro, mesmoRascunho, papelNoGenero, rascunhoLimpo } from './vinculos'
+import { resumoDasClasses, useOpcoesDoEscopo } from './escopo'
+import { ESCOPO_VAZIO, corpoDaEdicao, mensagemDeErro, mesmoRascunho, papelNoGenero, primeiroNome, rascunhoLimpo } from './vinculos'
 
 type VinculoComEscopo = VinculoUsuario & { papel: 'CONSELHEIRO' | 'INSTRUTOR' }
 
@@ -71,6 +71,8 @@ function FormularioDeAlteracao({ usuario, vinculo, catalogo, grupos, gravando }:
   const escolhidos = papel === 'CONSELHEIRO' ? rascunho.unidadeIds : rascunho.classeIds
   const mudarEscolhidos = (ids: string[]) => setRascunho({ ...rascunho, ...(papel === 'CONSELHEIRO' ? { unidadeIds: ids } : { classeIds: ids }) })
 
+  const resumo = papel === 'INSTRUTOR' ? resumoDasClasses(primeiroNome(usuario.nome), grupos, escolhidos) : null
+
   async function salvar(evento: FormEvent) {
     evento.preventDefault()
     if (escolhidos.length === 0) {
@@ -97,6 +99,7 @@ function FormularioDeAlteracao({ usuario, vinculo, catalogo, grupos, gravando }:
       <form onSubmit={(evento) => void salvar(evento)} className="flex max-w-2xl flex-col gap-5">
         <EscolhaDoEscopo ref={grupo} papel={papel} grupos={grupos} escolhidos={escolhidos} aoMudar={mudarEscolhidos} idErro={erro ? idErro : undefined} />
         <AjustesDoPapel rascunho={rascunho} catalogo={catalogo} aoMudar={setRascunho} />
+        {resumo && <p className="text-base text-texto">{resumo}</p>}
         {erro && (
           <p id={idErro} role="alert" className="text-sm font-medium text-perigo">
             {erro}

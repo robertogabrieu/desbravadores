@@ -23,7 +23,7 @@ export const handlerSecoesDaClasse = () =>
   http.get('/api/classes/:id', () =>
     HttpResponse.json({
       id: uuid(301), nome: 'Amigo', idade: 10, tipo: 'REGULAR', trilha: 'INDIVIDUAL', origem: 'OFICIAL', classeBaseId: null,
-      ordem: 1, corToken: '--classe-amigo', ativa: true, quemMontaCronograma: 'ADM', totalRequisitos: 2,
+      ordem: 1, corToken: '--classe-amigo', ativa: true, quemMontaCronograma: 'ADM', totalRequisitos: 2, regular: null,
       secoes: [SECAO_ESPIRITUAL, SECAO_GERAIS].map((s, i) => ({ ...s, ordem: i + 1, requisitos: [] })),
     }),
   )
