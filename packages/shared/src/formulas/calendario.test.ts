@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { MARCACOES_PADRAO, TIPOS_EVENTO } from '../enums'
 import {
-  datasDaMontagem, datasDeClasse, diasDeReuniao, emConflito, feriasAte, horarioELocalDoDia, proximaReuniao,
+  datasDaMontagem, datasDeClasse, diasDeReuniao, emConflito, feriasAte, horarioELocalDoDia, pendenciaDeLista, proximaReuniao,
   situacaoDaAula, situacaoDaData, validarEvento, type EventoDoCalendario,
 } from './calendario'
 
@@ -301,5 +301,43 @@ describe('situacaoDaAula', () => {
     expect(situacaoDaAula({ temRegistro: false, emConflito: false, data: hoje, hoje })).toBe('HOJE')
     expect(situacaoDaAula({ temRegistro: false, emConflito: false, data: '2026-10-09', hoje })).toBe('NAO_REGISTRADA')
     expect(situacaoDaAula({ temRegistro: false, emConflito: false, data: '2026-10-11', hoje })).toBe('PLANEJADA')
+  })
+})
+
+describe('pendenciaDeLista', () => {
+  const hoje = '2026-10-10'
+  const especial = {
+    tipo: 'EVENTO_ESPECIAL' as const, inicio: '2026-10-03', fim: '2026-10-03',
+    pontosParticipacao: 20, pontosUniforme: 10, lista: null,
+  }
+
+  it('terminou ontem, vale pontos e sem lista concluída: pendente', () => {
+    expect(pendenciaDeLista({ ...especial, fim: '2026-10-09' }, hoje)).toBe(true)
+    expect(pendenciaDeLista({ ...especial, lista: { concluidaEm: null } }, hoje)).toBe(true)
+  })
+
+  it('ainda em andamento (o fim é hoje ou depois, mesmo com o início passado): nada', () => {
+    expect(pendenciaDeLista({ ...especial, fim: hoje }, hoje)).toBe(false)
+    expect(pendenciaDeLista({ ...especial, fim: '2026-10-12' }, hoje)).toBe(false)
+  })
+
+  it('60 dias depois do fim ainda cobra; 61, não', () => {
+    expect(pendenciaDeLista({ ...especial, fim: '2026-08-11' }, hoje)).toBe(true)
+    expect(pendenciaDeLista({ ...especial, fim: '2026-08-10' }, hoje)).toBe(false)
+  })
+
+  it('os dois pontos zerados ou ausentes: nada; só um deles valendo: pendente', () => {
+    expect(pendenciaDeLista({ ...especial, pontosParticipacao: 0, pontosUniforme: 0 }, hoje)).toBe(false)
+    expect(pendenciaDeLista({ ...especial, pontosParticipacao: null, pontosUniforme: undefined }, hoje)).toBe(false)
+    expect(pendenciaDeLista({ ...especial, pontosParticipacao: 0, pontosUniforme: 5 }, hoje)).toBe(true)
+    expect(pendenciaDeLista({ ...especial, pontosParticipacao: 5, pontosUniforme: null }, hoje)).toBe(true)
+  })
+
+  it('lista concluída: nada', () => {
+    expect(pendenciaDeLista({ ...especial, lista: { concluidaEm: '2026-10-04T12:00:00.000Z' } }, hoje)).toBe(false)
+  })
+
+  it('outro tipo de evento: nada', () => {
+    expect(pendenciaDeLista({ ...especial, tipo: 'EVENTO' }, hoje)).toBe(false)
   })
 })

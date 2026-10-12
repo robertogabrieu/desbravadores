@@ -1,5 +1,5 @@
 import type { INestApplication } from '@nestjs/common'
-import { mediaTurma, percentualClasse, type VisaoGeralSaida } from '@desbravadores/shared'
+import { mediaTurma, pendenciaDeLista, percentualClasse, type VisaoGeralSaida } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { criarAppDeTeste } from '../../test/app'
 import { congelarRelogio, descongelarRelogio } from '../../test/relogio'
@@ -11,6 +11,7 @@ import {
   criarClube,
   criarCronograma,
   criarEspecialidadeConcluida,
+  criarEvento,
   criarMatricula,
   criarMembro,
   criarRequisitoConcluido,
@@ -276,5 +277,101 @@ describe('visao geral (GET /visao-geral)', () => {
     expect(atividades).toEqual([
       expect.objectContaining({ descricao: 'Joana Visitante (substituto) registrou a classe de Amigo', autor: 'Joana Visitante (substituto)' }),
     ])
+  })
+
+  describe('eventos sem lista (C13 e C14)', () => {
+    // Hoje = 2026-06-15: 60 dias depois do fim = fim 2026-04-16; 61 dias = 2026-04-15.
+    const especial = (clubeId: string, dados: { inicio: string; fim?: string; participacao?: number; uniforme?: number; concluida?: boolean }) =>
+      criarEvento({
+        clubeId,
+        tipo: 'EVENTO_ESPECIAL',
+        inicio: dados.inicio,
+        ...(dados.fim ? { fim: dados.fim } : {}),
+        uniforme: 'GALA',
+        pontosParticipacao: dados.participacao ?? 20,
+        pontosUniforme: dados.uniforme ?? 10,
+        listaConcluidaEm: dados.concluida ? new Date('2026-06-12T12:00:00Z') : null,
+      })
+
+    async function semLista(autorizacao: string): Promise<Visao['eventosSemLista']> {
+      return corpo<Visao>(await api.get('/api/visao-geral', autorizacao).expect(200)).eventosSemLista
+    }
+
+    it('terminou, vale pontos e não tem lista concluída: aparece, do mais antigo para o mais novo, só deste clube', async () => {
+      const clube = await criarClube()
+      const outro = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const recente = await especial(clube.id, { inicio: '2026-06-14' })
+      const antigo = await especial(clube.id, { inicio: '2026-04-16' })
+      await especial(outro.id, { inicio: '2026-06-10' })
+
+      const itens = await semLista(adm.autorizacao)
+
+      expect(itens).toEqual([
+        { eventoId: antigo.id, nome: antigo.nome, inicio: '2026-04-16', fim: '2026-04-16' },
+        { eventoId: recente.id, nome: recente.nome, inicio: '2026-06-14', fim: '2026-06-14' },
+      ])
+    })
+
+    it('em andamento, passou de 60 dias, 0 e 0, concluída, removido ou de outro tipo: nada', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      await especial(clube.id, { inicio: '2026-06-10', fim: '2026-06-15' })
+      await especial(clube.id, { inicio: '2026-06-10', fim: '2026-06-17' })
+      await especial(clube.id, { inicio: '2026-04-15' })
+      await especial(clube.id, { inicio: '2026-06-01', participacao: 0, uniforme: 0 })
+      await especial(clube.id, { inicio: '2026-06-02', concluida: true })
+      const removido = await especial(clube.id, { inicio: '2026-06-03' })
+      await prismaDeTeste().eventoCalendario.update({ where: { id: removido.id }, data: { removidoEm: new Date() } })
+      await criarEvento({ clubeId: clube.id, tipo: 'EVENTO', inicio: '2026-06-04' })
+
+      expect(await semLista(adm.autorizacao)).toEqual([])
+    })
+
+    it('vale com um dos pontos só, e o limite de 60 dias entra', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const soUniforme = await especial(clube.id, { inicio: '2026-06-01', participacao: 0, uniforme: 5 })
+      const noLimite = await especial(clube.id, { inicio: '2026-04-16', participacao: 5, uniforme: 0 })
+
+      const itens = await semLista(adm.autorizacao)
+
+      expect(itens.map((i) => i.eventoId)).toEqual([noLimite.id, soUniforme.id])
+    })
+
+    it('é a mesma regra do pacote compartilhado: a Visão geral e pendenciaDeLista concordam em cada caso', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const casos = [
+        { inicio: '2026-06-14' },
+        { inicio: '2026-06-10', fim: '2026-06-15' },
+        { inicio: '2026-06-10', fim: '2026-06-16' },
+        { inicio: '2026-04-16' },
+        { inicio: '2026-04-15' },
+        { inicio: '2026-06-01', participacao: 0, uniforme: 0 },
+        { inicio: '2026-06-02', concluida: true },
+        { inicio: '2026-06-05', participacao: 0 },
+      ]
+      const criados = []
+      for (const caso of casos) criados.push(await especial(clube.id, caso))
+      const esperado = criados
+        .filter((c) => pendenciaDeLista(
+          {
+            tipo: c.tipo,
+            fim: c.fim.toISOString().slice(0, 10),
+            pontosParticipacao: c.pontosParticipacao,
+            pontosUniforme: c.pontosUniforme,
+            lista: { concluidaEm: c.listaConcluidaEm?.toISOString() ?? null },
+          },
+          '2026-06-15',
+        ))
+        .map((c) => c.id)
+        .sort()
+
+      const itens = await semLista(adm.autorizacao)
+
+      expect(itens.map((i) => i.eventoId).sort()).toEqual(esperado)
+      expect(esperado.length).toBe(3)
+    })
   })
 })

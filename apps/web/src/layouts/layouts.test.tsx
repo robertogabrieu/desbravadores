@@ -56,7 +56,7 @@ function itemDoMenu(nome: string): HTMLElement {
 }
 
 describe('LayoutCelular', () => {
-  it('conselheiro: Início, Unidade, Reuniões e Ranking habilitados', async () => {
+  it('conselheiro: Início, Unidade, Reuniões, Calendário e Ranking habilitados', async () => {
     servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO')]))
     renderizarRotas(rotasCelular, '/inicio')
     await screen.findByText('conteúdo')
@@ -65,13 +65,15 @@ describe('LayoutCelular', () => {
     expect(itemDoMenu('Início')).toHaveAttribute('href', '/inicio')
     expect(itemDoMenu('Unidade')).toHaveAttribute('href', '/unidade')
     expect(itemDoMenu('Reuniões')).toHaveAttribute('href', '/reunioes')
+    expect(itemDoMenu('Calendário')).toHaveAttribute('href', '/calendario')
     expect(itemDoMenu('Ranking')).toHaveAttribute('href', '/ranking')
+    expect(within(screen.getByRole('navigation')).getAllByRole('link')).toHaveLength(5)
     expect(within(screen.getByRole('navigation')).queryByText('em breve')).not.toBeInTheDocument()
     expect(within(screen.getByRole('navigation')).queryByText('Classes')).not.toBeInTheDocument()
     expect(within(screen.getByRole('navigation')).queryByText('Biblioteca')).not.toBeInTheDocument()
   })
 
-  it('instrutor: Início, Classes, Cronograma e Ranking habilitados', async () => {
+  it('instrutor: Início, Classes, Cronograma, Calendário e Ranking habilitados', async () => {
     servidor.use(...handlersSessao([criarVinculo('INSTRUTOR')]))
     renderizarRotas(rotasCelular, '/inicio')
     await screen.findByText('conteúdo')
@@ -81,6 +83,8 @@ describe('LayoutCelular', () => {
     expect(itemDoMenu('Ranking')).toHaveAttribute('href', '/ranking')
     expect(itemDoMenu('Classes')).toHaveAttribute('href', '/classes')
     expect(itemDoMenu('Cronograma')).toHaveAttribute('href', '/cronograma')
+    expect(itemDoMenu('Calendário')).toHaveAttribute('href', '/calendario')
+    expect(within(screen.getByRole('navigation')).getAllByRole('link')).toHaveLength(5)
     expect(within(screen.getByRole('navigation')).queryByText('Unidade')).not.toBeInTheDocument()
     expect(within(screen.getByRole('navigation')).queryByText('Biblioteca')).not.toBeInTheDocument()
   })

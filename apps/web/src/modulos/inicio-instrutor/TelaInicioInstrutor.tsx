@@ -14,6 +14,7 @@ import { FaixaAviso } from '../../ui/FaixaAviso'
 import { LinhaQueNavega } from '../../ui/LinhaQueNavega'
 import { ClassesSemConexao } from '../aulas/RegistroSemConexao'
 import { corDaClasse } from '../classes/cores'
+import { CartaoProximoEvento } from '../calendario/CartaoProximoEvento'
 import { CartaoClasseBiblica } from '../inicio/CartaoClasseBiblica'
 import { dataCurta } from '../aulas/datas'
 import { TRACO, formatarHorario } from '../cronograma/formatos'
@@ -231,6 +232,7 @@ export function TelaInicioInstrutor() {
         <h2 className="sr-only">Início do instrutor</h2>
       </header>
       <CartaoClasseBiblica />
+      <CartaoProximoEvento />
       {corpo}
     </div>
   )

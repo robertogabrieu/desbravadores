@@ -13,9 +13,12 @@ import {
   criarReuniao,
   criarUnidade,
   desconectarPrismaDeTeste,
+  prismaDeTeste,
 } from '../../test/fabricas'
 import { anoCorrente, clienteHttp, corpo } from '../../test/p6'
 import { congelarRelogio, descongelarRelogio } from '../../test/relogio'
+import type { Prisma } from '../generated/prisma/client.js'
+import { rosterDoMes } from './calculo-ranking'
 
 type Ranking = z.infer<typeof RankingSaida>
 type Unidades = z.infer<typeof RankingUnidadesSaida>
@@ -442,5 +445,116 @@ describe('ranking do mes', () => {
       expect(resposta.status).toBe(200)
       expect(resposta.body).toEqual([])
     })
+  })
+})
+
+describe('roster do mês: a regra do ranking extraída para rodar com o client de quem chama', () => {
+  let app: INestApplication
+  const api = clienteHttp(() => app)
+
+  beforeAll(async () => {
+    app = await criarAppDeTeste()
+  })
+
+  afterAll(async () => {
+    await app.close()
+    await desconectarPrismaDeTeste()
+  })
+
+  const noMes = (clubeId: string, entradaAte?: Date) =>
+    prismaDeTeste().$transaction((tx) => rosterDoMes(tx, clubeId, MES, { entradaAte }))
+
+  it('usa só o client que recebe: nenhuma outra conexão é pedida (client falso sem mais nada além de `desbravador`)', async () => {
+    const chamadas: Prisma.DesbravadorFindManyArgs[] = []
+    const falso = {
+      desbravador: {
+        findMany: (args: Prisma.DesbravadorFindManyArgs) => {
+          chamadas.push(args)
+          return Promise.resolve([])
+        },
+      },
+    }
+
+    const roster = await rosterDoMes(falso as unknown as Prisma.TransactionClient, 'clube-1', MES)
+
+    expect(roster).toEqual([])
+    expect(chamadas).toHaveLength(1)
+    expect(chamadas[0]?.where).toMatchObject({ clubeId: 'clube-1', ativo: true })
+    expect(chamadas[0]?.where).not.toHaveProperty('entradaEm')
+  })
+
+  it('com `entradaAte`, só entra quem entrou no clube até o dia (inclusive); sem ele, a regra do ranking não olha a data de entrada', async () => {
+    const clube = await criarClube()
+    const unidade = await criarUnidade({ clubeId: clube.id })
+    const antigo = await criarDbv({ clubeId: clube.id, nome: 'Antigo' })
+    const nodia = await criarDbv({ clubeId: clube.id, nome: 'No Dia' })
+    const depois = await criarDbv({ clubeId: clube.id, nome: 'Depois' })
+    for (const dbv of [antigo, nodia, depois]) await criarMembro({ dbvId: dbv.id, unidadeId: unidade.id, inicio: '2026-02-01' })
+    await prismaDeTeste().desbravador.update({ where: { id: nodia.id }, data: { entradaEm: new Date('2026-03-10T00:00:00Z') } })
+    await prismaDeTeste().desbravador.update({ where: { id: depois.id }, data: { entradaEm: new Date('2026-03-11T00:00:00Z') } })
+
+    const todos = await noMes(clube.id)
+    const ateODia = await noMes(clube.id, new Date('2026-03-10T00:00:00Z'))
+
+    expect(todos.map((f) => f.id).sort()).toEqual([antigo.id, nodia.id, depois.id].sort())
+    expect(ateODia.map((f) => f.id).sort()).toEqual([antigo.id, nodia.id].sort())
+    expect(ateODia.find((f) => f.id === antigo.id)?.unidade).toEqual({ id: unidade.id, nome: unidade.nome })
+  })
+
+  it('fica de fora inativo e Líder, e a Diretoria que veio de DBV entra com a unidade anterior, não com a atual', async () => {
+    const clube = await criarClube()
+    const anterior = await criarUnidade({ clubeId: clube.id })
+    const atual = await criarUnidade({ clubeId: clube.id })
+    const dbv = await criarDbv({ clubeId: clube.id, nome: 'Dbv' })
+    await criarMembro({ dbvId: dbv.id, unidadeId: atual.id, inicio: '2026-02-01' })
+    const inativo = await criarDbv({ clubeId: clube.id, nome: 'Inativo', ativo: false })
+    await criarMembro({ dbvId: inativo.id, unidadeId: atual.id, inicio: '2026-02-01' })
+    const lider = await criarDbv({ clubeId: clube.id, nome: 'Lider', tipo: 'LIDER' })
+    const diretoria = await criarDbv({ clubeId: clube.id, nome: 'Diretoria Veio' })
+    await criarMembro({ dbvId: diretoria.id, unidadeId: atual.id, inicio: '2026-02-01' })
+    await prismaDeTeste().desbravador.update({
+      where: { id: diretoria.id },
+      data: { tipo: 'DIRETORIA', diretoriaVeioDeDbv: true, diretoriaDesde: new Date('2026-05-01T00:00:00Z'), diretoriaUnidadeAnteriorId: anterior.id },
+    })
+    const diretoriaDeFora = await criarDbv({ clubeId: clube.id, nome: 'Diretoria Pura', tipo: 'DIRETORIA' })
+
+    const roster = await noMes(clube.id)
+
+    expect(roster.map((f) => [f.id, f.unidade?.id]).sort()).toEqual([[dbv.id, atual.id], [diretoria.id, anterior.id]].sort())
+    for (const fora of [inativo.id, lider.id, diretoriaDeFora.id]) expect(roster.map((f) => f.id)).not.toContain(fora)
+  })
+
+  it('quem não tem unidade vem com `unidade` nula', async () => {
+    const clube = await criarClube()
+    const sem = await criarDbv({ clubeId: clube.id, nome: 'Sem Unidade' })
+
+    const roster = await noMes(clube.id)
+
+    expect(roster).toEqual([expect.objectContaining({ id: sem.id, unidade: null })])
+  })
+
+  it('o ranking do mês enxerga exatamente as pessoas da função extraída (o resultado de `doMes` não mudou)', async () => {
+    const clube = await criarClube()
+    const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+    const unidade = await criarUnidade({ clubeId: clube.id })
+    const dbv = await criarDbv({ clubeId: clube.id, nome: 'Dbv' })
+    await criarMembro({ dbvId: dbv.id, unidadeId: unidade.id, inicio: '2026-02-01' })
+    const semUnidade = await criarDbv({ clubeId: clube.id, nome: 'Sem Unidade' })
+    const diretoria = await criarDbv({ clubeId: clube.id, nome: 'Diretoria Veio' })
+    await prismaDeTeste().desbravador.update({
+      where: { id: diretoria.id },
+      data: { tipo: 'DIRETORIA', diretoriaVeioDeDbv: true, diretoriaDesde: new Date('2026-05-01T00:00:00Z'), diretoriaUnidadeAnteriorId: unidade.id },
+    })
+    await criarDbv({ clubeId: clube.id, nome: 'Inativo', ativo: false })
+    await criarLancamento({ clubeId: clube.id, dbvId: diretoria.id, pontos: 8, data: '2026-03-04' })
+
+    const roster = await noMes(clube.id)
+    const saida = corpo<Ranking>(await api.get(`/api/ranking?mes=${MES}`, adm.autorizacao))
+
+    expect(saida.itens.map((i) => [i.dbvId, i.unidade?.id ?? null]).sort()).toEqual(
+      roster.map((f) => [f.id, f.unidade?.id ?? null]).sort(),
+    )
+    expect(saida.itens.map((i) => i.dbvId).sort()).toEqual([dbv.id, semUnidade.id, diretoria.id].sort())
+    expect(saida.itens.find((i) => i.dbvId === diretoria.id)).toMatchObject({ pontos: 8, unidade: { id: unidade.id } })
   })
 })

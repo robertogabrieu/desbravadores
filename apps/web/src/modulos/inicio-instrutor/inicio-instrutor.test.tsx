@@ -340,3 +340,36 @@ describe('cartão da Classe Bíblica no início do instrutor', () => {
     expect(await screen.findByRole('link', { name: 'Fazer a chamada do Grupo Daniel' })).toHaveAttribute('href', linkDaniel)
   })
 })
+
+describe('cartão "Próximo evento" no início do instrutor', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('aparece com o próximo evento do pacote, junto da tela do instrutor', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-11T15:00:00Z'))
+    servidor.use(handlerInicioInstrutor())
+    offline.pacote = criarPacote({
+      calendario: [
+        {
+          nome: 'Aniversário do clube', tipo: 'EVENTO_ESPECIAL', inicio: '2026-10-17', fim: '2026-10-17', horario: '19:00', local: 'Salão da igreja',
+          temReuniao: true, temClasse: false, bomParaCampo: false, uniforme: 'CAMPO', pontosParticipacao: 15, pontosUniforme: 5,
+        },
+      ],
+    })
+    abrir([CLASSE_AMIGO])
+    const cartao = await screen.findByRole('region', { name: 'Próximo evento' })
+    expect(within(cartao).getByText('Sábado, 17 de outubro')).toBeInTheDocument()
+    expect(within(cartao).getByText('Vale pontos no ranking: 15 por ir, mais 5 pelo uniforme de campo.')).toBeInTheDocument()
+    expect(within(cartao).getByRole('link', { name: 'Ver o calendário' })).toHaveAttribute('href', '/calendario')
+  })
+
+  it('sem evento à vista, o cartão não aparece', async () => {
+    servidor.use(handlerInicioInstrutor())
+    offline.pacote = criarPacote({ calendario: [] })
+    abrir([CLASSE_AMIGO])
+    await screen.findByRole('heading', { name: 'Olá, Ana' })
+    expect(screen.queryByRole('region', { name: 'Próximo evento' })).not.toBeInTheDocument()
+  })
+})
