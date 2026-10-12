@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common'
-import { datasDeClasse, type MontagemSaida } from '@desbravadores/shared'
+import { datasDeClasse, nomeDoPar, type MontagemSaida } from '@desbravadores/shared'
 import type { z } from 'zod'
 import type { SessaoLogada } from '../../comum/decorators/sessao.decorator'
 import { ErroApp } from '../../comum/erros'
 import { PrismaService } from '../../comum/prisma/prisma.service'
 import { ServicoAtividade } from '../../atividades/servico-atividade'
+import { avancadaPareadaDe } from '../../classes/par-regular-avancada'
 import { daDataCivil, paraDataCivil } from '../../desbravadores/apoio'
 import { Prisma, type Cronograma } from '../../generated/prisma/client.js'
 import { ServicoNotificacoes } from '../../notificacoes/servico-notificacoes'
@@ -49,34 +50,33 @@ export class ServicoMontagem {
     private readonly atividades: ServicoAtividade,
   ) {}
 
+  /**
+   * Cria o cronograma da classe. Com o par ativo há um só, o da regular: pedir pela avançada cria o da regular.
+   * Já existindo o do ano, a unicidade do banco recusa e vira conflito.
+   */
   async criar(sessao: SessaoLogada, entrada: { classeId: string; anoClube: number; inicio: string; fim: string }): Promise<Saida> {
-    await this.leitura.classeQueMonta(sessao, entrada.classeId)
-    await this.exigirClasseAtiva(sessao.clubeId, entrada.classeId)
+    const pedida = await this.leitura.classeQueMonta(sessao, entrada.classeId)
+    const { clubeId } = sessao
+    const classeId = await this.leitura.classeDoCronograma(clubeId, pedida)
+    await this.exigirClasseAtiva(clubeId, classeId)
     try {
       const criado = await this.prisma.cronograma.create({
-        data: {
-          clubeId: sessao.clubeId,
-          classeId: entrada.classeId,
-          anoClube: entrada.anoClube,
-          inicio: daDataCivil(entrada.inicio),
-          fim: daDataCivil(entrada.fim),
-        },
+        data: { clubeId, classeId, anoClube: entrada.anoClube, inicio: daDataCivil(entrada.inicio), fim: daDataCivil(entrada.fim) },
         select: { id: true },
       })
-      return await this.leitura.saida(sessao.clubeId, criado.id)
+      const cronogramaId = criado.id
+      return await this.leitura.saida(clubeId, cronogramaId)
     } catch (erro) {
       if (ehCorrida(erro)) throw new ErroApp('CONFLITO', 'Já existe um cronograma desta classe neste ano.')
       throw erro
     }
   }
 
+  /** As aulas de qualquer classe do cronograma têm de caber no novo período. */
   editarPeriodo(sessao: SessaoLogada, cronogramaId: string, periodo: { inicio: string; fim: string }): Promise<Saida> {
     return this.executar(sessao, cronogramaId, 'MONTAR', async ({ tx, cronograma }) => {
-      const aulas = await tx.aulaPlanejada.findMany({
-        where: { clubeId: cronograma.clubeId, cronogramaId, removidaEm: null },
-        select: { data: true },
-      })
-      const fora = aulas.map((aula) => paraDataCivil(aula.data)).filter((data) => data < periodo.inicio || data > periodo.fim).sort()
+      const aulas = await tx.aulaPlanejada.findMany({ where: { clubeId: cronograma.clubeId, cronogramaId, removidaEm: null }, select: { data: true } })
+      const fora = [...new Set(aulas.map((aula) => paraDataCivil(aula.data)))].filter((data) => data < periodo.inicio || data > periodo.fim).sort()
       if (fora.length > 0) throw regra(`Há classes fora do novo período: ${fora.map(diaEMes).join(', ')}. Mova-as antes.`)
       return { inicio: daDataCivil(periodo.inicio), fim: daDataCivil(periodo.fim) }
     })
@@ -85,14 +85,16 @@ export class ServicoMontagem {
   colocarRequisito(sessao: SessaoLogada, cronogramaId: string, requisitoId: string, data: string): Promise<Saida> {
     return this.executar(sessao, cronogramaId, 'MONTAR', async (contexto) => {
       const { tx, cronograma, trilha } = contexto
-      const { clubeId, classeId } = cronograma
-      const requisitos = await this.leitura.requisitosDaClasse(clubeId, classeId, tx)
+      const { clubeId } = cronograma
+      const classesDoPar = await this.leitura.classesDoPar(clubeId, cronograma, tx)
+      const classeDoRequisito = await this.classeDoRequisito(tx, requisitoId, classesDoPar)
+      const requisitos = await this.leitura.requisitosDaClasse(clubeId, classeDoRequisito, tx)
       if (!requisitos.some((requisito) => requisito.id === requisitoId)) {
         throw new ErroApp('NAO_ENCONTRADO', 'Requisito não encontrado nesta classe.')
       }
       const origem = await this.aulaDoRequisito(tx, cronograma, requisitoId)
-      if (origem) await this.exigirAulaNaoDada(tx, cronograma, paraDataCivil(origem.data))
-      await this.exigirAulaNaoDada(tx, cronograma, data)
+      if (origem) await this.exigirAulaNaoDada(tx, clubeId, [classeDoRequisito], paraDataCivil(origem.data))
+      await this.exigirAulaNaoDada(tx, clubeId, [classeDoRequisito], data)
 
       let destino = await tx.aulaPlanejada.findFirst({ where: { clubeId, cronogramaId: cronograma.id, data: daDataCivil(data), removidaEm: null } })
       if (trilha === 'INDIVIDUAL') {
@@ -105,7 +107,7 @@ export class ServicoMontagem {
 
       await tx.aulaRequisito.deleteMany({ where: { clubeId, cronogramaId: cronograma.id, requisitoId } })
       await tx.aulaRequisito.create({ data: { clubeId, cronogramaId: cronograma.id, aulaPlanejadaId: destino.id, requisitoId } })
-      if (origem && trilha === 'INDIVIDUAL') await this.removerSeVazia(tx, clubeId, origem.id)
+      if (origem && trilha === 'INDIVIDUAL') await this.removerSeVazia(tx, cronograma, origem)
     })
   }
 
@@ -113,9 +115,11 @@ export class ServicoMontagem {
     return this.executar(sessao, cronogramaId, 'MONTAR', async ({ tx, cronograma, trilha }) => {
       const origem = await this.aulaDoRequisito(tx, cronograma, requisitoId)
       if (!origem) return
-      await this.exigirAulaNaoDada(tx, cronograma, paraDataCivil(origem.data))
+      const aceitas = await this.leitura.classesDoCronograma(cronograma.clubeId, cronograma, tx)
+      const classeDoRequisito = await this.classeDoRequisito(tx, requisitoId, aceitas)
+      await this.exigirAulaNaoDada(tx, cronograma.clubeId, [classeDoRequisito], paraDataCivil(origem.data))
       await tx.aulaRequisito.deleteMany({ where: { clubeId: cronograma.clubeId, cronogramaId: cronograma.id, requisitoId } })
-      if (trilha === 'INDIVIDUAL') await this.removerSeVazia(tx, cronograma.clubeId, origem.id)
+      if (trilha === 'INDIVIDUAL') await this.removerSeVazia(tx, cronograma, origem)
     })
   }
 
@@ -127,7 +131,7 @@ export class ServicoMontagem {
     return this.executar(sessao, cronogramaId, 'MONTAR', async ({ tx, cronograma, trilha }) => {
       if (trilha !== 'AGRUPADAS') throw regra('Só as classes agrupadas aceitam qualquer data.')
       this.exigirNoPeriodo(cronograma, entrada.data)
-      await this.exigirAulaNaoDada(tx, cronograma, entrada.data)
+      await this.exigirEncontroNaoDado(tx, cronograma, entrada.data)
       const existente = await tx.aulaPlanejada.findFirst({
         where: { clubeId: cronograma.clubeId, cronogramaId: cronograma.id, data: daDataCivil(entrada.data), removidaEm: null },
         select: { id: true },
@@ -154,7 +158,7 @@ export class ServicoMontagem {
     const cronogramaId = await this.cronogramaDaAula(sessao, aulaId)
     return this.executar(sessao, cronogramaId, 'MONTAR', async ({ tx, cronograma }) => {
       const atual = await this.aulaAtiva(tx, cronograma, aulaId)
-      await this.exigirAulaNaoDada(tx, cronograma, paraDataCivil(atual.data))
+      await this.exigirEncontroNaoDado(tx, cronograma, paraDataCivil(atual.data))
       await tx.aulaPlanejada.updateMany({
         where: { clubeId: cronograma.clubeId, id: aulaId },
         data: { horario: entrada.horario, local: entrada.local, titulo: entrada.titulo },
@@ -167,7 +171,7 @@ export class ServicoMontagem {
     const cronogramaId = await this.cronogramaDaAula(sessao, aulaId)
     return this.executar(sessao, cronogramaId, 'MONTAR', async ({ tx, cronograma }) => {
       const atual = await this.aulaAtiva(tx, cronograma, aulaId)
-      await this.exigirAulaNaoDada(tx, cronograma, paraDataCivil(atual.data))
+      await this.exigirEncontroNaoDado(tx, cronograma, paraDataCivil(atual.data))
       await tx.aulaRequisito.deleteMany({ where: { clubeId: cronograma.clubeId, aulaPlanejadaId: aulaId } })
       await tx.aulaPlanejada.updateMany({ where: { clubeId: cronograma.clubeId, id: aulaId }, data: { removidaEm: new Date() } })
     })
@@ -178,10 +182,16 @@ export class ServicoMontagem {
    * dada mantém o vínculo. Roda na transação de quem chama; cada cronograma afetado é travado e renovado.
    */
   async retirarRequisitoDoClube(tx: Tx, clubeId: string, requisitoId: string): Promise<void> {
-    // Trava antes de listar: todo cronograma do clube na classe do requisito, em ordem de id (sem deadlock). Uma
-    // colocação em curso termina antes; a seguinte espera este commit e relê o ajuste já desligado.
+    const secao = await tx.secaoRequisito.findFirstOrThrow({
+      where: { requisitos: { some: { id: requisitoId } } },
+      select: { classe: { select: { id: true, classeBaseId: true } } },
+    })
+    const classeDoRequisito = secao.classe.id
+    // Trava antes de listar: todo cronograma do clube que pode conter o requisito (o da classe dele ou o da regular dela,
+    // se for avançada), em ordem de id (sem deadlock). Uma colocação em curso termina antes; a seguinte espera este
+    // commit e relê o ajuste já desligado.
     const candidatos = await tx.cronograma.findMany({
-      where: { clubeId, classe: { secoes: { some: { requisitos: { some: { id: requisitoId } } } } } },
+      where: { clubeId, classeId: { in: [classeDoRequisito, ...(secao.classe.classeBaseId ? [secao.classe.classeBaseId] : [])] } },
       select: { id: true },
       orderBy: { id: 'asc' },
     })
@@ -191,17 +201,18 @@ export class ServicoMontagem {
     for (const cronogramaId of cronogramaIds) {
       const cronograma = await tx.cronograma.findFirstOrThrow({ where: { clubeId, id: cronogramaId }, include: { classe: { select: { trilha: true } } } })
       const aulasDoRequisito = await tx.aulaRequisito.findMany({ where: { clubeId, cronogramaId, requisitoId }, select: { aulaPlanejadaId: true } })
+      const classesDoCronograma = await this.leitura.classesDoCronograma(clubeId, cronograma, tx)
       let retirou = false
       for (const { aulaPlanejadaId } of aulasDoRequisito) {
         const aula = await tx.aulaPlanejada.findFirstOrThrow({ where: { clubeId, id: aulaPlanejadaId } })
         const dada = await tx.registroAula.findFirst({
-          where: { clubeId, classeId: cronograma.classeId, data: aula.data },
+          where: { clubeId, classeId: classeDoRequisito, data: aula.data },
           select: { id: true },
         })
         if (dada) continue
         await tx.aulaRequisito.deleteMany({ where: { clubeId, cronogramaId, requisitoId, aulaPlanejadaId } })
         retirou = true
-        if (cronograma.classe.trilha === 'INDIVIDUAL') await this.removerSeVazia(tx, clubeId, aula.id)
+        if (cronograma.classe.trilha === 'INDIVIDUAL') await this.removerSeVazia(tx, cronograma, aula, classesDoCronograma)
       }
       if (!retirou) continue
       await tx.cronograma.updateMany({
@@ -213,10 +224,12 @@ export class ServicoMontagem {
 
   enviar(sessao: SessaoLogada, cronogramaId: string, atualizadoEmVisto: string): Promise<Saida> {
     return this.executar(sessao, cronogramaId, 'ENVIAR', async (contexto) => {
-      const { tx, cronograma, classeNome } = contexto
+      const { tx, cronograma } = contexto
       exigirNaoDesatualizado(cronograma, atualizadoEmVisto)
       if (cronograma.status !== 'RASCUNHO') throw regra('Só o cronograma em rascunho pode ser enviado.')
       const { clubeId } = cronograma
+      const avancada = await avancadaPareadaDe(tx, clubeId, cronograma.classeId)
+      const classeNome = nomeDoPar(contexto.classeNome, avancada?.nome)
       const autor = await tx.usuario.findUniqueOrThrow({ where: { id: contexto.sessao.usuarioId }, select: { nome: true } })
       const adms = await tx.vinculo.findMany({ where: { clubeId, papel: 'ADM', ativo: true }, select: { usuarioId: true } })
       const link = `/cronograma/montar?classe=${cronograma.classeId}`
@@ -234,21 +247,22 @@ export class ServicoMontagem {
         descricao: `${autor.nome} enviou o cronograma de ${classeNome}`,
         link,
       })
-      return { status: 'ENVIADO', enviadoEm: new Date(), enviadoPorId: contexto.sessao.usuarioId }
+      return { status: 'ENVIADO', enviadoEm: new Date(), enviadoPorId: contexto.sessao.usuarioId } as const
     })
   }
 
   publicar(sessao: SessaoLogada, cronogramaId: string, atualizadoEmVisto: string): Promise<Saida> {
     return this.executar(sessao, cronogramaId, 'PUBLICAR', async (contexto) => {
-      const { tx, cronograma, classeNome } = contexto
+      const { tx, cronograma } = contexto
       exigirNaoDesatualizado(cronograma, atualizadoEmVisto)
       if (cronograma.status === 'PUBLICADO') throw regra('Este cronograma já está publicado.')
       const { clubeId } = cronograma
+      const avancada = await avancadaPareadaDe(tx, clubeId, cronograma.classeId)
+      const classeNome = nomeDoPar(contexto.classeNome, avancada?.nome)
       await tx.cronogramaPublicacao.create({
         data: { clubeId, cronogramaId: cronograma.id, conteudo: await this.retrato(tx, cronograma), publicadoPorId: contexto.sessao.usuarioId },
       })
-
-      const instrutores = await this.instrutoresDaClasse(tx, clubeId, cronograma.classeId)
+      const instrutores = await this.instrutoresDaClasse(tx, clubeId, avancada ? [cronograma.classeId, avancada.id] : [cronograma.classeId])
       const quemMonta = await tx.classeClube.findUnique({
         where: { clubeId_classeId: { clubeId, classeId: cronograma.classeId } },
         select: { quemMontaCronograma: true },
@@ -368,13 +382,26 @@ export class ServicoMontagem {
     }
   }
 
-  /** G2: existe `RegistroAula` da mesma classe e data (nunca pelo `aulaPlanejadaId`). */
-  private async exigirAulaNaoDada(tx: Tx, cronograma: Cronograma, data: string): Promise<void> {
+  /** G2: existe `RegistroAula` de uma das classes e da data (nunca pelo `aulaPlanejadaId`). */
+  private async exigirAulaNaoDada(tx: Tx, clubeId: string, classeIds: string[], data: string): Promise<void> {
     const registro = await tx.registroAula.findFirst({
-      where: { clubeId: cronograma.clubeId, classeId: cronograma.classeId, data: daDataCivil(data) },
+      where: { clubeId, classeId: { in: classeIds }, data: daDataCivil(data) },
       select: { id: true },
     })
     if (registro) throw regra(AULA_DADA)
+  }
+
+  /** O encontro (horário, local, título, remoção) é de todas as classes do cronograma: trava se qualquer uma já deu a aula. */
+  private async exigirEncontroNaoDado(tx: Tx, cronograma: Cronograma, data: string): Promise<void> {
+    const classeIds = await this.leitura.classesDoCronograma(cronograma.clubeId, cronograma, tx)
+    await this.exigirAulaNaoDada(tx, cronograma.clubeId, classeIds, data)
+  }
+
+  /** A classe do requisito, que tem de ser uma das aceitas (senão 404, como requisito de outra classe). */
+  private async classeDoRequisito(tx: Tx, requisitoId: string, classeIds: string[]): Promise<string> {
+    const requisito = await tx.requisito.findUnique({ where: { id: requisitoId }, select: { secao: { select: { classeId: true } } } })
+    if (!requisito || !classeIds.includes(requisito.secao.classeId)) throw new ErroApp('NAO_ENCONTRADO', 'Requisito não encontrado nesta classe.')
+    return requisito.secao.classeId
   }
 
   private async aulaDoRequisito(tx: Tx, cronograma: Cronograma, requisitoId: string) {
@@ -386,28 +413,39 @@ export class ServicoMontagem {
     return tx.aulaPlanejada.findFirstOrThrow({ where: { clubeId: cronograma.clubeId, id: ligacao.aulaPlanejadaId } })
   }
 
-  /** Instrutores ativos do clube ligados à classe (a mesma regra de `ServicoCronograma.instrutoresDaClasse`, pela `tx`). */
-  private async instrutoresDaClasse(tx: Tx, clubeId: string, classeId: string): Promise<{ usuarioId: string }[]> {
+  /** Instrutores ativos do clube ligados a alguma das classes, cada um uma vez (quem instrui as duas do par não repete). */
+  private async instrutoresDaClasse(tx: Tx, clubeId: string, classeIds: string[]): Promise<{ usuarioId: string }[]> {
     const vinculos = await tx.vinculo.findMany({
-      where: { clubeId, papel: 'INSTRUTOR', ativo: true, classes: { some: { classeId } } },
+      where: { clubeId, papel: 'INSTRUTOR', ativo: true, classes: { some: { classeId: { in: classeIds } } } },
       select: { usuario: { select: { id: true } } },
       orderBy: { usuario: { nome: 'asc' } },
     })
-    return vinculos.map((vinculo) => ({ usuarioId: vinculo.usuario.id }))
+    return [...new Set(vinculos.map((vinculo) => vinculo.usuario.id))].map((usuarioId) => ({ usuarioId }))
   }
 
-  /** Aula das individuais que ficou sem requisito deixa de existir; nas agrupadas só se remove de propósito. */
-  private async removerSeVazia(tx: Tx, clubeId: string, aulaId: string): Promise<void> {
-    const restantes = await tx.aulaRequisito.count({ where: { clubeId, aulaPlanejadaId: aulaId } })
-    if (restantes === 0) await tx.aulaPlanejada.updateMany({ where: { clubeId, id: aulaId }, data: { removidaEm: new Date() } })
+  /**
+   * Aula das individuais que ficou sem requisito deixa de existir, salvo se alguma classe do encontro já deu a aula
+   * naquela data; nas agrupadas só se remove de propósito. Quem remove várias aulas do mesmo cronograma passa as classes já calculadas.
+   */
+  private async removerSeVazia(tx: Tx, cronograma: Cronograma, aula: { id: string; data: Date }, classesJaCalculadas?: string[]): Promise<void> {
+    const { clubeId } = cronograma
+    const restantes = await tx.aulaRequisito.count({ where: { clubeId, aulaPlanejadaId: aula.id } })
+    if (restantes > 0) return
+    const classeIds = classesJaCalculadas ?? (await this.leitura.classesDoCronograma(clubeId, cronograma, tx))
+    const dada = await tx.registroAula.findFirst({ where: { clubeId, classeId: { in: classeIds }, data: aula.data }, select: { id: true } })
+    if (dada) return
+    await tx.aulaPlanejada.updateMany({ where: { clubeId, id: aula.id }, data: { removidaEm: new Date() } })
   }
 
-  /** G4: as aulas ativas do vivo, no formato que `ServicoCronograma.ultimaPublicacao` lê de volta. */
+  /** G4: as aulas ativas do vivo, com os requisitos das duas classes do par, no formato que `ServicoCronograma.ultimaPublicacao` lê de volta. */
   private async retrato(tx: Tx, cronograma: Cronograma) {
     const { clubeId } = cronograma
     const [aulas, ligacoes] = await Promise.all([
       tx.aulaPlanejada.findMany({ where: { clubeId, cronogramaId: cronograma.id, removidaEm: null }, orderBy: { data: 'asc' } }),
-      tx.aulaRequisito.findMany({ where: { clubeId, cronogramaId: cronograma.id }, select: { aulaPlanejadaId: true, requisitoId: true } }),
+      tx.aulaRequisito.findMany({
+        where: { clubeId, cronogramaId: cronograma.id },
+        select: { aulaPlanejadaId: true, requisitoId: true },
+      }),
     ])
     return {
       aulas: aulas.map((aula) => ({

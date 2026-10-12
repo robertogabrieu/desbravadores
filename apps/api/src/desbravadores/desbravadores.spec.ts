@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import type { INestApplication } from '@nestjs/common'
 import type { DesbravadorSaida, MatriculaSaida, MembroSaida } from '@desbravadores/shared'
 import type { z } from 'zod'
@@ -5,6 +6,7 @@ import { criarAppDeTeste } from '../../test/app'
 import { ServicoClassePelaIdade } from './classe-pela-idade.service'
 import { travarMatriculasDoDesbravador } from './desbravadores.service'
 import {
+  avancadaOficial,
   classeOficial,
   criarAcesso,
   criarClube,
@@ -307,6 +309,19 @@ describe('desbravadores: escopo, contato, cadastro, matricula', () => {
       expect(doAdm.dados.classeAtual?.nome).toBe('Amigo')
       const matriculas = await prismaDeTeste().matriculaClasse.findMany({ where: { clubeId: clube.id, dbvId: doAdm.dados.id } })
       expect(matriculas).toHaveLength(2)
+    })
+
+    it('cadastro em Agrupadas com incluirAvancada: matricula a regular e a "Agrupadas — avançada"', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const agrupada = await classeOficial('Agrupadas (Amigo a Guia)', 'AGRUPADAS')
+      const { dados } = corpo<ComAvisos>(
+        await api
+          .post('/api/desbravadores', adm.autorizacao, { ...base, nascimento: nascimentoComIdade(16), classeId: agrupada.id, incluirAvancada: true })
+          .expect(201),
+      )
+      expect(dados.avancadaAtual?.nome).toBe('Agrupadas — avançada')
+      expect(await prismaDeTeste().matriculaClasse.count({ where: { clubeId: clube.id, dbvId: dados.id } })).toBe(2)
     })
 
     it('DBV sem classe com incluirAvancada=false: pela idade entra so na regular', async () => {
@@ -746,6 +761,46 @@ describe('desbravadores: escopo, contato, cadastro, matricula', () => {
       )
       expect(saida.map((m) => m.classe.tipo).sort()).toEqual(['AVANCADA', 'REGULAR'])
       expect(saida.every((m) => m.status === 'CURSANDO' && m.anoClube === anoCorrente())).toBe(true)
+    })
+
+    it('duas avançadas com a mesma ordem: a matrícula junto vai para a de menor id, a mesma do par', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const dbv = await criarDbv({ clubeId: clube.id })
+      const amigo = await classeOficial('Amigo')
+      const oficial = await avancadaOficial(amigo.id)
+      const base = await prismaDeTeste().classe.findUniqueOrThrow({ where: { id: oficial.id } })
+      const irma = await prismaDeTeste().classe.create({
+        data: {
+          id: `00000000-0000-7000-8000-${randomUUID().slice(-12)}`,
+          clubeId: clube.id,
+          nome: 'Avançada irmã',
+          tipo: 'AVANCADA',
+          trilha: 'INDIVIDUAL',
+          origem: 'CLUBE',
+          classeBaseId: amigo.id,
+          ordem: base.ordem,
+        },
+      })
+      const saida = corpo<z.infer<typeof MatriculaSaida>[]>(
+        await api
+          .post(`/api/desbravadores/${dbv.id}/matriculas`, adm.autorizacao, { classeId: amigo.id, anoClube: anoCorrente(), incluirAvancada: true })
+          .expect(201),
+      )
+      expect(saida.map((m) => m.classe.id).sort()).toEqual([amigo.id, irma.id].sort())
+    })
+
+    it('agrupadas com incluirAvancada: a matrícula manual cria também a "Agrupadas — avançada"', async () => {
+      const clube = await criarClube()
+      const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+      const dbv = await criarDbv({ clubeId: clube.id })
+      const agrupada = await classeOficial('Agrupadas (Amigo a Guia)', 'AGRUPADAS')
+      const saida = corpo<z.infer<typeof MatriculaSaida>[]>(
+        await api
+          .post(`/api/desbravadores/${dbv.id}/matriculas`, adm.autorizacao, { classeId: agrupada.id, anoClube: anoCorrente(), incluirAvancada: true })
+          .expect(201),
+      )
+      expect(saida.map((m) => m.classe.nome).sort()).toEqual(['Agrupadas (Amigo a Guia)', 'Agrupadas — avançada'])
     })
 
     it('regular sem incluirAvancada cria so a regular', async () => {

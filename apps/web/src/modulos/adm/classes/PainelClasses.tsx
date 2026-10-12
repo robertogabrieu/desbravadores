@@ -7,28 +7,35 @@ import { useLarguraMenorQue } from '../../../layouts/useLarguraMenorQue'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { cn } from '../../../ui/cn'
 import { LARGURA_DO_CELULAR } from '../../../ui/larguraDoCelular'
+import { parDaClasse } from '../../cronograma-montagem/classes'
 import { CorpoDaConsulta } from './CorpoDaConsulta'
 import { DetalheDaClasse } from './DetalheDaClasse'
 
 const rotuloDaIdade = (idade: number | null): string | null =>
   idade === null ? null : `${idade} anos`
 
+/** Uma linha da lista: a avançada vai logo abaixo da regular dela, recuada e com a bolinha só no contorno. */
+interface LinhaDaLista {
+  classe: Classe
+  avancada: boolean
+}
+
 function ListaDeClasses({
   titulo,
-  classes,
+  linhas,
   selecionadaId,
   aoEscolher,
 }: {
   titulo: string
-  classes: Classe[]
+  linhas: LinhaDaLista[]
   selecionadaId: string
   aoEscolher: (id: string) => void
 }) {
-  if (classes.length === 0) return null
+  if (linhas.length === 0) return null
   return (
     <div className="flex flex-col gap-1">
       <h2 className="px-2 text-sm font-bold uppercase text-texto-2">{titulo}</h2>
-      {classes.map((classe) => (
+      {linhas.map(({ classe, avancada }) => (
         <button
           key={classe.id}
           type="button"
@@ -36,6 +43,7 @@ function ListaDeClasses({
           onClick={() => aoEscolher(classe.id)}
           className={cn(
             'flex min-h-[var(--touch-min)] items-center gap-3 rounded-botao px-3 text-left text-base text-texto focus-visible:outline-2 focus-visible:outline-marca',
+            avancada && 'pl-9 text-texto-2',
             classe.id === selecionadaId
               ? 'bg-superficie-suave font-bold'
               : 'hover:bg-superficie-suave',
@@ -43,16 +51,29 @@ function ListaDeClasses({
         >
           <span
             aria-hidden
-            className="size-3 shrink-0 rounded-full"
-            style={{ backgroundColor: `var(${classe.corToken})` }}
+            className={cn('shrink-0 rounded-full', avancada ? 'size-2.5 border-2' : 'size-3')}
+            style={avancada ? { borderColor: `var(${classe.corToken})` } : { backgroundColor: `var(${classe.corToken})` }}
           />
           <span className="flex-1">{classe.nome}</span>
           {!classe.ativa && <span className="text-sm font-semibold text-texto-2">Inativa</span>}
-          <span className="text-sm text-texto-2">{rotuloDaIdade(classe.idade)}</span>
+          {!avancada && <span className="text-sm text-texto-2">{rotuloDaIdade(classe.idade)}</span>}
         </button>
       ))}
     </div>
   )
+}
+
+/** Cada regular seguida da avançada do par; a avançada fora de par (inclusive a desativada, para poder reativá-la) fica no fim, como item próprio. */
+function linhasDosPares(individuais: Classe[]): LinhaDaLista[] {
+  const regulares = individuais.filter((classe) => classe.tipo === 'REGULAR')
+  const soltas = individuais.filter((classe) => classe.tipo !== 'REGULAR' && !parDaClasse(individuais, classe.id))
+  return [
+    ...regulares.flatMap((regular): LinhaDaLista[] => {
+      const avancada = parDaClasse(individuais, regular.id)?.avancada
+      return [{ classe: regular, avancada: false }, ...(avancada ? [{ classe: avancada, avancada: true }] : [])]
+    }),
+    ...soltas.map((classe) => ({ classe, avancada: true })),
+  ]
 }
 
 /** Marca a entrada de histórico aberta pela lista, para o Voltar desfazê-la em vez de empilhar outra. */
@@ -117,40 +138,38 @@ export function PainelClasses() {
           else setParametros({}, { replace: true })
         }
 
+        // As agrupadas são uma turma à parte (16 anos ou mais), com regular e avançada juntas; nunca entram num par.
+        const individuais = lista.filter((c) => c.trilha !== 'AGRUPADAS')
+        const detalheDe = (classe: Classe) => (
+          <DetalheDaClasse key={classe.id} classe={classe} avancada={classe.tipo === 'REGULAR' ? parDaClasse(individuais, classe.id)?.avancada : undefined} />
+        )
+
         // No celular a lista aparece sozinha: nenhuma classe está aberta ao lado para marcar.
         const marcadaId = celular ? '' : selecionada.id
         if (celular && pedida)
           return (
             <div className="flex flex-col gap-2">
               <BotaoVoltar aoVoltar={voltar} />
-              <DetalheDaClasse key={pedida.id} classe={pedida} />
+              {detalheDe(pedida)}
             </div>
           )
-        // As agrupadas são uma turma à parte (16 anos ou mais), com regular e avançada juntas.
-        const individuais = lista.filter((c) => c.trilha !== 'AGRUPADAS')
         return (
           <div className="grid items-start gap-6 lg:grid-cols-[18rem_1fr]">
             <nav aria-label="Classes" className="flex flex-col gap-4">
               <ListaDeClasses
-                titulo="Regulares"
-                classes={individuais.filter((c) => c.tipo === 'REGULAR')}
-                selecionadaId={marcadaId}
-                aoEscolher={escolher}
-              />
-              <ListaDeClasses
-                titulo="Avançadas"
-                classes={individuais.filter((c) => c.tipo !== 'REGULAR')}
+                titulo="Regulares e avançadas"
+                linhas={linhasDosPares(individuais)}
                 selecionadaId={marcadaId}
                 aoEscolher={escolher}
               />
               <ListaDeClasses
                 titulo="Agrupadas"
-                classes={lista.filter((c) => c.trilha === 'AGRUPADAS')}
+                linhas={lista.filter((c) => c.trilha === 'AGRUPADAS').map((classe) => ({ classe, avancada: false }))}
                 selecionadaId={marcadaId}
                 aoEscolher={escolher}
               />
             </nav>
-            {!celular && <DetalheDaClasse key={selecionada.id} classe={selecionada} />}
+            {!celular && detalheDe(selecionada)}
           </div>
         )
       }}

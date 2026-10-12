@@ -25,8 +25,9 @@ beforeEach(() => {
 
 const aguias = criarUnidade({ id: uuid(201), nome: 'Águias' })
 const amigo = criarClasse({ id: uuid(101), nome: 'Amigo' })
-const guia = criarClasse({ id: uuid(102), nome: 'Guia' })
-const avancada = criarClasse({ id: uuid(103), nome: 'Guia de Exploração', tipo: 'AVANCADA' })
+const guia = criarClasse({ id: uuid(102), nome: 'Guia', avancadaPareadaId: uuid(103) })
+const avancada = criarClasse({ id: uuid(103), nome: 'Guia de Exploração', tipo: 'AVANCADA', classeBaseId: guia.id, regularDoParId: guia.id })
+const agrupada = criarClasse({ id: uuid(104), nome: 'Classe Bíblica', trilha: 'AGRUPADAS' })
 const PASSO_1 = `/adm/usuarios/${uuid(710)}/papeis/novo`
 const FICHA = `/adm/usuarios/${uuid(710)}`
 
@@ -48,7 +49,7 @@ function abrir(rota: string, usuario = carla('CONSELHEIRO'), corpos: unknown[] =
     handlerListaUsuarios([usuario.atual]),
     handlerCatalogoUsuarios(),
     handlerUnidades([aguias]),
-    handlerClasses([amigo, guia, avancada]),
+    handlerClasses([amigo, guia, avancada, agrupada]),
     handlerNovoVinculo(usuario.atual, corpos),
   )
   return renderizarRotas(rotasAdmUsuarios, rota)
@@ -125,7 +126,11 @@ describe('Acrescentar papel · passo 2', () => {
     expect(screen.getByText('Acrescentar papel · passo 2 de 2 · Instrutora')).toBeInTheDocument()
     expect(screen.getByLabelText('Buscar classe')).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'Regulares' })).toContainElement(screen.getByRole('button', { name: 'Amigo' }))
-    expect(screen.getByRole('group', { name: 'Avançadas' })).toContainElement(screen.getByRole('button', { name: 'Guia de Exploração' }))
+    expect(screen.getByRole('group', { name: 'Agrupadas' })).toContainElement(screen.getByRole('button', { name: 'Classe Bíblica' }))
+    expect(screen.queryByRole('group', { name: 'Avançadas' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Guia de Exploração/ })).not.toBeInTheDocument()
+    expect(screen.getByText('+ Guia de Exploração (avançada)')).toBeInTheDocument()
+    expect(screen.getByText('Cada classe já vem com a avançada dela: quem instrui Amigo instrui também Amigo da Natureza.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Amigo' })).toHaveAttribute('aria-pressed', 'false')
     await userEvent.click(screen.getByRole('button', { name: 'Amigo' }))
     expect(screen.getByRole('button', { name: 'Amigo' })).toHaveAttribute('aria-pressed', 'true')
@@ -167,8 +172,28 @@ describe('Acrescentar papel · passo 2', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Guia' }))
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await vi.waitFor(() => expect(roteador.state.location.pathname).toBe(FICHA))
-    expect(corpos).toEqual([{ papel: 'INSTRUTOR', unidadeIds: [], classeIds: [amigo.id, guia.id], ajustes: [] }])
+    expect(corpos).toEqual([{ papel: 'INSTRUTOR', unidadeIds: [], classeIds: [amigo.id, guia.id, avancada.id], ajustes: [] }])
     expect(roteador.state.historyAction).toBe('REPLACE')
+  })
+
+  it('marcar a regular manda os ids das duas classes e o resumo diz o que será gravado', async () => {
+    const corpos: unknown[] = []
+    abrir(DE_INSTRUTOR, carla('CONSELHEIRO'), corpos)
+    expect(screen.queryByText(/vai instruir .*\./)).not.toBeInTheDocument()
+    await userEvent.click(await screen.findByRole('button', { name: 'Guia' }))
+    expect(screen.getByText('Carla vai instruir Guia e Guia de Exploração.')).toBeInTheDocument()
+    expect(screen.getByText('1 escolhida')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    await vi.waitFor(() => expect(corpos).toHaveLength(1))
+    expect(corpos).toEqual([{ papel: 'INSTRUTOR', unidadeIds: [], classeIds: [guia.id, avancada.id], ajustes: [] }])
+  })
+
+  it('desmarcar a regular tira as duas', async () => {
+    abrir(DE_INSTRUTOR)
+    await userEvent.click(await screen.findByRole('button', { name: 'Guia' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Guia' }))
+    expect(screen.queryByText(/vai instruir .*\./)).not.toBeInTheDocument()
+    expect(screen.getByText('Nenhuma escolhida')).toBeInTheDocument()
   })
 
   it('Enter na busca não envia o formulário', async () => {

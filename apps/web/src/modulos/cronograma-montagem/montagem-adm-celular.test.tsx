@@ -96,7 +96,7 @@ describe('A7 celular · início', () => {
   it('o botão de contexto mostra classe e ano e abre a folha com os seletores de hoje', async () => {
     const { usuario } = await abrirNoCelular()
     const contexto = screen.getByRole('button', { name: /Trocar classe ou ano/ })
-    expect(contexto).toHaveTextContent('Amigo · Regular')
+    expect(contexto).toHaveTextContent('Amigo')
     expect(contexto).toHaveTextContent(/Ano do clube \d{4}/)
     await usuario.click(contexto)
     const troca = screen.getByRole('dialog', { name: 'Trocar classe ou ano' })

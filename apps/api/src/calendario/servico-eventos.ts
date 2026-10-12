@@ -17,6 +17,7 @@ import {
 import { z } from 'zod'
 import { ServicoAtividade } from '../atividades/servico-atividade'
 import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
+import { avancadasPareadas } from '../classes/par-regular-avancada'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
@@ -39,14 +40,29 @@ const UNIFORME_EM_TEXTO = { GALA: 'gala', CAMPO: 'campo' } as const
 interface AulaVista {
   aulaId: string
   cronogramaId: string
+  /** A classe dona do cronograma (no par, a regular), que também é a chave do ajuste de quem monta. */
+  donaId: string
   classeId: string
   trilha: Trilha
   data: string
   temRequisitos: boolean
 }
 
+/** Uma aula do cronograma como vem do banco ou do retrato, antes de abrir por classe. */
+interface CronogramaAula {
+  aulaId: string
+  cronogramaId: string
+  data: string
+  requisitoIds: string[]
+}
+
 /** O que a transação lê do retrato que `CronogramaPublicacao.conteudo` guarda. */
 const RetratoLido = z.object({ aulas: z.array(z.object({ id: Uuid, data: DataCivil, requisitoIds: z.array(Uuid) })) })
+
+/** A mesma aula do par vira duas linhas, uma por classe: a chave as distingue. */
+function chaveDaAula(aula: AulaVista): string {
+  return `${aula.aulaId}|${aula.classeId}`
+}
 
 const NAO_ENCONTRADO = 'Evento não encontrado.'
 const DA_CLASSE_BIBLICA = 'Este encontro é da Classe Bíblica: remarque ou cancele pela edição.'
@@ -331,7 +347,7 @@ export class ServicoEventos {
                   situacaoDaData: situacaoDaData(aula.data, configuracao.diaReuniao, eventos),
                 }),
               )
-              .map((aula) => aula.aulaId),
+              .map(chaveDaAula),
           )
         const jaEmConflito = conflitos(eventosAntes)
         const emConflitoDepois = conflitos(eventosDepois)
@@ -347,8 +363,9 @@ export class ServicoEventos {
           !temClasse(aula, eventosDepois)
         const entraram = new Map<string, AulaVista>()
         for (const aula of aulas) {
-          const entrouEmConflito = emConflitoDepois.has(aula.aulaId) && !jaEmConflito.has(aula.aulaId)
-          if (entrouEmConflito || perdeuAClasse(aula)) entraram.set(aula.aulaId, aula)
+          const chave = chaveDaAula(aula)
+          const entrouEmConflito = emConflitoDepois.has(chave) && !jaEmConflito.has(chave)
+          if (entrouEmConflito || perdeuAClasse(aula)) entraram.set(chave, aula)
         }
 
         await gravacao(tx, antes)
@@ -365,48 +382,72 @@ export class ServicoEventos {
     if (jaExiste > 0) throw new ErroApp('VALIDACAO', 'Confira os campos informados.', { inicio: 'Já há uma reunião extra nesta data.' })
   }
 
-  /** Aulas do cronograma vivo e da última publicação no intervalo, uma linha por (aula, fonte). */
+  /**
+   * Aulas do cronograma vivo e da última publicação no intervalo, uma linha por (aula, fonte, classe).
+   * No cronograma do par ativo a aula é do encontro das duas classes: cada uma que tem requisito nela ganha a sua linha.
+   */
   private async aulasVistas(tx: Prisma.TransactionClient, clubeId: string, inicio: string, fim: string): Promise<AulaVista[]> {
     const cronogramas = await tx.cronograma.findMany({
       where: { clubeId },
       select: { id: true, classeId: true, classe: { select: { trilha: true } } },
     })
-    const trilhaDoCronograma = new Map(cronogramas.map((c) => [c.id, c]))
+    const cronogramaPorId = new Map(cronogramas.map((c) => [c.id, c]))
     const noIntervalo = (data: string): boolean => data >= inicio && data <= fim
 
     const vivas = await tx.aulaPlanejada.findMany({
       where: { clubeId, removidaEm: null, data: { gte: daDataCivil(inicio), lte: daDataCivil(fim) } },
-      select: { id: true, cronogramaId: true, data: true, _count: { select: { requisitos: true } } },
+      select: { id: true, cronogramaId: true, data: true },
     })
-    const doVivo = vivas.flatMap((aula): AulaVista[] => {
-      const cronograma = trilhaDoCronograma.get(aula.cronogramaId)
-      if (!cronograma) return []
-      return [
-        {
-          aulaId: aula.id,
-          cronogramaId: aula.cronogramaId,
-          classeId: cronograma.classeId,
-          trilha: cronograma.classe.trilha,
-          data: paraDataCivil(aula.data),
-          temRequisitos: aula._count.requisitos > 0,
-        },
-      ]
+    const ligacoes = await tx.aulaRequisito.findMany({
+      where: { clubeId, aulaPlanejadaId: { in: vivas.map((aula) => aula.id) } },
+      select: { aulaPlanejadaId: true, requisitoId: true },
+    })
+    const requisitosPorAula = new Map<string, string[]>()
+    for (const ligacao of ligacoes) {
+      requisitosPorAula.set(ligacao.aulaPlanejadaId, [...(requisitosPorAula.get(ligacao.aulaPlanejadaId) ?? []), ligacao.requisitoId])
+    }
+    const doVivo = vivas.flatMap((aula): CronogramaAula[] => {
+      if (!cronogramaPorId.has(aula.cronogramaId)) return []
+      const requisitoIds = requisitosPorAula.get(aula.id) ?? []
+      return [{ aulaId: aula.id, cronogramaId: aula.cronogramaId, data: paraDataCivil(aula.data), requisitoIds }]
     })
 
     const publicacoes = await Promise.all(cronogramas.map((c) => this.aulasDaUltimaPublicacao(tx, clubeId, c.id)))
-    const doPublicado = cronogramas.flatMap((cronograma, indice): AulaVista[] =>
+    const doPublicado = cronogramas.flatMap((cronograma, indice): CronogramaAula[] =>
       publicacoes[indice]
         .filter((aula) => noIntervalo(aula.data))
-        .map((aula) => ({
-          aulaId: aula.id,
-          cronogramaId: cronograma.id,
-          classeId: cronograma.classeId,
-          trilha: cronograma.classe.trilha,
-          data: aula.data,
-          temRequisitos: aula.requisitoIds.length > 0,
-        })),
+        .map((aula) => ({ aulaId: aula.id, cronogramaId: cronograma.id, data: aula.data, requisitoIds: aula.requisitoIds })),
     )
-    return [...doVivo, ...doPublicado]
+    return this.porClasse(tx, clubeId, cronogramaPorId, [...doVivo, ...doPublicado])
+  }
+
+  /** Abre cada aula numa linha por classe com requisito nela, quando o cronograma é de um par ativo; senão, uma linha da classe dele. */
+  private async porClasse(
+    tx: Prisma.TransactionClient,
+    clubeId: string,
+    cronogramaPorId: Map<string, { classeId: string; classe: { trilha: Trilha } }>,
+    aulas: CronogramaAula[],
+  ): Promise<AulaVista[]> {
+    const donas = [...new Set(aulas.map((aula) => cronogramaPorId.get(aula.cronogramaId)?.classeId ?? ''))].filter(Boolean)
+    const avancadaDaRegular = await avancadasPareadas(tx, clubeId, donas)
+    const requisitos = await tx.requisito.findMany({
+      where: { id: { in: [...new Set(aulas.flatMap((aula) => aula.requisitoIds))] } },
+      select: { id: true, secao: { select: { classeId: true } } },
+    })
+    const classeDoRequisito = new Map(requisitos.map((r) => [r.id, r.secao.classeId]))
+
+    return aulas.flatMap((aula): AulaVista[] => {
+      const cronograma = cronogramaPorId.get(aula.cronogramaId)
+      if (!cronograma) return []
+      const base = { aulaId: aula.aulaId, cronogramaId: aula.cronogramaId, donaId: cronograma.classeId, trilha: cronograma.classe.trilha, data: aula.data }
+      const avancadaId = avancadaDaRegular.get(cronograma.classeId)?.id
+      if (!avancadaId) return [{ ...base, classeId: cronograma.classeId, temRequisitos: aula.requisitoIds.length > 0 }]
+      const classes = [cronograma.classeId, avancadaId].filter((classeId) =>
+        aula.requisitoIds.some((id) => classeDoRequisito.get(id) === classeId),
+      )
+      if (classes.length === 0) return [{ ...base, classeId: cronograma.classeId, temRequisitos: false }]
+      return classes.map((classeId) => ({ ...base, classeId, temRequisitos: true }))
+    })
   }
 
   /** As aulas do retrato mais recente do cronograma, deduplicadas por id (o mesmo que `ServicoCronograma.ultimaPublicacao`, pela `tx`). */
@@ -440,36 +481,45 @@ export class ServicoEventos {
     return vinculos.map((vinculo) => ({ usuarioId: vinculo.usuario.id }))
   }
 
-  /** Uma notificação por (pessoa, classe); devolve as aulas afetadas ordenadas por data. */
+  /** Uma notificação por (pessoa, cronograma): no par, quem instrui as duas classes recebe uma só, citando as duas. */
   private async avisar(tx: Prisma.TransactionClient, sessao: SessaoLogada, entraram: AulaVista[]): Promise<AulaAfetada[]> {
     if (entraram.length === 0) return []
     const { clubeId } = sessao
     const classeIds = [...new Set(entraram.map((aula) => aula.classeId))]
+    const donaIds = [...new Set(entraram.map((aula) => aula.donaId))]
     const [classes, ajustes, adms] = await Promise.all([
       tx.classe.findMany({ where: { id: { in: classeIds }, OR: [{ clubeId: null }, { clubeId }] }, select: SELECAO_REF_CLASSE }),
-      tx.classeClube.findMany({ where: { clubeId, classeId: { in: classeIds } }, select: { classeId: true, quemMontaCronograma: true } }),
+      tx.classeClube.findMany({ where: { clubeId, classeId: { in: donaIds } }, select: { classeId: true, quemMontaCronograma: true } }),
       tx.vinculo.findMany({ where: { clubeId, papel: 'ADM', ativo: true }, select: { usuarioId: true } }),
     ])
     const classePorId = new Map(classes.map((classe) => [classe.id, classe]))
     const quemMonta = new Map(ajustes.map((ajuste) => [ajuste.classeId, ajuste.quemMontaCronograma]))
 
-    for (const classeId of classeIds) {
-      const datas = [...new Set(entraram.filter((a) => a.classeId === classeId).map((a) => a.data))].sort()
-      const classe = classePorId.get(classeId)
-      const instrutores = await this.instrutoresDaClasse(tx, clubeId, classeId)
-      const admMonta = (quemMonta.get(classeId) ?? 'ADM') === 'ADM'
-      const linkQuemMonta = `/cronograma/montar?classe=${classeId}`
-      const linkQuemNaoMonta = `/cronograma?classe=${classeId}`
+    for (const donaId of donaIds) {
+      const doCronograma = entraram.filter((a) => a.donaId === donaId)
+      const classesAvisadas = [...new Set(doCronograma.map((a) => a.classeId))].sort((a, b) => Number(b === donaId) - Number(a === donaId))
+      const datas = [...new Set(doCronograma.map((a) => a.data))].sort()
+      const nomes = classesAvisadas.map((classeId) => classePorId.get(classeId)?.nome ?? 'Classe').join(' + ')
+      const instrutores = [
+        ...new Map(
+          (await Promise.all(classesAvisadas.map((classeId) => this.instrutoresDaClasse(tx, clubeId, classeId)))).flat().map((i) => [i.usuarioId, i]),
+        ).values(),
+      ]
+      const admMonta = (quemMonta.get(donaId) ?? 'ADM') === 'ADM'
+      // O instrutor que só tem requisito da avançada no conflito abre a tela já na avançada.
+      const classeDoInstrutor = classesAvisadas.includes(donaId) ? donaId : classesAvisadas[0]
+      const linkDoAdm = `/cronograma/montar?classe=${donaId}`
+      const linkDoInstrutor = admMonta ? `/cronograma?classe=${classeDoInstrutor}` : `/cronograma/montar?classe=${classeDoInstrutor}`
       const destinos = [
-        ...instrutores.map((i) => ({ usuarioId: i.usuarioId, link: admMonta ? linkQuemNaoMonta : linkQuemMonta })),
-        ...(admMonta ? adms.map((a) => ({ usuarioId: a.usuarioId, link: linkQuemMonta })) : []),
+        ...instrutores.map((i) => ({ usuarioId: i.usuarioId, link: linkDoInstrutor })),
+        ...(admMonta ? adms.map((a) => ({ usuarioId: a.usuarioId, link: linkDoAdm })) : []),
       ]
       await this.notificacoes.notificar(tx, {
         clubeId,
         destinos,
         tipo: 'CONFLITO_CRONOGRAMA',
         titulo: 'Classe em conflito com o calendário',
-        texto: `${classe?.nome ?? 'Classe'}: ${datas.map(diaMes).join(', ')} deixou de ser dia de classe.`,
+        texto: `${nomes}: ${datas.map(diaMes).join(', ')} deixou de ser dia de classe.`,
       })
     }
 

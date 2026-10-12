@@ -5,7 +5,7 @@ import type { HttpHandler } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { VinculoUsuario } from '../../../api/usuarios'
 import { caixa } from '../../../testes/handlers/caixa'
-import { criarUnidade, handlerUnidades } from '../../../testes/handlers/leitura'
+import { criarClasse, criarUnidade, handlerClasses, handlerUnidades } from '../../../testes/handlers/leitura'
 import { handlersSessao, uuid } from '../../../testes/handlers/sessao'
 import { criarUsuario, criarVinculoUsuario, handlerCatalogoUsuarios, handlerEditarVinculo, handlerListaUsuarios, handlerRegra422, handlerUsuario } from '../../../testes/handlers/usuarios'
 import { renderizarRotas } from '../../../testes/renderizar'
@@ -46,6 +46,11 @@ function abrir(rota: string, usuario = carla(), ...especiais: HttpHandler[]) {
   )
   return renderizarRotas(rotasAdmUsuarios, rota)
 }
+
+const amigo = criarClasse({ id: uuid(101), nome: 'Amigo', avancadaPareadaId: uuid(102) })
+const amigoDaNatureza = criarClasse({ id: uuid(102), nome: 'Amigo da Natureza', tipo: 'AVANCADA', classeBaseId: amigo.id, regularDoParId: amigo.id })
+const refDe = (c: typeof amigo) => ({ id: c.id, nome: c.nome, tipo: c.tipo, trilha: c.trilha, corToken: c.corToken })
+const ALTERAR_INSTRUTORA = `${FICHA}/papeis/${uuid(603)}`
 
 const salvar = () => userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
 const abrirAjustes = async () => userEvent.click(await screen.findByRole('button', { name: /Ajustar o que pode fazer/ }))
@@ -271,5 +276,28 @@ describe('Alterar papel · não encontrado e estados', () => {
     offline.modo = 'SEM_CONEXAO'
     abrir(ALTERAR, carla(), http.get('/api/usuarios/:id', () => HttpResponse.json({ codigo: 'ERRO_INTERNO', mensagem: 'x' }, { status: 500 })))
     expect(await screen.findByText('Disponível quando houver internet')).toBeInTheDocument()
+  })
+})
+
+describe('Alterar papel · instrutor com regular e avançada', () => {
+  it('o vínculo que já tem as duas mostra só a regular, marcada, com a avançada embaixo e o resumo', async () => {
+    const usuario = carla([criarVinculoUsuario('INSTRUTOR', 3, { classes: [refDe(amigo), refDe(amigoDaNatureza)] })])
+    abrir(ALTERAR_INSTRUTORA, usuario, handlerClasses([amigo, amigoDaNatureza]))
+    const regular = await screen.findByRole('button', { name: 'Amigo' })
+    expect(regular).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.queryByRole('button', { name: /Natureza/ })).not.toBeInTheDocument()
+    expect(screen.getByText('+ Amigo da Natureza (avançada)')).toBeInTheDocument()
+    expect(screen.getByText('Carla vai instruir Amigo e Amigo da Natureza.')).toBeInTheDocument()
+  })
+
+  it('desmarcar a regular tira as duas classes do envio', async () => {
+    const corpos: unknown[] = []
+    const guia = criarClasse({ id: uuid(103), nome: 'Guia' })
+    const usuario = carla([criarVinculoUsuario('INSTRUTOR', 3, { classes: [refDe(amigo), refDe(amigoDaNatureza)] })])
+    abrir(ALTERAR_INSTRUTORA, usuario, handlerClasses([amigo, amigoDaNatureza, guia]), handlerEditarVinculo(usuario.atual, corpos))
+    await userEvent.click(await screen.findByRole('button', { name: 'Amigo' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Guia' }))
+    await salvar()
+    await waitFor(() => expect(corpos).toEqual([{ classeIds: [guia.id], ajustes: [] }]))
   })
 })

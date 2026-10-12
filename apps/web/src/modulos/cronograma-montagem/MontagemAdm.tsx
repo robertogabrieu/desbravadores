@@ -12,10 +12,9 @@ import { FolhaLateral } from '../../ui/FolhaLateral'
 import { LARGURA_DO_CELULAR } from '../../ui/larguraDoCelular'
 import { Selecao } from '../../ui/Selecao'
 import { ResultadoConsulta } from '../galeria/ResultadoConsulta'
-import { AlternadorDeClasse } from './AlternadorDeClasse'
 import { CriarCronograma } from './CriarCronograma'
 import { PainelAdm } from './PainelAdm'
-import { parDaClasse } from './classes'
+import { nomeDoParDe, parDaClasse, regularDaClasse } from './classes'
 
 /** A7: o Adm escolhe a classe e o ano e monta o cronograma; no celular a escolha fica atrás de um botão de contexto. */
 export function MontagemAdm() {
@@ -32,11 +31,13 @@ export function MontagemAdm() {
   const celular = useLarguraMenorQue(LARGURA_DO_CELULAR)
   const ano = anoEscolhido ?? anoAtual
 
-  const regulares = (classes.data ?? []).filter((classe) => classe.ativa && classe.tipo === 'REGULAR')
-  const classeId = busca.get('classe') ?? regulares[0]?.id
-  const par = parDaClasse(classes.data ?? [], classeId)
+  // Cada regular ativa (com a avançada junto, quando ela anda em par) e a avançada ativa cuja regular está inativa.
+  const escolhaveis = (classes.data ?? []).filter(
+    (classe) => classe.ativa && (classe.tipo === 'REGULAR' || parDaClasse(classes.data ?? [], classe.id) === null),
+  )
+  const classeId = regularDaClasse(classes.data ?? [], busca.get('classe') ?? undefined) ?? escolhaveis[0]?.id
   const classe = classes.data?.find((item) => item.id === classeId)
-  const montagem = useMontagem(classeId, ano, online && ano !== undefined)
+  const montagem = useMontagem(classeId, ano, online && ano !== undefined && !classes.isPending)
   const escolherClasse = (id: string) => definirBusca({ classe: id }, { replace: true })
   const anos = anoAtual === undefined ? [] : [anoAtual - 1, anoAtual, anoAtual + 1]
 
@@ -50,9 +51,9 @@ export function MontagemAdm() {
       <ResultadoConsulta consulta={montagem} rotuloCarga="Carregando cronograma">
         {(dados) =>
           dados.cronograma === null ? (
-            <CriarCronograma classeId={dados.classe.id} nomeDaClasse={dados.classe.nome} ano={ano} />
+            <CriarCronograma classeId={dados.classe.id} nomeDaClasse={classe ? nomeDoParDe(classes.data ?? [], classe) : dados.classe.nome} ano={ano} />
           ) : (
-            <PainelAdm montagem={dados} cronograma={dados.cronograma} classe={classe} ano={ano} aoAtualizar={() => void montagem.refetch()} />
+            <PainelAdm montagem={dados} classeConsultada={classeId} cronograma={dados.cronograma} classe={classe} ano={ano} classes={classes.data ?? []} aoAtualizar={() => void montagem.refetch()} />
           )
         }
       </ResultadoConsulta>
@@ -61,10 +62,10 @@ export function MontagemAdm() {
 
   const seletores = (
     <>
-      <Selecao rotulo="Classe" value={par?.regular.id ?? classeId ?? ''} onChange={(evento) => escolherClasse(evento.target.value)}>
-        {regulares.map((item) => (
+      <Selecao rotulo="Classe" value={classeId ?? ''} onChange={(evento) => escolherClasse(evento.target.value)}>
+        {escolhaveis.map((item) => (
           <option key={item.id} value={item.id}>
-            {item.nome}
+            {nomeDoParDe(classes.data ?? [], item)}
           </option>
         ))}
       </Selecao>
@@ -75,13 +76,10 @@ export function MontagemAdm() {
           </option>
         ))}
       </Selecao>
-      {par && classeId && <AlternadorDeClasse par={par} atualId={classeId} aoMudar={escolherClasse} />}
     </>
   )
 
-  const nomeDaClasse = par?.regular.nome ?? classe?.nome ?? '—'
-  const tipoDaClasse = classe?.tipo === 'AVANCADA' ? 'Avançada' : 'Regular'
-  const contexto = `${nomeDaClasse} · ${tipoDaClasse}`
+  const contexto = classe ? nomeDoParDe(classes.data ?? [], classe) : '—'
 
   return (
     <div className="flex flex-col gap-4">

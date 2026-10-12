@@ -15,6 +15,7 @@ export function criarRequisitoMontagem(n: number, parcial: Partial<RequisitoDaMo
     texto: `Requisito ${n}`,
     campo: false,
     secaoCodigo: 'S1',
+    classeId: CLASSE_MONTAGEM.id,
     aulaId: null,
     data: null,
     ...parcial,
@@ -38,7 +39,7 @@ export function criarDataMontagem(data: string, parcial: Partial<DataDaMontagem>
     requisitoIds: [],
     situacao: situacaoDoDia(data),
     conflito: false,
-    aulaDada: false,
+    classeIdsComAulaDada: [],
     ...parcial,
   }
 }
@@ -48,6 +49,7 @@ export function criarMontagem(parcial: Partial<Montagem> = {}): Montagem {
     cronograma: {
       id: CRONOGRAMA_ID,
       status: 'RASCUNHO',
+      anoClube: 2026,
       inicio: '2026-01-01',
       fim: '2026-12-31',
       enviadoEm: null,
@@ -59,9 +61,19 @@ export function criarMontagem(parcial: Partial<Montagem> = {}): Montagem {
     datas: [],
     requisitos: [],
     datasLivres: false,
+    avancada: null,
     ...parcial,
   }
 }
+
+/** A avançada que anda com a regular no cronograma único (par ativo). */
+export const AVANCADA_MONTAGEM = { id: uuid(101), nome: 'Amigo da Natureza' }
+/** A mesma avançada como classe de leitura, para quando a montagem é dela (regular inativa) ou para o vínculo do instrutor. */
+export const CLASSE_AVANCADA_MONTAGEM = { ...AVANCADA_MONTAGEM, tipo: 'AVANCADA', trilha: 'INDIVIDUAL', corToken: '--classe-amigo' } as const
+
+/** Requisito da avançada (ids a partir de 3000, para não colidir com os da regular): vive no cronograma da regular. */
+export const criarRequisitoAvancada = (n: number, parcial: Partial<RequisitoDaMontagem> = {}): RequisitoDaMontagem =>
+  criarRequisitoMontagem(2000 + n, { codigo: `AN${n}`, texto: `Requisito avançado ${n}`, classeId: AVANCADA_MONTAGEM.id, ...parcial })
 
 export interface ChamadaDeMontagem {
   metodo: string
@@ -159,7 +171,7 @@ export function criarMontagemDeExemplo(parcial: Partial<Montagem> = {}): Montage
         conflito: true,
         situacao: situacaoDoDia('2026-10-25', [{ nome: 'Ensaio da investidura', tipo: 'EVENTO' }]),
       }),
-      criarDataMontagem('2026-11-01', { aulaId: uuid(2003), requisitoIds: [REQ_DA_AULA_DADA.id], aulaDada: true }),
+      criarDataMontagem('2026-11-01', { aulaId: uuid(2003), requisitoIds: [REQ_DA_AULA_DADA.id], classeIdsComAulaDada: [CLASSE_MONTAGEM.id] }),
     ],
     ...parcial,
   })

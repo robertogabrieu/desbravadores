@@ -43,13 +43,13 @@ export class ServicoEscopo {
     return ligacoes.map((ligacao) => ligacao.unidadeId)
   }
 
-  /** Com sessao de substituicao, so o alvo do link. */
+  /**
+   * Com sessao de substituicao, so a classe do link: o link nao herda o par. Instrutor do clube: as classes do vinculo
+   * gravado. O par anda junto porque a gravacao do vinculo (e a ativacao da classe) grava as duas classes.
+   */
   async classesDoInstrutor(sessao: SessaoLogada): Promise<string[]> {
     if (sessao.substituicao) return sessao.substituicao.classeId ? [sessao.substituicao.classeId] : []
-    const ligacoes = await this.prisma.vinculoClasse.findMany({
-      where: { vinculoId: sessao.vinculoId },
-      select: { classeId: true },
-    })
+    const ligacoes = await this.prisma.vinculoClasse.findMany({ where: { vinculoId: sessao.vinculoId }, select: { classeId: true } })
     return ligacoes.map((ligacao) => ligacao.classeId)
   }
 

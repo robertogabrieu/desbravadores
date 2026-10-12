@@ -3,6 +3,7 @@ import type { InicioInstrutorSaida } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { criarAppDeTeste } from '../../test/app'
 import {
+  avancadaOficial,
   admCriarEspecialidadeClube,
   admCriarRequisitoAjuste,
   classeOficial,
@@ -48,7 +49,8 @@ describe('instrutor: inicio e pedido de liberacao', () => {
       const clube = await criarClube()
       const amigo = await classeOficial('Amigo')
       const agrupada = await prismaDeTeste().classe.findFirstOrThrow({ where: { clubeId: null, trilha: 'AGRUPADAS', tipo: 'REGULAR' }, select: { id: true } })
-      const instrutor = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [agrupada.id, amigo.id] })
+      const avancadaDoAmigo = await avancadaOficial(amigo.id)
+      const instrutor = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [agrupada.id, amigo.id, avancadaDoAmigo.id] })
       const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
       const requisitos = await prismaDeTeste().requisito.findMany({ where: { ativo: true, secao: { classeId: amigo.id } }, select: { id: true } })
       const dbv = await criarDbv({ clubeId: clube.id })
@@ -70,8 +72,8 @@ describe('instrutor: inicio e pedido de liberacao', () => {
 
       const saida = corpo<Inicio>(await api.get('/api/inicio/instrutor', instrutor.autorizacao).expect(200))
 
-      expect(saida.classes.map((item) => item.classe.id)).toEqual([amigo.id, agrupada.id])
-      const [doAmigo, daAgrupada] = saida.classes
+      expect(saida.classes.map((item) => item.classe.id)).toEqual([amigo.id, (await prismaDeTeste().classe.findFirstOrThrow({ where: { tipo: 'AVANCADA', trilha: 'INDIVIDUAL', clubeId: null, classeBaseId: amigo.id }, select: { id: true } })).id, agrupada.id])
+      const [doAmigo, , daAgrupada] = saida.classes
       expect(doAmigo).toMatchObject({
         totalDbvs: 1,
         progressoMedio: Math.round((1 / requisitos.length) * 100),
@@ -233,9 +235,13 @@ describe('instrutor: inicio e pedido de liberacao', () => {
         expect(await t.paraCobrar()).toEqual({ requisitos: 1, especialidades: 0, desbravadores: 1 })
 
         const companheiro = await classeOficial('Companheiro')
-        const deOutraClasse = await criarAcesso({ clubeId: t.clube.id, papel: 'INSTRUTOR', classeIds: [companheiro.id] })
+        const avancadaDoCompanheiro = await avancadaOficial(companheiro.id)
+        const deOutraClasse = await criarAcesso({ clubeId: t.clube.id, papel: 'INSTRUTOR', classeIds: [companheiro.id, avancadaDoCompanheiro.id] })
         const saida = corpo<Inicio>(await api.get('/api/inicio/instrutor', deOutraClasse.autorizacao).expect(200))
-        expect(saida.classes.map((c) => [c.classe.id, c.paraCobrar])).toEqual([[companheiro.id, null]])
+        expect(saida.classes.map((c) => [c.classe.id, c.paraCobrar])).toEqual([
+          [companheiro.id, null],
+          [(await prismaDeTeste().classe.findFirstOrThrow({ where: { tipo: 'AVANCADA', trilha: 'INDIVIDUAL', clubeId: null, classeBaseId: companheiro.id }, select: { id: true } })).id, null],
+        ])
       })
     })
 
@@ -285,6 +291,25 @@ describe('instrutor: inicio e pedido de liberacao', () => {
       expect(inativo.ativo).toBe(false)
       expect(await pedidos(outroClube.id)).toEqual([])
       expect(admDeFora.usuario.id).not.toBe(adm.usuario.id)
+    })
+
+    it('numa avançada de par ativo, quem monta e o link são os da regular', async () => {
+      const { clube, amigo, adm } = await cenario()
+      const avancada = await avancadaOficial(amigo.id)
+      const instrutorDaAvancada = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [avancada.id] })
+      const pedir = () => api.post(`/api/classes/${avancada.id}/pedir-liberacao`, instrutorDaAvancada.autorizacao)
+
+      await pedir().expect(204)
+      const enviados = await pedidos(clube.id)
+      expect(enviados).toHaveLength(1)
+      expect(enviados[0]).toMatchObject({ usuarioId: adm.usuario.id, link: `/adm/classes?classe=${amigo.id}` })
+      expect(enviados[0].texto).toContain(`Amigo + ${avancada.nome}`)
+
+      await prismaDeTeste().classeClube.update({
+        where: { clubeId_classeId: { clubeId: clube.id, classeId: amigo.id } },
+        data: { quemMontaCronograma: 'INSTRUTOR' },
+      })
+      await pedir().expect(422)
     })
 
     it('depois de 24 h notifica de novo', async () => {

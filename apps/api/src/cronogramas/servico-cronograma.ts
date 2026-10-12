@@ -11,6 +11,7 @@ import {
 } from '@desbravadores/shared'
 import { z } from 'zod'
 import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
+import { classeDonaDoCronograma } from '../classes/par-regular-avancada'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import type { Trilha } from '../generated/prisma/client.js'
 import { ErroApp } from '../comum/erros'
@@ -70,10 +71,11 @@ export class ServicoCronograma {
     const classe = await this.classeDoEscopo(sessao, classeId)
     const relogio = await this.escopo.relogio(clubeId)
     const ano = anoClube ?? relogio.anoClube
-    const podeMontar = await this.podeMontar(sessao, classeId)
+    const { donaId } = await this.parDaClasse(clubeId, classeId)
+    const podeMontar = await this.podeMontar(sessao, donaId)
 
     const cronograma = await this.prisma.cronograma.findFirst({
-      where: { clubeId, classeId, anoClube: ano },
+      where: { clubeId, classeId: donaId, anoClube: ano },
       select: { id: true, status: true },
     })
     const base = { classe: refClasse(classe), anoClube: ano, podeMontar }
@@ -87,7 +89,8 @@ export class ServicoCronograma {
     const publicacao = await this.ultimaPublicacao(clubeId, cronograma.id)
     if (!podeMontar && !publicacao) return vazio
 
-    const planejadas = podeMontar ? await this.aulasDoVivo(clubeId, cronograma.id) : (publicacao?.aulas ?? [])
+    const doCronograma = podeMontar ? await this.aulasDoVivo(clubeId, cronograma.id) : (publicacao?.aulas ?? [])
+    const planejadas = await this.soDaClasse(clubeId, donaId, classeId, doCronograma)
     const aulas = await this.montarAulas({ clubeId, classeId, trilha: classe.trilha, planejadas, ano, relogio })
     return {
       ...base,
@@ -97,6 +100,44 @@ export class ServicoCronograma {
       publicadoEm: publicacao?.publicadoEm.toISOString() ?? null,
       aulas,
     }
+  }
+
+  /**
+   * O cronograma do par e um so, o da regular: `donaId` e a regular, tambem quando a classe e a avancada de par ativo.
+   * Mesmo com o par desfeito o cronograma pode ter requisitos das duas classes: por isso a leitura sempre filtra.
+   */
+  async parDaClasse(clubeId: string, classeId: string): Promise<{ donaId: string }> {
+    return { donaId: await classeDonaDoCronograma(this.prisma, clubeId, classeId) }
+  }
+
+  /**
+   * Das aulas do cronograma, so as que tem requisito da classe, e com so os requisitos dela; a aula so com requisito
+   * de outra classe nao aparece. A aula ainda sem requisito nenhum e da dona do cronograma: nao aparece na outra classe.
+   */
+  async soDaClasse<T extends { requisitoIds: string[] }>(clubeId: string, donaId: string, classeId: string, aulas: T[]): Promise<T[]> {
+    const daClasse = await this.idsDaClasse(classeId, aulas.flatMap((aula) => aula.requisitoIds))
+    return aulas.flatMap((aula): T[] => {
+      const requisitoIds = aula.requisitoIds.filter((id) => daClasse.has(id))
+      const semRequisitoDeNinguem = aula.requisitoIds.length === 0 && classeId === donaId
+      return requisitoIds.length > 0 || semRequisitoDeNinguem ? [{ ...aula, requisitoIds }] : []
+    })
+  }
+
+  /** Dos requisitos recebidos, os ids dos que pertencem a esta classe. */
+  async idsDaClasse(classeId: string, requisitoIds: string[]): Promise<Set<string>> {
+    const ids = [...new Set(requisitoIds)]
+    const daClasse = await this.prisma.requisito.findMany({ where: { id: { in: ids }, secao: { classeId } }, select: { id: true } })
+    return new Set(daClasse.map((requisito) => requisito.id))
+  }
+
+  /** A ultima publicacao do cronograma do ano que cobre a classe (o da regular, no par), ja filtrada para a classe. */
+  async publicadaDaClasse(clubeId: string, classeId: string, ano: number): Promise<PublicacaoLida | null> {
+    const { donaId } = await this.parDaClasse(clubeId, classeId)
+    const cronograma = await this.prisma.cronograma.findFirst({ where: { clubeId, classeId: donaId, anoClube: ano }, select: { id: true } })
+    if (!cronograma) return null
+    const publicacao = await this.ultimaPublicacao(clubeId, cronograma.id)
+    if (!publicacao) return publicacao
+    return { ...publicacao, aulas: await this.soDaClasse(clubeId, donaId, classeId, publicacao.aulas) }
   }
 
   /** A publicacao mais recente (o retrato), com as aulas deduplicadas por id; `null` se nunca publicou. */

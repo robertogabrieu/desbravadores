@@ -33,9 +33,10 @@ afterEach(() => {
   conexao.modo = 'ONLINE'
 })
 
-const amigo = criarClasse({ id: uuid(101), nome: 'Amigo', idade: 10, ordem: 1 })
+const amigo = criarClasse({ id: uuid(101), nome: 'Amigo', idade: 10, ordem: 1, avancadaPareadaId: uuid(103) })
 const companheiro = criarClasse({ id: uuid(102), nome: 'Companheiro', idade: 11, ordem: 2, ativa: false })
-const avancada = criarClasse({ id: uuid(103), nome: 'Amigo da Natureza', idade: null, tipo: 'AVANCADA', ordem: 7 })
+const avancada = criarClasse({ id: uuid(103), nome: 'Amigo da Natureza', idade: null, tipo: 'AVANCADA', classeBaseId: amigo.id, regularDoParId: amigo.id, ordem: 7 })
+const agrupadaAvancada = criarClasse({ id: uuid(105), nome: 'Agrupadas — avançada', idade: null, tipo: 'AVANCADA', trilha: 'AGRUPADAS', classeBaseId: uuid(104), ordem: 14 })
 const agrupada = criarClasse({ id: uuid(104), nome: 'Agrupadas (Amigo a Guia)', idade: 16, trilha: 'AGRUPADAS', ordem: 13 })
 
 const oficialLigado = { ativo: true, campo: false }
@@ -51,8 +52,11 @@ const detalheDeAmigo = criarDetalhe({
   ],
 })
 
+const regularDeAmigo = { id: amigo.id, nome: 'Amigo', instrutores: ['Maria Souza', 'João Lima'], quemMontaCronograma: 'INSTRUTOR' as const, totalAlunos: 12 }
+const detalheDaAvancada = criarDetalhe({ ...avancada, regular: regularDeAmigo, quemMontaCronograma: 'INSTRUTOR', secoes: [] })
+
 function abrirClasses(rota = '/adm/classes') {
-  servidor.use(handlerClasses([amigo, companheiro, avancada, agrupada]), handlerDetalheDaClasse(detalheDeAmigo))
+  servidor.use(handlerClasses([amigo, companheiro, avancada, agrupada, agrupadaAvancada]), handlerDetalheDaClasse(detalheDeAmigo))
   return renderizarRotas(rotasAdmClasses, rota)
 }
 
@@ -92,20 +96,87 @@ describe('A5 · classes · quatro estados', () => {
 })
 
 describe('A5 · classes · lista e detalhe', () => {
-  it('lista na ordem em três grupos, regulares, avançadas e agrupadas, e abre a primeira; contagens são as reais', async () => {
+  it('a segunda avançada da mesma regular aparece como item próprio, no fim da lista', async () => {
+    const segunda = criarClasse({ id: uuid(110), nome: 'Segunda avançada', idade: null, tipo: 'AVANCADA', classeBaseId: amigo.id, ordem: 8 })
+    servidor.use(handlerClasses([amigo, avancada, segunda]), handlerDetalheDaClasse(detalheDeAmigo))
+    renderizarRotas(rotasAdmClasses, '/adm/classes')
+    const nav = within(await screen.findByRole('navigation', { name: 'Classes' }))
+    expect(nav.getAllByRole('button').map((botao) => botao.textContent)).toEqual(['Amigo10 anos', 'Amigo da Natureza', 'Segunda avançada'])
+  })
+
+  it('lista em dois grupos: cada regular com a avançada logo abaixo, e as agrupadas sem par; abre a primeira', async () => {
     abrirClasses()
     const nav = within(await screen.findByRole('navigation', { name: 'Classes' }))
-    expect(nav.getAllByRole('heading').map((h) => h.textContent)).toEqual(['Regulares', 'Avançadas', 'Agrupadas'])
+    expect(nav.getAllByRole('heading').map((h) => h.textContent)).toEqual(['Regulares e avançadas', 'Agrupadas'])
     expect(nav.getAllByRole('button').map((b) => b.textContent)).toEqual([
       'Amigo10 anos',
-      'CompanheiroInativa11 anos',
       'Amigo da Natureza',
+      'CompanheiroInativa11 anos',
       'Agrupadas (Amigo a Guia)16 anos',
+      'Agrupadas — avançada',
     ])
     expect(await screen.findByRole('heading', { name: 'Amigo', level: 2 })).toBeInTheDocument()
     expect(screen.getByText('2 requisitos ativos · 1 ajustado pelo clube')).toBeInTheDocument()
     expect(within(screen.getByRole('region', { name: 'Gerais' })).getByText('1 requisito · 1 ajustado')).toBeInTheDocument()
     expect(within(screen.getByRole('region', { name: 'Descoberta espiritual' })).getByText('1 requisito')).toBeInTheDocument()
+  })
+
+  it('avançada inativa continua sob a regular, marcada "Inativa", e abre para reativar', async () => {
+    const inativa = { ...avancada, ativa: false }
+    servidor.use(handlerClasses([amigo, inativa]), handlerDetalheDaClasse(criarDetalhe({ ...inativa, regular: regularDeAmigo, quemMontaCronograma: 'INSTRUTOR', secoes: [] })))
+    renderizarRotas(rotasAdmClasses, '/adm/classes')
+    const nav = within(await screen.findByRole('navigation', { name: 'Classes' }))
+    expect(nav.getAllByRole('button').map((b) => b.textContent)).toEqual(['Amigo10 anos', 'Amigo da NaturezaInativa'])
+    await userEvent.click(nav.getByRole('button', { name: /Amigo da Natureza/ }))
+    expect(await screen.findByRole('heading', { name: 'Amigo da Natureza', level: 2 })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Ativa' })).not.toBeChecked()
+  })
+
+  it('a avançada abre com "Avançada de …", o cartão do par com os três dados e o link, e sem o seletor Quem monta', async () => {
+    abrirClasses(`/adm/classes?classe=${avancada.id}`)
+    servidor.use(handlerDetalheDaClasse(detalheDaAvancada))
+    expect(await screen.findByRole('heading', { name: 'Amigo da Natureza', level: 2 })).toBeInTheDocument()
+    expect(screen.getByText('Avançada de Amigo')).toBeInTheDocument()
+    expect(screen.queryByRole('radiogroup', { name: 'Quem monta o cronograma' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/^Vale para/)).not.toBeInTheDocument()
+    const cartao = within(screen.getByRole('heading', { name: 'Anda junto com Amigo' }).parentElement as HTMLElement)
+    expect(cartao.getByText('Instrutores, alunos, cronograma e quem monta são os mesmos de Amigo. Para mudar qualquer um deles, abra Amigo.')).toBeInTheDocument()
+    expect(cartao.getByText('Instrutores').nextElementSibling).toHaveTextContent('Maria Souza, João Lima')
+    expect(cartao.getByText('Quem monta o cronograma').nextElementSibling).toHaveTextContent('Instrutores da classe')
+    expect(cartao.getByText('Alunos').nextElementSibling).toHaveTextContent('12')
+    expect(cartao.getByRole('link', { name: 'Abrir Amigo' })).toHaveAttribute('href', `/adm/classes?classe=${amigo.id}`)
+    expect(screen.getByRole('checkbox', { name: 'Ativa' })).toBeInTheDocument()
+  })
+
+  it('o cartão do par diz "Nenhum instrutor ainda" e "Abrir" leva à regular', async () => {
+    abrirClasses(`/adm/classes?classe=${avancada.id}`)
+    servidor.use(handlerDetalheDaClasse(criarDetalhe({ ...detalheDaAvancada, regular: { ...regularDeAmigo, instrutores: [], quemMontaCronograma: 'ADM' } })))
+    expect(await screen.findByText('Nenhum instrutor ainda')).toBeInTheDocument()
+    expect(screen.getByText('Adm')).toBeInTheDocument()
+    servidor.use(http.get('/api/classes/:id', ({ params }) => HttpResponse.json(params['id'] === amigo.id ? detalheDeAmigo : detalheDaAvancada)))
+    await userEvent.click(screen.getByRole('link', { name: 'Abrir Amigo' }))
+    expect(await screen.findByRole('heading', { name: 'Amigo', level: 2 })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Amigo10/ })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('avançada com o par inativo (regular nula) mostra o próprio "Quem monta", editável, no lugar do cartão do par', async () => {
+    abrirClasses(`/adm/classes?classe=${avancada.id}`)
+    servidor.use(handlerDetalheDaClasse(criarDetalhe({ ...avancada, regular: null, quemMontaCronograma: 'INSTRUTOR', secoes: [] })))
+    const quemMonta = await screen.findByRole('radiogroup', { name: 'Quem monta o cronograma' })
+    expect(within(quemMonta).getByRole('radio', { name: 'Instrutores da classe' })).toBeChecked()
+    expect(within(quemMonta).getByRole('radio', { name: 'Adm' })).toBeEnabled()
+    expect(screen.queryByText(/Anda junto com/)).not.toBeInTheDocument()
+  })
+
+  it('a regular com avançada diz "Vale para …" sob o Quem monta; sem avançada não diz', async () => {
+    abrirClasses()
+    expect(await screen.findByRole('radiogroup', { name: 'Quem monta o cronograma' })).toBeInTheDocument()
+    expect(screen.getByText('Vale para Amigo e Amigo da Natureza.')).toBeInTheDocument()
+    expect(screen.queryByText(/Anda junto com/)).not.toBeInTheDocument()
+    servidor.use(http.get('/api/classes/:id', () => HttpResponse.json(criarDetalhe({ ...companheiro, secoes: [] }))))
+    await userEvent.click(screen.getByRole('button', { name: /Companheiro/ }))
+    expect(await screen.findByRole('heading', { name: 'Companheiro', level: 2 })).toBeInTheDocument()
+    expect(screen.queryByText(/^Vale para/)).not.toBeInTheDocument()
   })
 
   it('as seções chegam fechadas e abrem pelo cabeçalho', async () => {

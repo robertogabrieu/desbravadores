@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common'
 import type { ConfiguracaoClubeEntrada, ConfiguracaoClubeSaida } from '@desbravadores/shared'
-import { hojeNoFuso } from '@desbravadores/shared'
+import { hojeNoFuso, nomeDoPar } from '@desbravadores/shared'
 import type { z } from 'zod'
+import { avancadasPareadas } from '../classes/par-regular-avancada'
 import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { daDataCivil, paraDataCivil } from '../desbravadores/apoio'
@@ -45,24 +46,34 @@ export class ClubeService {
     const hoje = hojeNoFuso(atual.fuso, new Date())
     const aulas = await this.prisma.aulaPlanejada.findMany({
       where: { clubeId, removidaEm: null, data: { gte: daDataCivil(hoje) }, cronograma: { classe: { trilha: 'INDIVIDUAL' } } },
-      select: { data: true, cronograma: { select: { classe: { select: { nome: true, ordem: true } } } } },
+      select: {
+        data: true,
+        requisitos: { select: { requisito: { select: { secao: { select: { classeId: true } } } } } },
+        cronograma: { select: { classe: { select: { id: true, nome: true, ordem: true } } } },
+      },
     })
+    // A aula do par e uma so, com o nome das duas classes quando tem requisito da avançada.
+    const avancadaDaRegular = await avancadasPareadas(this.prisma, clubeId, aulas.map((aula) => aula.cronograma.classe.id))
     const datasDasClasses = aulas.map((aula) => aula.data)
     const extrasComClasse = await this.prisma.eventoCalendario.findMany({
       where: { clubeId, removidoEm: null, tipo: 'REUNIAO_EXTRA', temClasse: true, inicio: { in: datasDasClasses } },
       select: { inicio: true },
     })
     const datasComExtra = new Set(extrasComClasse.map((extra) => paraDataCivil(extra.inicio)))
-    const classes = new Map<string, number>()
+    // Um cronograma por regular: ela aparece uma vez, com o nome do par se qualquer aula tiver requisito da avançada.
+    const cronogramas = new Map<string, { nome: string; ordem: number; avancada: string | undefined }>()
     for (const aula of aulas) {
       const data = paraDataCivil(aula.data)
       if (diaDaSemana(data) !== atual.diaReuniao) continue
       if (datasComExtra.has(data)) continue
-      const { nome, ordem } = aula.cronograma.classe
-      classes.set(nome, ordem)
+      const { id, nome, ordem } = aula.cronograma.classe
+      const avancada = avancadaDaRegular.get(id)
+      const comAvancada = avancada !== undefined && aula.requisitos.some((ligacao) => ligacao.requisito.secao.classeId === avancada.id)
+      const anterior = cronogramas.get(id)
+      cronogramas.set(id, { nome, ordem, avancada: anterior?.avancada ?? (comAvancada ? avancada.nome : undefined) })
     }
-    if (classes.size === 0) return
-    const nomes = [...classes.entries()].sort((a, b) => a[1] - b[1]).map(([nome]) => nome)
+    if (cronogramas.size === 0) return
+    const nomes = [...cronogramas.values()].sort((a, b) => a.ordem - b.ordem).map((cronograma) => nomeDoPar(cronograma.nome, cronograma.avancada))
     throw new ErroApp('REGRA', `Há classes marcadas no dia atual de reunião: ${nomes.join(', ')}. Mova-as antes.`)
   }
 }

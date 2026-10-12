@@ -3,6 +3,7 @@ import { AulaDetalhe, AulaResumo, hojeNoFuso } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { criarAppDeTeste } from '../../test/app'
 import {
+  avancadaOficial,
   classeOficial,
   criarAcesso,
   criarClube,
@@ -15,6 +16,7 @@ import {
   desconectarPrismaDeTeste,
   prismaDeTeste,
   publicarCronograma,
+  requisitosDe,
 } from '../../test/fabricas'
 import { clienteHttp, corpo } from '../../test/p6'
 
@@ -105,6 +107,28 @@ describe('leitura de aulas', () => {
     expect(detalhe.presencas.map((p) => [p.nome, p.presente])).toEqual([['Ana Souza', true], ['Bia Lima', false]])
     expect(detalhe.requisitosDaAula.map((r) => r.id).sort()).toEqual([r1, r2, r3].sort())
     expect(detalhe.concluidosNaAula).toEqual([{ dbvId: c.ana.id, requisitoId: r3 }])
+  })
+
+  it('detalhe: no par, o registro de cada classe traz so os requisitos planejados dela', async () => {
+    const c = await cenario()
+    const avancada = await avancadaOficial(c.classe.id)
+    const [a1, a2] = await requisitosDe(avancada.id, 2)
+    const [r1, r2] = c.requisitos
+    const cronograma = await criarCronograma({
+      clubeId: c.clube.id,
+      classeId: c.classe.id,
+      aulas: [{ data: diasAtras(1), requisitoIds: [r1 ?? '', r2 ?? '', a1 ?? '', a2 ?? ''] }],
+    })
+    await publicarCronograma({ cronogramaId: cronograma.id, publicadoPorId: c.adm.usuario.id })
+    const daRegular = await criarRegistroAula({ clubeId: c.clube.id, classeId: c.classe.id, data: diasAtras(1) })
+    const daAvancada = await criarRegistroAula({ clubeId: c.clube.id, classeId: avancada.id, data: diasAtras(1) })
+    const detalhe = async (id: string) => AulaDetalhe.parse(corpo<unknown>(await api.get(`/api/aulas/${id}`, c.adm.autorizacao).expect(200)))
+    const regular = await detalhe(daRegular.id)
+    const avancadaDetalhe = await detalhe(daAvancada.id)
+    expect(regular.aulaPlanejadaId).toBe(cronograma.aulas[0]?.id)
+    expect(avancadaDetalhe.aulaPlanejadaId).toBe(cronograma.aulas[0]?.id)
+    expect(regular.requisitosDaAula.map((r) => r.id).sort()).toEqual([r1, r2].sort())
+    expect(avancadaDetalhe.requisitosDaAula.map((r) => r.id).sort()).toEqual([a1, a2].sort())
   })
 
   it('detalhe: requisitosDaAula traz planejados e marcados no registro, inclusive o que e item de tarefa anterior; o filtro da cobranca e da tela', async () => {

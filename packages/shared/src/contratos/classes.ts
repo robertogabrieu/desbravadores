@@ -11,6 +11,10 @@ export const ClasseSaida = z.object({
   trilha: Trilha,
   origem: Origem,
   classeBaseId: Uuid.nullable(),
+  /** Na regular: a avançada que anda com ela (par ativo; havendo várias, a de menor `ordem`). `null`/ausente = sem par. */
+  avancadaPareadaId: Uuid.nullable().optional(),
+  /** Na avançada: a regular do par ativo. `null`/ausente = sem par (ela fica sozinha). */
+  regularDoParId: Uuid.nullable().optional(),
   ordem: z.number().int(),
   /** Token CSS: "--classe-amigo"… ; avançada herda da regular; Agrupadas e CLUBE: "--color-primary". */
   corToken: z.string(),
@@ -24,7 +28,17 @@ export const RequisitoSaida = z.object({
   oficial: z.object({ ativo: z.boolean(), campo: z.boolean() }).optional(),
   ajustado: z.boolean().optional(),
 })
+/** A avançada anda com a regular: instrutor, quem monta e alunos são os dela (cartão "Anda junto com Amigo"). */
+export const ClasseRegularResumo = z.object({
+  id: Uuid,
+  nome: z.string(),
+  instrutores: z.array(z.string()),   // nomes dos instrutores ativos da regular
+  quemMontaCronograma: QuemMonta,     // da regular
+  totalAlunos: z.number().int(),      // matriculados na regular no ano corrente do clube (sem os que desistiram)
+})
 export const ClasseDetalheSaida = ClasseSaida.extend({
+  /** Preenchido só na avançada; `null` nas demais classes. */
+  regular: ClasseRegularResumo.nullable(),
   secoes: z.array(z.object({
     id: Uuid, codigo: z.string(), nome: z.string(), ordem: z.number().int(),
     requisitos: z.array(RequisitoSaida),
