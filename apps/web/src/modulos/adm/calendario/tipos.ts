@@ -56,12 +56,12 @@ export const TEXTO_DO_TIPO: Partial<Record<TipoDeEvento, (diaReuniao: number | u
   EVENTO: () =>
     'Evento do clube: só marca a data no calendário; não vale pontos nem tem lista de quem foi.',
   EVENTO_ESPECIAL: () =>
-    'Evento especial: vale pontos no ranking, tem lista de quem foi e pede uniforme de gala ou de campo. A reunião e a classe do dia continuam, salvo se você desmarcar abaixo.',
+    'Evento especial: vale pontos no ranking, tem lista de quem foi e pede uniforme de gala ou de campo.',
   FERIAS: (diaReuniao) => `Férias: sem reunião e sem classe ${dosDiasDeReuniao(diaReuniao).nos} do período; acampamentos continuam valendo.`,
   REUNIAO_EXTRA: (diaReuniao) => `Reunião extra: uma data fora ${dosDiasDeReuniao(diaReuniao).do}, com chamada da unidade, classe ou as duas.`,
   ACAMPAMENTO: () => 'Acampamento: um ou mais dias fora da sede, sem reunião; a classe só acontece como atividade de campo.',
-  FERIADO: () => 'Feriado: marca a data no calendário; a reunião e a classe do dia continuam, salvo se você desmarcar abaixo.',
-  SEM_REUNIAO: () => 'Sem reunião: o clube não se reúne nesses dias e não há classe nem atividade de campo.',
+  FERIADO: () => 'Feriado: marca a data no calendário.',
+  SEM_REUNIAO: () => 'Sem reunião: o clube não se reúne nesses dias.',
 }
 
 /** Ponto do dia na grade do celular, na cor forte do tipo; a reunião extra é um anel, para não se confundir com a regular. */

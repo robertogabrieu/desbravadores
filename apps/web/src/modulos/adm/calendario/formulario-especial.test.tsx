@@ -11,7 +11,7 @@ import { servidor } from '../../../testes/servidor'
 import { rotasAdmCalendario } from './rotas'
 
 const APOIO_DO_TIPO =
-  'Evento especial: vale pontos no ranking, tem lista de quem foi e pede uniforme de gala ou de campo. A reunião e a classe do dia continuam, salvo se você desmarcar abaixo.'
+  'Evento especial: vale pontos no ranking, tem lista de quem foi e pede uniforme de gala ou de campo.'
 const SEM_PONTOS_DE_IR = 'Informe os pontos de quem for ao evento. Pode ser 0.'
 const SEM_PONTOS_DE_UNIFORME = 'Informe os pontos de quem for com o uniforme. Pode ser 0.'
 const PONTOS_INVALIDOS = 'Use um número inteiro de 0 a 1000'
