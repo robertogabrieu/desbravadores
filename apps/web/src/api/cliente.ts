@@ -1,5 +1,5 @@
-import { ErroApi as EsquemaErroApi, SessaoSaida } from '@desbravadores/shared'
-import { captureException } from '@sentry/react'
+import { ErroApi as EsquemaErroApi, SessaoSaida, urlSemSegredo } from '@desbravadores/shared'
+import { captureException, captureMessage } from '@sentry/react'
 import type { z } from 'zod'
 import type { ClasseFalha } from '../offline/tipos'
 
@@ -91,6 +91,7 @@ export function configurarCliente(novos: Ouvintes): void {
 }
 
 export function reiniciarCliente(): void {
+  enviosDeDiagnostico.clear()
   tokenAcesso = null
   ouvintes = {}
   renovacaoEmAndamento = null
@@ -122,6 +123,98 @@ const ROTAS_SEM_TOKEN = [
 ]
 const ehRotaSemToken = (caminho: string): boolean => ROTAS_SEM_TOKEN.some((rota) => caminho.startsWith(rota))
 
+type OrigemDaFalhaDeRede = 'fetch-lancou' | 'erro-sem-corpo-padrao' | 'fora-do-contrato'
+
+interface FalhaDeRede {
+  metodo: string
+  caminho: string
+  status: number
+  origem: OrigemDaFalhaDeRede
+  contentType?: string | null
+  /** Nome e mensagem do que o `fetch` lançou (TypeError: Failed to fetch, AbortError…). */
+  erroDoFetch?: { name: string; message: string }
+  /** Só de resposta que não é JSON (HTML de proxy ou portal); nunca de JSON, que pode ter dado pessoal. */
+  corpoInicial?: string
+  /** Caminho e código de cada falha do zod, sem o valor recebido. */
+  issues?: string[]
+}
+
+const INTERVALO_DE_DIAGNOSTICO_MS = 10 * 60 * 1000
+const TAMANHO_DO_CORPO_INICIAL = 200
+const enviosDeDiagnostico = new Map<string, number>()
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const TROCO_DE_ID = /\/(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|\d+)(?=\/|$)/gi
+
+const SEGMENTO_DE_TOKEN = /^[A-Za-z0-9_-]{20,}$/
+
+/**
+ * Caminho sem query string, com tokens trocados por `:token` e ids por `:id`, para agrupar no Sentry sem
+ * expor ninguém. O segmento longo é defesa para rota com token que `urlSemSegredo` ainda não conhece.
+ */
+const caminhoNormalizado = (caminho: string): string =>
+  urlSemSegredo(caminho)
+    .split('/')
+    .map((segmento) => (SEGMENTO_DE_TOKEN.test(segmento) && !UUID.test(segmento) ? ':token' : segmento))
+    .join('/')
+    .replace(TROCO_DE_ID, '/:id')
+
+/** Falha classe REDE vai ao Sentry (sem mudar o que o usuário vê); 1 por caminho+origem a cada 10 min por aba. */
+function registrarFalhaDeRede(falha: FalhaDeRede): void {
+  const caminho = caminhoNormalizado(falha.caminho)
+  const chave = `${caminho}|${falha.origem}`
+  const agora = Date.now()
+  const ultimo = enviosDeDiagnostico.get(chave)
+  if (ultimo !== undefined && agora - ultimo < INTERVALO_DE_DIAGNOSTICO_MS) return
+  enviosDeDiagnostico.set(chave, agora)
+  captureMessage(`Falha de rede: ${falha.metodo} ${caminho} (${falha.origem})`, {
+    level: 'warning',
+    fingerprint: ['falha-de-rede', caminho, falha.origem],
+    tags: { origem: falha.origem },
+    extra: {
+      metodo: falha.metodo,
+      caminho,
+      status: falha.status,
+      origem: falha.origem,
+      contentType: falha.contentType ?? null,
+      erroDoFetch: falha.erroDoFetch,
+      online: navigator.onLine,
+      corpoInicial: falha.corpoInicial,
+      issues: falha.issues,
+    },
+  })
+}
+
+const ehJson = (contentType: string | null): boolean => (contentType ?? '').toLowerCase().includes('json')
+
+const EMAIL = /[^\s@<>"'()]+@[^\s@<>"'()]+\.[^\s@<>"'()]+/g
+const SEQUENCIA_DE_TOKEN = /[A-Za-z0-9_-]{20,}/g
+const TAMANHO_DA_MENSAGEM_DO_FETCH = 120
+
+/** HTML de portal ou proxy pode ecoar a URL com token ou um e-mail: ambos saem antes de irem ao Sentry. */
+const mascararSegredos = (texto: string): string => texto.replace(EMAIL, ':email').replace(SEQUENCIA_DE_TOKEN, ':token')
+
+/** Corpo mascarado e cortado, só se a resposta não for JSON. */
+const corpoInicialSeNaoJson = (contentType: string | null, texto: string): string | undefined =>
+  ehJson(contentType) ? undefined : mascararSegredos(texto).slice(0, TAMANHO_DO_CORPO_INICIAL)
+
+interface CorpoLido {
+  texto: string
+  /** `undefined` quando o corpo não é JSON válido. */
+  json: unknown
+}
+
+/** Lê o corpo de uma 2xx uma só vez; o texto fica para o diagnóstico, se o contrato falhar. */
+async function lerCorpo(resposta: Response): Promise<CorpoLido> {
+  const texto = await resposta.text().catch(() => '')
+  try {
+    return { texto, json: JSON.parse(texto) as unknown }
+  } catch {
+    return { texto, json: undefined }
+  }
+}
+
+const mascararMensagemDoFetch = (mensagem: string): string => mascararSegredos(mensagem).slice(0, TAMANHO_DA_MENSAGEM_DO_FETCH)
+
 async function enviar(caminho: string, opcoes: OpcoesRequisicao): Promise<Response> {
   const cabecalhos: Record<string, string> = { ...opcoes.cabecalhos, Accept: 'application/json' }
   if (tokenAcesso) cabecalhos['Authorization'] = `Bearer ${tokenAcesso}`
@@ -135,7 +228,20 @@ async function enviar(caminho: string, opcoes: OpcoesRequisicao): Promise<Respon
       credentials: 'same-origin',
       body: opcoes.corpo === undefined ? undefined : JSON.stringify(opcoes.corpo),
     })
-  } catch {
+  } catch (causa) {
+    // Offline de verdade é uso normal: só a falha com a rede aparentemente de pé interessa ao diagnóstico.
+    if (navigator.onLine) {
+      registrarFalhaDeRede({
+        metodo: opcoes.metodo ?? 'GET',
+        caminho,
+        status: 0,
+        origem: 'fetch-lancou',
+        erroDoFetch:
+          causa instanceof Error
+            ? { name: causa.name, message: mascararMensagemDoFetch(causa.message) }
+            : { name: 'desconhecido', message: mascararMensagemDoFetch(String(causa)) },
+      })
+    }
     ouvintes.aoFalhaDeRede?.()
     throw new ErroDaApi(0, { codigo: 'ERRO_INTERNO', mensagem: 'Sem conexão. Confira a internet e tente de novo.' })
   }
@@ -157,14 +263,47 @@ export function erroDeResposta(status: number, corpo: unknown): ErroDaApi {
   )
 }
 
-async function lerErro(resposta: Response): Promise<ErroDaApi> {
-  const corpo: unknown = await resposta.json().catch(() => null)
-  return erroDeResposta(resposta.status, corpo)
+async function lerErro(resposta: Response, caminho: string, metodo: string): Promise<ErroDaApi> {
+  const { texto, json } = await lerCorpo(resposta)
+  const corpo = json ?? null
+  const erro = erroDeResposta(resposta.status, corpo)
+  if (erro.classe === 'REDE') {
+    registrarFalhaDeRede({
+      metodo,
+      caminho,
+      status: resposta.status,
+      origem: 'erro-sem-corpo-padrao',
+      contentType: resposta.headers.get('content-type'),
+      corpoInicial: corpoInicialSeNaoJson(resposta.headers.get('content-type'), texto),
+    })
+  }
+  return erro
 }
 
 /** 2xx que não é o JSON esperado (portal de Wi-Fi, proxy): conta como rede (E4). */
-const erroForaDoContrato = (status: number): ErroDaApi =>
-  new ErroDaApi(status, { codigo: 'ERRO_INTERNO', mensagem: MENSAGEM_GENERICA }, 'REDE')
+function erroForaDoContrato(resposta: Response, texto: string, caminho: string, metodo: string, issues?: string[]): ErroDaApi {
+  registrarFalhaDeRede({
+    metodo,
+    caminho,
+    status: resposta.status,
+    origem: 'fora-do-contrato',
+    contentType: resposta.headers.get('content-type'),
+    corpoInicial: corpoInicialSeNaoJson(resposta.headers.get('content-type'), texto),
+    issues,
+  })
+  return new ErroDaApi(resposta.status, { codigo: 'ERRO_INTERNO', mensagem: MENSAGEM_GENERICA }, 'REDE')
+}
+
+const CAMPO_SIMPLES = /^[a-zA-Z_][a-zA-Z0-9_]{0,39}$/
+
+/** Chave de `z.record` pode ser dado pessoal: só índice e nome de campo comum ficam no caminho. */
+const segmentoDoCaminho = (segmento: PropertyKey): string => {
+  const texto = String(segmento)
+  return typeof segmento === 'number' || CAMPO_SIMPLES.test(texto) ? texto : '*'
+}
+
+const descreverIssues = (issues: readonly { path: readonly PropertyKey[]; code: string }[]): string[] =>
+  issues.map((issue) => `${issue.path.map(segmentoDoCaminho).join('.') || '(raiz)'}: ${issue.code}`)
 
 function tratarVinculoInativo(erro: ErroDaApi, avisarSessao: boolean): void {
   // Na tela do link não há papel a escolher: /papel levaria o substituto ao app da conta.
@@ -177,14 +316,15 @@ function tratarVinculoInativo(erro: ErroDaApi, avisarSessao: boolean): void {
 async function chamarRefresh(): Promise<Sessao> {
   const resposta = await enviar(ROTA_DE_REFRESH, { metodo: 'POST' })
   if (!resposta.ok) {
-    const erro = await lerErro(resposta)
+    const erro = await lerErro(resposta, ROTA_DE_REFRESH, 'POST')
     // Sem vínculo escolhido, o refresh só recusa por VINCULO_INATIVO quem não tem papel ativo em clube
     // nenhum: não há papel a escolher, então não vai a /papel — a sessão sai e leva o aviso ao login.
     if (erro.status === 403 && erro.erro.codigo === 'VINCULO_INATIVO') ouvintes.aoSemAcesso?.()
     throw erro
   }
-  const lida = SessaoSaida.safeParse(await resposta.json().catch(() => undefined))
-  if (!lida.success) throw erroForaDoContrato(resposta.status)
+  const corpo = await lerCorpo(resposta)
+  const lida = SessaoSaida.safeParse(corpo.json)
+  if (!lida.success) throw erroForaDoContrato(resposta, corpo.texto, ROTA_DE_REFRESH, 'POST', descreverIssues(lida.error.issues))
   tokenAcesso = lida.data.accessToken
   return lida.data
 }
@@ -229,16 +369,17 @@ function tratar401DaSubstituicao(modo: ModoSubstituicao, erro: ErroDaApi, caminh
 }
 
 async function executar(caminho: string, opcoes: OpcoesRequisicao): Promise<Response> {
+  const metodo = opcoes.metodo ?? 'GET'
   let resposta = await enviar(caminho, opcoes)
 
   if (resposta.status === 401 && modoSubstituicao && !ehRotaSemToken(caminho)) {
-    const erro = await lerErro(resposta)
+    const erro = await lerErro(resposta, caminho, metodo)
     tratar401DaSubstituicao(modoSubstituicao, erro, caminho)
     throw erro
   }
 
   if (resposta.status === 401 && !ehRotaSemToken(caminho)) {
-    const erroOriginal = await lerErro(resposta)
+    const erroOriginal = await lerErro(resposta, caminho, metodo)
     let renovada: Sessao
     try {
       renovada = await renovarSessao()
@@ -251,12 +392,12 @@ async function executar(caminho: string, opcoes: OpcoesRequisicao): Promise<Resp
     resposta = await enviar(caminho, opcoes)
     if (resposta.status === 401) {
       avisarSessaoPerdida()
-      throw await lerErro(resposta)
+      throw await lerErro(resposta, caminho, metodo)
     }
   }
 
   if (!resposta.ok) {
-    const erro = await lerErro(resposta)
+    const erro = await lerErro(resposta, caminho, metodo)
     tratarVinculoInativo(erro, true)
     throw erro
   }
@@ -270,17 +411,18 @@ export async function requisitar<S extends z.ZodType>(
   opcoes: OpcoesRequisicao = {},
 ): Promise<z.output<S>> {
   const resposta = await executar(caminho, opcoes)
-  const lido = esquema.safeParse(await resposta.json().catch(() => undefined))
-  if (!lido.success) throw erroForaDoContrato(resposta.status)
+  const corpo = await lerCorpo(resposta)
+  const lido = esquema.safeParse(corpo.json)
+  if (!lido.success) throw erroForaDoContrato(resposta, corpo.texto, caminho, opcoes.metodo ?? 'GET', descreverIssues(lido.error.issues))
   return lido.data
 }
 
 /** Como `requisitar`, mas devolve o corpo cru: quem chama valida (o motor da fila valida com a `saida` do tipo). */
 export async function requisitarCru(caminho: string, opcoes: OpcoesRequisicao = {}): Promise<unknown> {
   const resposta = await executar(caminho, opcoes)
-  const corpo: unknown = await resposta.json().catch(() => undefined)
-  if (corpo === undefined) throw erroForaDoContrato(resposta.status)
-  return corpo
+  const corpo = await lerCorpo(resposta)
+  if (corpo.json === undefined) throw erroForaDoContrato(resposta, corpo.texto, caminho, opcoes.metodo ?? 'GET')
+  return corpo.json
 }
 
 /** Requisição cuja resposta é 204 (logout, convite reenviado…). */

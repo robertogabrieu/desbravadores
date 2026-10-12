@@ -289,10 +289,14 @@ describe('critério 14: offline guarda na fila e sobe ao voltar a conexão, sem 
     expect((await banco.fila.get(id))?.estado).toBe('NA_FILA')
 
     rede = true
-    act(() => {
-      window.dispatchEvent(new Event('online'))
-    })
-    await waitFor(() => expect(screen.getByTestId('conexao')).toHaveTextContent('ONLINE'))
+    // O ouvinte de `online` nasce num efeito que pode rodar depois da tela mudar: repete o aviso até a sondagem confirmar.
+    await waitFor(
+      () => {
+        act(() => void window.dispatchEvent(new Event('online')))
+        expect(screen.getByTestId('conexao')).toHaveTextContent('ONLINE')
+      },
+      { timeout: 5000 },
+    )
     await waitFor(async () => expect((await banco.fila.get(id))?.estado).toBe('ENVIADO'))
     expect(sondagens).toBeGreaterThan(0)
     expect(autorizacoes).toEqual(['Bearer credencial-da-substituicao'])
@@ -301,10 +305,10 @@ describe('critério 14: offline guarda na fila e sobe ao voltar a conexão, sem 
   it('o evento offline do navegador já vale como sem conexão', async () => {
     montarSubstituto()
     await waitFor(() => expect(screen.getByTestId('conexao')).toHaveTextContent('ONLINE'))
-    act(() => {
-      window.dispatchEvent(new Event('offline'))
+    await waitFor(() => {
+      act(() => void window.dispatchEvent(new Event('offline')))
+      expect(screen.getByTestId('conexao')).toHaveTextContent('SEM_CONEXAO')
     })
-    expect(screen.getByTestId('conexao')).toHaveTextContent('SEM_CONEXAO')
   })
 })
 

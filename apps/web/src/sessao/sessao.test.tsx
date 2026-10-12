@@ -149,10 +149,13 @@ describe('guarda de rota', () => {
     servidor.use(...handlersSessao([criarVinculo('ADM')]))
     renderizarRotas([{ element: <GuardaRota />, children: [{ path: '/privada', element: <Modo /> }] }], '/privada')
     expect(await screen.findByText('modo ONLINE')).toBeInTheDocument()
-    act(() => {
-      window.dispatchEvent(new Event('offline'))
-    })
-    expect(await screen.findByText('modo SEM_CONEXAO')).toBeInTheDocument()
+    await waitFor(
+      () => {
+        act(() => void window.dispatchEvent(new Event('offline')))
+        expect(screen.getByText('modo SEM_CONEXAO')).toBeInTheDocument()
+      },
+      { timeout: 5000 },
+    )
   })
 
   it('uma falha de rede pontual não prende em sem conexão: a próxima resposta 2xx volta a ONLINE', async () => {

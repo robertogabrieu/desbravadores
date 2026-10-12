@@ -6,6 +6,7 @@ import { Toaster } from 'sonner'
 import { ErroDaApi, configurarCliente } from './api/cliente'
 import { TelaErroDeRota } from './modulos/erro/TelaErroDeRota'
 import './offline/tipos/todos'
+import { registrarServiceWorker } from './registrarServiceWorker'
 import { rotas } from './rotas'
 import { iniciarSentry } from './sentry'
 import { ProvedorSessao } from './sessao/ProvedorSessao'
@@ -38,7 +39,7 @@ const roteador = createBrowserRouter([{ errorElement: <TelaErroDeRota />, childr
 configurarCliente({ navegar: (caminho) => void roteador.navigate(caminho) })
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-  void navigator.serviceWorker.register('/sw.js')
+  void registrarServiceWorker()
 }
 
 const raiz = document.getElementById('raiz')

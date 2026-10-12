@@ -601,8 +601,14 @@ describe('cliente e sessão no modo do link', () => {
     servidor.use(...handlersDoLink({ links: [criarLinkPublico({ identificado: true })], entrada: criarEntradaDoLink({}, { segredo: null }), registro }))
     montar()
     await screen.findByText(/Substituindo na Unidade Águia/)
-    act(() => void window.dispatchEvent(new Event('online')))
-    await waitFor(() => expect(registro.segredosLidos).toHaveLength(2))
+    // O ouvinte de `online` nasce num efeito que pode rodar depois da tela aparecer: repete o aviso até a sondagem sair.
+    await waitFor(
+      () => {
+        act(() => void window.dispatchEvent(new Event('online')))
+        expect(registro.segredosLidos.length).toBeGreaterThanOrEqual(2)
+      },
+      { timeout: 5000 },
+    )
     expect(registro.segredosLidos[1]).toBe(SEGREDO)
   })
 

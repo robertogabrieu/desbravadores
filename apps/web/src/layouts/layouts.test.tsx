@@ -384,7 +384,7 @@ describe('Faixa "Sem conexão"', () => {
     renderizarRotas(rotasCelular, '/inicio')
 
     expect(await screen.findByText('Sem conexão. Mostrando o que está guardado no aparelho.')).toBeInTheDocument()
-    expect(screen.getByText('conteúdo')).toBeInTheDocument()
+    expect(await screen.findByText('conteúdo')).toBeInTheDocument()
   })
 
   it('Adm: em SEM_CONEXAO mostra a faixa; online não', async () => {
