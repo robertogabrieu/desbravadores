@@ -1,5 +1,5 @@
 import { HttpResponse, http } from 'msw'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import { servidor } from '../testes/servidor'
 import { criarSessao, criarVinculo } from '../testes/handlers/sessao'
@@ -11,6 +11,12 @@ import {
   requisitar,
   requisitarSemResposta,
 } from './cliente'
+
+vi.mock('@sentry/react', async (original) => ({
+  ...(await original<typeof import('@sentry/react')>()),
+  captureMessage: vi.fn(),
+  captureException: vi.fn(),
+}))
 
 const Coisa = z.object({ ok: z.boolean() })
 
@@ -230,5 +236,104 @@ describe('cliente da API', () => {
 
     await requisitar('/api/coisa', Coisa)
     expect(aoServidorRespondeu).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('diagnóstico de falha de rede no Sentry', () => {
+  // O setup global já importou o cliente com o Sentry de verdade: o módulo é recarregado para pegar o mock.
+  let requisitar: typeof import('./cliente').requisitar
+  let requisitarCru: typeof import('./cliente').requisitarCru
+  let ErroDaApi: typeof import('./cliente').ErroDaApi
+  let captureMessage: typeof import('@sentry/react').captureMessage
+  const enviado = () => vi.mocked(captureMessage)
+  const extra = (n = 0): Record<string, unknown> => {
+    const opcoes = enviado().mock.calls[n]?.[1]
+    return typeof opcoes === 'object' && opcoes !== null && 'extra' in opcoes ? (opcoes.extra as Record<string, unknown>) : {}
+  }
+
+  beforeEach(async () => {
+    vi.resetModules()
+    ;({ requisitar, requisitarCru, ErroDaApi } = await import('./cliente'))
+    ;({ captureMessage } = await import('@sentry/react'))
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  it('fetch que lança: registra origem, erro do fetch e navigator.onLine, sem query string', async () => {
+    servidor.use(http.get('/api/coisa', () => HttpResponse.error()))
+
+    await expect(requisitar('/api/coisa?busca=ana', Coisa)).rejects.toMatchObject({ classe: 'REDE', status: 0 })
+
+    expect(enviado()).toHaveBeenCalledTimes(1)
+    expect(enviado().mock.calls[0]?.[1]).toMatchObject({ level: 'warning', fingerprint: ['falha-de-rede', '/api/coisa', 'fetch-lancou'] })
+    expect(extra()).toMatchObject({
+      metodo: 'GET',
+      caminho: '/api/coisa',
+      status: 0,
+      origem: 'fetch-lancou',
+      erroDoFetch: { name: 'TypeError' },
+      online: navigator.onLine,
+    })
+  })
+
+  it('4xx sem corpo padrão e não-JSON: leva content-type e só os primeiros 200 caracteres', async () => {
+    servidor.use(http.post('/api/coisa', () => new HttpResponse('<html>' + 'x'.repeat(500), { status: 403, headers: { 'Content-Type': 'text/html' } })))
+
+    await expect(requisitar('/api/coisa', Coisa, { metodo: 'POST' })).rejects.toMatchObject({ classe: 'REDE', status: 403 })
+
+    const dados = extra()
+    expect(dados).toMatchObject({ metodo: 'POST', status: 403, origem: 'erro-sem-corpo-padrao', contentType: 'text/html' })
+    expect(String(dados['corpoInicial'])).toHaveLength(200)
+  })
+
+  it('erro com corpo padrão (recusa) não é registrado', async () => {
+    servidor.use(http.get('/api/coisa', () => HttpResponse.json({ codigo: 'NAO_ENCONTRADO', mensagem: 'x' }, { status: 404 })))
+
+    await expect(requisitar('/api/coisa', Coisa)).rejects.toMatchObject({ classe: 'RECUSA' })
+
+    expect(enviado()).not.toHaveBeenCalled()
+  })
+
+  it('fora do contrato: envia caminho e código dos issues do zod, nunca o corpo', async () => {
+    servidor.use(http.get('/api/coisa', () => HttpResponse.json({ itens: [{ capaUrl: 7 }], nome: 'Maria Silva' })))
+    const Itens = z.object({ itens: z.array(z.object({ capaUrl: z.string() })) })
+
+    await expect(requisitar('/api/coisa', Itens)).rejects.toMatchObject({ classe: 'REDE', status: 200 })
+
+    const dados = extra()
+    expect(dados).toMatchObject({ origem: 'fora-do-contrato', contentType: 'application/json', issues: ['itens.0.capaUrl: invalid_type'] })
+    expect(dados['corpoInicial']).toBeUndefined()
+    expect(JSON.stringify(enviado().mock.calls)).not.toContain('Maria')
+  })
+
+  it('fora do contrato com resposta não-JSON (requisitarCru): leva o início do corpo', async () => {
+    servidor.use(http.get('/api/coisa', () => new HttpResponse('<html>portal</html>', { headers: { 'Content-Type': 'text/html' } })))
+
+    await expect(requisitarCru('/api/coisa')).rejects.toMatchObject({ classe: 'REDE' })
+
+    expect(extra()).toMatchObject({ origem: 'fora-do-contrato', corpoInicial: '<html>portal</html>' })
+  })
+
+  it('troca uuid e número no caminho por :id', async () => {
+    servidor.use(http.get('/api/membros/:id/fotos/:foto', () => HttpResponse.error()))
+
+    await expect(requisitar('/api/membros/0190b2c4-7d3e-7a11-9c55-1f2e3d4c5b6a/fotos/42', Coisa)).rejects.toBeInstanceOf(ErroDaApi)
+
+    expect(extra()['caminho']).toBe('/api/membros/:id/fotos/:id')
+  })
+
+  it('envia 1 vez por caminho+origem a cada 10 minutos', async () => {
+    servidor.use(http.get('/api/coisa', () => HttpResponse.error()), http.get('/api/outra', () => HttpResponse.error()))
+    const agora = vi.spyOn(Date, 'now').mockReturnValue(1_000_000)
+
+    await requisitar('/api/coisa', Coisa).catch(() => undefined)
+    await requisitar('/api/coisa?x=1', Coisa).catch(() => undefined)
+    expect(enviado()).toHaveBeenCalledTimes(1)
+
+    await requisitar('/api/outra', Coisa).catch(() => undefined)
+    expect(enviado()).toHaveBeenCalledTimes(2)
+
+    agora.mockReturnValue(1_000_000 + 10 * 60 * 1000)
+    await requisitar('/api/coisa', Coisa).catch(() => undefined)
+    expect(enviado()).toHaveBeenCalledTimes(3)
   })
 })
