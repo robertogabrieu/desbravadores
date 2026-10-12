@@ -1,4 +1,4 @@
-import { ErroApi as EsquemaErroApi, SessaoSaida } from '@desbravadores/shared'
+import { ErroApi as EsquemaErroApi, SessaoSaida, urlSemSegredo } from '@desbravadores/shared'
 import { captureException, captureMessage } from '@sentry/react'
 import type { z } from 'zod'
 import type { ClasseFalha } from '../offline/tipos'
@@ -142,10 +142,21 @@ interface FalhaDeRede {
 const INTERVALO_DE_DIAGNOSTICO_MS = 10 * 60 * 1000
 const TAMANHO_DO_CORPO_INICIAL = 200
 const enviosDeDiagnostico = new Map<string, number>()
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const TROCO_DE_ID = /\/(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|\d+)(?=\/|$)/gi
 
-/** Caminho sem query string e com os ids trocados por `:id`, para agrupar no Sentry sem expor ninguém. */
-const caminhoNormalizado = (caminho: string): string => (caminho.split('?')[0] ?? '').replace(TROCO_DE_ID, '/:id')
+const SEGMENTO_DE_TOKEN = /^[A-Za-z0-9_-]{20,}$/
+
+/**
+ * Caminho sem query string, com tokens trocados por `:token` e ids por `:id`, para agrupar no Sentry sem
+ * expor ninguém. O segmento longo é defesa para rota com token que `urlSemSegredo` ainda não conhece.
+ */
+const caminhoNormalizado = (caminho: string): string =>
+  urlSemSegredo(caminho)
+    .split('/')
+    .map((segmento) => (SEGMENTO_DE_TOKEN.test(segmento) && !UUID.test(segmento) ? ':token' : segmento))
+    .join('/')
+    .replace(TROCO_DE_ID, '/:id')
 
 /** Falha classe REDE vai ao Sentry (sem mudar o que o usuário vê); 1 por caminho+origem a cada 10 min por aba. */
 function registrarFalhaDeRede(falha: FalhaDeRede): void {
@@ -182,6 +193,22 @@ async function corpoInicialSeNaoJson(copia: Response): Promise<string | undefine
   return texto.slice(0, TAMANHO_DO_CORPO_INICIAL)
 }
 
+interface CorpoLido {
+  texto: string
+  /** `undefined` quando o corpo não é JSON válido. */
+  json: unknown
+}
+
+/** Lê o corpo de uma 2xx uma só vez; o texto fica para o diagnóstico, se o contrato falhar. */
+async function lerCorpo(resposta: Response): Promise<CorpoLido> {
+  const texto = await resposta.text().catch(() => '')
+  try {
+    return { texto, json: JSON.parse(texto) as unknown }
+  } catch {
+    return { texto, json: undefined }
+  }
+}
+
 async function enviar(caminho: string, opcoes: OpcoesRequisicao): Promise<Response> {
   const cabecalhos: Record<string, string> = { ...opcoes.cabecalhos, Accept: 'application/json' }
   if (tokenAcesso) cabecalhos['Authorization'] = `Bearer ${tokenAcesso}`
@@ -196,13 +223,16 @@ async function enviar(caminho: string, opcoes: OpcoesRequisicao): Promise<Respon
       body: opcoes.corpo === undefined ? undefined : JSON.stringify(opcoes.corpo),
     })
   } catch (causa) {
-    registrarFalhaDeRede({
-      metodo: opcoes.metodo ?? 'GET',
-      caminho,
-      status: 0,
-      origem: 'fetch-lancou',
-      erroDoFetch: causa instanceof Error ? { name: causa.name, message: causa.message } : { name: 'desconhecido', message: String(causa) },
-    })
+    // Offline de verdade é uso normal: só a falha com a rede aparentemente de pé interessa ao diagnóstico.
+    if (navigator.onLine) {
+      registrarFalhaDeRede({
+        metodo: opcoes.metodo ?? 'GET',
+        caminho,
+        status: 0,
+        origem: 'fetch-lancou',
+        erroDoFetch: causa instanceof Error ? { name: causa.name, message: causa.message } : { name: 'desconhecido', message: String(causa) },
+      })
+    }
     ouvintes.aoFalhaDeRede?.()
     throw new ErroDaApi(0, { codigo: 'ERRO_INTERNO', mensagem: 'Sem conexão. Confira a internet e tente de novo.' })
   }
@@ -242,21 +272,29 @@ async function lerErro(resposta: Response, caminho: string, metodo: string): Pro
 }
 
 /** 2xx que não é o JSON esperado (portal de Wi-Fi, proxy): conta como rede (E4). */
-async function erroForaDoContrato(resposta: Response, copia: Response, caminho: string, metodo: string, issues?: string[]): Promise<ErroDaApi> {
+function erroForaDoContrato(resposta: Response, texto: string, caminho: string, metodo: string, issues?: string[]): ErroDaApi {
   registrarFalhaDeRede({
     metodo,
     caminho,
     status: resposta.status,
     origem: 'fora-do-contrato',
     contentType: resposta.headers.get('content-type'),
-    corpoInicial: await corpoInicialSeNaoJson(copia),
+    corpoInicial: ehJson(resposta.headers.get('content-type')) ? undefined : texto.slice(0, TAMANHO_DO_CORPO_INICIAL),
     issues,
   })
   return new ErroDaApi(resposta.status, { codigo: 'ERRO_INTERNO', mensagem: MENSAGEM_GENERICA }, 'REDE')
 }
 
+const CAMPO_SIMPLES = /^[a-zA-Z_][a-zA-Z0-9_]{0,39}$/
+
+/** Chave de `z.record` pode ser dado pessoal: só índice e nome de campo comum ficam no caminho. */
+const segmentoDoCaminho = (segmento: PropertyKey): string => {
+  const texto = String(segmento)
+  return typeof segmento === 'number' || CAMPO_SIMPLES.test(texto) ? texto : '*'
+}
+
 const descreverIssues = (issues: readonly { path: readonly PropertyKey[]; code: string }[]): string[] =>
-  issues.map((issue) => `${issue.path.map(String).join('.') || '(raiz)'}: ${issue.code}`)
+  issues.map((issue) => `${issue.path.map(segmentoDoCaminho).join('.') || '(raiz)'}: ${issue.code}`)
 
 function tratarVinculoInativo(erro: ErroDaApi, avisarSessao: boolean): void {
   // Na tela do link não há papel a escolher: /papel levaria o substituto ao app da conta.
@@ -275,9 +313,9 @@ async function chamarRefresh(): Promise<Sessao> {
     if (erro.status === 403 && erro.erro.codigo === 'VINCULO_INATIVO') ouvintes.aoSemAcesso?.()
     throw erro
   }
-  const copia = resposta.clone()
-  const lida = SessaoSaida.safeParse(await resposta.json().catch(() => undefined))
-  if (!lida.success) throw await erroForaDoContrato(resposta, copia, ROTA_DE_REFRESH, 'POST', descreverIssues(lida.error.issues))
+  const corpo = await lerCorpo(resposta)
+  const lida = SessaoSaida.safeParse(corpo.json)
+  if (!lida.success) throw erroForaDoContrato(resposta, corpo.texto, ROTA_DE_REFRESH, 'POST', descreverIssues(lida.error.issues))
   tokenAcesso = lida.data.accessToken
   return lida.data
 }
@@ -364,19 +402,18 @@ export async function requisitar<S extends z.ZodType>(
   opcoes: OpcoesRequisicao = {},
 ): Promise<z.output<S>> {
   const resposta = await executar(caminho, opcoes)
-  const copia = resposta.clone()
-  const lido = esquema.safeParse(await resposta.json().catch(() => undefined))
-  if (!lido.success) throw await erroForaDoContrato(resposta, copia, caminho, opcoes.metodo ?? 'GET', descreverIssues(lido.error.issues))
+  const corpo = await lerCorpo(resposta)
+  const lido = esquema.safeParse(corpo.json)
+  if (!lido.success) throw erroForaDoContrato(resposta, corpo.texto, caminho, opcoes.metodo ?? 'GET', descreverIssues(lido.error.issues))
   return lido.data
 }
 
 /** Como `requisitar`, mas devolve o corpo cru: quem chama valida (o motor da fila valida com a `saida` do tipo). */
 export async function requisitarCru(caminho: string, opcoes: OpcoesRequisicao = {}): Promise<unknown> {
   const resposta = await executar(caminho, opcoes)
-  const copia = resposta.clone()
-  const corpo: unknown = await resposta.json().catch(() => undefined)
-  if (corpo === undefined) throw await erroForaDoContrato(resposta, copia, caminho, opcoes.metodo ?? 'GET')
-  return corpo
+  const corpo = await lerCorpo(resposta)
+  if (corpo.json === undefined) throw erroForaDoContrato(resposta, corpo.texto, caminho, opcoes.metodo ?? 'GET')
+  return corpo.json
 }
 
 /** Requisição cuja resposta é 204 (logout, convite reenviado…). */

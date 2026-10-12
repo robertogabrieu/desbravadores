@@ -336,4 +336,46 @@ describe('diagnóstico de falha de rede no Sentry', () => {
     await requisitar('/api/coisa', Coisa).catch(() => undefined)
     expect(enviado()).toHaveBeenCalledTimes(3)
   })
+  it('tokens de acesso e substituição nunca aparecem na mensagem, no fingerprint nem nos extras', async () => {
+    const token = 'abc_DEF-1234567890abcdefghijklmnopqrstuvwxyz'
+    expect(token.length).toBeGreaterThanOrEqual(43)
+    servidor.use(http.get('/api/acesso/:t', () => HttpResponse.error()), http.post('/api/auth/substituicao/:t', () => HttpResponse.error()))
+
+    await requisitar(`/api/acesso/${token}`, Coisa).catch(() => undefined)
+    await requisitar(`/api/auth/substituicao/${token}`, Coisa, { metodo: 'POST' }).catch(() => undefined)
+
+    expect(enviado()).toHaveBeenCalledTimes(2)
+    expect(JSON.stringify(enviado().mock.calls)).not.toContain(token)
+    expect(extra(0)['caminho']).toBe('/api/acesso/:token')
+    expect(extra(1)['caminho']).toBe('/api/auth/substituicao/:token')
+  })
+
+  it('segmento longo de token fora das rotas conhecidas vira :token', async () => {
+    const token = 'Zz9_-Zz9_-Zz9_-Zz9_-Zz9'
+    servidor.use(http.get('/api/outra/:t/x', () => HttpResponse.error()))
+
+    await requisitar(`/api/outra/${token}/x`, Coisa).catch(() => undefined)
+
+    expect(extra()['caminho']).toBe('/api/outra/:token/x')
+  })
+
+  it('offline de verdade (navigator.onLine false) não registra fetch que lançou', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
+    servidor.use(http.get('/api/coisa', () => HttpResponse.error()))
+
+    await expect(requisitar('/api/coisa', Coisa)).rejects.toMatchObject({ classe: 'REDE', status: 0 })
+
+    expect(enviado()).not.toHaveBeenCalled()
+  })
+
+  it('issues do zod: chave de z.record com dado pessoal vira *', async () => {
+    servidor.use(http.get('/api/coisa', () => HttpResponse.json({ porNome: { 'Maria Silva': 7 } })))
+    const Mapa = z.object({ porNome: z.record(z.string(), z.string()) })
+
+    await expect(requisitar('/api/coisa', Mapa)).rejects.toMatchObject({ classe: 'REDE' })
+
+    expect(extra()['issues']).toEqual(['porNome.*: invalid_type'])
+    expect(JSON.stringify(enviado().mock.calls)).not.toContain('Maria')
+  })
+
 })
