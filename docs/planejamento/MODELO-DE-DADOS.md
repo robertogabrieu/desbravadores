@@ -113,7 +113,7 @@ ficar sozinha. Enquanto o par existe:
   instrui um dos lados. O escopo do instrutor confia no vínculo gravado, não calcula o par na
   leitura. O link de substituição não herda o par: vale só a classe do link.
 - **Quem monta o cronograma:** o da avançada segue o da regular; mudar na avançada é recusado
-  (422 `VALIDACAO`, "Altere em <regular>") e mudar na regular grava o mesmo valor nas avançadas
+  (400 `VALIDACAO`, "Altere em <regular>") e mudar na regular grava o mesmo valor nas avançadas
   dela. Com a regular desativada no clube o par está desfeito e a avançada guarda o que ela mesma
   escolheu.
 - **Cronograma:** um só por ano, o da regular (ver §5).

@@ -76,7 +76,7 @@ Convenções: listas paginadas com `?pagina=&porPagina=`; datas em `YYYY-MM-DD`;
 |---|---|---|
 | `GET /classes?tipo=&trilha=` | Classes com cor, idade, trilha, total de requisitos, instrutores, avançada ligada (`avancadaPareadaId` na regular, `regularDoParId` na avançada; só com o par ativo) | logado |
 | `GET /classes/{id}` | Seções e requisitos; na avançada com par ativo, `regular` traz nome, instrutores, quem monta e total de alunos da regular | logado |
-| `PATCH /classes/{id}` | `quemMontaCronograma`, ativa. Na avançada com par ativo, `quemMontaCronograma` é recusado (422 `VALIDACAO`): vale o da regular, e mudar na regular grava o mesmo na avançada. Ativar uma classe completa o vínculo dos instrutores do par | `classe.gerenciar` |
+| `PATCH /classes/{id}` | `quemMontaCronograma`, ativa. Na avançada com par ativo, `quemMontaCronograma` é recusado (400 `VALIDACAO`): vale o da regular, e mudar na regular grava o mesmo na avançada. Ativar uma classe completa o vínculo dos instrutores do par | `classe.gerenciar` |
 | `POST /classes` | Classe do clube (origem CLUBE) | `classe.gerenciar` |
 | `POST /classes/{id}/requisitos` · `PATCH /requisitos/{id}` | Acrescenta/edita requisito (oficial: só desativar ou marcar CAMPO) | `classe.gerenciar` |
 | `GET /classes/{id}/progresso` | Média da turma, prontos, abaixo do limiar, % por DBV — de uma classe só (a regular e a avançada são chamadas separadas) | `classe.ver_relatorio` + escopo |
