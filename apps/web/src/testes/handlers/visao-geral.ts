@@ -17,6 +17,7 @@ export function criarVisaoGeral(parcial: Partial<VisaoGeral> = {}): VisaoGeral {
     unidadesResumo: [],
     cronogramasEnviados: [],
     atividades: [],
+    eventosSemLista: [],
     ...parcial,
   }
 }

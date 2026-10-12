@@ -17,7 +17,7 @@ class RecusarMarcacoesAntigas implements PipeTransform<unknown, unknown> {
   }
 }
 
-/** As três marcações podem faltar: valem as do tipo (`MARCACOES_PADRAO`). */
+/** As três marcações podem faltar: valem as do tipo (`MARCACOES_PADRAO`). Uniforme e pontos vêm de `EventoEntrada`. */
 const EventoGravar = z
   .object({
     ...EventoEntrada.shape,
@@ -28,8 +28,15 @@ const EventoGravar = z
 
 const IdDaRota = new ZodValidationPipe(Uuid)
 
+/** Fora do evento especial, uniforme e pontos não existem: o que vier é descartado. */
+function semOsCamposDoEspecial(entrada: z.infer<typeof EventoGravar>): z.infer<typeof EventoGravar> {
+  if (entrada.tipo === 'EVENTO_ESPECIAL') return entrada
+  return { ...entrada, uniforme: null, pontosParticipacao: null, pontosUniforme: null }
+}
+
 /** Entrada com as marcações do padrão do tipo (Férias o força; a extra nunca é boa para campo), já validada. */
-function comMarcacoes(entrada: z.infer<typeof EventoGravar>): z.infer<typeof EventoEntrada> {
+function comMarcacoes(recebida: z.infer<typeof EventoGravar>): z.infer<typeof EventoEntrada> {
+  const entrada = semOsCamposDoEspecial(recebida)
   const padrao = MARCACOES_PADRAO[entrada.tipo]
   const completo =
     entrada.tipo === 'FERIAS'
@@ -57,13 +64,13 @@ export class EventosController {
     @SessaoDoClube() sessao: SessaoLogada,
     @Query(new ZodValidationPipe(CalendarioFiltro)) filtro: z.infer<typeof CalendarioFiltro>,
   ): Promise<z.infer<typeof CalendarioSaida>> {
-    return this.eventos.doAno(sessao.clubeId, filtro.ano)
+    return this.eventos.doAno(sessao.clubeId, filtro.ano, sessao.papel === 'ADM')
   }
 
   @Logado()
   @Get('eventos/:id')
   obter(@SessaoDoClube() sessao: SessaoLogada, @Param('id', IdDaRota) id: string): Promise<z.infer<typeof EventoSaida>> {
-    return this.eventos.obter(sessao.clubeId, id)
+    return this.eventos.obter(sessao.clubeId, id, sessao.papel === 'ADM')
   }
 
   @Pode('calendario.gerenciar')

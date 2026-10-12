@@ -18,6 +18,7 @@ import { PaginaNaoEncontrada } from './modulos/erro/PaginaNaoEncontrada'
 import { PaginaFila } from './modulos/fila/PaginaFila'
 import { TelaRegistroAula } from './modulos/aulas/TelaRegistroAula'
 import { rotasClasseBiblica } from './modulos/classe-biblica/rotas'
+import { rotasCalendario } from './modulos/calendario/rotas'
 import { TelaClasses } from './modulos/classes/TelaClasses'
 import { TelaCronograma } from './modulos/cronograma/TelaCronograma'
 import { TelaEspecialidades } from './modulos/especialidades/TelaEspecialidades'
@@ -76,6 +77,7 @@ export const rotas: RouteObject[] = [
           { path: '/fila', element: <PaginaFila /> },
           ...rotasBiblioteca,
           ...rotasClasseBiblica,
+          ...rotasCalendario,
           {
             element: <GuardaRota papeis={['CONSELHEIRO']} />,
             children: [...rotasUnidade, ...rotasReunioes, ...rotasGaleria],

@@ -16,20 +16,20 @@ function abrirEm(rota: string, ...extras: Parameters<typeof servidor.use>) {
 }
 
 describe('Evento · erro à vista ao salvar', () => {
-  it('novo: salvar sem nome e com o fim antes do início foca o nome e resume os dois campos', async () => {
+  it('novo: salvar sem nome e sem uniforme foca o nome e resume os dois campos', async () => {
     let chamadas = 0
-    abrirEm('/adm/calendario/eventos/novo?data=2026-10-10', handlerCriarEvento([], () => chamadas++))
+    abrirEm('/adm/calendario/eventos/novo?data=2026-10-10&tipo=EVENTO_ESPECIAL', handlerCriarEvento([], () => chamadas++))
     await screen.findByLabelText('Nome')
-    await userEvent.clear(screen.getByLabelText('Fim'))
-    await userEvent.type(screen.getByLabelText('Fim'), '2026-10-01')
+    await userEvent.type(screen.getByLabelText('Pontos por ir ao evento'), '20')
+    await userEvent.type(screen.getByLabelText('Pontos por usar o uniforme'), '10')
 
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
 
     await waitFor(() => expect(screen.getByLabelText('Nome')).toHaveFocus())
     const resumo = screen.getByRole('region', { name: 'Revise 2 campos para salvar' })
-    expect(within(resumo).getAllByRole('link').map((link) => link.textContent)).toEqual(['Nome', 'Fim'])
-    await userEvent.click(within(resumo).getByRole('link', { name: 'Fim' }))
-    expect(screen.getByLabelText('Fim')).toHaveFocus()
+    expect(within(resumo).getAllByRole('link').map((link) => link.textContent)).toEqual(['Nome', 'Uniforme do evento'])
+    await userEvent.click(within(resumo).getByRole('link', { name: 'Uniforme do evento' }))
+    expect(screen.getByRole('radio', { name: 'Uniforme de gala' })).toHaveFocus()
     expect(chamadas).toBe(0)
   })
 
@@ -41,5 +41,20 @@ describe('Evento · erro à vista ao salvar', () => {
 
     await waitFor(() => expect(screen.getByLabelText('Nome')).toHaveFocus())
     expect(within(screen.getByRole('region', { name: 'Revise 1 campo para salvar' })).getByRole('link', { name: 'Nome' })).toBeInTheDocument()
+  })
+
+  it('especial sem uniforme: o foco vai ao rádio, o erro aparece nele e no resumo, e nada é enviado', async () => {
+    let chamadas = 0
+    abrirEm('/adm/calendario/eventos/novo?data=2026-10-10&tipo=EVENTO_ESPECIAL', handlerCriarEvento([], () => chamadas++))
+    await userEvent.type(await screen.findByLabelText('Nome'), 'Culto de Investidura')
+    await userEvent.type(screen.getByLabelText('Pontos por ir ao evento'), '20')
+    await userEvent.type(screen.getByLabelText('Pontos por usar o uniforme'), '10')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+
+    await waitFor(() => expect(screen.getByLabelText('Uniforme de gala')).toHaveFocus())
+    expect(within(screen.getByRole('group', { name: 'Uniforme do evento' })).getByRole('alert')).toHaveTextContent('Escolha o uniforme do evento.')
+    expect(within(screen.getByRole('region', { name: 'Revise 1 campo para salvar' })).getByRole('link', { name: 'Uniforme do evento' })).toBeInTheDocument()
+    expect(chamadas).toBe(0)
   })
 })

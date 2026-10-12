@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { RefClasse } from './auth'
-import { InstanteIso, Uuid } from './comum'
+import { DataCivil, InstanteIso, Uuid } from './comum'
 
 export const AtividadeSaida = z.object({ id: Uuid, descricao: z.string(), link: z.string().nullable(), criadaEm: InstanteIso, autor: z.string().nullable() })
 export const VisaoGeralSaida = z.object({
@@ -17,5 +17,7 @@ export const VisaoGeralSaida = z.object({
   unidadesResumo: z.array(z.object({ id: Uuid, nome: z.string(), conselheiros: z.array(z.string()), totalDbvs: z.number().int(), frequenciaMes: z.number().int().nullable() })),
   cronogramasEnviados: z.array(z.object({ cronogramaId: Uuid, classe: RefClasse, enviadoPor: z.string(), enviadoEm: InstanteIso })),
   atividades: z.array(AtividadeSaida).max(10),
+  /** Eventos especiais que terminaram há até 60 dias, valem pontos e ainda não têm a lista concluída (`pendenciaDeLista`). */
+  eventosSemLista: z.array(z.object({ eventoId: Uuid, nome: z.string(), inicio: DataCivil, fim: DataCivil })).default([]),
 })
 // GET /visao-geral → VisaoGeralSaida

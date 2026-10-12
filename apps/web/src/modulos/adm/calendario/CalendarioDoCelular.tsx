@@ -1,8 +1,10 @@
-import { ChevronDown, Plus } from 'lucide-react'
+import { ChevronDown, ClipboardCheck, Plus } from 'lucide-react'
 import { useId, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { pendenciaDeLista } from '@desbravadores/shared'
 import type { EventoCalendario } from '../../../api/calendario'
+import { hojeDoClube } from '../../../api/desbravadores'
 import { estiloDoBotao } from '../../../ui/Botao'
 import { LinhaQueNavega } from '../../../ui/LinhaQueNavega'
 import { cn } from '../../../ui/cn'
@@ -10,6 +12,7 @@ import { horaCurta, juntarNomes } from '../formatos'
 import type { EstadoDaFicha } from '../navegacao'
 import { DIAS_DA_SEMANA, MESES, chaveDoDia, chaveDoMes, diaDaSemanaEDoMes, diaDoMesPorExtenso, diasDaGrade, eventosDoDia, periodoCurto, ultimoDiaDoMes } from './datas'
 import { ICONE_DO_TIPO, PONTO_DA_REUNIAO, PONTO_DO_TIPO, ROTULOS_DO_TIPO, textoDoCancelamento } from './tipos'
+import { UniformeDoEvento } from './UniformeDoEvento'
 
 const MAXIMO_DE_PONTOS = 3
 
@@ -33,6 +36,13 @@ export function CartaoDoEvento({ evento, estadoDeVolta }: { evento: EventoCalend
           {encontro && encontro.grupos.length > 0 && ` · ${juntarNomes(encontro.grupos)}`}
         </span>
         {encontro?.cancelado && <span className="text-sm font-semibold text-texto">{textoDoCancelamento(encontro.motivo)}</span>}
+        {evento.tipo === 'EVENTO_ESPECIAL' && evento.uniforme && <UniformeDoEvento uniforme={evento.uniforme} />}
+        {pendenciaDeLista(evento, hojeDoClube()) && (
+          <span className="flex items-center gap-1.5 text-sm font-semibold text-texto">
+            <ClipboardCheck aria-hidden className="size-4 shrink-0 text-alerta" />
+            Falta registrar quem foi
+          </span>
+        )}
       </span>
     </LinhaQueNavega>
   )
@@ -85,12 +95,12 @@ interface PropriedadesDaGrade {
 export function GradeDoCelular({ ano, mes, eventos, diasDeReuniao, hoje, escolhido, aoEscolher }: PropriedadesDaGrade) {
   return (
     <>
-      <div aria-hidden className="grid grid-cols-7 gap-0.5 text-center text-sm font-extrabold text-texto-2">
+      <div aria-hidden className="grid grid-cols-7 gap-0 text-center text-sm font-extrabold text-texto-2">
         {DIAS_DA_SEMANA.map((dia) => (
           <span key={dia}>{dia}</span>
         ))}
       </div>
-      <div role="group" aria-label={`${MESES[mes]} de ${ano}`} className="grid grid-cols-7 gap-0.5">
+      <div role="group" aria-label={`${MESES[mes]} de ${ano}`} className="grid grid-cols-7 gap-0">
         {diasDaGrade(ano, mes).map((dia, posicao) => {
           if (dia === null) return <span key={posicao} aria-hidden />
           const data = chaveDoDia(ano, mes, dia)
@@ -114,7 +124,11 @@ export function GradeDoCelular({ ano, mes, eventos, diasDeReuniao, hoje, escolhi
               <span aria-hidden>{dia}</span>
               <span aria-hidden className="flex h-2 items-center gap-1">
                 {marcas.slice(0, MAXIMO_DE_PONTOS).map((marca) => (
-                  <span key={marca.chave} data-ponto className={cn('size-2 rounded-full ring-1 ring-superficie', marca.ponto)} />
+                  <span
+                    key={marca.chave}
+                    data-ponto
+                    className={cn(marca.chave === 'EVENTO_ESPECIAL' ? 'size-[9px] rotate-45' : 'size-2 rounded-full', 'ring-1 ring-superficie', marca.ponto)}
+                  />
                 ))}
               </span>
             </button>
@@ -186,7 +200,7 @@ export function LegendaRecolhida({ children }: { children: ReactNode }) {
         onClick={() => setAberta((atual) => !atual)}
         className="flex min-h-[var(--touch-min)] w-fit items-center gap-1.5 rounded-botao px-2 text-base font-semibold text-marca hover:bg-marca-suave focus-visible:outline-2 focus-visible:outline-marca"
       >
-        O que cada cor quer dizer
+        O que cada marca quer dizer
         <ChevronDown aria-hidden className={cn('size-5 transition-transform', aberta && 'rotate-180')} />
       </button>
       <div id={idDaLegenda} hidden={!aberta}>

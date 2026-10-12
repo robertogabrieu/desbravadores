@@ -41,6 +41,7 @@
   --cal-sem-bg: #FBE4E1;      --cal-sem-fg: #9F2A20;
   --cal-acamp-bg: #E6F0D4;    --cal-acamp-fg: #3F6212;
   --cal-evento-bg: #EDE4F6;   --cal-evento-fg: #5B3391;
+  --cal-especial-bg: #F5DC86; --cal-especial-fg: #5A3F00;  /* evento especial: 7,21:1 */
   --cal-feriado-bg: #FBEFE3;  --cal-feriado-fg: #9A3412;
   --cal-ferias-bg: #DCEBF7;   --cal-ferias-fg: #1D4E7A;
 
