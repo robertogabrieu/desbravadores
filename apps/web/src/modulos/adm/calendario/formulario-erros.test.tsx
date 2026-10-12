@@ -20,6 +20,8 @@ describe('Evento · erro à vista ao salvar', () => {
     let chamadas = 0
     abrirEm('/adm/calendario/eventos/novo?data=2026-10-10&tipo=EVENTO_ESPECIAL', handlerCriarEvento([], () => chamadas++))
     await screen.findByLabelText('Nome')
+    await userEvent.clear(screen.getByLabelText('Fim'))
+    await userEvent.type(screen.getByLabelText('Fim'), '01/10/2026')
     await userEvent.type(screen.getByLabelText('Pontos por ir ao evento'), '20')
     await userEvent.type(screen.getByLabelText('Pontos por usar o uniforme'), '10')
 

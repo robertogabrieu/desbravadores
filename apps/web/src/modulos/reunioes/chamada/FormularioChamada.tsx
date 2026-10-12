@@ -11,6 +11,7 @@ import { useSessao } from '../../../sessao/useSessao'
 import { AreaTexto } from '../../../ui/AreaTexto'
 import { Botao } from '../../../ui/Botao'
 import { Campo } from '../../../ui/Campo'
+import { CampoHorario } from '../../../ui/CampoHorario'
 import { Chip } from '../../../ui/Chip'
 import { FaixaAviso } from '../../../ui/FaixaAviso'
 import { cn } from '../../../ui/cn'
@@ -240,7 +241,7 @@ function CorpoChamada({ pacote, baixadoEm, unidade, data, base, envioDireto, cha
         ))}
       </ul>
       <section className="flex flex-col gap-3">
-        <Campo rotulo="Horário" type="time" value={cabecalho.horario} erro={horarioValido ? undefined : 'Informe o horário'} onChange={(e) => mudar(editarCabecalho(estado, { horario: e.target.value }))} />
+        <CampoHorario rotulo="Horário" value={cabecalho.horario} erro={horarioValido ? undefined : 'Informe o horário'} onChange={(e) => mudar(editarCabecalho(estado, { horario: e.target.value }))} />
         <Campo rotulo="Local" value={cabecalho.local} maxLength={120} onChange={(e) => mudar(editarCabecalho(estado, { local: e.target.value }))} />
         <AreaTexto rotulo="Observações" value={cabecalho.observacoes} maxLength={2000} onChange={(e) => mudar(editarCabecalho(estado, { observacoes: e.target.value }))} />
       </section>

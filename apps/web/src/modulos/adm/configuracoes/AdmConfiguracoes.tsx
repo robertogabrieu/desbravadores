@@ -8,6 +8,7 @@ import type { ConfiguracaoClube } from '../../../api/clube'
 import { useConexao } from '../../../offline'
 import { Botao } from '../../../ui/Botao'
 import { Campo } from '../../../ui/Campo'
+import { CampoHorario } from '../../../ui/CampoHorario'
 import { Interruptor } from '../../../ui/Interruptor'
 import { Selecao } from '../../../ui/Selecao'
 import { Esqueleto } from '../../../ui/Esqueleto'
@@ -178,9 +179,8 @@ function FormularioConfiguracao({ atual }: { atual: ConfiguracaoClube }) {
               </Selecao>
             </div>
             <div className="w-40">
-              <Campo
+              <CampoHorario
                 rotulo="Hora"
-                type="time"
                 value={horaReuniao}
                 erro={erros['horaReuniao']}
                 onChange={(e) => setHoraReuniao(e.target.value)}

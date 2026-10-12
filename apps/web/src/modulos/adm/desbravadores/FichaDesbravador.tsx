@@ -11,7 +11,7 @@ import { useConexao } from '../../../offline'
 import { Abas } from '../../../ui/Abas'
 import { Botao, estiloDoBotao } from '../../../ui/Botao'
 import { CabecalhoDaPagina } from '../../../ui/CabecalhoDaPagina'
-import { Campo } from '../../../ui/Campo'
+import { CampoData } from '../../../ui/CampoData'
 import { Cartao } from '../../../ui/Cartao'
 import { Confirmacao } from '../../../ui/Confirmacao'
 import { Esqueleto } from '../../../ui/Esqueleto'
@@ -135,7 +135,7 @@ function Rodape({ dbv, aoErro }: { dbv: Desbravador; aoErro: (mensagem: string |
         >
           <div className="flex flex-col gap-4">
             <p>{`${dbv.nome} sai do clube na data escolhida: deixa a unidade e as classes em curso ficam como desistência. O histórico permanece.`}</p>
-            <Campo rotulo="Data de saída" type="date" value={saidaEm} onChange={(e) => setSaidaEm(e.target.value)} />
+            <CampoData rotulo="Data de saída" value={saidaEm} onChange={setSaidaEm} />
           </div>
         </Confirmacao>
       ) : (

@@ -327,7 +327,7 @@ describe('A7 · montar', () => {
     const registro = abrir(criarMontagemDeExemplo({ datasLivres: true, datas: [criarDataMontagem('2026-10-04', { aulaId: uuid(2001) })] }))
     const usuario = userEvent.setup()
     await usuario.click(await screen.findByRole('button', { name: '+ Novo dia de classe' }))
-    await usuario.type(screen.getByLabelText('Data'), '2026-12-20')
+    await usuario.type(screen.getByLabelText('Data'), '20/12/2026')
     await usuario.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(registro.chamadas).toHaveLength(1))
     expect(registro.chamadas[0]).toMatchObject({

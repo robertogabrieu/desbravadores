@@ -62,6 +62,8 @@ interface Ouvintes {
   aoFalhaDeRede?: () => void
   /** A API respondeu 2xx: houve contato real (atualiza o `ultimoContatoEm`). */
   aoContato?: () => void
+  /** A API respondeu 2xx: o servidor está alcançável, então um "sem conexão" anterior já não vale. */
+  aoServidorRespondeu?: () => void
 }
 
 const ROTA_DE_REFRESH = '/api/auth/refresh'
@@ -137,7 +139,10 @@ async function enviar(caminho: string, opcoes: OpcoesRequisicao): Promise<Respon
     ouvintes.aoFalhaDeRede?.()
     throw new ErroDaApi(0, { codigo: 'ERRO_INTERNO', mensagem: 'Sem conexão. Confira a internet e tente de novo.' })
   }
-  if (resposta.ok) ouvintes.aoContato?.()
+  if (resposta.ok) {
+    ouvintes.aoServidorRespondeu?.()
+    ouvintes.aoContato?.()
+  }
   return resposta
 }
 

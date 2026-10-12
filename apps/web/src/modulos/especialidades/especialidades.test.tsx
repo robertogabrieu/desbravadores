@@ -77,7 +77,7 @@ describe('Especialidades', () => {
     const dialogo = await screen.findByRole('dialog', { name: 'Marcar como concluída' })
     const campo = within(dialogo).getByLabelText('Data de conclusão')
     await usuario.clear(campo)
-    await usuario.type(campo, '2030-09-15')
+    await usuario.type(campo, '15/09/2030')
     await usuario.click(within(dialogo).getByRole('button', { name: 'Marcar' }))
     expect(await screen.findByText('Concluída em 15/09 · marcada por Priscila')).toBeInTheDocument()
     expect(corpo).toEqual({ concluidoEm: '2030-09-15' })

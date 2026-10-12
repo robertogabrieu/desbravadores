@@ -214,4 +214,21 @@ describe('cliente da API', () => {
 
     expect({ tentativas, refresh }).toEqual({ tentativas: 2, refresh: 1 })
   })
+
+  it('avisa que o servidor respondeu em qualquer 2xx, e não em falha de rede nem em 4xx', async () => {
+    const aoServidorRespondeu = vi.fn()
+    configurarCliente({ aoServidorRespondeu })
+    servidor.use(
+      http.get('/api/rede', () => HttpResponse.error()),
+      http.get('/api/recusa', () => HttpResponse.json({ codigo: 'PROIBIDO', mensagem: 'não' }, { status: 403 })),
+      http.get('/api/coisa', () => HttpResponse.json({ ok: true })),
+    )
+
+    await requisitar('/api/rede', Coisa).catch(() => undefined)
+    await requisitar('/api/recusa', Coisa).catch(() => undefined)
+    expect(aoServidorRespondeu).not.toHaveBeenCalled()
+
+    await requisitar('/api/coisa', Coisa)
+    expect(aoServidorRespondeu).toHaveBeenCalledTimes(1)
+  })
 })

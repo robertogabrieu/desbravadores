@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { caixa } from '../../../testes/handlers/caixa'
@@ -80,7 +80,7 @@ describe('Novo evento · formulário com o tipo escolhido', () => {
     expect(await screen.findByLabelText('Nome')).toBeInTheDocument()
     expect(roteador.state.location.search).toBe('?data=2026-10-17&tipo=EVENTO_ESPECIAL')
     expect(screen.queryByLabelText('Tipo')).not.toBeInTheDocument()
-    expect(screen.getByLabelText('Início')).toHaveValue('2026-10-17')
+    expect(screen.getByLabelText('Início')).toHaveValue('17/10/2026')
     expect(screen.getByTestId('selo-do-tipo')).toHaveTextContent('Evento especial')
     expect(screen.getByRole('group', { name: 'Uniforme e pontos' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Trocar tipo' })).toHaveClass('min-h-[var(--touch-min)]')
@@ -133,7 +133,7 @@ describe('Novo evento · formulário com o tipo escolhido', () => {
     expect(roteador.state.location.search).toBe('?data=2026-10-17')
     await userEvent.click(screen.getByRole('link', { name: new RegExp(`^${ROTULOS_DO_TIPO.FERIADO}`) }))
     expect(await screen.findByLabelText('Nome')).toHaveValue('')
-    expect(screen.getByLabelText('Início')).toHaveValue('2026-10-17')
+    expect(screen.getByLabelText('Início')).toHaveValue('17/10/2026')
   })
 
   it('mudar só uma marcação também conta como preenchido', async () => {
@@ -180,14 +180,18 @@ describe('Novo evento · formulário com o tipo escolhido', () => {
     const inicio = screen.getByLabelText('Início')
     const fim = screen.getByLabelText('Fim')
 
-    fireEvent.change(inicio, { target: { value: '2026-10-20' } })
-    expect(fim).toHaveValue('2026-10-20')
-    fireEvent.change(fim, { target: { value: '2026-10-25' } })
-    expect(fim).toHaveValue('2026-10-25')
-    fireEvent.change(fim, { target: { value: '2026-10-18' } })
-    expect(fim).toHaveValue('2026-10-20')
-    fireEvent.change(inicio, { target: { value: '2026-10-30' } })
-    expect(fim).toHaveValue('2026-10-30')
+    await userEvent.clear(inicio)
+    await userEvent.type(inicio, '20/10/2026')
+    expect(fim).toHaveValue('20/10/2026')
+    await userEvent.clear(fim)
+    await userEvent.type(fim, '25/10/2026')
+    expect(fim).toHaveValue('25/10/2026')
+    await userEvent.clear(fim)
+    await userEvent.type(fim, '18/10/2026')
+    expect(fim).toHaveValue('20/10/2026')
+    await userEvent.clear(inicio)
+    await userEvent.type(inicio, '30/10/2026')
+    expect(fim).toHaveValue('30/10/2026')
   })
 
   it('o voltar do navegador volta à escolha', async () => {
@@ -239,13 +243,13 @@ describe('Editar evento · sem escolha', () => {
       const evento = acampamento()
       abrir(`/adm/calendario/eventos/${evento.id}/editar`, handlerEvento(caixa(evento)))
       await screen.findByLabelText('Fim')
-      expect(screen.getByLabelText('Fim')).toHaveValue('2026-10-18')
+      expect(screen.getByLabelText('Fim')).toHaveValue('18/10/2026')
 
       await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'REUNIAO_EXTRA')
-      expect(screen.getByLabelText('Data')).toHaveValue('2026-10-16')
+      expect(screen.getByLabelText('Data')).toHaveValue('16/10/2026')
       expect(screen.queryByLabelText('Fim')).not.toBeInTheDocument()
       await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'EVENTO')
-      expect(screen.getByLabelText('Fim')).toHaveValue('2026-10-16')
+      expect(screen.getByLabelText('Fim')).toHaveValue('16/10/2026')
     })
 
     it('o grupo Uniforme e pontos aparece ao virar Evento especial e some ao sair dele', async () => {

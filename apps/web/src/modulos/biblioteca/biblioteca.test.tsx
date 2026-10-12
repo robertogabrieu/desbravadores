@@ -1056,14 +1056,21 @@ describe('Biblioteca — carregando, erro e sem conexão', () => {
     expect(await screen.findByRole('link', { name: 'Ler Amigo' })).toBeInTheDocument()
   })
 
-  it('sem conexão diz que precisa de internet e não consulta', async () => {
+  it('com o modo global preso em sem conexão, mas a rede ok, ainda consulta e mostra a estante', async () => {
     estado.modo = 'SEM_CONEXAO'
     let consultas = 0
     servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO')]), http.get('/api/biblioteca', () => { consultas += 1; return HttpResponse.json({ categorias: estante }) }))
     abrir()
+    expect(await screen.findByRole('link', { name: 'Ler Amigo' })).toBeInTheDocument()
+    expect(screen.queryByText('Disponível quando houver internet')).not.toBeInTheDocument()
+    expect(consultas).toBeGreaterThan(0)
+  })
+
+  it('se a própria consulta falha por rede, diz que precisa de internet', async () => {
+    servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO')]), http.get('/api/biblioteca', () => HttpResponse.error()))
+    abrir()
     expect(await screen.findByText('Disponível quando houver internet')).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 1, name: 'Biblioteca' })).toBeInTheDocument()
-    expect(consultas).toBe(0)
   })
 
   it('as URLs assinadas vencem em 10 min: relê aos 8, ao voltar para a aba e o cache sai da memória com a tela', async () => {

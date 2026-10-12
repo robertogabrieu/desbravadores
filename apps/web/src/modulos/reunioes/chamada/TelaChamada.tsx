@@ -6,7 +6,7 @@ import { useReuniao, useReunioes } from '../../../api/reunioes'
 import { useConexao, usePacote } from '../../../offline'
 import { useAlvoFixo } from '../../../substituicao/contextos'
 import type { PacoteGuardado } from '../../../offline'
-import { Campo } from '../../../ui/Campo'
+import { CampoData } from '../../../ui/CampoData'
 import { Selecao } from '../../../ui/Selecao'
 import { ChamadaErro, ChamadaMoldura, ChamadaVazia, EsqueletoChamada } from './EstadosChamada'
 import { FormularioChamada, dataCurta } from './FormularioChamada'
@@ -76,14 +76,13 @@ function ChamadaNova({ pacote, baixadoEm }: PropriedadesModo) {
         </Selecao>
       )}
       {!alvo && (
-        <Campo
+        <CampoData
           rotulo="Data"
-          type="date"
           value={data}
           min={minimo}
           max={hoje}
-          onChange={(e) => setDataEscolhida(e.target.value)}
-          erro={dataValida ? undefined : `Escolha uma data entre ${dataCurta(minimo)} e hoje.`}
+          onChange={setDataEscolhida}
+          erro={dataValida || data === '' ? undefined : `Escolha uma data entre ${dataCurta(minimo)} e hoje.`}
         />
       )}
       {dataValida && (

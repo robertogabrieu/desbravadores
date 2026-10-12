@@ -171,6 +171,7 @@ export function criarPainel(parcial: Partial<Painel> = {}): Painel {
   const unidades = (chaves: (keyof typeof UNIDADES_CB)[]) => chaves.map((chave) => UNIDADES_CB[chave])
   return {
     edicao: criarEdicaoCB(),
+    aoExcluir: { encontros: 17, chamadas: 0 },
     grupos: [
       {
         id: GRUPO_DANIEL_ID, nome: 'Grupo Daniel', unidades: unidades(['aguias', 'leoes', 'gavioes']),
@@ -344,6 +345,10 @@ export function handlersClasseBiblica(dados: DadosClasseBiblica = {}) {
       ...(corpo as object),
     }), 201)),
     http.get('/api/classe-biblica/edicoes/:id', () => HttpResponse.json(dados.painel ?? criarPainel({ edicao }))),
+    http.delete('/api/classe-biblica/edicoes/:id', ({ request }) => {
+      dados.aoGravar?.('DELETE', new URL(request.url).pathname, null)
+      return new HttpResponse(null, { status: 204 })
+    }),
     http.patch('/api/classe-biblica/edicoes/:id', gravar('PATCH', (corpo) => ({ ...edicao, ...(corpo as object) }))),
     http.get('/api/classe-biblica/edicoes/:id/grupos', () => HttpResponse.json(dados.grupos ?? criarGrupos())),
     http.put('/api/classe-biblica/edicoes/:id/grupos', gravar('PUT', () => dados.grupos ?? criarGrupos())),

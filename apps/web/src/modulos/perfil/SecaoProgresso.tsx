@@ -176,7 +176,7 @@ function LinhaDoRequisito({ requisito, dbvId, minimo, compacta }: DaLinha) {
 
       {marcando && (
         <div className={cn('flex flex-col gap-2', compacta ? 'pl-14' : 'pl-8')}>
-          <CampoData rotulo="Data de conclusão" value={data} min={minimo} max={hojeLocal()} onChange={(e) => setData(e.target.value)} />
+          <CampoData rotulo="Data de conclusão" value={data} min={minimo} max={hojeLocal()} onChange={setData} />
           <div className="flex gap-2">
             <Botao onClick={confirmarMarcacao} carregando={marcar.isPending} disabled={data === ''}>
               Confirmar

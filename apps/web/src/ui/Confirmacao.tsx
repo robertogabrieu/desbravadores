@@ -13,6 +13,8 @@ interface Propriedades {
   aoCancelar: () => void
   /** A ação está correndo: o botão de confirmar gira e não aceita um segundo clique. */
   ocupada?: boolean
+  /** Impede confirmar enquanto a condição da tela não vale (ex.: o nome ainda não foi digitado). */
+  confirmarDesabilitado?: boolean
   /** Botão de confirmação em vermelho, para ação que apaga. */
   perigo?: boolean
   /** Mensagem de falha da ação; o diálogo continua aberto para tentar de novo ou cancelar. */
@@ -48,6 +50,7 @@ export function Confirmacao({
   aoConfirmar,
   aoCancelar,
   ocupada = false,
+  confirmarDesabilitado = false,
   perigo = false,
   erro,
   children,
@@ -101,7 +104,7 @@ export function Confirmacao({
           <Botao variante="secundario" onClick={aoCancelar}>
             {rotuloCancelar}
           </Botao>
-          <Botao variante={perigo ? 'perigo' : 'primario'} carregando={ocupada} onClick={aoConfirmar}>
+          <Botao variante={perigo ? 'perigo' : 'primario'} carregando={ocupada} disabled={confirmarDesabilitado} onClick={aoConfirmar}>
             {rotuloConfirmar}
           </Botao>
         </div>

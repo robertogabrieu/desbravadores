@@ -1,5 +1,5 @@
 import { Check, Plus } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useEdicoesCB } from '../../../api/classe-biblica'
 import type { EdicaoResumoCB } from '../../../api/classe-biblica'
 import { useConexao } from '../../../offline'
@@ -9,9 +9,12 @@ import { CabecalhoDaPagina } from '../../../ui/CabecalhoDaPagina'
 import { Cartao } from '../../../ui/Cartao'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/EstadosDeCarga'
+import { FaixaAviso } from '../../../ui/FaixaAviso'
 import { LinhaQueNavega } from '../../../ui/LinhaQueNavega'
 import { Selo } from '../../../ui/Selo'
 import { horaCurta } from '../formatos'
+import { useAvisosDaFicha } from '../navegacao'
+import { ExcluirEdicao } from './ExcluirEdicao'
 import { ETAPAS_DA_EDICAO, dataCurta } from './useRascunhoDaEdicao'
 
 const NOME_PROVISORIO = 'Edição sem nome'
@@ -25,7 +28,7 @@ function linhaDoResumo(edicao: EdicaoResumoCB): string {
   return `${edicao.encontrosFeitos} de ${edicao.encontros} encontros feitos${proximo}`
 }
 
-function NaoTerminada({ edicao }: { edicao: EdicaoResumoCB }) {
+function NaoTerminada({ edicao, podeExcluir }: { edicao: EdicaoResumoCB; podeExcluir: boolean }) {
   const nome = edicao.nome ?? NOME_PROVISORIO
   return (
     <Cartao>
@@ -38,6 +41,7 @@ function NaoTerminada({ edicao }: { edicao: EdicaoResumoCB }) {
         <Link to={`/adm/classe-biblica/${edicao.id}/etapa/${edicao.etapa}`} className={estiloDoBotao({ className: 'w-fit' })}>
           Continuar de onde parou
         </Link>
+        {podeExcluir && <ExcluirEdicao id={edicao.id} nome={edicao.nome} />}
       </section>
     </Cartao>
   )
@@ -92,10 +96,16 @@ function SemEdicao({ unidades }: { unidades: number }) {
   )
 }
 
+/** Cada navegação monta a lista de novo: o aviso de "edição excluída" chega no estado do histórico, lido só na montagem. */
 export function ListaEdicoes() {
+  return <ListaDasEdicoes key={useLocation().key} />
+}
+
+function ListaDasEdicoes() {
   const consulta = useEdicoesCB()
   const { modo } = useConexao()
   const { pode } = useSessao()
+  const { avisos, dispensar } = useAvisosDaFicha()
   const dados = consulta.data
   const temEdicao = (dados?.edicoes.length ?? 0) > 0
   // O "Continuar de onde parou" é o próximo passo: a criação de outra edição não disputa a cor com ele.
@@ -115,6 +125,9 @@ export function ListaEdicoes() {
         )}
       />
 
+      {avisos.map((aviso) => (
+        <FaixaAviso key={aviso} aoFechar={dispensar}>{aviso}</FaixaAviso>
+      ))}
       {consulta.isPending && (modo === 'SEM_CONEXAO' ? <DisponivelComInternet /> : <Carregando rotulo="Carregando as edições" />)}
       {consulta.isError && <ErroDeCarga erro={consulta.error} aoTentarDeNovo={() => void consulta.refetch()} />}
       {dados && dados.unidades === 0 && <SemUnidades />}
@@ -123,7 +136,7 @@ export function ListaEdicoes() {
       {temEdicao && (
         <ul className="flex flex-col gap-3">
           {dados?.edicoes.map((edicao) => (
-            <li key={edicao.id}>{edicao.situacao === 'NAO_TERMINADA' ? <NaoTerminada edicao={edicao} /> : <Terminada edicao={edicao} />}</li>
+            <li key={edicao.id}>{edicao.situacao === 'NAO_TERMINADA' ? <NaoTerminada edicao={edicao} podeExcluir={pode('classebiblica.gerenciar')} /> : <Terminada edicao={edicao} />}</li>
           ))}
         </ul>
       )}

@@ -133,7 +133,7 @@ export class ServicoPainel {
   async painel(sessao: SessaoLogada, edicaoId: string): Promise<z.infer<typeof PainelSaida>> {
     const { clubeId } = sessao
     const acesso = await this.escopoGrupos.exigirAcesso(sessao, edicaoId)
-    const [{ hoje }, edicao, grupos, encontros, todasAsLinhas, todosOsPeriodos] = await Promise.all([
+    const [{ hoje }, edicao, grupos, encontros, todasAsLinhas, todosOsPeriodos, aoExcluir] = await Promise.all([
       this.escopo.relogio(clubeId),
       this.prisma.edicaoClasseBiblica.findFirstOrThrow({ where: { clubeId, id: edicaoId } }),
       this.prisma.grupoClasseBiblica.findMany({
@@ -177,6 +177,7 @@ export class ServicoPainel {
         where: { clubeId, edicaoId },
         select: { grupoId: true, unidadeId: true, inicio: true, fim: true, unidade: { select: { nome: true } }, grupo: { select: { nome: true } } },
       }),
+      acesso.podeGerenciar ? this.contagemDaExclusao(clubeId, edicaoId) : null,
     ])
     const linhas: Linha[] = await noEscopo(acesso, todasAsLinhas)
     const unidadesVisiveis = acesso.corte ? await acesso.corte.unidades([...new Set(todosOsPeriodos.map((p) => p.unidadeId))]) : null
@@ -242,10 +243,19 @@ export class ServicoPainel {
 
     return {
       edicao: saidaDaEdicao(edicao, hoje),
+      aoExcluir,
       grupos: await Promise.all(grupos.map(saidaDoGrupo)),
       podeGerenciar: acesso.podeGerenciar,
       podeFazerChamada: acesso.podeFazerChamada,
     }
+  }
+
+  private async contagemDaExclusao(clubeId: string, edicaoId: string): Promise<NonNullable<z.infer<typeof PainelSaida>['aoExcluir']>> {
+    const [encontros, chamadas] = await Promise.all([
+      this.prisma.encontroClasseBiblica.count({ where: { clubeId, edicaoId } }),
+      this.prisma.chamadaClasseBiblica.count({ where: { clubeId, encontro: { clubeId, edicaoId } } }),
+    ])
+    return { encontros, chamadas }
   }
 
   /** X de Y de cada desbravador nas linhas do grupo (regra 13), da menor presença para a maior; cortada pelo escopo. */

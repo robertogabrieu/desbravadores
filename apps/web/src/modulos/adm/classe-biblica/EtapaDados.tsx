@@ -152,8 +152,8 @@ function Formulario({ edicao, padroes, aoNascer }: PropsDoFormulario) {
       />
       <div className="flex flex-col gap-2">
         <div className="grid gap-4 sm:grid-cols-2">
-          <CampoData rotulo="Início" disabled={travada} value={valores.inicio} erro={erros.inicio} onChange={(e) => mudar('inicio', e.target.value)} onBlur={() => sair('inicio')} />
-          <CampoData rotulo="Fim" disabled={travada} value={valores.fim} erro={erros.fim} onChange={(e) => mudar('fim', e.target.value)} onBlur={() => sair('fim')} />
+          <CampoData rotulo="Início" disabled={travada} value={valores.inicio} erro={erros.inicio} onChange={(iso) => mudar('inicio', iso)} onBlur={() => sair('inicio')} />
+          <CampoData rotulo="Fim" disabled={travada} value={valores.fim} erro={erros.fim} onChange={(iso) => mudar('fim', iso)} onBlur={() => sair('fim')} />
         </div>
         {quantos !== null && <p className="text-sm text-texto-2">{`${quantos} ${diasNoPlural(valores.diaSemana)} entre as duas datas`}</p>}
         {travada && <p className="text-sm text-texto-2">Início, fim e dia da semana não mudam depois de a edição ser criada: os encontros já estão no calendário.</p>}

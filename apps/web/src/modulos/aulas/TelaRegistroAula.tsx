@@ -10,7 +10,7 @@ import type { PacoteGuardado } from '../../offline'
 import { baixarPacoteAoVoltarConexao } from '../../offline/pacote'
 import { useSessao } from '../../sessao/useSessao'
 import { useAlvoFixo } from '../../substituicao/contextos'
-import { Campo } from '../../ui/Campo'
+import { CampoData } from '../../ui/CampoData'
 import { Selecao } from '../../ui/Selecao'
 import { dataCurta, somarDias } from './datas'
 import { AulaErro, AulaMoldura, AulaVazia, EsqueletoAula } from './EstadosAula'
@@ -93,14 +93,13 @@ function AulaNova({ pacote, classes, baixadoEm }: PropriedadesModo) {
         </Selecao>
       )}
       {!alvo && (
-        <Campo
+        <CampoData
           rotulo="Data"
-          type="date"
           value={data}
           min={minimo}
           max={hoje}
-          onChange={(e) => setDataEscolhida(e.target.value)}
-          erro={dataValida ? undefined : `Escolha uma data entre ${dataCurta(minimo)} e hoje.`}
+          onChange={setDataEscolhida}
+          erro={dataValida || data === '' ? undefined : `Escolha uma data entre ${dataCurta(minimo)} e hoje.`}
         />
       )}
       {dataValida && <AulaDaData key={`${classe.classe.id}:${data}`} pacote={pacote} classes={classes} baixadoEm={baixadoEm} classe={classe} data={data} />}

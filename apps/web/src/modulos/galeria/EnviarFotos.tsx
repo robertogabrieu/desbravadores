@@ -14,6 +14,7 @@ import { useSessao } from '../../sessao/useSessao'
 import { BarraProgresso } from '../../ui/BarraProgresso'
 import { Botao } from '../../ui/Botao'
 import { Campo, CampoRotulado, estiloControle } from '../../ui/Campo'
+import { CampoData } from '../../ui/CampoData'
 import { cn } from '../../ui/cn'
 import { EstadoVazio } from '../../ui/EstadoVazio'
 import { FaixaAviso } from '../../ui/FaixaAviso'
@@ -247,7 +248,7 @@ function FormularioDeEnvio({ unidades, unidadeId, aoTrocarUnidade, reuniaoDoLink
       {opcaoAtual.chave === CHAVE_NOVO && !enviadas && (
         <div className="flex flex-col gap-3">
           <Campo rotulo="Nome do álbum" value={nomeNovo} maxLength={80} onChange={(evento) => setNomeNovo(evento.target.value)} />
-          <Campo rotulo="Data do álbum" type="date" value={dataNovo} onChange={(evento) => setDataNovo(evento.target.value)} />
+          <CampoData rotulo="Data do álbum" value={dataNovo} onChange={setDataNovo} />
         </div>
       )}
 

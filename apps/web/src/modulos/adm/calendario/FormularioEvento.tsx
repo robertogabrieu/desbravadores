@@ -9,6 +9,7 @@ import { useCriarEvento, useEditarEvento } from '../../../api/calendario'
 import type { EventoCalendario, EventoGravado, NovoEvento } from '../../../api/calendario'
 import { CaixaMarcacao } from '../../../ui/CaixaMarcacao'
 import { Campo } from '../../../ui/Campo'
+import { CampoHorario } from '../../../ui/CampoHorario'
 import { CampoData } from '../../../ui/CampoData'
 import { Confirmacao } from '../../../ui/Confirmacao'
 import { EscolhaUnica } from '../../../ui/EscolhaUnica'
@@ -310,17 +311,17 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar, esco
           value={inicio}
           ajuda={extraNoDiaDaReuniao ? `${dosDiasDeReuniao(diaReuniao).nome.replace(/^./, (letra) => letra.toUpperCase())} já tem reunião: esta reunião extra só muda nome, horário e local.` : undefined}
           erro={erros['inicio'] ?? erros['fim']}
-          onChange={(e) => mudarData(e.target.value)}
+          onChange={mudarData}
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          <CampoData rotulo="Início" value={inicio} erro={erros['inicio']} onChange={(e) => mudarInicio(e.target.value)} />
-          <CampoData rotulo="Fim" value={fim} erro={erros['fim']} onChange={(e) => mudarFim(e.target.value)} />
+          <CampoData rotulo="Início" value={inicio} erro={erros['inicio']} onChange={mudarInicio} />
+          <CampoData rotulo="Fim" value={fim} erro={erros['fim']} onChange={mudarFim} />
         </div>
       )}
       {(pedeHorario || pedeLocal) && (
         <div className="grid gap-4 sm:grid-cols-2">
-          {pedeHorario && <Campo rotulo="Horário" type="time" value={horario} erro={erros['horario']} onChange={(e) => setHorario(e.target.value)} />}
+          {pedeHorario && <CampoHorario rotulo="Horário" value={horario} erro={erros['horario']} onChange={(e) => setHorario(e.target.value)} />}
           {pedeLocal && <Campo rotulo="Local" value={local} erro={erros['local']} onChange={(e) => setLocal(e.target.value)} />}
         </div>
       )}
