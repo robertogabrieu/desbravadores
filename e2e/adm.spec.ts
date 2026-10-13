@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { expect, request, test } from '@playwright/test'
 import type { APIRequestContext, Browser, Page } from '@playwright/test'
+import { escolher } from './apoio/escolher'
 import {
   admDefinirClasseClube,
   anoCorrente,
@@ -253,7 +254,7 @@ test('biblioteca: o Adm adiciona um PDF em Livros e o conselheiro o vê na estan
   const dialogo = paginaAdm.getByRole('dialog', { name: 'Adicionar à biblioteca' })
   await dialogo.getByLabel('PDF', { exact: true }).setInputFiles({ name: 'arquivo-de-teste.pdf', mimeType: 'application/pdf', buffer: pdfMinimo() })
   await dialogo.getByLabel('Nome', { exact: true }).fill(nomeDoItem)
-  await dialogo.getByLabel('Categoria', { exact: true }).selectOption({ label: 'Livros' })
+  await escolher(paginaAdm, dialogo.getByLabel('Categoria', { exact: true }), { label: 'Livros' })
   await dialogo.getByRole('button', { name: 'Adicionar', exact: true }).click()
   await expect(dialogo).toHaveCount(0)
   await expect(paginaAdm.getByRole('region', { name: 'Livros' }).getByRole('listitem').filter({ hasText: nomeDoItem })).toBeVisible()

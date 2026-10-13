@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto'
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
+import { escolher } from './apoio/escolher'
 import {
   anoCorrente,
   classeOficial,
@@ -162,7 +163,7 @@ test('instrutor: passa um requisito para casa sem rede e cobra a tarefa no regis
 
   // Sem rede: passa o requisito para casa e salva; nada chega ao servidor.
   await context.setOffline(true)
-  await page.getByLabel('+ Requisito', { exact: true }).selectOption(requisito.id)
+  await escolher(page, page.getByLabel('+ Requisito', { exact: true }), requisito.id)
   await expect(page.getByRole('list', { name: 'Itens para casa' }).getByText(requisito.codigo, { exact: false })).toBeVisible()
   await page.getByRole('button', { name: /Salvar classe/ }).click()
   await expect(page.getByText(/aguardando envio/).first()).toBeVisible()

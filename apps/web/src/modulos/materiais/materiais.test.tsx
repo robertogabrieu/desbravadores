@@ -9,6 +9,7 @@ import { criarVinculo, handlersSessao, uuid } from '../../testes/handlers/sessao
 import { renderizarRotas } from '../../testes/renderizar'
 import { servidor } from '../../testes/servidor'
 import { TelaMateriais } from './TelaMateriais'
+import { escolherOpcao } from '../../testes/escolherOpcao'
 
 const estado = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao }))
 
@@ -125,7 +126,7 @@ describe('Materiais', () => {
     const dialogo = await screen.findByRole('dialog', { name: 'Enviar arquivo' })
     await usuario.upload(within(dialogo).getByLabelText('Arquivo'), new File(['%PDF-1.4'], 'cartoes.pdf', { type: 'application/pdf' }))
     await usuario.type(within(dialogo).getByLabelText('Título'), 'Cartões')
-    await usuario.selectOptions(within(dialogo).getByLabelText('Seção'), SECAO_GERAIS.id)
+    await escolherOpcao(usuario, within(dialogo).getByLabelText('Seção'), SECAO_GERAIS.id)
     await usuario.click(within(dialogo).getByRole('button', { name: 'Enviar' }))
     await waitFor(() => expect(envio.enviados).toHaveLength(1))
     expect(envio.enviados[0]).toMatchObject({ metodo: 'POST', url: '/api/materiais/arquivo', nomeDoArquivo: 'cartoes.pdf' })
@@ -214,7 +215,7 @@ describe('Materiais', () => {
     ;({ usuario, menu } = await abrirMenuDe(pdf.titulo))
     await usuario.click(menu.getByRole('menuitem', { name: 'Mover de seção' }))
     const mover = await screen.findByRole('dialog', { name: 'Mover de seção' })
-    await usuario.selectOptions(within(mover).getByLabelText('Seção'), SECAO_GERAIS.id)
+    await escolherOpcao(usuario, within(mover).getByLabelText('Seção'), SECAO_GERAIS.id)
     await usuario.click(within(mover).getByRole('button', { name: 'Mover' }))
     await waitFor(() => expect(corpos[1]).toEqual({ secaoId: SECAO_GERAIS.id }))
     expect(SECAO_ESPIRITUAL.id).not.toBe(SECAO_GERAIS.id)

@@ -17,6 +17,7 @@ import { useConexao } from '../../offline'
 import { useSessao } from '../../sessao/useSessao'
 import { Botao } from '../../ui/Botao'
 import { Campo } from '../../ui/Campo'
+import { CampoArquivo } from '../../ui/CampoArquivo'
 import { Confirmacao } from '../../ui/Confirmacao'
 import { EstadoVazio } from '../../ui/EstadoVazio'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../ui/EstadosDeCarga'
@@ -94,7 +95,7 @@ function DialogoEnvio({ classeId, secoes, aoFechar }: { classeId: string; secoes
     <Confirmacao aberta titulo="Enviar arquivo" rotuloConfirmar="Enviar" aoConfirmar={confirmar} aoCancelar={aoFechar}>
       <div className="flex flex-col gap-3">
         <p className="text-sm">{`Formatos aceitos: ${FORMATOS_NO_TEXTO}, até 20 MB.`}</p>
-        <Campo rotulo="Arquivo" type="file" accept={EXTENSOES_ACEITAS.join(',')} erro={faltaArquivo ? 'Escolha o arquivo.' : undefined} onChange={(e) => definirArquivo(e.target.files?.[0] ?? null)} />
+        <CampoArquivo rotulo="Arquivo" accept={EXTENSOES_ACEITAS.join(',')} erro={faltaArquivo ? 'Escolha o arquivo.' : undefined} onChange={(e) => definirArquivo(e.target.files?.[0] ?? null)} />
         <Campo rotulo="Título" value={titulo} maxLength={120} erro={faltaTitulo ? 'Escreva o título.' : undefined} onChange={(e) => definirTitulo(e.target.value)} />
         <Selecao rotulo="Seção" value={secaoId} onChange={(e) => definirSecaoId(e.target.value)}>
           <OpcoesDeSecao secoes={secoes} />

@@ -22,6 +22,7 @@ import { renderizarRotas } from '../../testes/renderizar'
 import { simularLargura } from '../../testes/midia'
 import { servidor } from '../../testes/servidor'
 import { rotasAdmCronogramas } from './rotas'
+import { valorDe } from '../../testes/escolherOpcao'
 
 const offline = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao }))
 
@@ -206,7 +207,7 @@ describe('A7 · ano do clube', () => {
     const usuario = userEvent.setup()
     const botao = await screen.findByRole('button', { name: 'Criar cronograma' })
     await waitFor(() => expect(botao).toBeEnabled())
-    expect(screen.getByRole('combobox', { name: 'Ano do clube' })).toHaveValue('2026')
+    expect(valorDe(screen.getByRole('combobox', { name: 'Ano do clube' }))).toBe('2026')
     await usuario.click(botao)
     await waitFor(() => expect(registro.chamadas).toHaveLength(1))
     expect(registro.chamadas[0]).toMatchObject({ corpo: { anoClube: 2026, inicio: '2026-03-01', fim: '2027-02-28' } })

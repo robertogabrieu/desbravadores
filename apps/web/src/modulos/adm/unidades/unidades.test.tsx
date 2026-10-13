@@ -9,6 +9,7 @@ import { handlerCriarUnidade, handlerEditarUnidade, handlerErroEditarUnidade, ha
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
 import { rotasAdmUnidades } from './rotas'
+import { escolherOpcao } from '../../../testes/escolherOpcao'
 
 const aguias = criarUnidade({
   id: uuid(201),
@@ -78,7 +79,7 @@ describe('A3 · nova e editar (telas dedicadas)', () => {
     abrir('/adm/unidades/nova')
     expect(screen.queryByLabelText('Unidade ativa')).not.toBeInTheDocument()
     await userEvent.type(await screen.findByLabelText('Nome'), 'Panteras')
-    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'Feminina')
+    await escolherOpcao(userEvent, screen.getByLabelText('Tipo'), 'Feminina')
     await userEvent.type(screen.getByLabelText('Grito de guerra'), 'Rugir!')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(corpo).toEqual({ nome: 'Panteras', tipo: 'FEMININA', gritoDeGuerra: 'Rugir!' }))

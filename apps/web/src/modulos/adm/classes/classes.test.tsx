@@ -21,6 +21,7 @@ import { simularLargura } from '../../../testes/midia'
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
 import { rotasAdmClasses } from './rotas'
+import { escolherOpcao } from '../../../testes/escolherOpcao'
 
 const conexao = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao }))
 
@@ -348,7 +349,7 @@ describe('A5 · especialidades', () => {
     await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
     expect(await painel.findAllByRole('alert')).toHaveLength(2)
     expect(painel.getByText('Informe o nome da especialidade')).toBeInTheDocument()
-    await userEvent.selectOptions(painel.getByLabelText('Área'), 'Aventura')
+    await escolherOpcao(userEvent, painel.getByLabelText('Área'), 'Aventura')
     await userEvent.type(painel.getByLabelText('Nome'), 'Fogueira segura')
     await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
@@ -360,7 +361,7 @@ describe('A5 · especialidades', () => {
     servidor.use(handlerErroCriarEspecialidade(409, { codigo: 'CONFLITO', mensagem: 'Já existe uma especialidade com esse nome nesta área.' }))
     await userEvent.click(await screen.findByRole('button', { name: 'Nova especialidade do clube' }))
     const painel = within(await screen.findByRole('dialog', { name: 'Nova especialidade do clube' }))
-    await userEvent.selectOptions(painel.getByLabelText('Área'), 'Aventura')
+    await escolherOpcao(userEvent, painel.getByLabelText('Área'), 'Aventura')
     await userEvent.type(painel.getByLabelText('Nome'), 'Acampamento')
     await userEvent.click(painel.getByRole('button', { name: 'Salvar' }))
     expect(await painel.findByText('Já existe uma especialidade com esse nome nesta área.')).toBeInTheDocument()

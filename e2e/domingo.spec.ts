@@ -5,6 +5,7 @@ import { expect, test } from '@playwright/test'
 import sharp from 'sharp'
 import type { Page } from '@playwright/test'
 import { caminhoDoConvite } from './mailpit'
+import { escolher } from './apoio/escolher'
 
 test.use({ baseURL: process.env['E2E_WEB_URL'] })
 
@@ -49,9 +50,9 @@ test('domingo: a chamada feita sem rede chega sozinha, entra no histórico e no 
     await page.getByRole('link', { name: 'Novo desbravador' }).click()
     await page.getByLabel('Nome completo').fill(nome)
     await page.getByLabel('Nascimento').fill('2014-03-10')
-    await page.getByLabel('Sexo').selectOption('F')
+    await escolher(page, page.getByLabel('Sexo'), 'F')
     await page.getByLabel('Entrada no clube').fill('2026-02-01')
-    await page.getByLabel('Unidade').selectOption({ label: unidade })
+    await escolher(page, page.getByLabel('Unidade'), { label: unidade })
     await page.getByRole('button', { name: 'Salvar' }).click()
     await expect(page.getByRole('heading', { level: 1, name: nome })).toBeVisible()
   }

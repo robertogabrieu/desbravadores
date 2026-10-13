@@ -10,6 +10,7 @@ import { criarVinculo, handlersSessao, uuid } from '../../testes/handlers/sessao
 import { renderizarRotas } from '../../testes/renderizar'
 import { servidor } from '../../testes/servidor'
 import { TelaObservacoes } from './TelaObservacoes'
+import { escolherOpcao, valorDe } from '../../testes/escolherOpcao'
 
 const estado = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao }))
 
@@ -68,7 +69,7 @@ describe('Observações', () => {
     const usuario = userEvent.setup()
     abrir()
     await screen.findByText('Nenhuma observação ainda.')
-    await waitFor(() => expect(screen.getByLabelText('Dia de classe')).toHaveValue(AULA_DE_HOJE.id))
+    await waitFor(() => expect(valorDe(screen.getByLabelText('Dia de classe'))).toBe(AULA_DE_HOJE.id))
     await usuario.type(screen.getByLabelText('Título (opcional)'), 'Bom encontro')
     await usuario.type(screen.getByLabelText('Nova observação'), 'Retomar o 7º mandamento.')
     await usuario.click(screen.getByRole('button', { name: 'Salvar observação' }))
@@ -91,8 +92,7 @@ describe('Observações', () => {
     abrir()
     await screen.findByText('Nenhuma observação ainda.')
     await usuario.click(screen.getByRole('radio', { name: 'Sobre um DBV' }))
-    await screen.findByRole('option', { name: 'Miguel Teixeira' })
-    await usuario.selectOptions(screen.getByLabelText('Desbravador'), uuid(403))
+    await escolherOpcao(usuario, screen.getByLabelText('Desbravador'), uuid(403))
     await usuario.type(screen.getByLabelText('Nova observação'), 'Precisa de reforço.')
     await usuario.click(screen.getByRole('button', { name: 'Salvar observação' }))
     await waitFor(() =>

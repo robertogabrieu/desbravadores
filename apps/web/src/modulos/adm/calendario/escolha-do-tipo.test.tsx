@@ -10,6 +10,7 @@ import { dosDiasDeReuniao } from './datas'
 import { rotasAdmCalendario } from './rotas'
 import { ROTULOS_DO_TIPO, TEXTO_DO_TIPO } from './tipos'
 import type { TipoDeEvento } from './tipos'
+import { escolherOpcao, valorDe } from '../../../testes/escolherOpcao'
 
 const ESCOLHA = '/adm/calendario/eventos/novo?data=2026-10-17'
 const SUBTITULO = 'Que tipo de evento é? Escolha o tipo e o formulário certo abre em seguida.'
@@ -208,7 +209,7 @@ describe('Editar evento · sem escolha', () => {
     const evento = criarEvento(1, { nome: 'Acampamento do clube', tipo: 'ACAMPAMENTO', inicio: '2026-10-16', fim: '2026-10-18', temReuniao: false, temClasse: true, bomParaCampo: true })
     abrir(`/adm/calendario/eventos/${evento.id}/editar`, handlerEvento(caixa(evento)))
 
-    expect(await screen.findByLabelText('Tipo')).toHaveValue('ACAMPAMENTO')
+    expect(valorDe(await screen.findByLabelText('Tipo'))).toBe('ACAMPAMENTO')
     expect(screen.queryByTestId('selo-do-tipo')).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Trocar tipo' })).not.toBeInTheDocument()
   })
@@ -216,7 +217,7 @@ describe('Editar evento · sem escolha', () => {
   it('o ?tipo= no endereço da edição é ignorado', async () => {
     const evento = criarEvento(2, { nome: 'Reunião especial', tipo: 'EVENTO' })
     abrir(`/adm/calendario/eventos/${evento.id}/editar?tipo=FERIAS`, handlerEvento(caixa(evento)))
-    expect(await screen.findByLabelText('Tipo')).toHaveValue('EVENTO')
+    expect(valorDe(await screen.findByLabelText('Tipo'))).toBe('EVENTO')
   })
 
   describe('trocar o tipo pelo seletor', () => {
@@ -228,12 +229,12 @@ describe('Editar evento · sem escolha', () => {
       await userEvent.click(await screen.findByLabelText('Terá reunião'))
       expect(screen.getByLabelText('Terá reunião')).toBeChecked()
 
-      await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'EVENTO')
+      await escolherOpcao(userEvent, screen.getByLabelText('Tipo'), 'EVENTO')
       expect(screen.getByLabelText('Terá reunião')).toBeChecked()
       expect(screen.getByLabelText('Terá classe')).not.toBeChecked()
       expect(screen.getByLabelText('Terá atividade de campo')).not.toBeChecked()
 
-      await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'ACAMPAMENTO')
+      await escolherOpcao(userEvent, screen.getByLabelText('Tipo'), 'ACAMPAMENTO')
       expect(screen.getByLabelText('Terá reunião')).not.toBeChecked()
       expect(screen.getByLabelText('Terá classe')).toBeChecked()
       expect(screen.getByLabelText('Terá atividade de campo')).toBeChecked()
@@ -245,10 +246,10 @@ describe('Editar evento · sem escolha', () => {
       await screen.findByLabelText('Fim')
       expect(screen.getByLabelText('Fim')).toHaveValue('18/10/2026')
 
-      await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'REUNIAO_EXTRA')
+      await escolherOpcao(userEvent, screen.getByLabelText('Tipo'), 'REUNIAO_EXTRA')
       expect(screen.getByLabelText('Data')).toHaveValue('16/10/2026')
       expect(screen.queryByLabelText('Fim')).not.toBeInTheDocument()
-      await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'EVENTO')
+      await escolherOpcao(userEvent, screen.getByLabelText('Tipo'), 'EVENTO')
       expect(screen.getByLabelText('Fim')).toHaveValue('16/10/2026')
     })
 
@@ -258,10 +259,10 @@ describe('Editar evento · sem escolha', () => {
       await screen.findByLabelText('Tipo')
       expect(screen.queryByRole('group', { name: 'Uniforme e pontos' })).not.toBeInTheDocument()
 
-      await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'EVENTO_ESPECIAL')
+      await escolherOpcao(userEvent, screen.getByLabelText('Tipo'), 'EVENTO_ESPECIAL')
       expect(screen.getByRole('group', { name: 'Uniforme e pontos' })).toBeInTheDocument()
 
-      await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'FERIADO')
+      await escolherOpcao(userEvent, screen.getByLabelText('Tipo'), 'FERIADO')
       expect(screen.queryByRole('group', { name: 'Uniforme e pontos' })).not.toBeInTheDocument()
     })
   })

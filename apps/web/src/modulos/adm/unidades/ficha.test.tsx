@@ -17,6 +17,7 @@ import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
 import { rotasAdmDesbravadores } from '../desbravadores/rotas'
 import { rotasAdmUnidades } from './rotas'
+import { escolherOpcao } from '../../../testes/escolherOpcao'
 
 const aguias = (parcial: Partial<Unidade> = {}) =>
   caixa(
@@ -70,7 +71,7 @@ describe('ficha da unidade', () => {
     abrir(`/adm/unidades/${uuid(201)}`)
     await userEvent.click(await screen.findByRole('button', { name: 'Adicionar desbravador sem unidade' }))
     const janela = within(screen.getByRole('dialog', { name: 'Adicionar a Águias' }))
-    await userEvent.selectOptions(janela.getByLabelText('Desbravador sem unidade'), uuid(303))
+    await escolherOpcao(userEvent, janela.getByLabelText('Desbravador sem unidade'), uuid(303))
     await userEvent.click(janela.getByRole('button', { name: 'Adicionar' }))
     await waitFor(() => expect(recebidos).toEqual([{ id: uuid(303), unidadeId: uuid(201) }]))
   })

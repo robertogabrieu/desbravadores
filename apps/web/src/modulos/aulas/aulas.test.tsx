@@ -16,6 +16,7 @@ import { servidor } from '../../testes/servidor'
 import { ProvedorDeAlvoFixo, ProvedorDeDestinos } from '../../substituicao/contextos'
 import { ClassesSemConexao } from './RegistroSemConexao'
 import { TelaRegistroAula } from './TelaRegistroAula'
+import { escolherOpcao, textosDasOpcoes } from '../../testes/escolherOpcao'
 
 const estado = vi.hoisted(() => ({
   modo: 'ONLINE' as ModoConexao,
@@ -297,7 +298,7 @@ describe('Registro de aula nova', () => {
     montar(`/aulas/nova?classe=${CLASSE_COMPANHEIRO.id}&data=${HOJE}`)
     await screen.findByText('Ana Clara')
     const daClasse = within(screen.getByRole('region', { name: 'Requisitos desta classe' }))
-    await userEvent.selectOptions(daClasse.getByLabelText('+ Requisito'), R3)
+    await escolherOpcao(userEvent, daClasse.getByLabelText('+ Requisito'), R3)
     expect(screen.getByText('Texto de R3')).toBeInTheDocument()
     expect(celula('Ana Clara', 'R3')).toBeEnabled()
     expect(daClasse.queryByLabelText('+ Requisito')).not.toBeInTheDocument()
@@ -525,8 +526,8 @@ describe('Para casa no registro', () => {
     estado.modo = 'SEM_CONEXAO'
     montar(`/aulas/nova?classe=${CLASSE_COMPANHEIRO.id}&data=${HOJE}`)
     await screen.findByText('Ana Clara')
-    await userEvent.selectOptions(paraCasa().getByLabelText('+ Requisito'), R3)
-    await userEvent.selectOptions(paraCasa().getByLabelText('+ Requisito'), R1)
+    await escolherOpcao(userEvent, paraCasa().getByLabelText('+ Requisito'), R3)
+    await escolherOpcao(userEvent, paraCasa().getByLabelText('+ Requisito'), R1)
     await userEvent.click(paraCasa().getByRole('button', { name: 'Tirar R1' }))
     await userEvent.click(botaoSalvar())
     await waitFor(() => expect(estado.enfileirar).toHaveBeenCalledOnce())
@@ -538,8 +539,7 @@ describe('Para casa no registro', () => {
     guardar([classe({ tarefas: [TAREFA_ANTERIOR] })])
     montar(NOVA)
     await screen.findByRole('listitem', { name: 'Ana Clara' })
-    const opcoes = within(paraCasa().getByLabelText('+ Requisito')).getAllByRole('option')
-    expect(opcoes.map((o) => o.textContent)).toEqual(['Escolha um requisito', 'R1 · Texto de R1', 'R2 · Texto de R2'])
+    expect(await textosDasOpcoes(userEvent, paraCasa().getByLabelText('+ Requisito'))).toEqual(['Escolha um requisito', 'R1 · Texto de R1', 'R2 · Texto de R2'])
   })
 
   it('"Passar o que faltou" ignora o requisito que já está em tarefa aberta da classe', async () => {

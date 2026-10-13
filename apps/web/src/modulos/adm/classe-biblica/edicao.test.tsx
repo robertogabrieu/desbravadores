@@ -24,6 +24,7 @@ import { servidor } from '../../../testes/servidor'
 import { EdicaoPronta } from './EdicaoPronta'
 import { ListaEdicoes } from './ListaEdicoes'
 import { rotaDasEtapas, rotasAdmClasseBiblica } from './rotas'
+import { valorDe } from '../../../testes/escolherOpcao'
 
 const conexao = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao, fuso: undefined as string | undefined }))
 
@@ -133,7 +134,7 @@ describe('Etapa 1 — dados', () => {
     const { gravacoes } = abrir('/adm/classe-biblica/nova')
     expect(await screen.findByText('Etapa 1 de 3 — Dados da edição · depois: Grupos e Datas')).toBeInTheDocument()
     expect(screen.getByText(/Leva uns 5 minutos/)).toBeInTheDocument()
-    expect(await screen.findByLabelText('Dia da semana')).toHaveValue('0')
+    expect(valorDe(await screen.findByLabelText('Dia da semana'))).toBe('0')
     expect(screen.getByLabelText('Local')).toHaveValue('Sala 3 da igreja')
     expect(screen.getByLabelText('Horário')).toHaveValue('')
     expect(gravacoes).toHaveLength(0)
