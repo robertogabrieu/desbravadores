@@ -113,11 +113,11 @@ export const rotas: RouteObject[] = [
   },
   {
     element: <GuardaRota papeis={['CONSELHEIRO', 'INSTRUTOR', 'ADM']} />,
-    children: [{ element: <LayoutDoPapel />, children: [...rotasRanking, ...rotasPerfil, ...rotasConta] }],
+    children: [{ element: <LayoutDoPapel />, children: [...rotasRanking, ...rotasPerfil, ...rotasConta, ...rotasNotificacoes] }],
   },
   {
     element: <GuardaRota papeis={['INSTRUTOR', 'ADM']} />,
-    children: [{ element: <LayoutDoPapel />, children: [...rotasNotificacoes, ...rotasCronogramaMontagem] }],
+    children: [{ element: <LayoutDoPapel />, children: [...rotasCronogramaMontagem] }],
   },
   { path: '*', element: <PaginaNaoEncontrada /> },
 ]

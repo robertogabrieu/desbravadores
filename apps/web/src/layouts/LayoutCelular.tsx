@@ -38,7 +38,7 @@ export function LayoutCelular() {
         <div className="flex min-w-0 items-center gap-1">
           <SeloAguardandoEnvio />
           <SeloPapel sobreMarca />
-          {papel === 'INSTRUTOR' && <SinoNotificacoes />}
+          <SinoNotificacoes />
         </div>
       </header>
       {/* Pensado para o celular, mas há instrutor no tablet: a tela usa a largura dele até onde a leitura aguenta. */}

@@ -56,14 +56,13 @@ describe('sino', () => {
     expect(await within(sino).findByText('1')).toBeInTheDocument()
   })
 
-  it('conselheiro não tem sino e não consulta as notificações', async () => {
-    const { handlers, registro } = handlersNotificacoes([criarNotificacao(1)])
+  it('conselheiro também tem o sino, com o contador de não lidas', async () => {
+    const { handlers } = handlersNotificacoes([criarNotificacao(1)])
     servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO')]), ...handlers)
     renderizarRotas(rotas, '/inicio')
 
-    await screen.findByRole('link', { name: 'Ranking' })
-    expect(screen.queryByRole('link', { name: NOME_DO_SINO })).not.toBeInTheDocument()
-    expect(registro.leituras).toBe(0)
+    const sino = await screen.findByRole('link', { name: NOME_DO_SINO })
+    expect(await within(sino).findByText('1')).toBeInTheDocument()
   })
 
   it('sem conexão esconde o contador e não busca', async () => {
