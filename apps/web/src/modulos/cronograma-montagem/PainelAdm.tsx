@@ -52,6 +52,7 @@ function PainelAdmComputador({ montagem, cronograma, classe, classeConsultada, a
   const vista = montarVista(montagem, classes)
   const par = vista.temAvancada
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null)
+  const [arrastandoId, setArrastandoId] = useState<string | null>(null)
   const [filtro, setFiltro] = useState<Filtro>('sem-data')
   const [maisVazias, setMaisVazias] = useState(false)
   const [aulaEmEdicao, setAulaEmEdicao] = useState<AulaEmEdicao | null>(null)
@@ -65,9 +66,25 @@ function PainelAdmComputador({ montagem, cronograma, classe, classeConsultada, a
   const visiveis = !par ? vista.requisitos : filtro === 'sem-data' ? semData : vista.requisitos.filter((requisito) => requisito.lado === filtro)
   const datas = par && maisVazias ? ordenarPorVazias(vista.datas) : vista.datas
 
-  async function colocarAqui(data: string) {
-    if (!selecionado) return
-    if (await acoes.colocar(selecionado.id, data)) setSelecionadoId(null)
+  const arrastado = vista.requisitos.find((requisito) => requisito.id === arrastandoId) ?? null
+
+  /** A mesma regra do botão "Colocar aqui" e do soltar: a data aceita o requisito e ele ainda não está nela. */
+  function dataAceita(dado: DataDaMontagem, requisito: RequisitoComLado | null) {
+    return (
+      aceitaRequisitoNovo(montagem, dado, requisito ? [requisito.classeId] : vista.classeIds) &&
+      !requisito?.foraDoPar &&
+      requisito?.data !== dado.data
+    )
+  }
+
+  async function colocar(requisitoId: string, data: string) {
+    if (await acoes.colocar(requisitoId, data) && requisitoId === selecionadoId) setSelecionadoId(null)
+  }
+
+  async function soltarEm(data: string) {
+    const id = arrastandoId
+    setArrastandoId(null)
+    if (id) await colocar(id, data)
   }
 
   function escolherRequisito(id: string) {
@@ -90,8 +107,18 @@ function PainelAdmComputador({ montagem, cronograma, classe, classeConsultada, a
 
   function cartaoDoRequisito(requisito: RequisitoComLado) {
     return (
-      <button
+      <div
         key={requisito.id}
+        draggable={!acoes.ocupada}
+        onDragStart={(evento) => {
+          evento.dataTransfer.setData('text/plain', requisito.id)
+          evento.dataTransfer.effectAllowed = 'move'
+          setArrastandoId(requisito.id)
+        }}
+        onDragEnd={() => setArrastandoId(null)}
+        className={cn('flex flex-col', requisito.id === arrastandoId && 'opacity-50')}
+      >
+      <button
         type="button"
         aria-pressed={requisito.id === selecionadoId}
         onClick={() => escolherRequisito(requisito.id)}
@@ -110,6 +137,7 @@ function PainelAdmComputador({ montagem, cronograma, classe, classeConsultada, a
           </span>
         </span>
       </button>
+      </div>
     )
   }
 
@@ -204,15 +232,14 @@ function PainelAdmComputador({ montagem, cronograma, classe, classeConsultada, a
                   aoTirar={(requisito) => void acoes.tirar(requisito.id)}
                   aoRemoverAula={(aula) => void removerAula(aula)}
                   aoEditar={(aula) => setAulaEmEdicao(aulaEmEdicaoDaData(aula))}
+                  aoSoltar={arrastado && !acoes.ocupada && dataAceita(dado, arrastado) ? () => void soltarEm(dado.data) : undefined}
                   acaoDaData={
-                    aceitaRequisitoNovo(montagem, dado, selecionado ? [selecionado.classeId] : vista.classeIds) &&
-                    !selecionado?.foraDoPar &&
-                    selecionado?.data !== dado.data && (
+                    dataAceita(dado, selecionado) && (
                       <Botao
                         variante="secundario"
                         aria-label={`Colocar aqui em ${diaMes(dado.data)}`}
                         disabled={selecionado === null || acoes.ocupada}
-                        onClick={() => void colocarAqui(dado.data)}
+                        onClick={() => selecionado && void colocar(selecionado.id, dado.data)}
                       >
                         Colocar aqui
                       </Botao>
