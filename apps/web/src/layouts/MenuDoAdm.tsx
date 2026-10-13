@@ -82,12 +82,13 @@ function GrupoDoMenu({ grupo, aoEscolher }: { grupo: GrupoDeNavegacao; aoEscolhe
         type="button"
         aria-expanded={aberto}
         aria-controls={aberto ? idLista : undefined}
-        onClick={() => definirEscolhaAberto(!escolhaAberto)}
+        aria-disabled={temItemAtivo || undefined}
+        onClick={() => !temItemAtivo && definirEscolhaAberto(!escolhaAberto)}
         className="flex min-h-[var(--touch-min)] shrink-0 items-center gap-3 rounded-botao px-3 text-base font-semibold text-sobre-marca hover:bg-marca-escura"
       >
         <Icone aria-hidden className="size-5" />
         <span className="flex-1 text-left">{grupo.grupo}</span>
-        <ChevronDown aria-hidden className={cn('size-4 transition-transform', aberto && 'rotate-180')} />
+        {!temItemAtivo && <ChevronDown aria-hidden className={cn('size-4 transition-transform', aberto && 'rotate-180')} />}
       </button>
       {aberto && (
         <div id={idLista} className="flex flex-col gap-1 pl-6">

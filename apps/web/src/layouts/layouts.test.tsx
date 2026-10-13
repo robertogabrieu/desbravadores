@@ -140,9 +140,10 @@ describe('LayoutAdm', () => {
 
     await userEvent.click(menu.getByRole('button', { name: 'Classes' }))
     expect(menu.queryByText('Cronogramas')).not.toBeInTheDocument()
-    // O grupo da tela aberta não fecha: o item atual não pode sumir do menu.
+    // O grupo da tela aberta não fecha: o item atual não pode sumir do menu, e o botão avisa que não responde.
     await userEvent.click(menu.getByRole('button', { name: 'Membros' }))
     expect(menu.getByText('Usuários')).toBeInTheDocument()
+    expect(menu.getByRole('button', { name: 'Membros' })).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('cada item aponta para a sua tela, dentro do grupo ou solto', async () => {
