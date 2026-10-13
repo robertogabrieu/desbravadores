@@ -14,6 +14,17 @@ interface Propriedades {
   onChange: (evento: ChangeEvent<HTMLInputElement>) => void
 }
 
+/** O mesmo filtro do `accept` do seletor nativo, que o arrastar não aplica sozinho. */
+function tipoAceito(arquivo: File, accept?: string): boolean {
+  if (!accept) return true
+  return accept.split(',').some((item) => {
+    const aceito = item.trim().toLowerCase()
+    if (aceito.startsWith('.')) return arquivo.name.toLowerCase().endsWith(aceito)
+    if (aceito.endsWith('/*')) return arquivo.type.startsWith(aceito.slice(0, -1))
+    return arquivo.type === aceito
+  })
+}
+
 /** Campo de arquivo: área grande para tocar ou arrastar, que mostra o nome do arquivo escolhido. */
 export function CampoArquivo({
   rotulo,
@@ -29,6 +40,8 @@ export function CampoArquivo({
   const entrada = useRef<HTMLInputElement>(null)
   const [nome, definirNome] = useState<string | null>(null)
   const [arrastando, definirArrastando] = useState(false)
+  // Com erro, a tela recusou o arquivo: o campo não pode seguir dizendo que ele foi escolhido.
+  const aceito = nome !== null && !erro
 
   const aoMudar = (evento: ChangeEvent<HTMLInputElement>) => {
     definirNome(evento.target.files?.[0]?.name ?? null)
@@ -39,8 +52,11 @@ export function CampoArquivo({
     evento.preventDefault()
     definirArrastando(false)
     const campo = entrada.current
-    if (disabled || !campo || evento.dataTransfer.files.length === 0) return
-    campo.files = evento.dataTransfer.files
+    const arquivo = Array.from(evento.dataTransfer.files).find((item) => tipoAceito(item, accept))
+    if (disabled || !campo || !arquivo) return
+    const selecao = new DataTransfer()
+    selecao.items.add(arquivo)
+    campo.files = selecao.files
     campo.dispatchEvent(new Event('change', { bubbles: true }))
   }
 
@@ -58,23 +74,23 @@ export function CampoArquivo({
           'flex min-h-24 w-full flex-col items-center justify-center gap-1.5 rounded-controle border-2 border-dashed px-4 py-4 text-center transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-marca',
           erro
             ? 'border-perigo'
-            : nome
+            : aceito
               ? 'border-marca bg-marca-suave'
               : 'border-borda-controle bg-superficie hover:bg-superficie-suave',
           arrastando && 'border-marca bg-marca-suave',
           disabled && 'bg-superficie-suave opacity-60',
         )}
       >
-        {nome ? (
+        {aceito ? (
           <FileCheck2 aria-hidden className="size-6 text-marca" />
         ) : (
           <Upload aria-hidden className="size-6 text-texto-2" />
         )}
         <span className="max-w-full break-all text-base font-semibold text-texto">
-          {nome ?? 'Escolher arquivo'}
+          {aceito ? nome : 'Escolher arquivo'}
         </span>
         <span className="text-sm text-texto-2">
-          {nome ? 'Toque para trocar' : 'Toque aqui ou arraste o arquivo'}
+          {aceito ? 'Toque para trocar' : 'Toque aqui ou arraste o arquivo'}
         </span>
         <input
           ref={entrada}

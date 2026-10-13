@@ -72,7 +72,7 @@ interface AjustesDoCampo {
 
 const AjustesContexto = createContext<AjustesDoCampo>({ soLeitura: false })
 
-// O campo de busca da biblioteca é o único cujo `aria-describedby` dá para fixar; nas listas curtas ele vira só leitura, sem abrir o teclado.
+// Todas as listas usam o campo de busca da biblioteca, o único cujo `aria-describedby` dá para fixar; nas curtas ele fica só leitura, para não abrir o teclado.
 function CampoDeBusca(props: InputProps<Opcao, false>) {
   const { descricao, soLeitura } = useContext(AjustesContexto)
   return (

@@ -24,4 +24,15 @@ describe('CampoArquivo', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Escolha o arquivo.')
     expect(screen.getByLabelText(/Escolher arquivo/)).toHaveAttribute('aria-invalid', 'true')
   })
+
+  it('com erro, não diz que o arquivo foi escolhido', async () => {
+    render(<CampoArquivo rotulo="PDF" erro="O arquivo passa de 50 MB." onChange={() => {}} />)
+    await userEvent.upload(
+      screen.getByLabelText(/Escolher arquivo/),
+      new File(['x'], 'grande.pdf', { type: 'application/pdf' }),
+    )
+
+    expect(screen.queryByText('grande.pdf')).not.toBeInTheDocument()
+    expect(screen.getByText('Escolher arquivo')).toBeInTheDocument()
+  })
 })
