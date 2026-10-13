@@ -64,7 +64,7 @@ export function PaginaConta() {
       )}
 
       <Cartao className="flex flex-col gap-3">
-        <h2 className="text-base font-bold text-texto">Sair</h2>
+        <h2 className="text-base font-bold text-texto">Sessão</h2>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Botao variante="secundario" onClick={() => pedirSaida('SAIR')}>
             {ROTULO_DA_SAIDA.SAIR}
