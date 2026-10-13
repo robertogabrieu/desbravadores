@@ -139,6 +139,19 @@ describe('Etapa 1 — dados', () => {
     expect(gravacoes).toHaveLength(0)
   })
 
+  it('dia, horário e local dividem a mesma linha em tela larga e empilham na estreita, na ordem do DOM', async () => {
+    abrir('/adm/classe-biblica/nova')
+    const dia = await screen.findByLabelText('Dia da semana')
+    const linha = screen.getByTestId('linha-encontro')
+    expect(linha.className).toMatch(/md:grid-cols-\[/)
+    expect(linha.className).not.toMatch(/(^|\s)grid-cols-/)
+    expect(linha.className).toContain('items-start')
+    const campos = [dia, screen.getByLabelText('Horário'), screen.getByLabelText('Local')]
+    campos.forEach((c) => expect(linha).toContainElement(c))
+    expect(dia.compareDocumentPosition(campos[1]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(campos[1].compareDocumentPosition(campos[2]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it('4 · fim antes do início mostra o erro junto do campo, sem limpar nada', async () => {
     const usuario = userEvent.setup()
     abrir('/adm/classe-biblica/nova')
