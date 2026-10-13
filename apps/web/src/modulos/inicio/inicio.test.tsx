@@ -17,6 +17,7 @@ import { criarVinculo, handlersSessao } from '../../testes/handlers/sessao'
 import { renderizarRotas } from '../../testes/renderizar'
 import { servidor } from '../../testes/servidor'
 import { rotasInicio } from './rotas'
+import { escolherOpcao } from '../../testes/escolherOpcao'
 
 const CHAVE_IOS = 'convite-instalacao-ios-visto'
 
@@ -206,7 +207,7 @@ describe('início do conselheiro', () => {
       handlerInicioConselheiro(criarInicioConselheiro(), (consulta) => consultas.push(String(consulta.get('unidadeId')))),
     )
     renderizarRotas(rotasInicio, '/inicio')
-    await userEvent.selectOptions(await screen.findByLabelText('Unidade'), UNIDADE_LEOES.id)
+    await escolherOpcao(userEvent, await screen.findByLabelText('Unidade'), UNIDADE_LEOES.id)
     await waitFor(() => expect(consultas).toContain(UNIDADE_LEOES.id))
     expect(consultas[0]).toBe(UNIDADE_AGUIAS.id)
   })

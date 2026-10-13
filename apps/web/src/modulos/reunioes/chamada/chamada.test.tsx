@@ -17,6 +17,7 @@ import { simularLargura } from '../../../testes/midia'
 import { servidor } from '../../../testes/servidor'
 import { ProvedorDeAlvoFixo, ProvedorDeDestinos } from '../../../substituicao/contextos'
 import { TelaChamada } from './TelaChamada'
+import { escolherOpcao } from '../../../testes/escolherOpcao'
 
 const estado = vi.hoisted(() => ({
   modo: 'ONLINE' as ModoConexao,
@@ -258,7 +259,7 @@ describe('Chamada nova', () => {
     guardar(pacote({ unidades: [{ ...AGUIAS, membros: [membro(ANA, 'Ana Clara')] }, { ...LEOES, membros: [membro(uuid(304), 'Davi Nunes')] }] }))
     montar('/reunioes/nova', [AGUIAS, LEOES])
     await screen.findByText('Ana Clara')
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Unidade' }), LEOES.id)
+    await escolherOpcao(userEvent, screen.getByRole('combobox', { name: 'Unidade' }), LEOES.id)
     expect(await screen.findByText('Davi Nunes')).toBeInTheDocument()
     expect(screen.queryByText('Ana Clara')).not.toBeInTheDocument()
   })

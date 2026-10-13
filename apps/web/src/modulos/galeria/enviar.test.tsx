@@ -13,6 +13,7 @@ import { renderizarRotas } from '../../testes/renderizar'
 import { servidor } from '../../testes/servidor'
 import { ErroFormatoFoto } from './reducao'
 import { rotasGaleria } from './rotas'
+import { escolherOpcao } from '../../testes/escolherOpcao'
 
 const HOJE = hojeNoFuso('America/Sao_Paulo', new Date())
 const MES = HOJE.slice(0, 7)
@@ -209,7 +210,7 @@ describe('Enviar fotos: álbum', () => {
   it('com duas unidades, oferece o seletor e usa a escolhida', async () => {
     entrar([UNIDADE_AGUIAS, UNIDADE_LEOES])
     abrir()
-    await userEvent.selectOptions(await screen.findByLabelText('Unidade'), UNIDADE_LEOES.id)
+    await escolherOpcao(userEvent, await screen.findByLabelText('Unidade'), UNIDADE_LEOES.id)
     await userEvent.click(screen.getByRole('radio', { name: /Novo álbum/ }))
     await userEvent.type(screen.getByLabelText('Nome do álbum'), 'Treino')
     await escolher(foto())

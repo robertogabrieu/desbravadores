@@ -137,7 +137,7 @@ export function ListaDesbravadores() {
       </Selecao>
       <Selecao
         rotulo="Situação"
-        value={situacao}
+        value={situacao ?? 'true'}
         onChange={(e) => filtrar('situacao')(e.target.value === 'true' ? '' : e.target.value)}
       >
         <option value="true">Ativos</option>

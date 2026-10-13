@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto'
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import { criarAcesso, criarClube, criarDbv, criarMembro, criarUnidade, SENHA_DE_TESTE } from './apoio/semear'
+import { escolher } from './apoio/escolher'
 
 test.use({ baseURL: process.env['E2E_WEB_URL'] })
 
@@ -51,7 +52,7 @@ test('classe bíblica: o Adm cria a edição, faz a chamada sem rede e ela chega
   await expect(page.getByText(/^Salvo às/)).toBeVisible()
   await page.getByLabel('Início', { exact: true }).fill(somarDias(hoje, -7))
   await page.getByLabel('Fim', { exact: true }).fill(somarDias(hoje, 7))
-  await page.getByLabel('Dia da semana').selectOption(String(diaDaSemana))
+  await escolher(page, page.getByLabel('Dia da semana'), String(diaDaSemana))
   await page.getByLabel('Horário').fill('14:00')
   await page.getByLabel('Local').fill('Salão da igreja')
   await page.getByRole('button', { name: 'Continuar para os grupos' }).click()

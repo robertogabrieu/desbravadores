@@ -11,6 +11,7 @@ import { criarVinculo, handlersSessao } from '../../testes/handlers/sessao'
 import { renderizarRotas } from '../../testes/renderizar'
 import { servidor } from '../../testes/servidor'
 import { TelaBiblioteca } from './TelaBiblioteca'
+import { escolherOpcao, valorDe } from '../../testes/escolherOpcao'
 
 const estado = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao }))
 
@@ -333,7 +334,7 @@ describe('Biblioteca — adicionar', () => {
     for (const ajuda of ['Até 50 MB.', 'É o nome que aparece na estante e no arquivo baixado.', 'Opcional. Uma linha abaixo do nome.', 'Opcional. JPG, PNG ou WebP, até 5 MB.']) {
       expect(dialogo.getByText(ajuda)).toBeInTheDocument()
     }
-    expect(dialogo.getByLabelText('Categoria')).toHaveValue(cadernos.id)
+    expect(valorDe(dialogo.getByLabelText('Categoria'))).toBe(cadernos.id)
     expect(dialogo.getByLabelText('PDF')).toHaveAttribute('accept', 'application/pdf')
     expect(dialogo.getByLabelText('Capa')).toHaveAttribute('accept', 'image/jpeg,image/png,image/webp')
   })
@@ -394,7 +395,7 @@ describe('Biblioteca — adicionar', () => {
     await usuario.clear(dialogo.getByLabelText('Nome'))
     await usuario.type(dialogo.getByLabelText('Nome'), 'Vaso de Barro')
     await usuario.type(dialogo.getByLabelText('Descrição'), 'Leitura do ano')
-    await usuario.selectOptions(dialogo.getByLabelText('Categoria'), livros.id)
+    await escolherOpcao(usuario, dialogo.getByLabelText('Categoria'), livros.id)
     await usuario.click(dialogo.getByRole('button', { name: 'Adicionar' }))
 
     await waitFor(() => expect(envio.enviados).toHaveLength(1))
@@ -556,7 +557,7 @@ describe('Biblioteca — adicionar', () => {
 
       await usuario.click(dialogo.getByRole('button', { name: 'Adicionar' }))
       expect(await dialogo.findByRole('alert')).toHaveTextContent(MENSAGEM)
-      await usuario.selectOptions(dialogo.getByLabelText('Categoria'), livros.id)
+      await escolherOpcao(usuario, dialogo.getByLabelText('Categoria'), livros.id)
       expect(dialogo.queryByRole('alert')).not.toBeInTheDocument()
 
       await usuario.click(dialogo.getByRole('button', { name: 'Adicionar' }))
@@ -649,7 +650,7 @@ describe('Biblioteca — editar', () => {
     const dialogo = await abrirEditar(usuario, 'Amigo')
     expect(dialogo.getByLabelText('Nome')).toHaveValue('Amigo')
     expect(dialogo.getByLabelText('Descrição')).toHaveValue('Classe regular e avançada')
-    expect(dialogo.getByLabelText('Categoria')).toHaveValue(cadernos.id)
+    expect(valorDe(dialogo.getByLabelText('Categoria'))).toBe(cadernos.id)
     expect(dialogo.getByText('Ao mudar de categoria, o item vai para o fim dela.')).toBeInTheDocument()
     expect(dialogo.getByText('Para trocar o PDF, remova o item e adicione de novo.')).toBeInTheDocument()
     expect(dialogo.getByRole('button', { name: 'Trocar capa' })).toBeInTheDocument()
@@ -662,7 +663,7 @@ describe('Biblioteca — editar', () => {
     const dialogo = await abrirEditar(usuario, 'Amigo')
     await usuario.clear(dialogo.getByLabelText('Nome'))
     await usuario.type(dialogo.getByLabelText('Nome'), 'Amigo 2')
-    await usuario.selectOptions(dialogo.getByLabelText('Categoria'), livros.id)
+    await escolherOpcao(usuario, dialogo.getByLabelText('Categoria'), livros.id)
     await usuario.click(dialogo.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(chamadas).toEqual([{ metodo: 'PATCH', caminho: `/api/biblioteca/itens/${amigo.id}`, corpo: { nome: 'Amigo 2', categoriaId: livros.id } }])
@@ -734,7 +735,7 @@ describe('Biblioteca — editar', () => {
     const mexerNaTela = [
       { mexida: 'digitar no nome', mexer: (usuario: Usuario, dialogo: DialogoDoItem) => usuario.type(dialogo.getByLabelText('Nome'), '!') },
       { mexida: 'digitar na descrição', mexer: (usuario: Usuario, dialogo: DialogoDoItem) => usuario.type(dialogo.getByLabelText('Descrição'), '!') },
-      { mexida: 'mudar a categoria', mexer: (usuario: Usuario, dialogo: DialogoDoItem) => usuario.selectOptions(dialogo.getByLabelText('Categoria'), cadernos.id) },
+      { mexida: 'mudar a categoria', mexer: (usuario: Usuario, dialogo: DialogoDoItem) => escolherOpcao(usuario, dialogo.getByLabelText('Categoria'), cadernos.id) },
       { mexida: 'tirar a capa', mexer: (usuario: Usuario, dialogo: DialogoDoItem) => usuario.click(dialogo.getByRole('button', { name: 'Tirar capa' })) },
       { mexida: 'trocar a capa', mexer: (usuario: Usuario, dialogo: DialogoDoItem) => usuario.upload(dialogo.getByLabelText('Nova capa'), capaDe('nova.png')) },
     ]
@@ -796,7 +797,7 @@ describe('Biblioteca — editar', () => {
 
       await usuario.click(dialogo.getByRole('button', { name: 'Salvar' }))
       expect(await dialogo.findByRole('alert')).toHaveTextContent(MENSAGEM)
-      await usuario.selectOptions(dialogo.getByLabelText('Categoria'), livros.id)
+      await escolherOpcao(usuario, dialogo.getByLabelText('Categoria'), livros.id)
       expect(dialogo.queryByRole('alert')).not.toBeInTheDocument()
     })
 

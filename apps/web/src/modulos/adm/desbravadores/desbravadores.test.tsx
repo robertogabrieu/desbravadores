@@ -27,6 +27,7 @@ import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
 import { simularLargura } from '../../../testes/midia'
 import { rotasAdmDesbravadores } from './rotas'
+import { escolherOpcao, valorDe, textosDasOpcoes, quadroDe } from '../../../testes/escolherOpcao'
 
 const aguias = criarUnidade({ id: uuid(201), nome: 'Águias' })
 const amigo = criarClasse({ id: uuid(101), nome: 'Amigo', corToken: '--classe-amigo' })
@@ -82,11 +83,11 @@ async function abrirEdicao(dbv: Desbravador, ...handlers: RequestHandler[]) {
   const tela = renderizarRotas(rotasAdmDesbravadores, `/adm/desbravadores/${dbv.id}/editar`)
   await screen.findByRole('heading', { level: 1, name: dbv.nome })
   // Unidades e classes chegam depois do registro; sem elas a seleção ainda não mostra o valor do cadastro.
-  await waitFor(() => {
+  await waitFor(async () => {
     const unidade = screen.queryByLabelText('Unidade')
-    if (unidade) expect(unidade).toHaveTextContent('Águias')
+    if (unidade) expect(await textosDasOpcoes(userEvent, unidade)).toContain('Águias')
     const classe = screen.queryByLabelText('Classe do ano')
-    if (classe) expect(classe).toHaveTextContent('Amigo')
+    if (classe) expect(await textosDasOpcoes(userEvent, classe)).toContain('Amigo')
   })
   return tela
 }
@@ -126,17 +127,17 @@ describe('A1 · lista', () => {
     expect(screen.getByRole('row', { name: /Bruno/ })).toBeInTheDocument()
     await userEvent.clear(screen.getByLabelText('Buscar por nome'))
 
-    await userEvent.selectOptions(screen.getByLabelText('Unidade'), 'Sem unidade')
+    await escolherOpcao(userEvent, screen.getByLabelText('Unidade'), 'Sem unidade')
     await waitFor(() => expect(ultima()?.get('semUnidade')).toBe('true'))
 
-    await userEvent.selectOptions(screen.getByLabelText('Unidade'), 'Águias')
+    await escolherOpcao(userEvent, screen.getByLabelText('Unidade'), 'Águias')
     await waitFor(() => expect(ultima()?.get('unidadeId')).toBe(aguias.id))
     expect(ultima()?.get('semUnidade')).toBeNull()
 
-    await userEvent.selectOptions(screen.getByLabelText('Classe'), 'Amigo')
+    await escolherOpcao(userEvent, screen.getByLabelText('Classe'), 'Amigo')
     await waitFor(() => expect(ultima()?.get('classeId')).toBe(amigo.id))
 
-    await userEvent.selectOptions(screen.getByLabelText('Situação'), 'Inativos')
+    await escolherOpcao(userEvent, screen.getByLabelText('Situação'), 'Inativos')
     await waitFor(() => expect(ultima()?.get('ativo')).toBe('false'))
   })
 
@@ -161,7 +162,7 @@ describe('A1 · lista', () => {
     renderizarRotas(rotasAdmDesbravadores, '/adm/desbravadores?unidade=sem&pagina=2')
     await waitFor(() => expect(urls.at(-1)?.searchParams.get('pagina')).toBe('2'))
     expect(urls.at(-1)?.searchParams.get('semUnidade')).toBe('true')
-    expect(screen.getByLabelText('Unidade')).toHaveValue('sem')
+    expect(valorDe(screen.getByLabelText('Unidade'))).toBe('sem')
   })
 
   it('a lista não tem mais coluna de ações: inativar e reativar moram na ficha', async () => {
@@ -245,10 +246,10 @@ describe('lista no celular', () => {
     const folha = within(screen.getByRole('dialog', { name: 'Filtrar desbravadores' }))
     expect(folha.getByLabelText('Classe')).toBeInTheDocument()
     expect(folha.getByLabelText('Situação')).toBeInTheDocument()
-    await userEvent.selectOptions(folha.getByLabelText('Tipo'), 'Diretoria')
+    await escolherOpcao(userEvent, folha.getByLabelText('Tipo'), 'Diretoria')
     await waitFor(() => expect(consultas.at(-1)?.searchParams.get('tipo')).toBe('DIRETORIA'))
     expect(roteador.state.location.search).toContain('tipo=DIRETORIA')
-    await userEvent.selectOptions(folha.getByLabelText('Unidade'), 'Águias')
+    await escolherOpcao(userEvent, folha.getByLabelText('Unidade'), 'Águias')
     await waitFor(() => expect(consultas.at(-1)?.searchParams.get('unidadeId')).toBe(aguias.id))
 
     await userEvent.click(await folha.findByRole('button', { name: 'Mostrar 0 desbravadores' }))
@@ -282,9 +283,9 @@ describe('A1 · novo desbravador', () => {
     await abrirNovo()
     await userEvent.type(screen.getByLabelText('Nome completo'), 'Davi Rocha')
     fireEvent.change(screen.getByLabelText('Nascimento'), { target: { value: '20/05/2015' } })
-    await userEvent.selectOptions(screen.getByLabelText('Sexo'), 'Masculino')
-    await userEvent.selectOptions(screen.getByLabelText('Unidade'), 'Águias')
-    await userEvent.selectOptions(screen.getByLabelText('Classe do ano'), 'Amigo')
+    await escolherOpcao(userEvent, screen.getByLabelText('Sexo'), 'Masculino')
+    await escolherOpcao(userEvent, screen.getByLabelText('Unidade'), 'Águias')
+    await escolherOpcao(userEvent, screen.getByLabelText('Classe do ano'), 'Amigo')
     expect(screen.getByLabelText('Matricular também na avançada')).toBeChecked()
     await userEvent.type(screen.getByLabelText('Responsável'), 'Marta Rocha')
     await userEvent.click(screen.getByLabelText('Autorizou o uso de imagem'))
@@ -313,8 +314,8 @@ describe('A1 · novo desbravador', () => {
     await abrirNovo()
     await userEvent.type(screen.getByLabelText('Nome completo'), 'Davi Rocha')
     fireEvent.change(screen.getByLabelText('Nascimento'), { target: { value: '20/05/2015' } })
-    await userEvent.selectOptions(screen.getByLabelText('Sexo'), 'Masculino')
-    await userEvent.selectOptions(screen.getByLabelText('Classe do ano'), 'Amigo')
+    await escolherOpcao(userEvent, screen.getByLabelText('Sexo'), 'Masculino')
+    await escolherOpcao(userEvent, screen.getByLabelText('Classe do ano'), 'Amigo')
     await userEvent.click(screen.getByLabelText('Matricular também na avançada'))
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(corpo).toMatchObject({ classeId: amigo.id, incluirAvancada: false }))
@@ -336,7 +337,7 @@ describe('A1 · novo desbravador', () => {
     await abrirNovo()
     expect(screen.getByLabelText('Unidade')).toBeInTheDocument()
     expect(screen.queryByLabelText('Conta de usuário (opcional)')).not.toBeInTheDocument()
-    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'Líder em formação')
+    await escolherOpcao(userEvent, screen.getByLabelText('Tipo'), 'Líder em formação')
     expect(screen.queryByLabelText('Unidade')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Classe do ano')).not.toBeInTheDocument()
     expect(screen.getByLabelText('Conta de usuário (opcional)')).toBeInTheDocument()
@@ -346,13 +347,13 @@ describe('A1 · novo desbravador', () => {
     await abrirNovo()
     const classe = () => screen.getByLabelText('Classe do ano')
     const ajuda = 'Fica na classe da idade que completa até 30/06, quando houver. Dá para trocar depois.'
-    expect(within(classe()).getByRole('option', { name: 'Pela idade' })).toBeInTheDocument()
-    expect(within(classe()).queryByRole('option', { name: 'Sem classe' })).not.toBeInTheDocument()
+    expect(quadroDe(classe())).toHaveTextContent('Pela idade')
+    expect(await textosDasOpcoes(userEvent, classe())).not.toContain('Sem classe')
     expect(classe()).toHaveAccessibleDescription(ajuda)
 
-    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'Diretoria')
-    expect(within(classe()).getByRole('option', { name: 'Sem classe' })).toBeInTheDocument()
-    expect(within(classe()).queryByRole('option', { name: 'Pela idade' })).not.toBeInTheDocument()
+    await escolherOpcao(userEvent, screen.getByLabelText('Tipo'), 'Diretoria')
+    expect(await textosDasOpcoes(userEvent, classe())).toContain('Sem classe')
+    expect(await textosDasOpcoes(userEvent, classe())).not.toContain('Pela idade')
     expect(screen.queryByText(ajuda)).not.toBeInTheDocument()
   })
 
@@ -361,7 +362,7 @@ describe('A1 · novo desbravador', () => {
     await abrirNovo()
     await userEvent.type(screen.getByLabelText('Nome completo'), 'Davi Rocha')
     fireEvent.change(screen.getByLabelText('Nascimento'), { target: { value: '20/05/2015' } })
-    await userEvent.selectOptions(screen.getByLabelText('Sexo'), 'Feminino')
+    await escolherOpcao(userEvent, screen.getByLabelText('Sexo'), 'Feminino')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     expect(await screen.findByText('A unidade Águias é masculina.')).toBeInTheDocument()
     await esperarFicha()
@@ -372,7 +373,7 @@ describe('A1 · novo desbravador', () => {
     await abrirNovo()
     await userEvent.type(screen.getByLabelText('Nome completo'), 'Davi Rocha')
     fireEvent.change(screen.getByLabelText('Nascimento'), { target: { value: '20/05/2015' } })
-    await userEvent.selectOptions(screen.getByLabelText('Sexo'), 'Masculino')
+    await escolherOpcao(userEvent, screen.getByLabelText('Sexo'), 'Masculino')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Classe de outro clube.')
     expect(screen.getByRole('heading', { level: 1, name: 'Novo desbravador' })).toBeInTheDocument()
@@ -383,7 +384,7 @@ describe('A1 · novo desbravador', () => {
     await abrirNovo()
     await userEvent.type(screen.getByLabelText('Nome completo'), 'Davi Rocha')
     fireEvent.change(screen.getByLabelText('Nascimento'), { target: { value: '20/05/2015' } })
-    await userEvent.selectOptions(screen.getByLabelText('Sexo'), 'Masculino')
+    await escolherOpcao(userEvent, screen.getByLabelText('Sexo'), 'Masculino')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     expect(await screen.findByText('Nome já usado')).toBeInTheDocument()
   })
@@ -399,11 +400,11 @@ describe('A1 · editar', () => {
     )
     await abrirEdicao(ana)
     expect(screen.getByLabelText('Nome completo')).toHaveValue('Ana Clara Souza')
-    expect(screen.getByLabelText('Unidade')).toHaveValue(aguias.id)
+    expect(valorDe(screen.getByLabelText('Unidade'))).toBe(aguias.id)
     expect(screen.queryByLabelText('Entrada no clube')).not.toBeInTheDocument()
     await userEvent.clear(screen.getByLabelText('Nome público'))
     await userEvent.type(screen.getByLabelText('Nome público'), 'Aninha')
-    await userEvent.selectOptions(screen.getByLabelText('Unidade'), 'Sem unidade')
+    await escolherOpcao(userEvent, screen.getByLabelText('Unidade'), 'Sem unidade')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() => expect(corpo).toMatchObject({ nome: 'Ana Clara Souza', nomePublico: 'Aninha', nascimento: '2015-03-10' }))
     expect(corpo).not.toHaveProperty('unidadeId')
@@ -429,11 +430,11 @@ describe('A1 · editar a classe do ano', () => {
     servidor.use(handlerConfiguracao(configuracao), handlerEditarDesbravador(bruno), handlerMatricular((id, corpo) => (matricula = { id, ...corpo })))
     await abrirEdicao(bruno)
     expect(screen.getByLabelText('Classe do ano')).toHaveValue('')
-    expect(within(screen.getByLabelText('Classe do ano')).getByRole('option', { name: 'Pela idade' })).toBeInTheDocument()
+    expect(await textosDasOpcoes(userEvent, screen.getByLabelText('Classe do ano'))).toContain('Pela idade')
     expect(screen.getByLabelText('Classe do ano')).toHaveAccessibleDescription(
       'Recebe a classe da idade na próxima verificação automática, em até 6 horas. Ou escolha agora.',
     )
-    await userEvent.selectOptions(screen.getByLabelText('Classe do ano'), 'Amigo')
+    await escolherOpcao(userEvent, screen.getByLabelText('Classe do ano'), 'Amigo')
     expect(screen.getByRole('checkbox', { name: 'Matricular também na avançada' })).toBeChecked()
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() => expect(matricula).toEqual({ id: bruno.id, classeId: amigo.id, anoClube: anoEsperado, incluirAvancada: true }))
@@ -454,8 +455,8 @@ describe('A1 · editar a classe do ano', () => {
     const diretora = criarDesbravador({ id: uuid(303), nome: 'Clara Dias', tipo: 'DIRETORIA', idade: 16, unidade: null, motivosDiretoria: ['IDADE'] })
     servidor.use(handlerEditarDesbravador(diretora))
     await abrirEdicao(diretora)
-    expect(within(screen.getByLabelText('Classe do ano')).getByRole('option', { name: 'Sem classe' })).toBeInTheDocument()
-    expect(within(screen.getByLabelText('Classe do ano')).queryByRole('option', { name: 'Pela idade' })).not.toBeInTheDocument()
+    expect(await textosDasOpcoes(userEvent, screen.getByLabelText('Classe do ano'))).toContain('Sem classe')
+    expect(await textosDasOpcoes(userEvent, screen.getByLabelText('Classe do ano'))).not.toContain('Pela idade')
     expect(screen.queryByText('Fica na classe da idade que completa até 30/06, quando houver. Dá para trocar depois.')).not.toBeInTheDocument()
     expect(screen.queryByText('Recebe a classe da idade na próxima verificação automática, em até 6 horas. Ou escolha agora.')).not.toBeInTheDocument()
   })
@@ -484,7 +485,7 @@ describe('A1 · editar a classe do ano', () => {
     const { roteador } = renderizarRotas(rotasAdmDesbravadores, `/adm/desbravadores/${bruno.id}`)
     await userEvent.click(await screen.findByRole('link', { name: 'Editar' }))
     await screen.findByLabelText('Classe do ano')
-    await userEvent.selectOptions(screen.getByLabelText('Classe do ano'), 'Amigo')
+    await escolherOpcao(userEvent, screen.getByLabelText('Classe do ano'), 'Amigo')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     const ficha = within(await esperarFicha())
     await waitFor(() => expect(ficha.getByText('Classe do ano', { selector: 'dt' }).nextElementSibling).toHaveTextContent('Amigo'))
@@ -495,8 +496,8 @@ describe('A1 · editar a classe do ano', () => {
     let matriculou = false
     servidor.use(handlerConfiguracao(configuracao), handlerEditarDesbravador(ana), handlerMatricular(() => (matriculou = true)))
     await abrirEdicao(ana)
-    expect(screen.getByLabelText('Classe do ano')).toHaveValue(amigo.id)
-    expect(within(screen.getByLabelText('Classe do ano')).queryByRole('option', { name: 'Sem classe' })).not.toBeInTheDocument()
+    expect(valorDe(screen.getByLabelText('Classe do ano'))).toBe(amigo.id)
+    expect(await textosDasOpcoes(userEvent, screen.getByLabelText('Classe do ano'))).not.toContain('Sem classe')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     await esperarFicha()
     expect(matriculou).toBe(false)
@@ -506,9 +507,9 @@ describe('A1 · editar a classe do ano', () => {
     const companheiro = criarClasse({ id: uuid(102), nome: 'Companheiro', corToken: '--classe-companheiro' })
     const agrupada = criarClasse({ id: uuid(103), nome: 'Agrupadas (Amigo a Guia)', trilha: 'AGRUPADAS', corToken: '--classe-guia' })
     await abrirEdicao(ana, handlerClasses([amigo, companheiro, agrupada]))
-    await userEvent.selectOptions(screen.getByLabelText('Classe do ano'), 'Companheiro')
+    await escolherOpcao(userEvent, screen.getByLabelText('Classe do ano'), 'Companheiro')
     expect(screen.getByText('A classe atual fica registrada como desistência.')).toBeInTheDocument()
-    await userEvent.selectOptions(screen.getByLabelText('Classe do ano'), 'Agrupadas (Amigo a Guia)')
+    await escolherOpcao(userEvent, screen.getByLabelText('Classe do ano'), 'Agrupadas (Amigo a Guia)')
     expect(screen.getByText('A classe atual continua: o desbravador passa a cursar as duas.')).toBeInTheDocument()
   })
 
@@ -519,7 +520,7 @@ describe('A1 · editar a classe do ano', () => {
       http.post('/api/desbravadores/:id/matriculas', () => HttpResponse.json({ codigo: 'REGRA', mensagem: 'Reative o desbravador antes de matricular.' }, { status: 422 })),
     )
     await abrirEdicao(bruno)
-    await userEvent.selectOptions(screen.getByLabelText('Classe do ano'), 'Amigo')
+    await escolherOpcao(userEvent, screen.getByLabelText('Classe do ano'), 'Amigo')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     expect(await screen.findByText('Dados salvos. A classe não foi alterada: Reative o desbravador antes de matricular.')).toBeInTheDocument()
   })
@@ -541,7 +542,7 @@ describe('A1 · editar com salvamento parcial', () => {
       ),
     )
     await abrirEdicao(ana)
-    await userEvent.selectOptions(screen.getByLabelText('Unidade'), 'Sem unidade')
+    await escolherOpcao(userEvent, screen.getByLabelText('Unidade'), 'Sem unidade')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     expect(await screen.findByText('Dados salvos. A unidade não foi alterada: Reative o desbravador antes de mudar a unidade.')).toBeInTheDocument()
     expect(screen.getByText('A unidade Leões é feminina.')).toBeInTheDocument()
@@ -580,16 +581,16 @@ describe('Tipo: Desbravador, Diretoria e Líder', () => {
     expect(ultima()?.get('tipo')).toBeNull()
     expect(screen.queryByLabelText('Diretoria')).not.toBeInTheDocument()
 
-    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'Diretoria')
+    await escolherOpcao(userEvent, screen.getByLabelText('Tipo'), 'Diretoria')
     await waitFor(() => expect(ultima()?.get('tipo')).toBe('DIRETORIA'))
     await waitFor(() => expect(screen.queryByRole('row', { name: /Ana Clara/ })).not.toBeInTheDocument())
     expect(screen.getByRole('row', { name: /Davi Rocha/ })).toBeInTheDocument()
 
-    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'Líder')
+    await escolherOpcao(userEvent, screen.getByLabelText('Tipo'), 'Líder')
     await waitFor(() => expect(ultima()?.get('tipo')).toBe('LIDER'))
-    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'Desbravador')
+    await escolherOpcao(userEvent, screen.getByLabelText('Tipo'), 'Desbravador')
     await waitFor(() => expect(ultima()?.get('tipo')).toBe('DBV'))
-    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'Todos')
+    await escolherOpcao(userEvent, screen.getByLabelText('Tipo'), 'Todos')
     await waitFor(() => expect(ultima()?.get('tipo')).toBeNull())
     expect(consultas.every((url) => url.searchParams.get('diretoria') === null)).toBe(true)
   })
@@ -597,7 +598,7 @@ describe('Tipo: Desbravador, Diretoria e Líder', () => {
   it('filtro Tipo sem ninguém mostra o estado vazio', async () => {
     abrir([ana])
     await screen.findByRole('row', { name: /Ana Clara/ })
-    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'Diretoria')
+    await escolherOpcao(userEvent, screen.getByLabelText('Tipo'), 'Diretoria')
     expect(await screen.findByText('Nenhum desbravador encontrado')).toBeInTheDocument()
   })
 
@@ -605,11 +606,11 @@ describe('Tipo: Desbravador, Diretoria e Líder', () => {
     await abrirEdicao(diretor)
     const tipo = screen.getByLabelText('Tipo')
     expect(tipo).toBeEnabled()
-    expect(tipo).toHaveValue('DIRETORIA')
+    expect(valorDe(tipo)).toBe('DIRETORIA')
     expect(tipo).toHaveAccessibleDescription('Diretoria pela idade (16 anos até junho) e porque é conselheiro')
     expect(screen.queryByText('Membro da Diretoria')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Unidade')).not.toBeInTheDocument()
-    expect(screen.getByLabelText('Classe do ano')).toHaveValue(amigo.id)
+    expect(valorDe(screen.getByLabelText('Classe do ano'))).toBe(amigo.id)
   })
 
   it('a ajuda diz o motivo instrutor', async () => {
@@ -624,7 +625,7 @@ describe('Tipo: Desbravador, Diretoria e Líder', () => {
 
   it('Líder não mostra motivo de Diretoria', async () => {
     await abrirEdicao(liderConselheira)
-    expect(screen.getByLabelText('Tipo')).toHaveValue('LIDER')
+    expect(valorDe(screen.getByLabelText('Tipo'))).toBe('LIDER')
     expect(screen.getByLabelText('Tipo')).not.toHaveAccessibleDescription()
   })
 
@@ -637,7 +638,7 @@ describe('Tipo: Desbravador, Diretoria e Líder', () => {
     )
     await abrirEdicao(ana)
     expect(screen.getByLabelText('Tipo')).not.toHaveAccessibleDescription()
-    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'Diretoria')
+    await escolherOpcao(userEvent, screen.getByLabelText('Tipo'), 'Diretoria')
     expect(screen.getByLabelText('Tipo')).toHaveAccessibleDescription('Sai da unidade e da chamada; continua cursando a classe.')
     expect(screen.queryByLabelText('Unidade')).not.toBeInTheDocument()
     expect(screen.getByLabelText('Classe do ano')).toBeInTheDocument()
@@ -649,7 +650,7 @@ describe('Tipo: Desbravador, Diretoria e Líder', () => {
 
   it('trocar Desbravador para Líder também avisa a saída da unidade', async () => {
     await abrirEdicao(ana)
-    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'Líder em formação')
+    await escolherOpcao(userEvent, screen.getByLabelText('Tipo'), 'Líder em formação')
     expect(screen.getByLabelText('Tipo')).toHaveAccessibleDescription('Sai da unidade e da chamada; continua cursando a classe.')
     expect(screen.queryByLabelText('Unidade')).not.toBeInTheDocument()
   })
@@ -659,7 +660,7 @@ describe('Tipo: Desbravador, Diretoria e Líder', () => {
     ['Líder', liderConselheira],
   ])('voltar %s a Desbravador avisa que a chamada depende da unidade', async (_rotulo, quem) => {
     await abrirEdicao(quem)
-    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'Desbravador')
+    await escolherOpcao(userEvent, screen.getByLabelText('Tipo'), 'Desbravador')
     expect(screen.getByLabelText('Tipo')).toHaveAccessibleDescription('Entra na chamada quando tiver uma unidade: escolha abaixo.')
     expect(screen.getByLabelText('Unidade')).toHaveValue('')
   })
@@ -670,16 +671,16 @@ describe('Tipo: Desbravador, Diretoria e Líder', () => {
     const unidade = screen.getByLabelText('Unidade')
     expect(unidade).toHaveAccessibleDescription('Entra na chamada quando tiver uma unidade: escolha abaixo.')
     expect(screen.getByLabelText('Tipo')).not.toHaveAccessibleDescription()
-    await userEvent.selectOptions(unidade, aguias.id)
+    await escolherOpcao(userEvent, unidade, aguias.id)
     expect(unidade).not.toHaveAccessibleDescription()
   })
 
   it('no cadastro novo, "Sem unidade" também avisa que só entra na chamada com unidade', async () => {
     await abrirNovo()
     const unidade = screen.getByLabelText('Unidade')
-    await waitFor(() => expect(unidade).toHaveTextContent('Águias'))
+    await waitFor(async () => expect(await textosDasOpcoes(userEvent, unidade)).toContain('Águias'))
     expect(unidade).toHaveAccessibleDescription('Entra na chamada quando tiver uma unidade: escolha abaixo.')
-    await userEvent.selectOptions(unidade, aguias.id)
+    await escolherOpcao(userEvent, unidade, aguias.id)
     expect(unidade).not.toHaveAccessibleDescription()
   })
 
@@ -707,7 +708,7 @@ describe('Tipo: Desbravador, Diretoria e Líder', () => {
       }),
     )
     await abrirEdicao(diretor)
-    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'Desbravador')
+    await escolherOpcao(userEvent, screen.getByLabelText('Tipo'), 'Desbravador')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() => expect(screen.getByLabelText('Tipo')).toHaveAttribute('aria-invalid', 'true'))
     expect(screen.getByLabelText('Tipo')).toHaveAccessibleDescription(expect.stringContaining('Tem 16 anos até junho: é Diretoria automaticamente.'))
@@ -718,12 +719,12 @@ describe('Tipo: Desbravador, Diretoria e Líder', () => {
     let corpo: unknown
     servidor.use(handlerCriarDesbravador(criarDesbravador(), [], (recebido) => (corpo = recebido)))
     await abrirNovo()
-    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'Diretoria')
+    await escolherOpcao(userEvent, screen.getByLabelText('Tipo'), 'Diretoria')
     expect(screen.queryByLabelText('Unidade')).not.toBeInTheDocument()
     expect(screen.getByLabelText('Classe do ano')).toBeInTheDocument()
     await userEvent.type(screen.getByLabelText('Nome completo'), 'Davi Rocha')
     fireEvent.change(screen.getByLabelText('Nascimento'), { target: { value: '20/05/2014' } })
-    await userEvent.selectOptions(screen.getByLabelText('Sexo'), 'Masculino')
+    await escolherOpcao(userEvent, screen.getByLabelText('Sexo'), 'Masculino')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(corpo).toMatchObject({ tipo: 'DIRETORIA' }))
     expect(corpo).not.toHaveProperty('unidadeId')
@@ -736,8 +737,8 @@ describe('Tipo: Desbravador, Diretoria e Líder', () => {
     await abrirNovo(...handlersDaFicha(diretor))
     await userEvent.type(screen.getByLabelText('Nome completo'), 'Davi Rocha')
     fireEvent.change(screen.getByLabelText('Nascimento'), { target: { value: '20/05/2009' } })
-    await userEvent.selectOptions(screen.getByLabelText('Sexo'), 'Masculino')
-    await userEvent.selectOptions(screen.getByLabelText('Unidade'), 'Águias')
+    await escolherOpcao(userEvent, screen.getByLabelText('Sexo'), 'Masculino')
+    await escolherOpcao(userEvent, screen.getByLabelText('Unidade'), 'Águias')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     expect(await screen.findByText('Diretoria não entra em unidade.')).toBeInTheDocument()
     await esperarFicha()

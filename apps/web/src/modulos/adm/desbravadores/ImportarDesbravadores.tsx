@@ -9,7 +9,7 @@ import { useClasses, useUnidades } from '../../../api/leitura'
 import { useLarguraMenorQue } from '../../../layouts/useLarguraMenorQue'
 import { useConexao } from '../../../offline'
 import { Botao } from '../../../ui/Botao'
-import { Campo } from '../../../ui/Campo'
+import { CampoArquivo } from '../../../ui/CampoArquivo'
 import { Cartao } from '../../../ui/Cartao'
 import { EstadoVazio } from '../../../ui/EstadoVazio'
 import { Carregando, DisponivelComInternet } from '../../../ui/EstadosDeCarga'
@@ -96,11 +96,9 @@ function EtapaEnviar({ aoLer }: { aoLer: (linhas: LinhaEmRevisao[]) => void }) {
         </Botao>
       </div>
       <form noValidate onSubmit={(evento) => void aoEnviar(evento)} className="flex flex-col gap-4">
-        <Campo
+        <CampoArquivo
           rotulo="Planilha"
-          type="file"
           accept=".xlsx,.csv"
-          className="py-2"
           onChange={(e) => setArquivo(e.target.files?.[0] ?? null)}
         />
         {erro && (

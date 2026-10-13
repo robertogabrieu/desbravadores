@@ -91,15 +91,17 @@ describe('Regular e avançada · seletor de classe', () => {
   it('mostra o par como uma opção só e não tem mais o alternador Regular | Avançada', async () => {
     abrirAdm()
     const seletor = await screen.findByRole('combobox', { name: 'Classe' })
-    expect(await within(seletor).findByRole('option', { name: 'Amigo + Amigo da Natureza' })).toBeInTheDocument()
-    expect(within(seletor).getAllByRole('option')).toHaveLength(1)
+    await userEvent.click(seletor)
+    expect(await screen.findByRole('option', { name: 'Amigo + Amigo da Natureza' })).toBeInTheDocument()
+    expect(screen.getAllByRole('option')).toHaveLength(1)
     expect(screen.queryByRole('radiogroup', { name: 'Tipo da classe' })).not.toBeInTheDocument()
   })
 
   it('regular sem avançada ativa mostra só o nome', async () => {
     abrirAdm(criarMontagem(), '/adm/cronogramas', [criarClasse(), { ...CLASSE_AVANCADA, ativa: false, regularDoParId: null }])
     const seletor = await screen.findByRole('combobox', { name: 'Classe' })
-    expect(await within(seletor).findByRole('option', { name: 'Amigo' })).toBeInTheDocument()
+    await userEvent.click(seletor)
+    expect(await screen.findByRole('option', { name: 'Amigo' })).toBeInTheDocument()
   })
 
   it('abrir com ?classe=<avançada> lê a montagem da regular', async () => {
@@ -134,8 +136,9 @@ describe('Regular e avançada · regular inativa', () => {
   it('Adm: a avançada vale sozinha — aparece no seletor pelo próprio nome, e a regular inativa não', async () => {
     abrirAdm(montagemDaAvancada, '/adm/cronogramas', [REGULAR_INATIVA, AVANCADA_SOLTA])
     const seletor = await screen.findByRole('combobox', { name: 'Classe' })
-    expect(await within(seletor).findByRole('option', { name: 'Amigo da Natureza' })).toBeInTheDocument()
-    expect(within(seletor).getAllByRole('option')).toHaveLength(1)
+    await userEvent.click(seletor)
+    expect(await screen.findByRole('option', { name: 'Amigo da Natureza' })).toBeInTheDocument()
+    expect(screen.getAllByRole('option')).toHaveLength(1)
   })
 
   it('Adm: ?classe=<avançada> abre a montagem da própria avançada, sem ir para a regular inativa', async () => {
@@ -153,7 +156,8 @@ describe('Regular e avançada · regular inativa', () => {
     )
     renderizarRotas(rotasInstrutor, `/cronograma/montar?classe=${CLASSE_AVANCADA.id}`)
     const seletor = await screen.findByRole('combobox', { name: 'Classe' })
-    expect(within(seletor).getAllByRole('option').map((opcao) => opcao.textContent)).toEqual(['Amigo', 'Amigo da Natureza'])
+    await userEvent.click(seletor)
+    expect((await screen.findAllByRole('option')).map((opcao) => opcao.textContent)).toEqual(['Amigo', 'Amigo da Natureza'])
     await waitFor(() => expect(registro.classesLidas).not.toHaveLength(0))
     expect(registro.classesLidas).toEqual([CLASSE_AVANCADA.id])
   })

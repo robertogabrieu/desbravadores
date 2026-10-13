@@ -15,6 +15,7 @@ import { uuid } from '../../../testes/handlers/sessao'
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
 import { rotasAdmDesbravadores } from './rotas'
+import { escolherOpcao } from '../../../testes/escolherOpcao'
 
 const aguias = criarUnidade({ id: uuid(201), nome: 'Águias' })
 const amigo = criarClasse({ id: uuid(101), nome: 'Amigo', corToken: '--classe-amigo' })
@@ -150,7 +151,7 @@ describe('ficha do desbravador', () => {
     expect(roteador.state.location.pathname).toBe('/adm/desbravadores/novo')
     await userEvent.type(screen.getByLabelText('Nome completo'), 'Bia Nova')
     await userEvent.type(screen.getByLabelText('Nascimento'), '10/03/2015')
-    await userEvent.selectOptions(screen.getByLabelText('Sexo'), 'F')
+    await escolherOpcao(userEvent, screen.getByLabelText('Sexo'), 'F')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     expect(await screen.findByRole('heading', { level: 1, name: 'Bia Nova' })).toBeInTheDocument()
     expect(roteador.state.location.pathname).toBe(`/adm/desbravadores/${uuid(330)}`)

@@ -78,8 +78,9 @@ describe('Agrupadas não formam par', () => {
     const montagem = criarMontagem({ classe: { ...CLASSE_AVANCADA_MONTAGEM, id: agrupadaAvancada.id, trilha: 'AGRUPADAS' }, datasLivres: true })
     const registro = abrirAdm(montagem, `/adm/cronogramas?classe=${agrupadaAvancada.id}`, classes)
     const seletor = await screen.findByRole('combobox', { name: 'Classe' })
+    await userEvent.click(seletor)
     await waitFor(() =>
-      expect(within(seletor).queryAllByRole('option').map((opcao) => opcao.textContent)).toEqual(['Agrupadas (Amigo a Guia)', 'Agrupadas — avançada']),
+      expect(screen.queryAllByRole('option').map((opcao) => opcao.textContent)).toEqual(['Agrupadas (Amigo a Guia)', 'Agrupadas — avançada']),
     )
     await waitFor(() => expect(registro.classesLidas).toEqual([agrupadaAvancada.id]))
   })
