@@ -9,6 +9,7 @@ import { criarVinculo, handlersSessao, uuid } from '../../../testes/handlers/ses
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
 import { rotasReunioes } from '../rotas'
+import { escolherOpcao, valorDe } from '../../../testes/escolherOpcao'
 
 const estado = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao, itens: [] as ItemFilaNaTela[] }))
 
@@ -202,9 +203,9 @@ describe('Histórico de reuniões', () => {
     servidor.use(handlerReunioes({}, consultas))
     abrir()
     const seletor = await screen.findByRole('combobox', { name: 'Unidade' })
-    expect(seletor).toHaveValue(AGUIAS.id)
+    expect(valorDe(seletor)).toBe(AGUIAS.id)
     await screen.findByText('Nenhuma chamada ainda.')
-    await userEvent.selectOptions(seletor, LEOES.id)
+    await escolherOpcao(userEvent, seletor, LEOES.id)
     await vi.waitFor(() => expect(consultas.at(-1)?.unidadeId).toBe(LEOES.id))
   })
 

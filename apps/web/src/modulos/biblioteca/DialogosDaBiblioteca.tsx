@@ -251,7 +251,7 @@ function DialogoAdicionar({ categorias, aoFechar }: { categorias: CategoriaBibli
     definirDescricao(evento.target.value)
   }
 
-  const mudarCategoria = (evento: ChangeEvent<HTMLSelectElement>) => {
+  const mudarCategoria = (evento: { target: { value: string } }) => {
     definirErroDoEnvio(null)
     definirCategoriaId(evento.target.value)
   }
@@ -371,7 +371,7 @@ function DialogoEditar({ item, categorias, aoFechar }: { item: ItemBiblioteca; c
     definirDescricao(evento.target.value)
   }
 
-  const mudarCategoria = (evento: ChangeEvent<HTMLSelectElement>) => {
+  const mudarCategoria = (evento: { target: { value: string } }) => {
     limparFalhas()
     definirCategoriaId(evento.target.value)
   }

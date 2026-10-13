@@ -12,6 +12,7 @@ import { uuid } from '../../../testes/handlers/sessao'
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
 import { rotasAdmCalendario } from './rotas'
+import { textosDasOpcoes } from '../../../testes/escolherOpcao'
 
 const estado = vi.hoisted(() => ({ modo: 'ONLINE' as 'ONLINE' | 'SEM_CONEXAO', hoje: null as string | null }))
 vi.mock('../../../offline', async (importarOriginal) => ({
@@ -198,7 +199,7 @@ describe('ficha do evento', () => {
   it('o seletor de tipo do formulário não oferece Classe Bíblica', async () => {
     abrir(`/adm/calendario/eventos/${uuid(801)}/editar`)
     const tipo = await screen.findByLabelText('Tipo')
-    const opcoes = within(tipo).getAllByRole('option').map((opcao) => opcao.textContent)
+    const opcoes = await textosDasOpcoes(userEvent, tipo)
     expect(opcoes).toContain('Evento do clube')
     expect(opcoes).not.toContain('Classe Bíblica')
   })

@@ -15,7 +15,15 @@ interface Propriedades {
 }
 
 /** Campo de arquivo: área grande para tocar ou arrastar, que mostra o nome do arquivo escolhido. */
-export function CampoArquivo({ rotulo, ajuda, erro, accept, disabled, id, onChange }: Propriedades) {
+export function CampoArquivo({
+  rotulo,
+  ajuda,
+  erro,
+  accept,
+  disabled,
+  id,
+  onChange,
+}: Propriedades) {
   const gerado = useId()
   const idCampo = id ?? gerado
   const entrada = useRef<HTMLInputElement>(null)
@@ -48,14 +56,26 @@ export function CampoArquivo({ rotulo, ajuda, erro, accept, disabled, id, onChan
         onDrop={aoSoltar}
         className={cn(
           'flex min-h-24 w-full flex-col items-center justify-center gap-1.5 rounded-controle border-2 border-dashed px-4 py-4 text-center transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-marca',
-          erro ? 'border-perigo' : nome ? 'border-marca bg-marca-suave' : 'border-borda-controle bg-superficie hover:bg-superficie-suave',
+          erro
+            ? 'border-perigo'
+            : nome
+              ? 'border-marca bg-marca-suave'
+              : 'border-borda-controle bg-superficie hover:bg-superficie-suave',
           arrastando && 'border-marca bg-marca-suave',
           disabled && 'bg-superficie-suave opacity-60',
         )}
       >
-        {nome ? <FileCheck2 aria-hidden className="size-6 text-marca" /> : <Upload aria-hidden className="size-6 text-texto-2" />}
-        <span className="max-w-full break-all text-base font-semibold text-texto">{nome ?? 'Escolher arquivo'}</span>
-        <span className="text-sm text-texto-2">{nome ? 'Toque para trocar' : 'Toque aqui ou arraste o arquivo'}</span>
+        {nome ? (
+          <FileCheck2 aria-hidden className="size-6 text-marca" />
+        ) : (
+          <Upload aria-hidden className="size-6 text-texto-2" />
+        )}
+        <span className="max-w-full break-all text-base font-semibold text-texto">
+          {nome ?? 'Escolher arquivo'}
+        </span>
+        <span className="text-sm text-texto-2">
+          {nome ? 'Toque para trocar' : 'Toque aqui ou arraste o arquivo'}
+        </span>
         <input
           ref={entrada}
           id={idCampo}

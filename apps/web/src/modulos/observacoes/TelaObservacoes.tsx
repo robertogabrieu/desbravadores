@@ -18,7 +18,6 @@ import { Confirmacao } from '../../ui/Confirmacao'
 import { EstadoVazio } from '../../ui/EstadoVazio'
 import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../ui/EstadosDeCarga'
 import { Selecao } from '../../ui/Selecao'
-import { SelecaoPesquisavel } from '../../ui/SelecaoPesquisavel'
 import { Selo } from '../../ui/Selo'
 import { ChipsDeClasse, useClasseEscolhida } from '../progresso/ChipsDeClasse'
 import { diaEHora, diaEMesCurto } from '../progresso/formatos'
@@ -141,12 +140,12 @@ function FormularioNovaObservacao({ classeId }: { classeId: string }) {
           </Selecao>
         )
       ) : (
-        <SelecaoPesquisavel
-          rotulo="Desbravador"
-          valor={dbvId}
-          aoMudar={definirDbvId}
-          opcoes={desbravadores.map((item) => ({ valor: item.dbvId, rotulo: item.nome }))}
-        />
+        <Selecao rotulo="Desbravador" value={dbvId} onChange={(e) => definirDbvId(e.target.value)}>
+          <option value="">Escolha…</option>
+          {desbravadores.map((item) => (
+            <option key={item.dbvId} value={item.dbvId}>{item.nome}</option>
+          ))}
+        </Selecao>
       )}
       <Campo rotulo="Título (opcional)" value={titulo} maxLength={80} onChange={(e) => definirTitulo(e.target.value)} />
       <AreaTexto rotulo="Nova observação" rows={3} value={texto} maxLength={4000} placeholder="Escreva uma observação…" erro={erro} onChange={(e) => definirTexto(e.target.value)} />

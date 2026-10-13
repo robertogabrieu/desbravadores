@@ -16,7 +16,6 @@ import { ResumoDosErros, useErrosAVista } from '../../../ui/ErrosDoFormulario'
 import { FaixaAviso } from '../../../ui/FaixaAviso'
 import { RodapeDoFormulario } from '../../../ui/RodapeDoFormulario'
 import { Selecao } from '../../../ui/Selecao'
-import { SelecaoPesquisavel } from '../../../ui/SelecaoPesquisavel'
 import { MENSAGEM_GENERICA, errosDoContrato, lerErroDaApi } from './erros'
 
 interface Valores {
@@ -106,12 +105,14 @@ function valoresIniciais(desbravador: Desbravador | undefined): Valores {
 function CampoContaDeUsuario({ valor, aoMudar }: { valor: string; aoMudar: (id: string) => void }) {
   const usuarios = useUsuariosResumo()
   return (
-    <SelecaoPesquisavel
-      rotulo="Conta de usuário (opcional)"
-      valor={valor}
-      aoMudar={aoMudar}
-      opcoes={[{ valor: '', rotulo: 'Sem conta de usuário' }, ...(usuarios.data?.itens ?? []).map((usuario) => ({ valor: usuario.id, rotulo: usuario.nome }))]}
-    />
+    <Selecao rotulo="Conta de usuário (opcional)" value={valor} onChange={(e) => aoMudar(e.target.value)}>
+      <option value="">Sem conta de usuário</option>
+      {usuarios.data?.itens.map((usuario) => (
+        <option key={usuario.id} value={usuario.id}>
+          {usuario.nome}
+        </option>
+      ))}
+    </Selecao>
   )
 }
 

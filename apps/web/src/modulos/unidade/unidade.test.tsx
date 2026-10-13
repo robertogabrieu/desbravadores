@@ -8,6 +8,7 @@ import { criarVinculo, handlersSessao, uuid } from '../../testes/handlers/sessao
 import { renderizarRotas } from '../../testes/renderizar'
 import { servidor } from '../../testes/servidor'
 import { rotasUnidade } from './rotas'
+import { escolherOpcao, valorDe } from '../../testes/escolherOpcao'
 
 const ERRO_500 = { codigo: 'ERRO_INTERNO', mensagem: 'Servidor fora do ar' }
 
@@ -56,9 +57,9 @@ describe('Minha unidade', () => {
     )
     abrir()
     const seletor = await screen.findByRole('combobox', { name: 'Unidade' })
-    expect(seletor).toHaveValue(AGUIAS.id)
+    expect(valorDe(seletor)).toBe(AGUIAS.id)
     expect(await screen.findByText('Ana Clara Souza')).toBeInTheDocument()
-    await userEvent.selectOptions(seletor, LEOES.id)
+    await escolherOpcao(userEvent, seletor, LEOES.id)
     expect(await screen.findByText('Davi Carvalho')).toBeInTheDocument()
     expect(screen.queryByText('Ana Clara Souza')).not.toBeInTheDocument()
   })

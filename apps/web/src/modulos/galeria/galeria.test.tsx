@@ -20,6 +20,7 @@ import { criarVinculo, handlersSessao, uuid } from '../../testes/handlers/sessao
 import { renderizarRotas } from '../../testes/renderizar'
 import { servidor } from '../../testes/servidor'
 import { rotasGaleria } from './rotas'
+import { escolherOpcao } from '../../testes/escolherOpcao'
 
 const estado = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao, avisos: { erro: vi.fn(), sucesso: vi.fn() } }))
 
@@ -74,7 +75,7 @@ describe('Galeria da unidade', () => {
     servidor.use(handlerAlbuns([criarAlbum()], (c) => consultas.push(c.get('unidadeId') ?? '')))
     renderizarRotas(rotasGaleria, '/galeria')
     await screen.findByText('Águias · 6 fotos')
-    await userEvent.selectOptions(screen.getByLabelText('Unidade'), UNIDADE_LEOES.id)
+    await escolherOpcao(userEvent, screen.getByLabelText('Unidade'), UNIDADE_LEOES.id)
     expect(await screen.findByText('Leões · 6 fotos')).toBeInTheDocument()
     expect(consultas).toEqual([UNIDADE_AGUIAS.id, UNIDADE_LEOES.id])
   })

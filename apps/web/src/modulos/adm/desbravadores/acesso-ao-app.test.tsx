@@ -17,6 +17,7 @@ import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
 import type { SituacaoAcesso } from '../../../api/convite-acesso'
 import { rotasAdmDesbravadores } from './rotas'
+import { escolherOpcao, valorDe } from '../../../testes/escolherOpcao'
 
 const aguias = criarUnidade({ id: uuid(201), nome: 'Águias' })
 const amigo = criarClasse({ id: uuid(101), nome: 'Amigo', corToken: '--classe-amigo' })
@@ -34,7 +35,7 @@ describe('acesso ao app · sem conta e sem convite', () => {
   it('gera convite de conselheiro com a unidade escolhida e mostra o link, copiar e WhatsApp', async () => {
     const { secao, registro } = await abrirAcesso()
     await userEvent.click(await secao.findByRole('button', { name: 'Gerar link de acesso' }))
-    expect(secao.getByLabelText('Papel')).toHaveValue('CONSELHEIRO')
+    expect(valorDe(secao.getByLabelText('Papel'))).toBe('CONSELHEIRO')
     await userEvent.click(await secao.findByRole('checkbox', { name: 'Águias' }))
     await userEvent.click(secao.getByRole('button', { name: 'Gerar link' }))
 
@@ -54,7 +55,7 @@ describe('acesso ao app · sem conta e sem convite', () => {
   it('gera convite de instrutor com a classe escolhida', async () => {
     const { secao, registro } = await abrirAcesso()
     await userEvent.click(await secao.findByRole('button', { name: 'Gerar link de acesso' }))
-    await userEvent.selectOptions(secao.getByLabelText('Papel'), 'INSTRUTOR')
+    await escolherOpcao(userEvent, secao.getByLabelText('Papel'), 'INSTRUTOR')
     await userEvent.click(await secao.findByRole('checkbox', { name: 'Amigo' }))
     await userEvent.click(secao.getByRole('button', { name: 'Gerar link' }))
     await secao.findByText(LINK_CONVITE)

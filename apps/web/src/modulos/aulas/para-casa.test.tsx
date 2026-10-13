@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { ParaCasa } from './ParaCasa'
 import { chaveItem } from './estado'
 import type { Requisito } from './estado'
+import { escolherOpcao, textosDasOpcoes } from '../../testes/escolherOpcao'
 
 const uuid = (n: number): string => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
 const R1 = uuid(11)
@@ -70,8 +71,8 @@ describe('Para casa', () => {
   it('"+ Requisito" lista só os que não estão em tarefa aberta nem já foram passados', async () => {
     const { aoPassarRequisito } = montar({ indisponiveis: new Set([chaveItem({ requisitoId: R1 }), chaveItem({ requisitoId: R3 })]) })
     const selecao = screen.getByLabelText('+ Requisito')
-    expect(within(selecao).getAllByRole('option').map((o) => o.textContent)).toEqual(['Escolha um requisito', 'III.2 · Decorar o lema da classe'])
-    await userEvent.selectOptions(selecao, R2)
+    expect(await textosDasOpcoes(userEvent, selecao)).toEqual(['Escolha um requisito', 'III.2 · Decorar o lema da classe'])
+    await escolherOpcao(userEvent, selecao, R2)
     expect(aoPassarRequisito).toHaveBeenCalledWith(R2)
   })
 

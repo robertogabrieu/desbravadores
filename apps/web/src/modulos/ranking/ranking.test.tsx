@@ -9,6 +9,7 @@ import { criarVinculo, handlersSessao } from '../../testes/handlers/sessao'
 import { renderizarRotas } from '../../testes/renderizar'
 import { servidor } from '../../testes/servidor'
 import { rotasRanking } from './rotas'
+import { escolherOpcao, textosDasOpcoes, valorDe } from '../../testes/escolherOpcao'
 
 const offline = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao }))
 
@@ -112,16 +113,16 @@ describe('ranking do mês', () => {
     servidor.use(handlerRanking(criarRanking(), (consulta) => unidades.push(consulta.get('unidadeId'))), handlerRankingUnidades())
     abrir()
     const filtro = await screen.findByRole('combobox', { name: 'Unidade' })
-    expect(within(filtro).getAllByRole('option').map((opcao) => opcao.textContent)).toEqual([
+    expect(await textosDasOpcoes(userEvent, filtro)).toEqual([
       'Todas as unidades',
       UNIDADE_LEOES.nome,
       UNIDADE_AGUIAS.nome,
     ])
-    await userEvent.selectOptions(filtro, UNIDADE_LEOES.nome)
+    await escolherOpcao(userEvent, filtro, UNIDADE_LEOES.nome)
     await waitFor(() => expect(unidades).toContain(UNIDADE_LEOES.id))
-    expect(filtro).toHaveValue(UNIDADE_LEOES.id)
+    expect(valorDe(filtro)).toBe(UNIDADE_LEOES.id)
 
-    await userEvent.selectOptions(filtro, 'Todas as unidades')
+    await escolherOpcao(userEvent, filtro, 'Todas as unidades')
     await waitFor(() => expect(unidades.at(-1)).toBeNull())
   })
 

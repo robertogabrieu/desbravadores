@@ -20,6 +20,7 @@ import { renderizarRotas } from '../../../testes/renderizar'
 import { simularLargura } from '../../../testes/midia'
 import { servidor } from '../../../testes/servidor'
 import { rotasAdmUsuarios } from './rotas'
+import { escolherOpcao } from '../../../testes/escolherOpcao'
 
 const AGUIAS = criarUnidade({ id: uuid(201), nome: 'Águias' })
 const LEOES = criarUnidade({ id: uuid(202), nome: 'Leões' })
@@ -223,7 +224,7 @@ describe('novo usuário: convidar numa tela só', () => {
     servidor.use(handlerCriarUsuario(novo, corpos), handlerUsuario(caixa(novo)))
     await userEvent.type(await screen.findByLabelText('Nome'), 'Rui Novo')
     await userEvent.type(screen.getByLabelText('E-mail'), 'rui@clube.test')
-    await userEvent.selectOptions(screen.getByLabelText('Gênero'), 'M')
+    await escolherOpcao(userEvent, screen.getByLabelText('Gênero'), 'M')
     await userEvent.click(screen.getByRole('radio', { name: /Instrutor/ }))
     await userEvent.click(await screen.findByRole('button', { name: 'Amigo' }))
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))

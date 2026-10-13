@@ -9,7 +9,10 @@ describe('CampoArquivo', () => {
     render(<CampoArquivo rotulo="PDF" accept="application/pdf" onChange={aoMudar} />)
 
     expect(screen.getByText('Escolher arquivo')).toBeInTheDocument()
-    await userEvent.upload(screen.getByLabelText(/Escolher arquivo/), new File(['x'], 'regulamento.pdf', { type: 'application/pdf' }))
+    await userEvent.upload(
+      screen.getByLabelText(/Escolher arquivo/),
+      new File(['x'], 'regulamento.pdf', { type: 'application/pdf' }),
+    )
 
     expect(screen.getByText('regulamento.pdf')).toBeInTheDocument()
     expect(aoMudar).toHaveBeenCalledTimes(1)

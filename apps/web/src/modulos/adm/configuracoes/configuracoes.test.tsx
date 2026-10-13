@@ -7,6 +7,7 @@ import { handlersClasseBiblica } from '../../../testes/handlers/classe-biblica'
 import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
 import { rotasAdmConfiguracoes } from './rotas'
+import { escolherOpcao, valorDe } from '../../../testes/escolherOpcao'
 
 const estado = vi.hoisted(() => ({ modo: 'ONLINE' as 'ONLINE' | 'SEM_CONEXAO' }))
 vi.mock('../../../offline', async (importarOriginal) => ({
@@ -44,7 +45,7 @@ describe('Configurações do clube · estados', () => {
   it('vazio não existe: local nulo abre um campo em branco; fuso e início do ano são só texto', async () => {
     abrir(handlerConfiguracao(criarConfiguracao({ localReuniaoPadrao: null })))
     expect(await screen.findByLabelText('Local padrão')).toHaveValue('')
-    expect(screen.getByLabelText('Dia da reunião')).toHaveValue('6')
+    expect(valorDe(screen.getByLabelText('Dia da reunião'))).toBe('6')
     expect(screen.getByText(/America\/Sao_Paulo/)).toHaveTextContent('01/02')
     expect(screen.queryByLabelText('Fuso horário')).not.toBeInTheDocument()
   })
@@ -60,7 +61,7 @@ describe('Configurações do clube · salvar', () => {
   it('envia os campos editáveis, mantém a meta gravada e confirma', async () => {
     let corpo: Record<string, unknown> = {}
     abrir(handlerConfiguracao(), handlerSalvarConfiguracao(criarConfiguracao(), (c) => (corpo = c as Record<string, unknown>)))
-    await userEvent.selectOptions(await screen.findByLabelText('Dia da reunião'), '0')
+    await escolherOpcao(userEvent, await screen.findByLabelText('Dia da reunião'), '0')
     await userEvent.clear(screen.getByLabelText('Alerta de frequência'))
     await userEvent.type(screen.getByLabelText('Alerta de frequência'), '70')
     await userEvent.clear(screen.getByLabelText('Local padrão'))
@@ -80,7 +81,7 @@ describe('Configurações do clube · salvar', () => {
   it('mostra o 422 do dia da reunião com aula futura', async () => {
     const mensagem = 'Há aulas marcadas no dia atual de reunião: Amigo. Mova-as antes.'
     abrir(handlerConfiguracao(), handlerErroSalvarConfiguracao(422, { codigo: 'REGRA', mensagem }))
-    await userEvent.selectOptions(await screen.findByLabelText('Dia da reunião'), '2')
+    await escolherOpcao(userEvent, await screen.findByLabelText('Dia da reunião'), '2')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar configurações' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(mensagem)
