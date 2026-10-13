@@ -158,6 +158,7 @@ function Formulario({ edicao, padroes, aoNascer }: PropsDoFormulario) {
         {quantos !== null && <p className="text-sm text-texto-2">{`${quantos} ${diasNoPlural(valores.diaSemana)} entre as duas datas`}</p>}
         {travada && <p className="text-sm text-texto-2">Início, fim e dia da semana não mudam depois de a edição ser criada: os encontros já estão no calendário.</p>}
       </div>
+      <div data-testid="linha-encontro" className="grid items-start gap-5 md:grid-cols-[minmax(11rem,1fr)_8rem_minmax(0,2fr)]">
       <Selecao
         rotulo="Dia da semana"
         ajuda={travada ? undefined : 'Veio das configurações do clube. Mude se a Classe Bíblica for em outro dia.'}
@@ -176,7 +177,6 @@ function Formulario({ edicao, padroes, aoNascer }: PropsDoFormulario) {
         ajuda="Ex.: 14:00"
         inputMode="numeric"
         maxLength={5}
-        className="sm:max-w-40"
         value={valores.horario}
         erro={erros.horario}
         onChange={(e) => mudar('horario', e.target.value)}
@@ -190,6 +190,7 @@ function Formulario({ edicao, padroes, aoNascer }: PropsDoFormulario) {
         onChange={(e) => mudar('local', e.target.value)}
         onBlur={() => sair('local')}
       />
+      </div>
       <LinhaDoSalvo texto={textoDoSalvo(rascunho, true)} />
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <Botao type="submit" carregando={seguindo} disabled={rascunho.semConexao}>Continuar para os grupos</Botao>
