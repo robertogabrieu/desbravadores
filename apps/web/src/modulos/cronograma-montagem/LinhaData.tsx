@@ -30,11 +30,14 @@ interface Propriedades {
   /** Só no celular: "Mover" ao lado de cada requisito de uma data em conflito. */
   aoMover?: (requisito: RequisitoComLado) => void
   aoEditar: (dado: DataDaMontagem) => void
+  /** Só no computador: presente quando a data aceita o requisito que está sendo arrastado; ausente, a data não é alvo de soltar. */
+  aoSoltar?: () => void
   /** "Remover aula" (com confirmação) nas aulas ainda não dadas. */
   aoRemoverAula: (dado: DataDaMontagem) => void
 }
 
-export function LinhaData({ dado, requisitos, comAvancada = false, destaqueCampo = false, desabilitada, acaoDaData, aoTirar, aoMover, aoEditar, aoRemoverAula }: Propriedades) {
+export function LinhaData({ dado, requisitos, comAvancada = false, destaqueCampo = false, desabilitada, acaoDaData, aoTirar, aoMover, aoEditar, aoSoltar, aoRemoverAula }: Propriedades) {
+  const [sobre, setSobre] = useState(false)
   const [confirmandoRemocao, setConfirmandoRemocao] = useState(false)
   const { semana, dia, mes } = partesDaData(dado.data)
   const texto = textoDaData(dado)
@@ -48,12 +51,32 @@ export function LinhaData({ dado, requisitos, comAvancada = false, destaqueCampo
     <li
       data-data={dado.data}
       data-estado={dado.conflito ? 'conflito' : bloqueada ? 'bloqueada' : destaqueCampo ? 'campo' : 'livre'}
+      onDragOver={(evento) => {
+        if (!aoSoltar) {
+          evento.dataTransfer.dropEffect = 'none'
+          return
+        }
+        evento.preventDefault()
+        evento.dataTransfer.dropEffect = 'move'
+        setSobre(true)
+      }}
+      onDragLeave={(evento) => {
+        if (!evento.currentTarget.contains(evento.relatedTarget as Node | null)) setSobre(false)
+      }}
+      onDrop={(evento) => {
+        setSobre(false)
+        if (!aoSoltar) return
+        evento.preventDefault()
+        aoSoltar()
+      }}
+      data-soltar={aoSoltar ? (sobre ? 'sobre' : 'aceita') : undefined}
       className={cn(
         'flex items-start gap-3 rounded-cartao border p-3',
         dado.conflito && 'border-perigo bg-perigo/10',
         !dado.conflito && bloqueada && cn('border-divisor', HACHURA),
         !dado.conflito && !bloqueada && destaqueCampo && 'border-acampamento bg-acampamento-fundo',
         !dado.conflito && !bloqueada && !destaqueCampo && 'border-divisor bg-superficie',
+        aoSoltar && sobre && 'border-2 border-marca bg-marca-tinta',
       )}
     >
       <div className="flex w-12 shrink-0 flex-col items-center text-texto">
