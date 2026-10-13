@@ -2,7 +2,7 @@ import { CircleUserRound } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { cn } from '../ui/cn'
 
-/** Atalho do cabeçalho para a página "Minha conta"; o texto só aparece onde cabe, e o ícone fica sempre. */
+/** Atalho do cabeçalho para a página "Minha conta": o texto fica sempre visível, para quem não reconhece só o ícone. */
 export function BotaoMinhaConta({ sobreMarca = false }: { sobreMarca?: boolean }) {
   return (
     <NavLink
@@ -17,7 +17,7 @@ export function BotaoMinhaConta({ sobreMarca = false }: { sobreMarca?: boolean }
       }
     >
       <CircleUserRound aria-hidden className="size-6" />
-      <span className="max-sm:sr-only">Minha conta</span>
+      <span>Conta</span>
     </NavLink>
   )
 }

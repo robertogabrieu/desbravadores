@@ -7,7 +7,7 @@ import { LayoutAdm } from '../../layouts/LayoutAdm'
 import { LayoutCelular } from '../../layouts/LayoutCelular'
 import type { EstadoFila } from '../../offline'
 import { servidor } from '../../testes/servidor'
-import { criarVinculo, handlersSessao } from '../../testes/handlers/sessao'
+import { criarVinculo, handlersSessao, uuid } from '../../testes/handlers/sessao'
 import { renderizarRotas } from '../../testes/renderizar'
 import { rotasConta } from './rotas'
 
@@ -59,13 +59,22 @@ describe('Minha conta', () => {
     expect(screen.getByRole('button', { name: 'Sair de todos os aparelhos' })).toBeInTheDocument()
   })
 
-  it('2+ vínculos oferece "Trocar de papel", que leva a /papel', async () => {
-    servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO', 1), criarVinculo('INSTRUTOR', 2)]))
+  it('vínculos em clubes diferentes: oferece "Trocar de papel", que leva a /papel', async () => {
+    const outroClube = { clube: { id: uuid(901), nome: 'Outro Clube', slug: 'outro' } }
+    servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO', 1), criarVinculo('INSTRUTOR', 2, outroClube)]))
     const { roteador } = renderizarRotas(rotas, '/conta')
 
     await userEvent.click(await screen.findByRole('link', { name: 'Trocar de papel' }))
 
     expect(roteador.state.location.pathname).toBe('/papel')
+  })
+
+  it('2 papéis no mesmo clube: só o selo troca, sem um segundo botão para a mesma coisa', async () => {
+    servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO', 1), criarVinculo('INSTRUTOR', 2)]))
+    renderizarRotas(rotas, '/conta')
+
+    expect(await screen.findByRole('button', { name: 'Papel: Conselheiro. Trocar de papel' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Trocar de papel|outros clubes/ })).not.toBeInTheDocument()
   })
 
   describe('sair', () => {

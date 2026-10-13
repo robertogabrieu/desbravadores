@@ -23,6 +23,10 @@ export function PaginaConta() {
 
   const itensNaFila = contagem.pendentes + contagem.erros
   const escopo = vinculoAtivo ? escopoDoVinculo(vinculoAtivo) : ''
+  const papeisDoClube = vinculoAtivo ? vinculosDoClube(vinculos, vinculoAtivo).length : 0
+  // O selo já troca entre os papéis do clube; a tela de papéis só acrescenta quando há vínculo em outro clube.
+  const mostraSelo = papeisDoClube >= 2
+  const mostraTelaDePapeis = vinculos.length >= 2 && (!mostraSelo || vinculos.length > papeisDoClube)
 
   const executar = (saida: Saida) => void (saida === 'SAIR' ? sair() : sairDeTodos())
 
@@ -49,10 +53,10 @@ export function PaginaConta() {
             {escopo && <span className="text-texto-2"> · {escopo}</span>}
           </p>
           <div className="flex flex-wrap items-center gap-2">
-            {vinculosDoClube(vinculos, vinculoAtivo).length >= 2 && <SeloPapel />}
-            {vinculos.length >= 2 && (
+            {mostraSelo && <SeloPapel />}
+            {mostraTelaDePapeis && (
               <Link to="/papel" className={estiloDoBotao({ variante: 'secundario' })}>
-                Trocar de papel
+                {mostraSelo ? 'Papéis em outros clubes' : 'Trocar de papel'}
               </Link>
             )}
           </div>

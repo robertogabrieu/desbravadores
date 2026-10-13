@@ -138,8 +138,11 @@ describe('LayoutAdm', () => {
     expect(menu.getByRole('button', { name: 'Classes' })).toHaveAttribute('aria-expanded', 'true')
     expect(menu.getByText('Cronogramas')).toBeInTheDocument()
 
+    await userEvent.click(menu.getByRole('button', { name: 'Classes' }))
+    expect(menu.queryByText('Cronogramas')).not.toBeInTheDocument()
+    // O grupo da tela aberta não fecha: o item atual não pode sumir do menu.
     await userEvent.click(menu.getByRole('button', { name: 'Membros' }))
-    expect(menu.queryByText('Usuários')).not.toBeInTheDocument()
+    expect(menu.getByText('Usuários')).toBeInTheDocument()
   })
 
   it('cada item aponta para a sua tela, dentro do grupo ou solto', async () => {

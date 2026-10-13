@@ -1,7 +1,7 @@
 import { BookOpen, CalendarDays, ChevronDown, ClipboardList, Flag, GraduationCap, LayoutDashboard, Library, ListChecks, Settings, Trophy, UserRound, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useId, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { matchPath, useLocation } from 'react-router-dom'
 import { cn } from '../ui/cn'
 import { ItemNavegacao } from './ItemNavegacao'
 import type { ItemDeNavegacao } from './ItemNavegacao'
@@ -50,7 +50,7 @@ const ENTRADAS_ADM: EntradaDoMenu[] = [
 const ehGrupo = (entrada: EntradaDoMenu): entrada is GrupoDeNavegacao => 'grupo' in entrada
 
 const estaNaRota = (item: ItemDeNavegacao, caminho: string): boolean =>
-  item.para !== undefined && (caminho === item.para || (!item.exato && caminho.startsWith(`${item.para}/`)))
+  item.para !== undefined && matchPath({ path: item.para, end: item.exato ?? false }, caminho) !== null
 
 /** Sem `rotulo` dentro da gaveta: ela já se chama "Menu do Adm", e o leitor de tela repetiria o nome. */
 export function MenuDoAdm({ rotulo, aoEscolher }: { rotulo?: string; aoEscolher?: () => void }) {
@@ -67,21 +67,22 @@ export function MenuDoAdm({ rotulo, aoEscolher }: { rotulo?: string; aoEscolher?
   )
 }
 
-/** Abre sozinho quando a tela aberta é de um dos itens; depois de a pessoa abrir ou fechar, vale a escolha dela. */
+/** O grupo da tela aberta fica sempre aberto, para o item atual não sumir; os demais abrem e fecham pela escolha da pessoa. */
 function GrupoDoMenu({ grupo, aoEscolher }: { grupo: GrupoDeNavegacao; aoEscolher?: () => void }) {
   const { pathname } = useLocation()
-  const [escolha, definirEscolha] = useState<boolean | null>(null)
+  const [escolhaAberto, definirEscolhaAberto] = useState(false)
   const idLista = useId()
   const Icone = grupo.icone
-  const aberto = escolha ?? grupo.itens.some((item) => estaNaRota(item, pathname))
+  const temItemAtivo = grupo.itens.some((item) => estaNaRota(item, pathname))
+  const aberto = temItemAtivo || escolhaAberto
 
   return (
     <div className="flex flex-col gap-1">
       <button
         type="button"
         aria-expanded={aberto}
-        aria-controls={idLista}
-        onClick={() => definirEscolha(!aberto)}
+        aria-controls={aberto ? idLista : undefined}
+        onClick={() => definirEscolhaAberto(!escolhaAberto)}
         className="flex min-h-[var(--touch-min)] shrink-0 items-center gap-3 rounded-botao px-3 text-base font-semibold text-sobre-marca hover:bg-marca-escura"
       >
         <Icone aria-hidden className="size-5" />
