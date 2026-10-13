@@ -57,7 +57,7 @@ function itemDoMenu(nome: string): HTMLElement {
 }
 
 describe('LayoutCelular', () => {
-  it('conselheiro: Início, Unidade, Reuniões, Calendário e Ranking habilitados', async () => {
+  it('conselheiro: Início, Unidade, Reuniões, Calendário, Ranking e Conta habilitados', async () => {
     servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO')]))
     renderizarRotas(rotasCelular, '/inicio')
     await screen.findByText('conteúdo')
@@ -68,13 +68,14 @@ describe('LayoutCelular', () => {
     expect(itemDoMenu('Reuniões')).toHaveAttribute('href', '/reunioes')
     expect(itemDoMenu('Calendário')).toHaveAttribute('href', '/calendario')
     expect(itemDoMenu('Ranking')).toHaveAttribute('href', '/ranking')
-    expect(within(screen.getByRole('navigation')).getAllByRole('link')).toHaveLength(5)
+    expect(itemDoMenu('Conta')).toHaveAttribute('href', '/conta')
+    expect(within(screen.getByRole('navigation')).getAllByRole('link')).toHaveLength(6)
     expect(within(screen.getByRole('navigation')).queryByText('em breve')).not.toBeInTheDocument()
     expect(within(screen.getByRole('navigation')).queryByText('Classes')).not.toBeInTheDocument()
     expect(within(screen.getByRole('navigation')).queryByText('Biblioteca')).not.toBeInTheDocument()
   })
 
-  it('instrutor: Início, Classes, Cronograma, Calendário e Ranking habilitados', async () => {
+  it('instrutor: Início, Classes, Cronograma, Calendário, Ranking e Conta habilitados', async () => {
     servidor.use(...handlersSessao([criarVinculo('INSTRUTOR')]))
     renderizarRotas(rotasCelular, '/inicio')
     await screen.findByText('conteúdo')
@@ -85,19 +86,20 @@ describe('LayoutCelular', () => {
     expect(itemDoMenu('Classes')).toHaveAttribute('href', '/classes')
     expect(itemDoMenu('Cronograma')).toHaveAttribute('href', '/cronograma')
     expect(itemDoMenu('Calendário')).toHaveAttribute('href', '/calendario')
-    expect(within(screen.getByRole('navigation')).getAllByRole('link')).toHaveLength(5)
+    expect(itemDoMenu('Conta')).toHaveAttribute('href', '/conta')
+    expect(within(screen.getByRole('navigation')).getAllByRole('link')).toHaveLength(6)
     expect(within(screen.getByRole('navigation')).queryByText('Unidade')).not.toBeInTheDocument()
     expect(within(screen.getByRole('navigation')).queryByText('Biblioteca')).not.toBeInTheDocument()
   })
 
-  it('o cabeçalho tem só o atalho "Minha conta", que leva a /conta: sem nome do usuário nem selo de papel', async () => {
+  it('o cabeçalho não tem menu de conta nem nome do usuário: a conta fica na barra, em "Conta"', async () => {
     servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO', 1), criarVinculo('INSTRUTOR', 2)]))
     const { roteador } = renderizarRotas(rotasCelular, '/inicio')
     await esperarSessao()
 
     expect(screen.queryByRole('button', { name: /Ana Souza/ })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Trocar de papel/ })).not.toBeInTheDocument()
-    await userEvent.click(screen.getByRole('link', { name: 'Minha conta' }))
+    expect(screen.getByRole('button', { name: /Trocar de papel/ })).toBeInTheDocument()
+    await userEvent.click(itemDoMenu('Conta'))
 
     expect(roteador.state.location.pathname).toBe('/conta')
   })
@@ -121,13 +123,13 @@ describe('marca do app', () => {
 })
 
 describe('LayoutAdm', () => {
-  it('o menu tem 7 entradas no topo; os grupos abrem e fecham e só o da tela aberta já vem aberto', async () => {
+  it('o menu tem 8 entradas no topo (7 mais Minha conta); os grupos abrem e fecham e só o da tela aberta já vem aberto', async () => {
     servidor.use(...handlersSessao([criarVinculo('ADM')]))
     renderizarRotas(rotasAdm, '/adm/desbravadores')
     await screen.findByText('lista')
     const menu = within(screen.getByRole('navigation', { name: 'Menu do Adm' }))
 
-    const topo = ['Visão geral', 'Membros', 'Classes', 'Calendário do clube', 'Ranking', 'Biblioteca', 'Configurações do clube']
+    const topo = ['Visão geral', 'Membros', 'Classes', 'Calendário do clube', 'Ranking', 'Biblioteca', 'Configurações do clube', 'Minha conta']
     for (const rotulo of topo) expect(menu.getByText(rotulo)).toBeInTheDocument()
     expect(menu.getByRole('button', { name: 'Membros' })).toHaveAttribute('aria-expanded', 'true')
     expect(menu.getByRole('button', { name: 'Classes' })).toHaveAttribute('aria-expanded', 'false')
@@ -166,17 +168,18 @@ describe('LayoutAdm', () => {
       ['Regras de pontuação', '/adm/ranking/regras'],
       ['Biblioteca', '/adm/biblioteca'],
       ['Configurações do clube', '/adm/configuracoes'],
+      ['Minha conta', '/conta'],
     ]
     for (const [rotulo, destino] of destinos) expect(menu.getByRole('link', { name: rotulo })).toHaveAttribute('href', destino)
     expect(menu.getByRole('link', { name: 'Ranking' })).toHaveAttribute('href', '/ranking')
   })
 
-  it('o cabeçalho do Adm tem o atalho "Minha conta" e o sino, sem nome do usuário nem selo de papel', async () => {
-    servidor.use(...handlersSessao([criarVinculo('ADM')]))
+  it('o cabeçalho do Adm não tem menu de conta nem nome do usuário', async () => {
+    servidor.use(...handlersSessao([criarVinculo('ADM', 1), criarVinculo('INSTRUTOR', 2)]))
     renderizarRotas(rotasAdm, '/adm/desbravadores')
     await screen.findByText('lista')
 
-    expect(screen.getByRole('link', { name: 'Minha conta' })).toHaveAttribute('href', '/conta')
+    expect(await screen.findByRole('button', { name: /Trocar de papel/ })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Ana Souza/ })).not.toBeInTheDocument()
   })
 

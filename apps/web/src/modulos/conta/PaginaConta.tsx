@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { SeloPapel } from '../../layouts/SeloPapel'
 import { useFila } from '../../offline'
 import { useSessao } from '../../sessao/useSessao'
 import { Botao, estiloDoBotao } from '../../ui/Botao'
 import { Cartao } from '../../ui/Cartao'
 import { Confirmacao } from '../../ui/Confirmacao'
-import { escopoDoVinculo, rotuloDoPapel, vinculosDoClube } from '../acesso/papeis'
+import { escopoDoVinculo, rotuloDoPapel } from '../acesso/papeis'
 
 type Saida = 'SAIR' | 'SAIR_DE_TODOS'
 
@@ -15,7 +14,7 @@ const ROTULO_DA_SAIDA: Record<Saida, string> = {
   SAIR_DE_TODOS: 'Sair de todos os aparelhos',
 }
 
-/** Minha conta: quem sou, em que papel estou, trocar de papel e sair. Vale para os três papéis. */
+/** Minha conta: quem sou, em que papel estou, a tela de papéis e sair. A troca rápida de papel fica no cabeçalho. Vale para os três papéis. */
 export function PaginaConta() {
   const { eu, vinculos, vinculoAtivo, sair, sairDeTodos } = useSessao()
   const { contagem } = useFila()
@@ -23,11 +22,6 @@ export function PaginaConta() {
 
   const itensNaFila = contagem.pendentes + contagem.erros
   const escopo = vinculoAtivo ? escopoDoVinculo(vinculoAtivo) : ''
-  const papeisDoClube = vinculoAtivo ? vinculosDoClube(vinculos, vinculoAtivo).length : 0
-  // O selo já troca entre os papéis do clube; a tela de papéis só acrescenta quando há vínculo em outro clube.
-  const mostraSelo = papeisDoClube >= 2
-  const mostraTelaDePapeis = vinculos.length >= 2 && (!mostraSelo || vinculos.length > papeisDoClube)
-
   const executar = (saida: Saida) => void (saida === 'SAIR' ? sair() : sairDeTodos())
 
   // Com itens esperando envio, a saída só acontece depois de a pessoa confirmar.
@@ -52,14 +46,11 @@ export function PaginaConta() {
             {rotuloDoPapel(vinculoAtivo.papel)}
             {escopo && <span className="text-texto-2"> · {escopo}</span>}
           </p>
-          <div className="flex flex-wrap items-center gap-2">
-            {mostraSelo && <SeloPapel />}
-            {mostraTelaDePapeis && (
-              <Link to="/papel" className={estiloDoBotao({ variante: 'secundario' })}>
-                {mostraSelo ? 'Papéis em outros clubes' : 'Trocar de papel'}
-              </Link>
-            )}
-          </div>
+          {vinculos.length >= 2 && (
+            <Link to="/papel" className={`${estiloDoBotao({ variante: 'secundario' })} w-fit`}>
+              Trocar de papel
+            </Link>
+          )}
         </Cartao>
       )}
 

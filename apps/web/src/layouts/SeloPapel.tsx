@@ -5,6 +5,7 @@ import { naoEnviadosDoVinculo, useConexao } from '../offline'
 import type { ItemFila } from '../offline'
 import { useSessao } from '../sessao/useSessao'
 import type { Vinculo } from '../sessao/useSessao'
+import { cn } from '../ui/cn'
 import { MenuCabecalho } from '../ui/MenuCabecalho'
 import type { ItemMenu } from '../ui/MenuCabecalho'
 
@@ -43,13 +44,14 @@ function avisoDePendentes(pendentes: ItemFila[], papelAnterior: string): string 
 }
 
 /**
- * Selo do papel em uso, para quem tem 2+ vínculos no clube da sessão: troca em dois toques e leva
- * ao início do novo papel, anunciando a troca por 3 s (ver `AvisoDeTroca`).
+ * Selo do papel em uso no cabeçalho, para quem tem 2+ vínculos no clube da sessão: troca em dois
+ * toques e leva ao início do novo papel, anunciando a troca por 3 s.
  */
-export function SeloPapel() {
+export function SeloPapel({ sobreMarca = false }: { sobreMarca?: boolean }) {
   const { eu, vinculoAtivo, vinculos, escolherPapel } = useSessao()
   const { modo } = useConexao()
   const navegar = useNavigate()
+  const aviso = useSyncExternalStore(assinarAviso, () => avisoAtual)
   const [trocando, definirTrocando] = useState(false)
 
   const trocarPara = async (destino: Vinculo, anterior: Vinculo) => {
@@ -81,32 +83,31 @@ export function SeloPapel() {
       }))
     : []
 
-  if (itens.length < 2) return null
   return (
-    <MenuCabecalho
-      rotulo={papelEmUso}
-      rotuloAcessivel={`Papel: ${papelEmUso}. Trocar de papel`}
-      itens={itens}
-      className="shrink-0"
-      classeDoBotao="rounded-full bg-marca-suave px-3 text-sm text-marca hover:bg-marca-suave/70"
-      classeDoRotulo="max-w-none"
-    />
-  )
-}
-
-/** Anuncia a troca de papel; mora nos layouts porque a troca pode levar a outro layout, e o selo da página some junto. */
-export function AvisoDeTroca() {
-  const aviso = useSyncExternalStore(assinarAviso, () => avisoAtual)
-  return (
-    <p
-      role="status"
-      className={
-        aviso
-          ? 'pointer-events-none fixed inset-x-0 top-16 z-50 mx-auto w-fit max-w-[calc(100vw-2rem)] rounded-cartao bg-texto px-4 py-3 text-center text-base text-white shadow-lg'
-          : 'sr-only'
-      }
-    >
-      {aviso}
-    </p>
+    <>
+      {itens.length >= 2 && (
+        <MenuCabecalho
+          rotulo={papelEmUso}
+          rotuloAcessivel={`Papel: ${papelEmUso}. Trocar de papel`}
+          itens={itens}
+          className="shrink-0"
+          classeDoBotao={cn(
+            'rounded-full px-3 text-sm',
+            sobreMarca ? 'bg-marca-escura text-white hover:bg-black/20' : 'bg-marca-suave text-marca hover:bg-marca-suave/70',
+          )}
+          classeDoRotulo="max-w-none"
+        />
+      )}
+      <p
+        role="status"
+        className={
+          aviso
+            ? 'pointer-events-none fixed inset-x-0 top-16 z-50 mx-auto w-fit max-w-[calc(100vw-2rem)] rounded-cartao bg-texto px-4 py-3 text-center text-base text-white shadow-lg'
+            : 'sr-only'
+        }
+      >
+        {aviso}
+      </p>
+    </>
   )
 }

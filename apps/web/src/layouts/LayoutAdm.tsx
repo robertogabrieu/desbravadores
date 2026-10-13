@@ -5,11 +5,10 @@ import { SinoNotificacoes } from '../modulos/notificacoes/SinoNotificacoes'
 import { FaixaAviso } from '../ui/FaixaAviso'
 import { LARGURA_DO_CELULAR } from '../ui/larguraDoCelular'
 import { Marca } from '../ui/Marca'
-import { BotaoMinhaConta } from './BotaoMinhaConta'
 import { FaixaSemConexao } from './FaixaSemConexao'
 import { FaixaSessaoExpirada } from './FaixaSessaoExpirada'
 import { MenuDoAdm } from './MenuDoAdm'
-import { AvisoDeTroca } from './SeloPapel'
+import { SeloPapel } from './SeloPapel'
 import { useLarguraMenorQue } from './useLarguraMenorQue'
 
 const CHAVE_DA_FAIXA_FECHADA = 'adm:faixa-melhor-no-computador:fechada'
@@ -81,9 +80,8 @@ export function LayoutAdm() {
             </>
           )}
           <div className="ml-auto flex min-w-0 items-center gap-1">
+            <SeloPapel />
             <SinoNotificacoes />
-            <BotaoMinhaConta />
-            <AvisoDeTroca />
           </div>
         </header>
         {telaPequena && !faixaFechada && (
