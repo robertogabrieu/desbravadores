@@ -18,6 +18,7 @@ import {
 import { BarraProgresso } from '../../ui/BarraProgresso'
 import { Botao } from '../../ui/Botao'
 import { Campo } from '../../ui/Campo'
+import { CampoArquivo } from '../../ui/CampoArquivo'
 import { Confirmacao } from '../../ui/Confirmacao'
 import { Selecao } from '../../ui/Selecao'
 import { CapaDoItem } from './CartaoDoItem'
@@ -189,9 +190,8 @@ function DialogoCapaRecusada({ item, motivoInicial, aoFechar }: { item: ItemBibl
     <Confirmacao aberta titulo={`${item.nome} foi adicionado`} rotuloConfirmar="Enviar capa" rotuloCancelar="Fechar" ocupada={porcento !== null} aoConfirmar={() => void enviar()} aoCancelar={aoFechar}>
       <div className="flex flex-col gap-3">
         <p>{`O item foi adicionado, mas a capa não: ${comecandoEmMinuscula(semPontoFinal(motivo))}.`}</p>
-        <Campo
+        <CampoArquivo
           rotulo="Capa"
-          type="file"
           accept={CAPAS_ACEITAS}
           disabled={porcento !== null}
           ajuda="Escolha outra imagem, ou feche e coloque a capa depois em “Editar”."
@@ -305,7 +305,7 @@ function DialogoAdicionar({ categorias, aoFechar }: { categorias: CategoriaBibli
       aoCancelar={cancelar}
     >
       <div className="flex flex-col gap-3">
-        <Campo rotulo="PDF" type="file" accept="application/pdf" disabled={enviando} ajuda={`Até ${MB_DO_PDF} MB.`} erro={erroPdf ?? undefined} onChange={escolherPdf} />
+        <CampoArquivo rotulo="PDF" accept="application/pdf" disabled={enviando} ajuda={`Até ${MB_DO_PDF} MB.`} erro={erroPdf ?? undefined} onChange={escolherPdf} />
         <Campo
           rotulo="Nome"
           value={nome}
@@ -319,9 +319,8 @@ function DialogoAdicionar({ categorias, aoFechar }: { categorias: CategoriaBibli
         <Selecao rotulo="Categoria" value={categoriaId} disabled={enviando} onChange={mudarCategoria}>
           <OpcoesDeCategoria categorias={categorias} />
         </Selecao>
-        <Campo
+        <CampoArquivo
           rotulo="Capa"
-          type="file"
           accept={CAPAS_ACEITAS}
           disabled={enviando}
           ajuda={`Opcional. JPG, PNG ou WebP, até ${MB_DA_CAPA} MB.`}
