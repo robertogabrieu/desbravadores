@@ -1,4 +1,4 @@
-import { CalendarDays, CalendarRange, GraduationCap, House, Trophy, Users } from 'lucide-react'
+import { CalendarDays, CalendarRange, CircleUserRound, GraduationCap, House, Trophy, Users } from 'lucide-react'
 import { Outlet } from 'react-router-dom'
 import { SinoNotificacoes } from '../modulos/notificacoes/SinoNotificacoes'
 import { vinculosDoClube } from '../modulos/acesso/papeis'
@@ -8,21 +8,21 @@ import { FaixaSemConexao } from './FaixaSemConexao'
 import { FaixaSessaoExpirada } from './FaixaSessaoExpirada'
 import { ItemNavegacao } from './ItemNavegacao'
 import type { ItemDeNavegacao } from './ItemNavegacao'
-import { MenuUsuario } from './MenuUsuario'
 import { SeloAguardandoEnvio } from './SeloAguardandoEnvio'
 import { SeloPapel } from './SeloPapel'
 
 const INICIO: ItemDeNavegacao = { rotulo: 'Início', icone: House, para: '/inicio' }
 const RANKING: ItemDeNavegacao = { rotulo: 'Ranking', icone: Trophy, para: '/ranking' }
 const CALENDARIO: ItemDeNavegacao = { rotulo: 'Calendário', icone: CalendarRange, para: '/calendario' }
+const CONTA: ItemDeNavegacao = { rotulo: 'Conta', icone: CircleUserRound, para: '/conta' }
 
 const ITENS_POR_PAPEL = {
-  CONSELHEIRO: [INICIO, { rotulo: 'Unidade', icone: Users, para: '/unidade' }, { rotulo: 'Reuniões', icone: CalendarDays, para: '/reunioes' }, CALENDARIO, RANKING],
-  INSTRUTOR: [INICIO, { rotulo: 'Classes', icone: GraduationCap, para: '/classes' }, { rotulo: 'Cronograma', icone: CalendarDays, para: '/cronograma' }, CALENDARIO, RANKING],
-  ADM: [INICIO],
+  CONSELHEIRO: [INICIO, { rotulo: 'Unidade', icone: Users, para: '/unidade' }, { rotulo: 'Reuniões', icone: CalendarDays, para: '/reunioes' }, CALENDARIO, RANKING, CONTA],
+  INSTRUTOR: [INICIO, { rotulo: 'Classes', icone: GraduationCap, para: '/classes' }, { rotulo: 'Cronograma', icone: CalendarDays, para: '/cronograma' }, CALENDARIO, RANKING, CONTA],
+  ADM: [INICIO, CONTA],
 } satisfies Record<string, ItemDeNavegacao[]>
 
-/** Rota-layout do celular: cabeçalho com menu do usuário, conteúdo e barra inferior do papel ativo. */
+/** Rota-layout do celular: cabeçalho com o selo do papel, conteúdo e barra inferior do papel ativo. */
 export function LayoutCelular() {
   const { papel, vinculos, vinculoAtivo } = useSessao()
   const itens = ITENS_POR_PAPEL[papel ?? 'ADM']
@@ -38,8 +38,7 @@ export function LayoutCelular() {
         <div className="flex min-w-0 items-center gap-1">
           <SeloAguardandoEnvio />
           <SeloPapel sobreMarca />
-          {papel === 'INSTRUTOR' && <SinoNotificacoes />}
-          <MenuUsuario />
+          <SinoNotificacoes />
         </div>
       </header>
       {/* Pensado para o celular, mas há instrutor no tablet: a tela usa a largura dele até onde a leitura aguenta. */}

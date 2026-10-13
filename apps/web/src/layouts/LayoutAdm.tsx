@@ -1,4 +1,4 @@
-import { BookOpen, CalendarDays, ClipboardList, FileText, Flag, GraduationCap, LayoutDashboard, Library, ListChecks, Menu, Settings, Trophy, UserRound, Users, X } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { SinoNotificacoes } from '../modulos/notificacoes/SinoNotificacoes'
@@ -7,27 +7,9 @@ import { LARGURA_DO_CELULAR } from '../ui/larguraDoCelular'
 import { Marca } from '../ui/Marca'
 import { FaixaSemConexao } from './FaixaSemConexao'
 import { FaixaSessaoExpirada } from './FaixaSessaoExpirada'
-import { ItemNavegacao } from './ItemNavegacao'
-import type { ItemDeNavegacao } from './ItemNavegacao'
-import { MenuUsuario } from './MenuUsuario'
+import { MenuDoAdm } from './MenuDoAdm'
 import { SeloPapel } from './SeloPapel'
 import { useLarguraMenorQue } from './useLarguraMenorQue'
-
-const ITENS_ADM: ItemDeNavegacao[] = [
-  { rotulo: 'Visão geral', icone: LayoutDashboard, para: '/adm', exato: true },
-  { rotulo: 'Desbravadores', icone: UserRound, para: '/adm/desbravadores' },
-  { rotulo: 'Usuários', icone: Users, para: '/adm/usuarios' },
-  { rotulo: 'Unidades', icone: Flag, para: '/adm/unidades' },
-  { rotulo: 'Classes e especialidades', icone: GraduationCap, para: '/adm/classes' },
-  { rotulo: 'Calendário do clube', icone: CalendarDays, para: '/adm/calendario' },
-  { rotulo: 'Cronogramas', icone: ClipboardList, para: '/adm/cronogramas' },
-  { rotulo: 'Biblioteca', icone: Library, para: '/adm/biblioteca' },
-  { rotulo: 'Classe Bíblica', icone: BookOpen, para: '/adm/classe-biblica' },
-  { rotulo: 'Configurações do clube', icone: Settings, para: '/adm/configuracoes' },
-  { rotulo: 'Ranking', icone: Trophy, para: '/ranking' },
-  { rotulo: 'Regras de pontuação', icone: ListChecks, para: '/adm/ranking/regras' },
-  { rotulo: 'Relatórios', icone: FileText },
-]
 
 const CHAVE_DA_FAIXA_FECHADA = 'adm:faixa-melhor-no-computador:fechada'
 
@@ -100,7 +82,6 @@ export function LayoutAdm() {
           <div className="ml-auto flex min-w-0 items-center gap-1">
             <SeloPapel />
             <SinoNotificacoes />
-            <MenuUsuario soPrimeiroNome={telaPequena} />
           </div>
         </header>
         {telaPequena && !faixaFechada && (
@@ -121,17 +102,6 @@ export function LayoutAdm() {
       </div>
       {telaPequena && gavetaAberta && <GavetaDoMenu id={idGaveta} aoFechar={fecharGaveta} />}
     </div>
-  )
-}
-
-/** Sem `rotulo` dentro da gaveta: ela já se chama "Menu do Adm", e o leitor de tela repetiria o nome. */
-function MenuDoAdm({ rotulo, aoEscolher }: { rotulo?: string; aoEscolher?: () => void }) {
-  return (
-    <nav aria-label={rotulo} className="flex flex-col gap-1 p-2">
-      {ITENS_ADM.map((item) => (
-        <ItemNavegacao key={item.rotulo} item={item} layout="lateral" aoEscolher={aoEscolher} />
-      ))}
-    </nav>
   )
 }
 

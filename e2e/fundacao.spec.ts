@@ -89,8 +89,8 @@ test('do clube:criar até o conselheiro ver só a própria unidade', async ({ pa
   await criarDesbravador(page, dbvB, unidadeB)
   await convidarConselheiro(page, 'Carla Conselheira', conselheiroEmail, unidadeA)
 
-  await page.getByRole('button', { name: /Admin E2E/, expanded: false }).click()
-  await page.getByRole('menuitem', { name: 'Sair', exact: true }).click()
+  await page.getByRole('link', { name: 'Minha conta' }).click()
+  await page.getByRole('button', { name: 'Sair', exact: true }).click()
   await expect(page).toHaveURL(/\/login$/)
 
   await definirSenhaDoConvite(page, await caminhoDoConvite(conselheiroEmail))

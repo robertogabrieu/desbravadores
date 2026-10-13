@@ -92,7 +92,7 @@ describe('selo do papel', () => {
   it('quem tem um papel só não vê o selo', async () => {
     servidorComTroca([conselheiro], conselheiro.id)
     renderizarRotas(rotas, '/inicio')
-    await screen.findByRole('button', { name: /Ana Souza/ })
+    await screen.findByRole('link', { name: 'Ranking' })
 
     expect(screen.queryByRole('button', { name: SELO })).not.toBeInTheDocument()
   })
@@ -100,7 +100,7 @@ describe('selo do papel', () => {
   it('dois vínculos, mas só um no clube da sessão: sem selo', async () => {
     servidorComTroca([conselheiro, deOutroClube], conselheiro.id)
     renderizarRotas(rotas, '/inicio')
-    await screen.findByRole('button', { name: /Ana Souza/ })
+    await screen.findByRole('link', { name: 'Ranking' })
 
     expect(screen.queryByRole('button', { name: SELO })).not.toBeInTheDocument()
   })
@@ -206,15 +206,5 @@ describe('selo do papel', () => {
 
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
     expect(selo).toHaveFocus()
-  })
-
-  it('o item "Trocar de papel" do menu do usuário continua levando a /papel', async () => {
-    servidorComTroca([conselheiro, instrutor], conselheiro.id)
-    const { roteador } = renderizarRotas(rotas, '/inicio')
-
-    await userEvent.click(await screen.findByRole('button', { name: /Ana Souza/ }))
-    await userEvent.click(screen.getByRole('menuitem', { name: 'Trocar de papel' }))
-
-    expect(roteador.state.location.pathname).toBe('/papel')
   })
 })

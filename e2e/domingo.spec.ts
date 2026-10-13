@@ -66,8 +66,8 @@ test('domingo: a chamada feita sem rede chega sozinha, entra no histórico e no 
   await page.getByRole('button', { name: 'Salvar', exact: true }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Carla Conselheira' })).toBeVisible()
 
-  await page.getByRole('button', { name: /Admin E2E/, expanded: false }).click()
-  await page.getByRole('menuitem', { name: 'Sair', exact: true }).click()
+  await page.getByRole('link', { name: 'Minha conta' }).click()
+  await page.getByRole('button', { name: 'Sair', exact: true }).click()
   await expect(page).toHaveURL(/\/login$/)
 
   // Domingo: o conselheiro entra com internet e o app baixa a lista da unidade.
