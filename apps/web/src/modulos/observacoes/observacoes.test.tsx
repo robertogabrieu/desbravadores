@@ -91,8 +91,8 @@ describe('Observações', () => {
     abrir()
     await screen.findByText('Nenhuma observação ainda.')
     await usuario.click(screen.getByRole('radio', { name: 'Sobre um DBV' }))
-    await screen.findByRole('option', { name: 'Miguel Teixeira' })
-    await usuario.selectOptions(screen.getByLabelText('Desbravador'), uuid(403))
+    await usuario.click(screen.getByLabelText('Desbravador'))
+    await usuario.click(await screen.findByRole('option', { name: 'Miguel Teixeira' }))
     await usuario.type(screen.getByLabelText('Nova observação'), 'Precisa de reforço.')
     await usuario.click(screen.getByRole('button', { name: 'Salvar observação' }))
     await waitFor(() =>

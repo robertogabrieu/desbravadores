@@ -3,7 +3,7 @@ import { useMoverUnidade } from '../../../api/desbravadores'
 import { useSemMembros } from '../../../api/leitura'
 import type { Unidade } from '../../../api/leitura'
 import { Confirmacao } from '../../../ui/Confirmacao'
-import { Selecao } from '../../../ui/Selecao'
+import { SelecaoPesquisavel } from '../../../ui/SelecaoPesquisavel'
 import { MENSAGEM_GENERICA, lerErroDaApi } from '../desbravadores/erros'
 
 /** Janela de um campo: escolhe quem está sem unidade e põe nesta. Fechar é com `aoFechar`. */
@@ -30,14 +30,12 @@ export function AdicionarSemUnidade({ unidade, aoFechar }: { unidade: Unidade; a
   return (
     <Confirmacao aberta titulo={`Adicionar a ${unidade.nome}`} rotuloConfirmar="Adicionar" aoConfirmar={() => void confirmar()} aoCancelar={aoFechar}>
       <div className="flex flex-col gap-3">
-        <Selecao rotulo="Desbravador sem unidade" value={escolhido} onChange={(evento) => setEscolhido(evento.target.value)}>
-          <option value="">Escolha</option>
-          {(semUnidade.data ?? []).map((membro) => (
-            <option key={membro.dbvId} value={membro.dbvId}>
-              {membro.nome}
-            </option>
-          ))}
-        </Selecao>
+        <SelecaoPesquisavel
+          rotulo="Desbravador sem unidade"
+          valor={escolhido}
+          aoMudar={setEscolhido}
+          opcoes={(semUnidade.data ?? []).map((membro) => ({ valor: membro.dbvId, rotulo: membro.nome }))}
+        />
         {erro && (
           <p role="alert" className="text-sm font-medium text-perigo">
             {erro}
