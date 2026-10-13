@@ -43,7 +43,7 @@ describe('nginx.conf: política de segurança de conteúdo', () => {
   })
 
   it('o bloco da biblioteca aceita 51 MB, encaminha para a API e não tem CSP própria', () => {
-    const bloco = /location\s+\/api\/biblioteca\/\s*\{([^}]*)\}/.exec(conteudo)?.[1] ?? ''
+    const bloco = /location\s+~\s+\^\/api\/biblioteca\(\/\|\$\)\s*\{([^}]*)\}/.exec(conteudo)?.[1] ?? ''
     expect(bloco).toMatch(/client_max_body_size\s+51m;/)
     expect(bloco).toMatch(/set \$api http:\/\/api:3001;/)
     expect(bloco).toMatch(/proxy_pass \$api;/)
