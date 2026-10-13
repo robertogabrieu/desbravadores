@@ -23,12 +23,26 @@ beforeEach(() => {
 
 const rotas = [...rotasRanking, { path: '/dbv/:id', element: <p>perfil aberto</p> }]
 
-function abrir() {
-  servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO')]))
+function abrir(vinculo = criarVinculo('CONSELHEIRO'), permissoes: string[] = []) {
+  servidor.use(...handlersSessao([vinculo], undefined, permissoes))
   return renderizarRotas(rotas, '/ranking')
 }
 
 describe('ranking do mês', () => {
+  it('quem pode configurar o ranking vê o link para as regras de pontuação', async () => {
+    servidor.use(handlerRanking(), handlerRankingUnidades())
+    abrir(criarVinculo('ADM'), ['ranking.configurar'])
+    const link = await screen.findByRole('link', { name: 'Regras de pontuação' })
+    expect(link).toHaveAttribute('href', '/adm/ranking/regras')
+  })
+
+  it('quem não pode configurar (conselheiro) não vê o link', async () => {
+    servidor.use(handlerRanking(), handlerRankingUnidades())
+    abrir()
+    await screen.findByRole('list', { name: 'Classificação' })
+    expect(screen.queryByRole('link', { name: 'Regras de pontuação' })).not.toBeInTheDocument()
+  })
+
   it('mostra o pódio (2º, 1º, 3º) e a lista a partir do 4º, sem variação de posição', async () => {
     servidor.use(handlerRanking(), handlerRankingUnidades())
     abrir()

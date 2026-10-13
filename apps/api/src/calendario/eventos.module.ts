@@ -11,5 +11,6 @@ import { ServicoEventos } from './servico-eventos'
   imports: [AtividadesModule, CronogramasModule, DesbravadoresModule, EventosEspeciaisModule, NotificacoesModule],
   controllers: [EventosController],
   providers: [ServicoEventos],
+  exports: [ServicoEventos],
 })
 export class EventosModule {}

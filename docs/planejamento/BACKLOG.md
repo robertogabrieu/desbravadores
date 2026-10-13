@@ -38,7 +38,7 @@ Como líder convidado, quero definir minha senha pelo link do e-mail.
 Como líder, quero ver quem está pontuando mais para incentivar os DBVs.
 - Abas Mês/Trimestre/Ano **recalculam** a lista; o título mostra o período ("setembro", "3º tri").
 - Pódio com os 3 primeiros; lista completa com rolagem (não para no 10º).
-- Filtro por unidade quando `rankingPorUnidade` está ligado.
+- Filtro por unidade.
 - Variação: "+2", "−1" ou "mantém", em relação ao dia de reunião anterior.
 - Empate: maior frequência, depois nome.
 - Tocar num DBV abre o perfil **só se** ele estiver no escopo do usuário (conselheiro: sua
@@ -91,8 +91,7 @@ reunião e somar os pontos.
 - Presente mostra os chips Atrasou / Uniforme / Bíblia (e Lição, se o critério estiver ligado).
 - Ausente mostra o chip "Justificada".
 - Pontos por DBV calculados ao vivo com os **valores dos critérios ativos** (não fixos):
-  Presença + Pontualidade (se não atrasou) + Uniforme + Bíblia + Lição. Ausente = 0, ou o
-  desconto configurado se não justificada.
+  Presença + Pontualidade (se não atrasou) + Uniforme + Bíblia + Lição. Ausente = 0 (falta não desconta pontos).
 - Resumo no topo: presentes X/N, atrasos, uniformes, Bíblias.
 - Campo de observações da reunião.
 - "Salvar chamada · N pts" grava no aparelho e envia; a tela confirma "Chamada salva" e
@@ -334,7 +333,7 @@ Como líder, quero consultar os cadernos, livros e manuais do clube sem pedir ao
 - Critérios: ligar/desligar, pontos (digitar ou −/+), quem lança (fixo nos de fábrica).
 - Critério personalizado: nome, descrição, pontos → lançamento manual pelo Adm.
 - "Zerar pontuação": a cada mês, trimestre ou ano.
-- Mostrar no login; exibir por unidade; descontar falta não justificada (com o valor).
+- Mostrar no login; exibir por unidade. (Descontar falta saiu do produto: ponto nunca é negativo.)
 - Simulação "reunião perfeita" = soma dos critérios de chamada ativos.
 - Aviso ao salvar: "Os novos valores valem a partir de agora. Pontos já lançados não mudam."
 

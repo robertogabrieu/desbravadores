@@ -57,13 +57,13 @@ describe('GET /api/sync/pacote', () => {
 
   it('CONSELHEIRO recebe so as suas unidades, o clube e os 5 criterios padrao de chamada', async () => {
     const { clube, unidade, acesso } = await clubeComConselheiro()
-    await configurarClube({ clubeId: clube.id, diaReuniao: 6, horaReuniao: '14:30', descontarFalta: true, pontosDescontoFalta: 2 })
+    await configurarClube({ clubeId: clube.id, diaReuniao: 6, horaReuniao: '14:30' })
     const pacote = await baixar(acesso.autorizacao)
     expect(pacote.unidades.map((u) => u.id)).toEqual([unidade.id])
     expect(pacote).toMatchObject({
       usuarioId: acesso.usuario.id,
       vinculoId: acesso.vinculo.id,
-      clube: { id: clube.id, diaReuniao: 6, horaReuniao: '14:30', descontarFalta: true, pontosDescontoFalta: 2 },
+      clube: { id: clube.id, diaReuniao: 6, horaReuniao: '14:30', descontarFalta: false, pontosDescontoFalta: 0 },
     })
     expect(pacote.criterios.map((c) => c.gatilho)).toEqual(['PRESENCA', 'PONTUALIDADE', 'UNIFORME', 'BIBLIA', 'LICAO'])
   })

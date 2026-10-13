@@ -6,7 +6,6 @@ import type request from 'supertest'
 import { criarAppDeTeste } from '../../test/app'
 import {
   chamadasDaReuniao,
-  configurarClube,
   criarAcesso,
   criarClube,
   criarDbv,
@@ -146,31 +145,66 @@ describe('PUT /api/sync/reunioes/:uuid', () => {
   })
 
   describe('pontos', () => {
-    it('FALTA com desconto vira lancamento sem criterio e FALTA->PRESENTE o estorna', async () => {
+    it('FALTA nao lanca nada, nem desconto, e FALTA->PRESENTE passa a lancar os criterios', async () => {
       const c = await cenario()
-      await configurarClube({ clubeId: c.clube.id, descontarFalta: true, pontosDescontoFalta: 4 })
       const uuid = randomUUID()
       const primeira = await c.ok(c.enviar({ uuid, linhas: [{ dbvId: c.ana.id, situacao: 'FALTA' }, { dbvId: c.bia.id }] }))
-      expect(c.pontosDe(primeira, c.ana.id)).toBe(-4)
-      const desconto = await c.ativos(uuid, c.ana.id)
-      expect(desconto).toHaveLength(1)
-      expect(desconto[0]).toMatchObject({ criterioId: null, pontos: -4 })
+      expect(c.pontosDe(primeira, c.ana.id)).toBe(0)
+      expect(await c.ativos(uuid, c.ana.id)).toHaveLength(0)
 
       const segunda = await c.ok(
         c.enviar({ uuid, cabecalho: null, linhas: [{ dbvId: c.ana.id, situacao: 'PRESENTE', versaoVista: c.versaoDe(primeira, c.ana.id) }] }),
       )
       expect(c.pontosDe(segunda, c.ana.id)).toBe(15)
-      expect((await c.ativos(uuid, c.ana.id)).every((l) => l.criterioId !== null)).toBe(true)
-      const estornados = await prismaDeTeste().lancamentoPontos.count({ where: { clubeId: c.clube.id, origemId: `${uuid}:${c.ana.id}`, criterioId: null, estornadoEm: { not: null } } })
-      expect(estornados).toBe(1)
+      const negativos = await prismaDeTeste().lancamentoPontos.count({ where: { clubeId: c.clube.id, pontos: { lt: 0 } } })
+      expect(negativos).toBe(0)
     })
 
-    it('FALTA sem desconto configurado nao lanca nada', async () => {
-      const c = await cenario()
-      const uuid = randomUUID()
-      const saida = await c.ok(c.enviar({ uuid, linhas: [{ dbvId: c.ana.id, situacao: 'FALTA' }, { dbvId: c.bia.id }] }))
-      expect(c.pontosDe(saida, c.ana.id)).toBe(0)
-      expect(await c.ativos(uuid, c.ana.id)).toHaveLength(0)
+    describe('regra desligada com a chamada reaberta', () => {
+      const desligarPresenca = async (clubeId: string) => {
+        const presenca = await criterioPorGatilho(clubeId, 'PRESENCA')
+        await prismaDeTeste().criterioRanking.update({ where: { id: presenca.id }, data: { ativo: false } })
+        return presenca
+      }
+
+      it('quem continua presente mantem o lancamento da regra desligada; o resto segue a marcacao', async () => {
+        const c = await cenario()
+        const uuid = randomUUID()
+        const primeira = await c.ok(c.enviar({ uuid, linhas: [{ dbvId: c.ana.id }, { dbvId: c.bia.id }] }))
+        expect(c.pontosDe(primeira, c.ana.id)).toBe(15)
+        const presenca = await desligarPresenca(c.clube.id)
+        const segunda = await c.ok(
+          c.enviar({ uuid, cabecalho: null, linhas: [{ dbvId: c.ana.id, situacao: 'ATRASADO', versaoVista: c.versaoDe(primeira, c.ana.id) }] }),
+        )
+        expect(c.pontosDe(segunda, c.ana.id)).toBe(10)
+        expect((await c.ativos(uuid, c.ana.id)).map((l) => l.criterioId)).toEqual([presenca.id])
+      })
+
+      it('mudar a marcacao para falta estorna o lancamento da regra desligada', async () => {
+        const c = await cenario()
+        const uuid = randomUUID()
+        const primeira = await c.ok(c.enviar({ uuid, linhas: [{ dbvId: c.ana.id }, { dbvId: c.bia.id }] }))
+        await desligarPresenca(c.clube.id)
+        const segunda = await c.ok(
+          c.enviar({ uuid, cabecalho: null, linhas: [{ dbvId: c.ana.id, situacao: 'FALTA', versaoVista: c.versaoDe(primeira, c.ana.id) }] }),
+        )
+        expect(c.pontosDe(segunda, c.ana.id)).toBe(0)
+        expect(await c.ativos(uuid, c.ana.id)).toHaveLength(0)
+      })
+
+      it('sem lancamento previo a regra desligada nao cria ponto, nem ao reabrir', async () => {
+        const c = await cenario()
+        const presenca = await desligarPresenca(c.clube.id)
+        const uuid = randomUUID()
+        const primeira = await c.ok(c.enviar({ uuid, linhas: [{ dbvId: c.ana.id }, { dbvId: c.bia.id }] }))
+        expect(c.pontosDe(primeira, c.ana.id)).toBe(5)
+        const segunda = await c.ok(
+          c.enviar({ uuid, cabecalho: null, linhas: [{ dbvId: c.ana.id, situacao: 'ATRASADO', versaoVista: c.versaoDe(primeira, c.ana.id) }] }),
+        )
+        expect(c.pontosDe(segunda, c.ana.id)).toBe(0)
+        const lancadosDePresenca = await prismaDeTeste().lancamentoPontos.count({ where: { clubeId: c.clube.id, criterioId: presenca.id } })
+        expect(lancadosDePresenca).toBe(0)
+      })
     })
 
     it('correcao depois de mudar o criterio mantem o valor antigo do que continua devido', async () => {

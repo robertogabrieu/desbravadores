@@ -166,6 +166,7 @@ describe('LayoutAdm', () => {
     expect(itemDoMenu('Usuários')).toHaveAttribute('href', '/adm/usuarios')
     expect(itemDoMenu('Unidades')).toHaveAttribute('href', '/adm/unidades')
     expect(itemDoMenu('Ranking')).toHaveAttribute('href', '/ranking')
+    expect(itemDoMenu('Regras de pontuação')).toHaveAttribute('href', '/adm/ranking/regras')
     expect(itemDoMenu('Visão geral')).toHaveAttribute('href', '/adm')
     expect(itemDoMenu('Classes e especialidades')).toHaveAttribute('href', '/adm/classes')
     expect(itemDoMenu('Calendário do clube')).toHaveAttribute('href', '/adm/calendario')

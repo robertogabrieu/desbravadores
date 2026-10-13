@@ -26,7 +26,7 @@ describe('ServicoPontos.sincronizar', () => {
     const presenca = await criterioPorGatilho(clube.id, 'PRESENCA')
     const biblia = await criterioPorGatilho(clube.id, 'BIBLIA')
     const origemId = `${randomUUID()}:${dbv.id}`
-    const sincronizar = (devidos: PontoDevido[]): Promise<void> =>
+    const sincronizar = (devidos: PontoDevido[], conquistadosDesligados?: string[]): Promise<void> =>
       prisma.$transaction((tx) =>
         servico.sincronizar(tx, {
           clubeId: clube.id,
@@ -35,6 +35,7 @@ describe('ServicoPontos.sincronizar', () => {
           origemId,
           data: '2026-09-20',
           devidos,
+          conquistadosDesligados,
           lancadoPorId: lancadoPor.id,
         }),
       )
@@ -103,38 +104,55 @@ describe('ServicoPontos.sincronizar', () => {
     expect((await c.ativos()).map((l) => l.pontos)).toEqual([8])
   })
 
-  it('o desconto de falta e um lancamento sem criterio, estornado quando deixa de ser devido', async () => {
+  it('recusa ponto negativo e nao grava nada', async () => {
     const c = await cenario()
-    await c.sincronizar([{ criterioId: null, pontos: -3 }])
-    expect((await c.ativos()).map((l) => [l.criterioId, l.pontos])).toEqual([[null, -3]])
-    await c.sincronizar([{ criterioId: c.presenca.id, pontos: 10 }])
-    expect((await c.ativos()).map((l) => [l.criterioId, l.pontos])).toEqual([[c.presenca.id, 10]])
-    expect((await c.lancamentos()).filter((l) => l.criterioId === null && l.estornadoEm !== null)).toHaveLength(1)
+    await expect(c.sincronizar([{ criterioId: c.presenca.id, pontos: -3 }])).rejects.toThrow()
+    await expect(c.sincronizar([{ criterioId: c.presenca.id, pontos: 10 }, { criterioId: c.biblia.id, pontos: -1 }])).rejects.toThrow()
+    expect(await c.lancamentos()).toHaveLength(0)
   })
 
-  it('o indice do banco barra um segundo lancamento ativo do mesmo criterio ou da mesma falta', async () => {
+  it('o indice do banco barra um segundo lancamento ativo do mesmo criterio', async () => {
     const c = await cenario()
-    await c.sincronizar([
-      { criterioId: c.presenca.id, pontos: 10 },
-      { criterioId: null, pontos: -3 },
-    ])
+    await c.sincronizar([{ criterioId: c.presenca.id, pontos: 10 }])
     const [modelo] = await c.ativos()
     if (!modelo) throw new Error('sem lancamento')
-    const duplicar = (criterioId: string | null) =>
+    await expect(
       prismaDeTeste().lancamentoPontos.create({
         data: {
           clubeId: c.clube.id,
           dbvId: c.dbv.id,
-          criterioId,
+          criterioId: c.presenca.id,
           pontos: 1,
           data: modelo.data,
           origemTipo: 'CHAMADA',
           origemId: modelo.origemId,
           lancadoPorId: modelo.lancadoPorId,
         },
-      })
-    await expect(duplicar(c.presenca.id)).rejects.toThrow()
-    await expect(duplicar(null)).rejects.toThrow()
+      }),
+    ).rejects.toThrow()
+  })
+
+  it('conquistado mas desligado mantem o lancamento ativo com o valor da epoca', async () => {
+    const c = await cenario()
+    await c.sincronizar([{ criterioId: c.presenca.id, pontos: 10 }, { criterioId: c.biblia.id, pontos: 5 }])
+    await c.sincronizar([{ criterioId: c.biblia.id, pontos: 5 }], [c.presenca.id])
+    const todos = await c.lancamentos()
+    expect(todos).toHaveLength(2)
+    expect((await c.ativos()).map((l) => [l.criterioId, l.pontos]).sort()).toEqual([[c.presenca.id, 10], [c.biblia.id, 5]].sort())
+  })
+
+  it('conquistado mas desligado sem lancamento previo nao cria ponto', async () => {
+    const c = await cenario()
+    await c.sincronizar([{ criterioId: c.biblia.id, pontos: 5 }], [c.presenca.id])
+    expect((await c.lancamentos()).map((l) => l.criterioId)).toEqual([c.biblia.id])
+  })
+
+  it('quem deixou de conquistar o criterio desligado e estornado', async () => {
+    const c = await cenario()
+    await c.sincronizar([{ criterioId: c.presenca.id, pontos: 10 }])
+    await c.sincronizar([], [c.biblia.id])
+    expect(await c.ativos()).toHaveLength(0)
+    expect((await c.lancamentos())[0]?.estornadoEm).not.toBeNull()
   })
 
   it('a transacao inteira volta se uma escrita falha', async () => {

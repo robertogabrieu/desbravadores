@@ -1,10 +1,12 @@
 import { primeiroEUltimoNome } from '@desbravadores/shared'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import type { ItemRanking } from '../../api/ranking'
 import { useRanking, useRankingUnidades } from '../../api/ranking'
 import { useConexao } from '../../offline'
+import { useSessao } from '../../sessao/useSessao'
 import { Abas } from '../../ui/Abas'
 import { Avatar } from '../../ui/Avatar'
 import { EstadoVazio } from '../../ui/EstadoVazio'
@@ -124,6 +126,7 @@ function Classificacao({ itens }: { itens: ItemRanking[] }) {
 
 /** Ranking do mês (T1 parcial): Trimestre e Ano ainda não existem. */
 export function Ranking() {
+  const { pode } = useSessao()
   const [mes, setMes] = useState<string>()
   const [unidadeId, setUnidadeId] = useState<string>()
   const [mesCorrente, setMesCorrente] = useState<string>()
@@ -163,7 +166,14 @@ export function Ranking() {
 
   return (
     <div className="flex flex-col gap-4 p-4 in-data-[layout=adm]:px-0">
-      <h1 className="font-titulo text-2xl font-extrabold text-texto">Ranking</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="font-titulo text-2xl font-extrabold text-texto">Ranking</h1>
+        {pode('ranking.configurar') && (
+          <Link to="/adm/ranking/regras" className="inline-flex min-h-[var(--touch-min)] items-center text-base font-semibold text-marca underline">
+            Regras de pontuação
+          </Link>
+        )}
+      </div>
       <div className="flex flex-col gap-2">
         <Abas rotulo="Período" abas={ABAS} ativa="mes" aoMudar={() => undefined} />
         <div className="flex gap-2 text-sm text-texto-2">

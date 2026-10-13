@@ -5,6 +5,7 @@ import { emailAdicionado, emailConvite } from '../email/modelos'
 import type { MensagemDeEmail, ServicoEmail } from '../email/servico-email'
 import { ServicoEmailSmtp } from '../email/servico-email-smtp'
 import type { Clube, Prisma } from '../generated/prisma/client.js'
+import { criterioDaRegraBasica, REGRAS_BASICAS } from '../ranking/regras/criterios-basicos'
 import { ServicoTokenUsoUnico } from '../sessao/token-uso-unico.service'
 
 export interface ArgumentosDoClube {
@@ -23,21 +24,9 @@ export interface ResultadoDoClube {
   emailEnviado: boolean
 }
 
-// Criterios padrao do ranking (SPEC 5.4).
-const CRITERIOS_PADRAO = [
-  { nome: 'Presença', pontos: 10, ativo: true, gatilho: 'PRESENCA', lancadoPor: 'CONSELHEIRO' },
-  { nome: 'Pontualidade', pontos: 5, ativo: true, gatilho: 'PONTUALIDADE', lancadoPor: 'CONSELHEIRO' },
-  { nome: 'Uniforme completo', pontos: 5, ativo: true, gatilho: 'UNIFORME', lancadoPor: 'CONSELHEIRO' },
-  { nome: 'Bíblia', pontos: 3, ativo: true, gatilho: 'BIBLIA', lancadoPor: 'CONSELHEIRO' },
-  { nome: 'Lição/devocional', pontos: 3, ativo: false, gatilho: 'LICAO', lancadoPor: 'CONSELHEIRO' },
-  { nome: 'Requisito concluído', pontos: 4, ativo: true, gatilho: 'REQUISITO', lancadoPor: 'INSTRUTOR' },
-  { nome: 'Especialidade concluída', pontos: 15, ativo: true, gatilho: 'ESPECIALIDADE', lancadoPor: 'INSTRUTOR' },
-  { nome: 'Participação em evento', pontos: 20, ativo: true, gatilho: 'MANUAL', lancadoPor: 'ADM' },
-] as const satisfies Omit<Prisma.CriterioRankingCreateManyInput, 'clubeId' | 'ordem' | 'padrao'>[]
-
 const FORMATO_SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/
 
-/** Clube, configuracao, uma ClasseClube por classe oficial ativa, os 8 criterios padrao e as 3 categorias da biblioteca. */
+/** Clube, configuracao, uma ClasseClube por classe oficial ativa, as 7 regras basicas do ranking e as 3 categorias da biblioteca. */
 export async function criarClubeBase(
   tx: Prisma.TransactionClient,
   dados: { nome: string; slug: string },
@@ -46,14 +35,7 @@ export async function criarClubeBase(
   await tx.configuracaoClube.create({ data: { clubeId: clube.id } })
   const classes = await tx.classe.findMany({ where: { clubeId: null, ativa: true }, select: { id: true } })
   await tx.classeClube.createMany({ data: classes.map((c) => ({ clubeId: clube.id, classeId: c.id })) })
-  await tx.criterioRanking.createMany({
-    data: CRITERIOS_PADRAO.map((criterio, indice) => ({
-      ...criterio,
-      clubeId: clube.id,
-      ordem: indice + 1,
-      padrao: true,
-    })),
-  })
+  await tx.criterioRanking.createMany({ data: REGRAS_BASICAS.map((regra) => ({ ...criterioDaRegraBasica(regra), clubeId: clube.id })) })
   await tx.categoriaBiblioteca.createMany({
     data: CATEGORIAS_INICIAIS.map((nome, indice) => ({ clubeId: clube.id, nome, ordem: indice + 1 })),
   })
