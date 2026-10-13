@@ -32,7 +32,7 @@ const cartao = (texto: string) => screen.getByRole('button', { name: new RegExp(
 
 function dataTransfer() {
   const dados: Record<string, string> = {}
-  return { dropEffect: 'none', effectAllowed: 'all', setData: (tipo: string, valor: string) => (dados[tipo] = valor), getData: (tipo: string) => dados[tipo] ?? '' }
+  return { dropEffect: 'copy', effectAllowed: 'all', setData: (tipo: string, valor: string) => (dados[tipo] = valor), getData: (tipo: string) => dados[tipo] ?? '' }
 }
 
 describe('A7 · arrastar o requisito até a data (computador)', () => {
@@ -42,7 +42,9 @@ describe('A7 · arrastar o requisito até a data (computador)', () => {
     const transferencia = dataTransfer()
     fireEvent.dragStart(cartao(REQ_LIVRE.texto), { dataTransfer: transferencia })
     expect(cartao(REQ_LIVRE.texto)).toHaveClass('opacity-50')
-    fireEvent.dragOver(linha('2026-10-04'), { dataTransfer: transferencia })
+    const dragOverAceito = fireEvent.dragOver(linha('2026-10-04'), { dataTransfer: transferencia })
+    // fireEvent devolve false quando o handler chamou preventDefault (soltar liberado).
+    expect(dragOverAceito).toBe(false)
     expect(transferencia.dropEffect).toBe('move')
     expect(linha('2026-10-04')).toHaveAttribute('data-soltar', 'sobre')
     fireEvent.drop(linha('2026-10-04'), { dataTransfer: transferencia })
@@ -59,15 +61,21 @@ describe('A7 · arrastar o requisito até a data (computador)', () => {
     await screen.findByText(/agendados/)
     const transferencia = dataTransfer()
     fireEvent.dragStart(cartao(REQ_COLOCADO.texto), { dataTransfer: transferencia })
-    fireEvent.dragOver(linha('2026-10-04'), { dataTransfer: transferencia })
+    // Data onde o requisito já está: o navegador não pode ser avisado de que o soltar é válido.
+    const dragOverNoLugar = fireEvent.dragOver(linha('2026-10-04'), { dataTransfer: transferencia })
+    expect(dragOverNoLugar).toBe(true)
     expect(transferencia.dropEffect).toBe('none')
     expect(linha('2026-10-04')).toHaveAttribute('data-estado')
     expect(linha('2026-10-04')).not.toHaveAttribute('data-soltar')
     fireEvent.drop(linha('2026-10-04'), { dataTransfer: transferencia })
     // Data com aula dada (11/01): a regra do botão também a recusa.
-    fireEvent.dragOver(linha('2026-11-01'), { dataTransfer: transferencia })
+    transferencia.dropEffect = 'copy'
+    const dragOverRecusada = fireEvent.dragOver(linha('2026-11-01'), { dataTransfer: transferencia })
+    expect(dragOverRecusada).toBe(true)
     expect(transferencia.dropEffect).toBe('none')
-    fireEvent.drop(linha('2026-11-01'), { dataTransfer: transferencia })
+    expect(linha('2026-11-01')).not.toHaveAttribute('data-soltar')
+    const dropRecusado = fireEvent.drop(linha('2026-11-01'), { dataTransfer: transferencia })
+    expect(dropRecusado).toBe(true)
     await new Promise((resolver) => setTimeout(resolver, 50))
     expect(registro.chamadas).toHaveLength(0)
   })
