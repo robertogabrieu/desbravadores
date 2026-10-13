@@ -106,8 +106,8 @@ simples (lista de datas × requisitos), ou por carga de planilha feita por você
 
 **Entrega:** o ranking completo e os números para a diretoria.
 
-- Configuração do ranking: ligar/desligar, valores, critério personalizado, período, desconto
-  por falta, simulação [A9].
+- Configuração do ranking: ligar/desligar, valores, critério personalizado, período, simulação [A9]
+  (desconto por falta saiu do produto; a tela de regras está em `docs/fases/ranking-pontuacao`).
 - Lançamento manual (ex.: participação em evento) para vários DBVs de uma vez [A10].
 - Ranking por trimestre e ano, variação de posição, filtro por unidade, ranking de unidades [T1].
 - **Ranking público** com nome abreviado, desligável [T2].

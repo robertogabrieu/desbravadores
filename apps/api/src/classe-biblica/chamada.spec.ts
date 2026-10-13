@@ -178,7 +178,7 @@ describe('classe bíblica: chamada (regras 8–12)', () => {
       expect(await prismaDeTeste().envioClasseBiblicaProcessado.count({ where: { envioId: corpoDoEnvio.envioId } })).toBe(1)
     })
 
-    it('corrigir para falta estorna os dois pontos e não lança desconto; não há rota de desfazer', async () => {
+    it('corrigir para falta estorna os dois pontos e não lança nada negativo; não há rota de desfazer', async () => {
       const { clube, adm, encontro, daniel, ana } = await cenario()
       const primeira = corpo<Saida>(
         await api.put(urlEnvio(encontro.id, daniel.id), adm.autorizacao, envio([{ dbvId: ana.id, presente: true, participou: true }])).expect(200),
@@ -194,7 +194,7 @@ describe('classe bíblica: chamada (regras 8–12)', () => {
       const pontos = await lancamentos(clube.id)
       expect(pontos).toHaveLength(2)
       expect(pontos.every((p) => p.estornadoEm !== null)).toBe(true)
-      expect(await prismaDeTeste().lancamentoPontos.count({ where: { clubeId: clube.id, criterioId: null } })).toBe(0)
+      expect(await prismaDeTeste().lancamentoPontos.count({ where: { clubeId: clube.id, pontos: { lt: 0 } } })).toBe(0)
       await api.post(`${urlChamada(encontro.id, daniel.id)}/desfazer`, adm.autorizacao).expect(404)
     })
 
@@ -251,6 +251,25 @@ describe('classe bíblica: chamada (regras 8–12)', () => {
       await prismaDeTeste().criterioRanking.updateMany({ where: { clubeId: clube.id, gatilho: 'CLASSE_BIBLICA_PRESENCA' }, data: { ativo: false } })
       await api.put(urlEnvio(encontro.id, daniel.id), adm.autorizacao, envio([{ dbvId: ana.id, presente: true, participou: true }])).expect(200)
       expect((await lancamentos(clube.id)).map((p) => p.pontos)).toEqual([5])
+    })
+
+    it('regra desligada com a chamada reaberta: quem continua presente mantém o lançamento, sem criar novo', async () => {
+      const { clube, adm, encontro, daniel, ana } = await cenario()
+      await api.put(urlEnvio(encontro.id, daniel.id), adm.autorizacao, envio([{ dbvId: ana.id, presente: true, participou: true }])).expect(200)
+      await prismaDeTeste().criterioRanking.updateMany({ where: { clubeId: clube.id, gatilho: 'CLASSE_BIBLICA_PRESENCA' }, data: { ativo: false } })
+      const versao = (await prismaDeTeste().presencaClasseBiblica.findFirstOrThrow({ where: { encontroId: encontro.id, dbvId: ana.id } })).versao.toISOString()
+      await api.put(urlEnvio(encontro.id, daniel.id), adm.autorizacao, envio([{ dbvId: ana.id, presente: true, participou: false, versaoVista: versao }])).expect(200)
+      const ativos = (await lancamentos(clube.id)).filter((p) => p.estornadoEm === null)
+      expect(ativos.map((p) => p.pontos)).toEqual([10])
+    })
+
+    it('regra desligada: mudar a marcação para falta estorna o lançamento que existia', async () => {
+      const { clube, adm, encontro, daniel, ana } = await cenario()
+      await api.put(urlEnvio(encontro.id, daniel.id), adm.autorizacao, envio([{ dbvId: ana.id, presente: true, participou: true }])).expect(200)
+      await prismaDeTeste().criterioRanking.updateMany({ where: { clubeId: clube.id, gatilho: 'CLASSE_BIBLICA_PRESENCA' }, data: { ativo: false } })
+      const versao = (await prismaDeTeste().presencaClasseBiblica.findFirstOrThrow({ where: { encontroId: encontro.id, dbvId: ana.id } })).versao.toISOString()
+      await api.put(urlEnvio(encontro.id, daniel.id), adm.autorizacao, envio([{ dbvId: ana.id, presente: false, participou: false, versaoVista: versao }])).expect(200)
+      expect((await lancamentos(clube.id)).filter((p) => p.estornadoEm === null)).toHaveLength(0)
     })
 
     it('garante os critérios antes de pontuar', async () => {

@@ -296,10 +296,10 @@ describe('classe bíblica: edição', () => {
       await prisma.$transaction((tx) => garantirCriterios(tx, clube.id))
       await prisma.$transaction((tx) => garantirCriterios(tx, clube.id))
       const todos = await prisma.criterioRanking.findMany({ where: { clubeId: clube.id }, orderBy: { ordem: 'asc' } })
-      expect(todos).toHaveLength(10)
-      expect(todos.slice(8).map((c) => [c.nome, c.pontos, c.ordem, c.gatilho, c.padrao, c.ativo, c.lancadoPor])).toEqual([
-        [NOMES[0], 10, 9, 'CLASSE_BIBLICA_PRESENCA', true, true, 'ADM'],
-        [NOMES[1], 5, 10, 'CLASSE_BIBLICA_PARTICIPACAO', true, true, 'ADM'],
+      expect(todos).toHaveLength(9)
+      expect(todos.slice(7).map((c) => [c.nome, c.pontos, c.ordem, c.gatilho, c.padrao, c.ativo, c.lancadoPor])).toEqual([
+        [NOMES[0], 10, 8, 'CLASSE_BIBLICA_PRESENCA', true, true, 'ADM'],
+        [NOMES[1], 5, 9, 'CLASSE_BIBLICA_PARTICIPACAO', true, true, 'ADM'],
       ])
     })
 

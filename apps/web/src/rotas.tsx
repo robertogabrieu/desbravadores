@@ -4,6 +4,7 @@ import { LayoutCelular } from './layouts/LayoutCelular'
 import { rotasAcessoPapel, rotasAcessoPublicas } from './modulos/acesso/rotas'
 import { rotasAdmCalendario } from './modulos/adm/calendario/rotas'
 import { rotasAdmClasseBiblica } from './modulos/adm/classe-biblica/rotas'
+import { rotasAdmRankingRegras } from './modulos/adm/ranking-regras/rotas'
 import { rotasAdmReunioes } from './modulos/adm/reunioes/rotas'
 import { rotasAdmClasses } from './modulos/adm/classes/rotas'
 import { rotasAdmConfiguracoes } from './modulos/adm/configuracoes/rotas'
@@ -104,6 +105,7 @@ export const rotas: RouteObject[] = [
           ...rotasAdmBiblioteca,
           ...rotasAdmClasseBiblica,
           ...rotasAdmConfiguracoes,
+          ...rotasAdmRankingRegras,
         ],
       },
     ],

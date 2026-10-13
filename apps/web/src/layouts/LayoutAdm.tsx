@@ -1,4 +1,4 @@
-import { BookOpen, CalendarDays, ClipboardList, FileText, Flag, GraduationCap, LayoutDashboard, Library, Menu, Settings, Trophy, UserRound, Users, X } from 'lucide-react'
+import { BookOpen, CalendarDays, ClipboardList, FileText, Flag, GraduationCap, LayoutDashboard, Library, ListChecks, Menu, Settings, Trophy, UserRound, Users, X } from 'lucide-react'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { SinoNotificacoes } from '../modulos/notificacoes/SinoNotificacoes'
@@ -25,6 +25,7 @@ const ITENS_ADM: ItemDeNavegacao[] = [
   { rotulo: 'Classe Bíblica', icone: BookOpen, para: '/adm/classe-biblica' },
   { rotulo: 'Configurações do clube', icone: Settings, para: '/adm/configuracoes' },
   { rotulo: 'Ranking', icone: Trophy, para: '/ranking' },
+  { rotulo: 'Regras de pontuação', icone: ListChecks, para: '/adm/ranking/regras' },
   { rotulo: 'Relatórios', icone: FileText },
 ]
 

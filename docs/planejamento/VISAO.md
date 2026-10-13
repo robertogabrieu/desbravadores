@@ -36,8 +36,8 @@ pouco agora e evita reescrever tudo se outro clube do distrito quiser usar.
    DBV tem **autorização de imagem**; sem ela, foto dele não entra na galeria.
 5. **Montar cronograma**: o Adm monta no computador; o instrutor liberado monta **no celular**
    (tela desenhada na 2ª rodada), salva rascunho e envia para o Adm publicar.
-6. **Frequência**: atraso conta como presença; falta justificada existe e não sofre desconto de
-   pontos; o cálculo segue o período escolhido; o limiar do vermelho é configurável (padrão 70%).
+6. **Frequência**: atraso conta como presença; falta justificada existe; falta nunca desconta
+   pontos (ponto só é acrescido); o cálculo segue o período escolhido; o limiar do vermelho é configurável (padrão 70%).
 7. **Requisito** é feito/não feito; pode ser marcado fora da aula prevista; **pronto para
    investidura = 100% da classe regular** — a avançada é um extra fortemente recomendado, com
    progresso e investidura próprios, sempre mostrados separados da regular; o histórico de

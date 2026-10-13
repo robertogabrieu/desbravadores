@@ -9,7 +9,6 @@ import {
   GrupoCB,
   GruposSaida,
   PainelSaida,
-  PontosCBSaida,
   comAvisos,
 } from '@desbravadores/shared'
 import type {
@@ -18,7 +17,6 @@ import type {
   GruposEntrada,
   MaterialCBArquivoDados,
   MaterialCBLinkEntrada,
-  PontosCBEntrada,
   RemarcarEntrada,
   TerminarEntrada,
 } from '@desbravadores/shared'
@@ -40,7 +38,6 @@ export type FrequenciaDoGrupo = z.infer<typeof FrequenciaGrupoSaida>
 export type EncontroCB = z.infer<typeof EncontroSaida>
 export type DetalheDoEncontro = z.infer<typeof EncontroDetalheSaida>
 export type ChamadaCB = z.infer<typeof ChamadaCBSaida>
-export type PontosCB = z.infer<typeof PontosCBSaida>
 export type LinkDoMaterial = z.input<typeof MaterialCBLinkEntrada>
 export type DadosDoArquivoCB = z.input<typeof MaterialCBArquivoDados>
 
@@ -58,7 +55,6 @@ export const chavesClasseBiblica = {
   frequencia: (grupoId: string) => [RAIZ, 'grupo', grupoId, 'frequencia'] as const,
   encontro: (id: string) => [RAIZ, 'encontro', id] as const,
   chamada: (encontroId: string, grupoId: string) => [RAIZ, 'encontro', encontroId, 'chamada', grupoId] as const,
-  pontos: [RAIZ, 'pontos'] as const,
 }
 
 const caminhoDaEdicao = (id: string) => `/api/classe-biblica/edicoes/${id}`
@@ -281,24 +277,5 @@ export function useChamadaCB(encontroId: string, grupoId: string, habilitada = t
     // A chamada é corrigida em cima do que já foi gravado: abrir com uma leitura antiga desfaria o que a fila acabou de enviar.
     staleTime: 0,
     gcTime: 0,
-  })
-}
-
-// ── Pontos ───────────────────────────────────────────────────────────────────
-
-export function usePontosCB() {
-  return useQuery({
-    queryKey: chavesClasseBiblica.pontos,
-    queryFn: () => requisitar('/api/classe-biblica/pontos', PontosCBSaida),
-  })
-}
-
-export function useSalvarPontosCB() {
-  const clienteConsultas = useQueryClient()
-  return useMutation({
-    networkMode: 'always',
-    mutationFn: (entrada: z.input<typeof PontosCBEntrada>) =>
-      requisitar('/api/classe-biblica/pontos', PontosCBSaida, { metodo: 'PATCH', corpo: entrada }),
-    onSuccess: (pontos) => clienteConsultas.setQueryData(chavesClasseBiblica.pontos, pontos),
   })
 }

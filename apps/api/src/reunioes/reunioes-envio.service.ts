@@ -92,7 +92,7 @@ export class ReunioesEnvioService {
     if (sessao.substituicao && gravadas.length > 0) {
       await tx.reuniao.updateMany({ where: { clubeId, id: reuniao.id }, data: { substituicaoId: sessao.substituicao.id } })
     }
-    await this.sincronizarPontos(tx, sessao, reuniao, configuracao, gravadas)
+    await this.sincronizarPontos(tx, sessao, reuniao, gravadas)
 
     await tx.envioProcessado.create({ data: { envioId: envio.envioId, clubeId, reuniaoId: reuniao.id } })
     const atual = await tx.reuniao.findFirstOrThrow({ where: { clubeId, id: reuniao.id } })
@@ -316,21 +316,23 @@ export class ReunioesEnvioService {
     tx: Tx,
     sessao: SessaoLogada,
     reuniao: Reuniao,
-    configuracao: ConfiguracaoClube,
     gravadas: LinhaEnvio[],
   ): Promise<void> {
     if (gravadas.length === 0) return
     const { clubeId } = sessao
     const criterios = await tx.criterioRanking.findMany({ where: { clubeId, padrao: true } })
-    const idPorGatilho = new Map(criterios.map((criterio) => [criterio.gatilho, criterio.id]))
-    const config = { descontarFalta: configuracao.descontarFalta, pontosDescontoFalta: configuracao.pontosDescontoFalta }
+    const todosLigados = criterios.map((criterio) => ({ ...criterio, ativo: true }))
 
     for (const linha of gravadas) {
-      const devidos = pontosPorCriterio(linha, criterios, config).flatMap((item): PontoDevido[] => {
-        if (item.gatilho === 'FALTA') return [{ criterioId: null, pontos: item.pontos }]
-        const criterioId = idPorGatilho.get(item.gatilho)
-        return criterioId ? [{ criterioId, pontos: item.pontos }] : []
-      })
+      const conquistados = pontosPorCriterio(linha, todosLigados)
+      const devidos: PontoDevido[] = []
+      const conquistadosDesligados: string[] = []
+      for (const item of conquistados) {
+        const criterio = criterios.find((c) => c.gatilho === item.gatilho)
+        if (!criterio) continue
+        if (criterio.ativo) devidos.push({ criterioId: criterio.id, pontos: item.pontos })
+        else conquistadosDesligados.push(criterio.id)
+      }
       await this.pontos.sincronizar(tx, {
         clubeId,
         dbvId: linha.dbvId,
@@ -338,6 +340,7 @@ export class ReunioesEnvioService {
         origemId: `${reuniao.id}:${linha.dbvId}`,
         data: paraDataCivil(reuniao.data),
         devidos,
+        conquistadosDesligados,
         lancadoPorId: sessao.usuarioId,
       })
     }

@@ -84,12 +84,6 @@ enum StatusMatricula {
   DESISTIU
 }
 
-enum PeriodoRanking {
-  MES
-  TRIMESTRE
-  ANO
-}
-
 enum GatilhoCriterio {
   PRESENCA
   PONTUALIDADE
@@ -259,11 +253,6 @@ model ConfiguracaoClube {
   limiarFrequenciaAlerta Int            @default(70)
   limiarProgressoAlerta  Int            @default(40)
   metaFrequencia         Int            @default(80)
-  rankingPeriodo         PeriodoRanking @default(MES)
-  rankingNoLogin         Boolean        @default(true)
-  rankingPorUnidade      Boolean        @default(true)
-  descontarFalta         Boolean        @default(false)
-  pontosDescontoFalta    Int            @default(0)
 
   clube Clube @relation(fields: [clubeId], references: [id], onDelete: Restrict)
 }
@@ -772,7 +761,7 @@ model ChamadaAlteracao {
 }
 
 // Única fonte da pontuação. `pontos` é COPIADO do critério no momento do lançamento.
-// Desconto por falta: origem CHAMADA com criterioId nulo (vem de ConfiguracaoClube.pontosDescontoFalta).
+// `pontos` nunca é negativo (CHECK "lancamento_pontos_nao_negativo", escrito à mão na migração: o Prisma não modela CHECK).
 model LancamentoPontos {
   id           String       @id @default(uuid(7)) @db.Uuid
   clubeId      String       @db.Uuid

@@ -75,7 +75,7 @@ Os arquivos ficam em `telas/`. As telas de celular têm 390×844; as de desktop,
 | `Adm-Classes.dc.html` | Classes (seções e requisitos do caderno) e catálogo de especialidades por área |
 | `Adm-Calendario.dc.html` | **Calendário anual do clube** (mês a mês) + formulário de evento |
 | `Montar-Cronograma.dc.html` | **Montagem do cronograma da classe** com o calendário do clube visível |
-| `Adm-Ranking.dc.html` | Critérios de pontuação (ligar/desligar, pontos, quem lança) + simulação |
+| `Adm-Ranking.dc.html` | **Substituída** pela tela "Regras de pontuação" (`docs/fases/ranking-pontuacao/modelo/Regras-de-Pontuacao.html`); mantida só como histórico |
 | `Adm-Relatorios.dc.html` | Frequência mensal, especialidades mais concluídas, tabela por classe, exportar PDF/Excel |
 
 ### Biblioteca (desenhada depois, fora das 31)
@@ -111,7 +111,7 @@ Os arquivos não ficam em `telas/`, e sim em `docs/fases/biblioteca/modelo/` (í
 - Lançado pelo **Adm**: participação em evento, +20.
 - Todos os critérios são configuráveis: ligar/desligar e mudar o valor. Critérios personalizados podem ser criados.
 - Se o DBV está ausente, atraso, uniforme e Bíblia ficam zerados.
-- O período do ranking é configurável (mês, trimestre ou ano), assim como exibir ou não o ranking no login e por unidade. Descontar pontos por falta é uma opção, desligada por padrão.
+- Período do ranking, exibir no login, exibir por unidade e descontar pontos por falta **não existem mais** como configuração; ponto nunca é negativo.
 
 ### Classes e requisitos
 - Classes regulares, com idade e **cor oficial**: Amigo 10 (azul), Companheiro 11 (vermelho), Pesquisador 12 (verde), Pioneiro 13 (cinza), Excursionista 14 (roxo), Guia 15 (amarelo). Existem também as classes avançadas e as Classes Agrupadas.

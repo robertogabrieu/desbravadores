@@ -55,7 +55,7 @@ Cada uma com a decisão tomada — discorde de qualquer uma e eu ajusto os docum
 | # | Pergunta que ficou aberta | Adotado |
 |---|---|---|
 | 1 | Pontualidade é dada a quem não foi marcado como atrasado? | Sim: presente e não atrasado = pontualidade |
-| 2 | Desconto por falta: quanto? | Valor configurável, só para falta não justificada |
+| 2 | Desconto por falta: quanto? | Substituída: o desconto saiu do produto, ponto nunca é negativo (ver `docs/fases/ranking-pontuacao`) |
 | 3 | Evento de vários dias: qual domingo bloqueia? | Todos os domingos do intervalo |
 | 4 | Dois eventos no mesmo dia com marcações diferentes | Basta um bloquear; basta um ser bom para campo |
 | 5 | Evento criado em cima de aula agendada: o que acontece com o requisito? | Fica na data, marcado como **conflito**; responsável é avisado e move |

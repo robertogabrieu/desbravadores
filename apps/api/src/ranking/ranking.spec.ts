@@ -63,7 +63,6 @@ describe('ranking do mes', () => {
     const zero = await dbvNaUnidade(clube.id, unidade.id, 'Zeca Nunes')
 
     await criarLancamento({ clubeId: clube.id, dbvId: eva.id, pontos: 40, data: '2026-03-01' })
-    await criarLancamento({ clubeId: clube.id, dbvId: eva.id, pontos: -10, data: '2026-03-31' })
     await criarLancamento({ clubeId: clube.id, dbvId: eva.id, pontos: 999, data: '2026-03-10', estornado: true })
     await criarLancamento({ clubeId: clube.id, dbvId: eva.id, pontos: 500, data: '2026-02-28' })
     await criarLancamento({ clubeId: clube.id, dbvId: eva.id, pontos: 500, data: '2026-04-01' })
@@ -101,7 +100,7 @@ describe('ranking do mes', () => {
     const saida = corpo<Ranking>(resposta)
     expect(saida.mes).toBe(MES)
     expect(saida.itens.map((i) => [i.posicao, i.nome, i.pontos, i.frequencia])).toEqual([
-      [1, 'Eva Lima', 30, null],
+      [1, 'Eva Lima', 40, null],
       [2, 'Bia Souza', 10, 100],
       [3, 'Caio Alves', 10, 50],
       [4, 'Davi Rocha', 10, 50],

@@ -23,11 +23,6 @@ export interface Criterio {
   ativo: boolean
 }
 
-export interface ConfigPontos {
-  descontarFalta: boolean
-  pontosDescontoFalta: number
-}
-
 export interface MarcacaoChamada {
   situacao: SituacaoChamada
   uniforme: boolean
@@ -36,19 +31,15 @@ export interface MarcacaoChamada {
 }
 
 export interface PontosDoItem {
-  gatilho: GatilhoCriterio | 'FALTA'
+  gatilho: GatilhoCriterio
   pontos: number
 }
 
 export function pontosPorCriterio(
   marcacao: MarcacaoChamada,
   criterios: Criterio[],
-  config: ConfigPontos,
 ): PontosDoItem[] {
-  if (marcacao.situacao === 'FALTA_JUSTIFICADA') return []
-  if (marcacao.situacao === 'FALTA') {
-    return config.descontarFalta ? [{ gatilho: 'FALTA', pontos: -config.pontosDescontoFalta }] : []
-  }
+  if (marcacao.situacao === 'FALTA_JUSTIFICADA' || marcacao.situacao === 'FALTA') return []
 
   const conquistados: Record<string, boolean> = {
     PRESENCA: true,
@@ -65,7 +56,6 @@ export function pontosPorCriterio(
 export function pontosDaChamada(
   marcacao: MarcacaoChamada,
   criterios: Criterio[],
-  config: ConfigPontos,
 ): number {
-  return pontosPorCriterio(marcacao, criterios, config).reduce((total, item) => total + item.pontos, 0)
+  return pontosPorCriterio(marcacao, criterios).reduce((total, item) => total + item.pontos, 0)
 }

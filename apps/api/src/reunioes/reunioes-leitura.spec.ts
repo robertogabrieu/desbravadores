@@ -118,7 +118,7 @@ describe('leituras de reunioes, grade e membros', () => {
   })
 
   describe('GET /api/reunioes/:id', () => {
-    it('detalhe: cabecalho, chamada por nome com pontos, totais, registradaPor e sem album', async () => {
+    it('detalhe: cabecalho, chamada por nome com pontos (falta rende 0), totais, registradaPor e sem album', async () => {
       const c = await cenario()
       const reuniao = await criarReuniao({
         unidadeId: c.unidade.id, data: diasAtras(2), horario: '15:00', local: 'Igreja', observacoes: 'Obs',
@@ -131,7 +131,6 @@ describe('leituras de reunioes, grade e membros', () => {
       })
       await criarLancamento({ clubeId: c.clube.id, dbvId: c.ana.id, pontos: 15, data: diasAtras(2), origemTipo: 'CHAMADA', origemId: `${reuniao.id}:${c.ana.id}` })
       await criarLancamento({ clubeId: c.clube.id, dbvId: c.ana.id, pontos: 9, data: diasAtras(2), origemTipo: 'CHAMADA', origemId: `${reuniao.id}:${c.ana.id}`, estornado: true })
-      await criarLancamento({ clubeId: c.clube.id, dbvId: c.caio.id, pontos: -4, data: diasAtras(2), origemTipo: 'CHAMADA', origemId: `${reuniao.id}:${c.caio.id}` })
 
       const resposta = await api.get(`/api/reunioes/${reuniao.id}`, c.acesso.autorizacao)
       expect(resposta.status).toBe(200)
@@ -139,10 +138,10 @@ describe('leituras de reunioes, grade e membros', () => {
       expect(detalhe).toMatchObject({
         id: reuniao.id, unidade: { id: c.unidade.id, nome: c.unidade.nome }, data: diasAtras(2), horario: '15:00',
         local: 'Igreja', observacoes: 'Obs', registradaPor: { nome: c.acesso.usuario.nome }, alterada: null, album: null, podeEditar: true,
-        totais: { presentes: 2, total: 3, atrasos: 1, uniformes: 1, biblias: 1, pontos: 11 },
+        totais: { presentes: 2, total: 3, atrasos: 1, uniformes: 1, biblias: 1, pontos: 15 },
       })
       expect(detalhe.cabecalhoVersao).toBe(reuniao.cabecalhoVersao.toISOString())
-      expect(detalhe.chamada.map((l) => [l.nome, l.pontos])).toEqual([['Ana Souza', 15], ['Bia Lima', 0], ['Caio Reis', -4]])
+      expect(detalhe.chamada.map((l) => [l.nome, l.pontos])).toEqual([['Ana Souza', 15], ['Bia Lima', 0], ['Caio Reis', 0]])
       expect(detalhe.chamada[0]).toMatchObject({ dbvId: c.ana.id, nomePublico: 'Ana', situacao: 'PRESENTE', biblia: true })
     })
 
