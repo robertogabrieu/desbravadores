@@ -34,7 +34,7 @@ describe('rotas do instrutor', () => {
   it('/inicio mostra a tela da 1b para CONSELHEIRO', async () => {
     entrar('CONSELHEIRO')
     renderizarRotas(rotas, '/inicio')
-    await screen.findByRole('button', { name: /Ana Souza/ })
+    await screen.findByRole('link', { name: 'Ranking' })
     expect(screen.queryByRole('heading', { name: 'Início do instrutor' })).not.toBeInTheDocument()
   })
 
@@ -68,7 +68,7 @@ describe('rotas do instrutor', () => {
   it('conselheiro não entra nas telas do instrutor', async () => {
     entrar('CONSELHEIRO')
     renderizarRotas(rotas, '/classes')
-    await screen.findByRole('button', { name: /Ana Souza/ })
+    await screen.findByRole('link', { name: 'Ranking' })
     expect(screen.queryByRole('heading', { name: 'Minhas classes' })).not.toBeInTheDocument()
   })
 })
@@ -118,7 +118,7 @@ describe('rotas da Classe Bíblica', () => {
     entrar('CONSELHEIRO')
     servidor.use(...handlersClasseBiblica())
     renderizarRotas(rotas, '/adm/classe-biblica')
-    await screen.findByRole('button', { name: /Ana Souza/ })
+    await screen.findByRole('link', { name: 'Ranking' })
     expect(screen.queryByRole('heading', { name: 'Classe Bíblica', level: 1 })).not.toBeInTheDocument()
   })
 })

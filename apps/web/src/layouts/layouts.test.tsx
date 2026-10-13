@@ -36,6 +36,7 @@ const rotasCelular: RouteObject[] = [
     children: [
       { path: '/inicio', element: <p>conteúdo</p> },
       { path: '/unidade', element: <p>minha unidade</p> },
+      { path: '/conta', element: <p>minha conta</p> },
     ],
   },
   { path: '/papel', element: <p>tela de papel</p> },
@@ -45,9 +46,9 @@ const rotasAdm: RouteObject[] = [
   { element: <LayoutAdm />, children: [{ path: '/adm/desbravadores', element: <p>lista</p> }] },
 ]
 
-/** O layout monta antes de a sessão carregar (sem papel, mostra o menu do Adm): espera o nome no cabeçalho. */
+/** O layout monta antes de a sessão carregar (sem papel, a barra só tem o Início): espera a barra do papel. */
 async function esperarSessao(): Promise<void> {
-  await screen.findByRole('button', { name: /Ana Souza/ })
+  await within(screen.getByRole('navigation')).findByText('Ranking')
 }
 
 function itemDoMenu(nome: string): HTMLElement {
@@ -89,53 +90,16 @@ describe('LayoutCelular', () => {
     expect(within(screen.getByRole('navigation')).queryByText('Biblioteca')).not.toBeInTheDocument()
   })
 
-  it('item desabilitado não navega ao ser tocado', async () => {
-    servidor.use(...handlersSessao([criarVinculo('ADM')]))
-    const { roteador } = renderizarRotas(rotasAdm, '/adm/desbravadores')
-    await screen.findByText('lista')
-
-    await userEvent.click(screen.getByText('Relatórios'))
-
-    expect(roteador.state.location.pathname).toBe('/adm/desbravadores')
-  })
-
-  it('menu do usuário: 1 vínculo não oferece "Trocar de papel"', async () => {
-    servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO')]))
-    renderizarRotas(rotasCelular, '/inicio')
-
-    await userEvent.click(await screen.findByRole('button', { name: /Ana Souza/ }))
-
-    expect(screen.queryByRole('menuitem', { name: 'Trocar de papel' })).not.toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: 'Sair' })).toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: 'Sair de todos os aparelhos' })).toBeInTheDocument()
-  })
-
-  it('menu do usuário: 2+ vínculos oferece "Trocar de papel", que leva a /papel', async () => {
-    servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO', 1), criarVinculo('INSTRUTOR', 2)], undefined))
+  it('o cabeçalho tem só o atalho "Minha conta", que leva a /conta: sem nome do usuário nem selo de papel', async () => {
+    servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO', 1), criarVinculo('INSTRUTOR', 2)]))
     const { roteador } = renderizarRotas(rotasCelular, '/inicio')
+    await esperarSessao()
 
-    await userEvent.click(await screen.findByRole('button', { name: /Ana Souza/ }))
-    await userEvent.click(screen.getByRole('menuitem', { name: 'Trocar de papel' }))
+    expect(screen.queryByRole('button', { name: /Ana Souza/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Trocar de papel/ })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('link', { name: 'Minha conta' }))
 
-    expect(roteador.state.location.pathname).toBe('/papel')
-  })
-
-  it('"Sair de todos os aparelhos" chama a rota de sair de todos', async () => {
-    let chamadas = 0
-    servidor.use(
-      http.post('/api/auth/sair-de-todos', () => {
-        chamadas += 1
-        return new HttpResponse(null, { status: 204 })
-      }),
-      ...handlersSessao([criarVinculo('CONSELHEIRO')]),
-    )
-    renderizarRotas(rotasCelular, '/inicio')
-
-    await userEvent.click(await screen.findByRole('button', { name: /Ana Souza/ }))
-    await userEvent.click(screen.getByRole('menuitem', { name: 'Sair de todos os aparelhos' }))
-
-    await screen.findByText('conteúdo').catch(() => undefined)
-    expect(chamadas).toBe(1)
+    expect(roteador.state.location.pathname).toBe('/conta')
   })
 })
 
@@ -157,36 +121,59 @@ describe('marca do app', () => {
 })
 
 describe('LayoutAdm', () => {
-  it('habilita todos os itens do menu, menos Relatórios, que fica "em breve"', async () => {
+  it('o menu tem 7 entradas no topo; os grupos abrem e fecham e só o da tela aberta já vem aberto', async () => {
     servidor.use(...handlersSessao([criarVinculo('ADM')]))
     renderizarRotas(rotasAdm, '/adm/desbravadores')
     await screen.findByText('lista')
+    const menu = within(screen.getByRole('navigation', { name: 'Menu do Adm' }))
 
-    expect(itemDoMenu('Desbravadores')).toHaveAttribute('href', '/adm/desbravadores')
-    expect(itemDoMenu('Usuários')).toHaveAttribute('href', '/adm/usuarios')
-    expect(itemDoMenu('Unidades')).toHaveAttribute('href', '/adm/unidades')
-    expect(itemDoMenu('Ranking')).toHaveAttribute('href', '/ranking')
-    expect(itemDoMenu('Regras de pontuação')).toHaveAttribute('href', '/adm/ranking/regras')
-    expect(itemDoMenu('Visão geral')).toHaveAttribute('href', '/adm')
-    expect(itemDoMenu('Classes e especialidades')).toHaveAttribute('href', '/adm/classes')
-    expect(itemDoMenu('Calendário do clube')).toHaveAttribute('href', '/adm/calendario')
-    expect(itemDoMenu('Cronogramas')).toHaveAttribute('href', '/adm/cronogramas')
-    expect(itemDoMenu('Biblioteca')).toHaveAttribute('href', '/adm/biblioteca')
-    expect(itemDoMenu('Configurações do clube')).toHaveAttribute('href', '/adm/configuracoes')
-    expect(itemDoMenu('Relatórios')).toHaveAttribute('aria-disabled', 'true')
+    const topo = ['Visão geral', 'Membros', 'Classes', 'Calendário do clube', 'Ranking', 'Biblioteca', 'Configurações do clube']
+    for (const rotulo of topo) expect(menu.getByText(rotulo)).toBeInTheDocument()
+    expect(menu.getByRole('button', { name: 'Membros' })).toHaveAttribute('aria-expanded', 'true')
+    expect(menu.getByRole('button', { name: 'Classes' })).toHaveAttribute('aria-expanded', 'false')
+    expect(menu.queryByText('Cronogramas')).not.toBeInTheDocument()
+    expect(menu.queryByText('Relatórios')).not.toBeInTheDocument()
+
+    await userEvent.click(menu.getByRole('button', { name: 'Classes' }))
+    expect(menu.getByRole('button', { name: 'Classes' })).toHaveAttribute('aria-expanded', 'true')
+    expect(menu.getByText('Cronogramas')).toBeInTheDocument()
+
+    await userEvent.click(menu.getByRole('button', { name: 'Membros' }))
+    expect(menu.queryByText('Usuários')).not.toBeInTheDocument()
   })
 
-  it('"Biblioteca" vem logo depois de "Cronogramas"', async () => {
+  it('cada item aponta para a sua tela, dentro do grupo ou solto', async () => {
+    servidor.use(...handlersSessao([criarVinculo('ADM')]))
+    renderizarRotas(rotasAdm, '/adm/desbravadores')
+    await screen.findByText('lista')
+    const menu = within(screen.getByRole('navigation', { name: 'Menu do Adm' }))
+    await userEvent.click(menu.getByRole('button', { name: 'Classes' }))
+    await userEvent.click(menu.getByRole('button', { name: 'Ranking' }))
+
+    const destinos: Array<[string, string]> = [
+      ['Visão geral', '/adm'],
+      ['Desbravadores', '/adm/desbravadores'],
+      ['Usuários', '/adm/usuarios'],
+      ['Unidades', '/adm/unidades'],
+      ['Classes e especialidades', '/adm/classes'],
+      ['Classe Bíblica', '/adm/classe-biblica'],
+      ['Cronogramas', '/adm/cronogramas'],
+      ['Calendário do clube', '/adm/calendario'],
+      ['Regras de pontuação', '/adm/ranking/regras'],
+      ['Biblioteca', '/adm/biblioteca'],
+      ['Configurações do clube', '/adm/configuracoes'],
+    ]
+    for (const [rotulo, destino] of destinos) expect(menu.getByRole('link', { name: rotulo })).toHaveAttribute('href', destino)
+    expect(menu.getByRole('link', { name: 'Ranking' })).toHaveAttribute('href', '/ranking')
+  })
+
+  it('o cabeçalho do Adm tem o atalho "Minha conta" e o sino, sem nome do usuário nem selo de papel', async () => {
     servidor.use(...handlersSessao([criarVinculo('ADM')]))
     renderizarRotas(rotasAdm, '/adm/desbravadores')
     await screen.findByText('lista')
 
-    const rotulos = within(screen.getByRole('navigation', { name: 'Menu do Adm' }))
-      .getAllByRole('link')
-      .map((link) => link.textContent)
-    const posicaoDeCronogramas = rotulos.indexOf('Cronogramas')
-    expect(posicaoDeCronogramas).toBeGreaterThanOrEqual(0)
-    expect(rotulos.slice(posicaoDeCronogramas, posicaoDeCronogramas + 2)).toEqual(['Cronogramas', 'Biblioteca'])
+    expect(screen.getByRole('link', { name: 'Minha conta' })).toHaveAttribute('href', '/conta')
+    expect(screen.queryByRole('button', { name: /Ana Souza/ })).not.toBeInTheDocument()
   })
 
   it('só o item da tela aberta fica marcado: Visão geral não acende nas outras telas do Adm', async () => {
@@ -270,7 +257,7 @@ describe('LayoutAdm', () => {
     const gaveta = screen.getByRole('dialog', { name: 'Menu do Adm' })
     expect(document.body.style.overflow).toBe('hidden')
 
-    within(gaveta).getByText('Ranking').closest('a')?.focus()
+    within(gaveta).getByRole('link', { name: 'Usuários' }).focus()
     await userEvent.tab()
     expect(gaveta).toContainElement(document.activeElement as HTMLElement)
     await userEvent.tab({ shift: true })
@@ -340,25 +327,6 @@ describe('LayoutAdm', () => {
       ler.mockRestore()
       gravar.mockRestore()
     }
-  })
-
-  it('abaixo de 900 px o cabeçalho mostra só o primeiro nome; o nome inteiro fica dentro do menu', async () => {
-    simularLargura(390)
-    servidor.use(...handlersSessao([criarVinculo('ADM')]))
-    renderizarRotas(rotasAdm, '/adm/desbravadores')
-    const botao = await screen.findByRole('button', { name: 'Ana Souza' })
-    expect(botao).toHaveTextContent(/^Ana$/)
-
-    await userEvent.click(botao)
-    expect(within(screen.getByRole('menu')).getByText('Ana Souza')).toBeInTheDocument()
-    // O nome inteiro dá nome ao menu: leitor de tela que pula o que não é item ainda o lê ao abrir.
-    expect(screen.getByRole('menu', { name: 'Ana Souza' })).toBeInTheDocument()
-  })
-
-  it('largura de 1280 px: o cabeçalho mostra o nome inteiro', async () => {
-    servidor.use(...handlersSessao([criarVinculo('ADM')]))
-    renderizarRotas(rotasAdm, '/adm/desbravadores')
-    expect(await screen.findByRole('button', { name: 'Ana Souza' })).toHaveTextContent(/^Ana Souza$/)
   })
 
   it('a margem lateral do conteúdo é definida uma vez, no layout', async () => {
@@ -474,76 +442,5 @@ describe('Selo "aguardando envio" no cabeçalho do celular', () => {
     offline.contagem = { pendentes: 2, erros: 0 }
     renderizarRotas(rotasCelular, '/inicio')
     expect(await screen.findByText('2 aguardando envio')).toHaveAttribute('data-tom', 'neutro')
-  })
-})
-
-describe('Sair com fila (1a-A3)', () => {
-  let logouts = 0
-  let sairDeTodos = 0
-  beforeEach(() => {
-    logouts = 0
-    sairDeTodos = 0
-    servidor.use(
-      http.post('/api/auth/logout', () => {
-        logouts += 1
-        return new HttpResponse(null, { status: 204 })
-      }),
-      http.post('/api/auth/sair-de-todos', () => {
-        sairDeTodos += 1
-        return new HttpResponse(null, { status: 204 })
-      }),
-      ...handlersSessao([criarVinculo('CONSELHEIRO')]),
-    )
-  })
-
-  async function abrirMenu(item: string) {
-    await userEvent.click(await screen.findByRole('button', { name: /Ana Souza/ }))
-    await userEvent.click(screen.getByRole('menuitem', { name: item }))
-  }
-
-  it('sem fila sai direto, sem confirmação', async () => {
-    renderizarRotas(rotasCelular, '/inicio')
-    await abrirMenu('Sair')
-
-    await waitFor(() => expect(logouts).toBe(1))
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-  })
-
-  it('com fila pede confirmação e só sai depois de confirmar', async () => {
-    offline.contagem = { pendentes: 2, erros: 1 }
-    renderizarRotas(rotasCelular, '/inicio')
-    await abrirMenu('Sair')
-
-    const painel = await screen.findByRole('dialog')
-    expect(painel).toHaveTextContent('Há 3 itens esperando envio. Eles ficam guardados neste celular e só serão enviados quando você entrar de novo.')
-    expect(logouts).toBe(0)
-
-    await userEvent.click(within(painel).getByRole('button', { name: 'Sair' }))
-
-    await waitFor(() => expect(logouts).toBe(1))
-  })
-
-  it('cancelar a confirmação mantém a sessão', async () => {
-    offline.contagem = { pendentes: 1, erros: 0 }
-    renderizarRotas(rotasCelular, '/inicio')
-    await abrirMenu('Sair')
-
-    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Cancelar' }))
-
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(logouts).toBe(0)
-    expect(screen.getByText('conteúdo')).toBeInTheDocument()
-  })
-
-  it('"Sair de todos os aparelhos" com fila também confirma antes', async () => {
-    offline.contagem = { pendentes: 0, erros: 2 }
-    renderizarRotas(rotasCelular, '/inicio')
-    await abrirMenu('Sair de todos os aparelhos')
-
-    const painel = await screen.findByRole('dialog')
-    expect(sairDeTodos).toBe(0)
-    await userEvent.click(within(painel).getByRole('button', { name: 'Sair de todos os aparelhos' }))
-
-    await waitFor(() => expect(sairDeTodos).toBe(1))
   })
 })

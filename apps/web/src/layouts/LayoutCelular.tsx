@@ -1,16 +1,15 @@
 import { CalendarDays, CalendarRange, GraduationCap, House, Trophy, Users } from 'lucide-react'
 import { Outlet } from 'react-router-dom'
 import { SinoNotificacoes } from '../modulos/notificacoes/SinoNotificacoes'
-import { vinculosDoClube } from '../modulos/acesso/papeis'
 import { Marca } from '../ui/Marca'
 import { useSessao } from '../sessao/useSessao'
+import { BotaoMinhaConta } from './BotaoMinhaConta'
 import { FaixaSemConexao } from './FaixaSemConexao'
 import { FaixaSessaoExpirada } from './FaixaSessaoExpirada'
 import { ItemNavegacao } from './ItemNavegacao'
 import type { ItemDeNavegacao } from './ItemNavegacao'
-import { MenuUsuario } from './MenuUsuario'
 import { SeloAguardandoEnvio } from './SeloAguardandoEnvio'
-import { SeloPapel } from './SeloPapel'
+import { AvisoDeTroca } from './SeloPapel'
 
 const INICIO: ItemDeNavegacao = { rotulo: 'Início', icone: House, para: '/inicio' }
 const RANKING: ItemDeNavegacao = { rotulo: 'Ranking', icone: Trophy, para: '/ranking' }
@@ -22,24 +21,22 @@ const ITENS_POR_PAPEL = {
   ADM: [INICIO],
 } satisfies Record<string, ItemDeNavegacao[]>
 
-/** Rota-layout do celular: cabeçalho com menu do usuário, conteúdo e barra inferior do papel ativo. */
+/** Rota-layout do celular: cabeçalho com atalho para Minha conta, conteúdo e barra inferior do papel ativo. */
 export function LayoutCelular() {
-  const { papel, vinculos, vinculoAtivo } = useSessao()
+  const { papel } = useSessao()
   const itens = ITENS_POR_PAPEL[papel ?? 'ADM']
-  // Com o selo do papel, o nome do app não cabe ao lado dele em 320 px: fica só o emblema.
-  const comSeloDoPapel = vinculosDoClube(vinculos, vinculoAtivo).length >= 2
 
   return (
     <div className="flex min-h-dvh flex-col bg-fundo">
       <FaixaSessaoExpirada />
       <FaixaSemConexao />
       <header className="flex items-center justify-between gap-2 bg-marca px-4 py-2 text-white">
-        <Marca classeDoNome={comSeloDoPapel ? 'max-[419px]:sr-only' : undefined} />
+        <Marca />
         <div className="flex min-w-0 items-center gap-1">
           <SeloAguardandoEnvio />
-          <SeloPapel sobreMarca />
           {papel === 'INSTRUTOR' && <SinoNotificacoes />}
-          <MenuUsuario />
+          <BotaoMinhaConta sobreMarca />
+          <AvisoDeTroca />
         </div>
       </header>
       {/* Pensado para o celular, mas há instrutor no tablet: a tela usa a largura dele até onde a leitura aguenta. */}

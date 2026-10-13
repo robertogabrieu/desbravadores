@@ -61,7 +61,7 @@ describe('sino', () => {
     servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO')]), ...handlers)
     renderizarRotas(rotas, '/inicio')
 
-    await screen.findByRole('button', { name: /Ana Souza/ })
+    await screen.findByRole('link', { name: 'Ranking' })
     expect(screen.queryByRole('link', { name: NOME_DO_SINO })).not.toBeInTheDocument()
     expect(registro.leituras).toBe(0)
   })

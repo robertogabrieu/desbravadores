@@ -15,6 +15,7 @@ import { rotasAdmVisaoGeral } from './modulos/adm/visao-geral/rotas'
 import { rotasAdmCronogramas, rotasCronogramaMontagem } from './modulos/cronograma-montagem/rotas'
 import { rotasAdmBiblioteca, rotasBiblioteca } from './modulos/biblioteca/rotas'
 import { TelaConectar } from './modulos/conectar/TelaConectar'
+import { rotasConta } from './modulos/conta/rotas'
 import { PaginaNaoEncontrada } from './modulos/erro/PaginaNaoEncontrada'
 import { PaginaFila } from './modulos/fila/PaginaFila'
 import { TelaRegistroAula } from './modulos/aulas/TelaRegistroAula'
@@ -38,7 +39,7 @@ import { GuardaRota } from './sessao/GuardaRota'
 import { RedirecionamentoRaiz } from './sessao/RedirecionamentoRaiz'
 import { useSessao } from './sessao/useSessao'
 
-/** Ranking e perfil servem aos três papéis, cada um com a barra (ou o menu) do papel ativo. */
+/** Ranking, perfil e Minha conta servem aos três papéis, cada um com a barra (ou o menu) do papel ativo. */
 function LayoutDoPapel() {
   const { papel } = useSessao()
   return papel === 'ADM' ? <LayoutAdm /> : <LayoutCelular />
@@ -112,7 +113,7 @@ export const rotas: RouteObject[] = [
   },
   {
     element: <GuardaRota papeis={['CONSELHEIRO', 'INSTRUTOR', 'ADM']} />,
-    children: [{ element: <LayoutDoPapel />, children: [...rotasRanking, ...rotasPerfil] }],
+    children: [{ element: <LayoutDoPapel />, children: [...rotasRanking, ...rotasPerfil, ...rotasConta] }],
   },
   {
     element: <GuardaRota papeis={['INSTRUTOR', 'ADM']} />,
