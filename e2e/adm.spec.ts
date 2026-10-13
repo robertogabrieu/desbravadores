@@ -171,6 +171,41 @@ test('adm: evento em conflito avisa o instrutor, ele monta e envia, o Adm public
   expect(aulaNova?.requisitos).toEqual([expect.objectContaining({ id: livre.id })])
 })
 
+test('adm: arrasta um requisito da lista até a linha da data e ele grava como o "Colocar aqui"', async ({ browser }) => {
+  const clube = await criarClube()
+  const amigo = await classeOficial('Amigo')
+  await admDefinirClasseClube({ clubeId: clube.id, classeId: amigo.id, quemMontaCronograma: 'ADM' })
+  const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+  const requisitos = await prismaDeTeste().requisito.findMany({
+    where: { ativo: true, secao: { classeId: amigo.id } },
+    orderBy: [{ secao: { ordem: 'asc' } }, { ordem: 'asc' }],
+    take: 2,
+  })
+  const [colocado, solto] = requisitos
+  if (!colocado || !solto) throw new Error('A classe Amigo precisa de ao menos 2 requisitos na carga oficial')
+
+  const { conflito: primeiroDomingo, livre: segundoDomingo } = domingosDoCronograma()
+  const cronograma = await criarCronograma({
+    clubeId: clube.id,
+    classeId: amigo.id,
+    anoClube: anoCorrente(),
+    aulas: [{ data: primeiroDomingo, requisitoIds: [colocado.id] }, { data: segundoDomingo, requisitoIds: [] }],
+  })
+
+  const pagina = await novaSessao(browser, adm.usuario.email)
+  await pagina.goto(`/adm/cronogramas?classe=${amigo.id}`)
+  const gravacao = pagina.waitForResponse(
+    (resposta) => resposta.url().includes(`/api/cronogramas/${cronograma.id}/requisitos/${solto.id}`) && resposta.request().method() === 'PUT',
+  )
+  await pagina.getByRole('button', { name: new RegExp(solto.texto.slice(0, 30).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }).dragTo(pagina.locator(`li[data-data="${segundoDomingo}"]`))
+  expect((await gravacao).ok()).toBe(true)
+  await expect(pagina.locator(`li[data-data="${segundoDomingo}"]`).getByText(solto.texto)).toBeVisible()
+
+  const api = await apiDo((await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR', classeIds: [amigo.id] })).autorizacao)
+  const vivo = await lerCronograma(api, amigo.id)
+  expect(vivo.aulas.find((aula) => aula.data === segundoDomingo)?.requisitos).toEqual([expect.objectContaining({ id: solto.id })])
+})
+
 test('adm: ao remover o papel de conselheiro de quem está logado como conselheiro, a pessoa volta à escolha só com Instrutor', async ({ browser }) => {
   const clube = await criarClube()
   const amigo = await classeOficial('Amigo')
