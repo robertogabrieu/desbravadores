@@ -97,7 +97,7 @@ function CorpoDoPainel({ regra, regras, aoFechar, aoSalvar }: PropriedadesDoPain
   return (
     <form noValidate onSubmit={enviar} className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <p className="text-sm font-bold uppercase tracking-wide text-texto-2">Lançado por {lancadoPor}</p>
+        <p className="text-base font-bold uppercase tracking-wide text-texto-2">Lançado por {lancadoPor}</p>
         <p className="text-base text-texto-2">{definicao.descricao}</p>
       </div>
       <CampoComPasso

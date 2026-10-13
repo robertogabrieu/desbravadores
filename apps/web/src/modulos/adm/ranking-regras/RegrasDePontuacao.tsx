@@ -17,7 +17,7 @@ import type { AcaoDaLinha } from './LinhaDeRegra'
 import { PainelDaRegra } from './PainelDaRegra'
 import { pontosDaReuniaoPerfeita } from './resumo'
 
-const ESTILO_DA_LISTA = 'overflow-hidden rounded-cartao border border-borda bg-superficie'
+const ESTILO_DA_LISTA = 'overflow-hidden rounded-cartao border border-borda-controle bg-superficie'
 
 function mensagemDeConfirmacao(salva: RegraDoClube): string {
   const { rotulo } = REGRAS_DE_PONTUACAO.find((r) => r.gatilho === salva.gatilho) ?? { rotulo: '' }
@@ -35,7 +35,7 @@ export function RegrasDePontuacao() {
   else if (modo === 'SEM_CONEXAO') corpo = <DisponivelComInternet />
   else if (regras.isError) {
     corpo = (
-      <div role="alert" className="flex flex-col items-center gap-3 rounded-cartao border border-borda bg-superficie px-6 py-10 text-center">
+      <div role="alert" className="flex flex-col items-center gap-3 rounded-cartao border border-borda-controle bg-superficie px-6 py-10 text-center">
         <h2 className="font-titulo text-xl font-bold">Não deu para carregar as regras</h2>
         <p className="max-w-md text-base text-texto-3">Nada foi alterado. Confira a internet e tente de novo.</p>
         <Botao onClick={() => void regras.refetch()}>Tentar de novo</Botao>
@@ -54,8 +54,8 @@ export function RegrasDePontuacao() {
   return (
     <div className="flex max-w-5xl flex-col gap-6">
       <header>
-        <nav aria-label="Onde você está" className="text-sm text-texto-2">
-          <Link to="/ranking" className="font-semibold text-marca underline">
+        <nav aria-label="Onde você está" className="text-base text-texto-2">
+          <Link to="/ranking" className="inline-flex min-h-[var(--touch-min)] items-center font-semibold text-marca underline">
             Ranking
           </Link>{' '}
           › Regras de pontuação
@@ -91,7 +91,7 @@ function TelaDasRegras({ dados, semConexao }: { dados: RegrasDaTela; semConexao:
       {!podeEditar && (
         <FaixaAviso>Você pode conferir tudo, mas não editar. Peça a quem administra o clube a permissão “Configurar o ranking”.</FaixaAviso>
       )}
-      <div className="flex flex-wrap items-baseline gap-x-8 gap-y-2 rounded-cartao border border-borda bg-superficie px-5 py-4">
+      <div className="flex flex-wrap items-baseline gap-x-8 gap-y-2 rounded-cartao border border-borda-controle bg-superficie px-5 py-4">
         <p>
           <span className="font-titulo text-[26px] font-extrabold">{ligadas} de {REGRAS_DE_PONTUACAO.length}</span>{' '}
           <span className="text-base text-texto-3">regras fixas estão ligadas</span>

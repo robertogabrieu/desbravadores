@@ -32,12 +32,12 @@ function BotaoEditar({ nome, acao, aoClicar }: { nome: string; acao: 'editar' | 
 
 export function SeloDaLinha({ ligado, ligada, desligada }: { ligado: boolean; ligada: string; desligada: string }): ReactNode {
   return ligado ? (
-    <Selo tom="sucesso">
+    <Selo tom="sucesso" className="text-base">
       <Check aria-hidden className="size-3.5" strokeWidth={3} />
       {ligada}
     </Selo>
   ) : (
-    <Selo className="bg-divisor text-texto-3">
+    <Selo className="bg-divisor text-base text-texto-3">
       <Minus aria-hidden className="size-3.5" strokeWidth={3} />
       {desligada}
     </Selo>

@@ -35,6 +35,14 @@ describe('Painel da regra · abertura', () => {
     expect(screen.getByText('Vale a partir de agora. Os pontos que já foram lançados não mudam.')).toBeInTheDocument()
   })
 
+  it('o texto do painel tem 16px: quem lança, rótulo e dica do campo', async () => {
+    await abrirPainel('Presença')
+    expect(screen.getByText(/^Lançado por/).className).toContain('text-base')
+    const rotulo = screen.getByText('Pontos por presença')
+    expect(rotulo.parentElement?.parentElement?.className).toContain('[&_label]:text-base')
+    expect(rotulo.parentElement?.parentElement?.className).toContain('[&_p]:text-base')
+  })
+
   it('o foco inicial vai para o campo de pontos', async () => {
     const { campo } = await abrirPainel('Presença')
     await waitFor(() => expect(campo).toHaveFocus())

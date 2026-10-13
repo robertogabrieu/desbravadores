@@ -93,6 +93,22 @@ describe('Regras de pontuação · conteúdo', () => {
   })
 })
 
+describe('Regras de pontuação · pisos de leitura e toque', () => {
+  it('selos e migalha têm letra de 16px; migalha, Editar e link do calendário têm alvo de 44px', async () => {
+    abrir(handlersRegras(criarRegras(eventos)))
+    const editar = await screen.findByRole('button', { name: 'Editar Presença' })
+    expect(screen.getAllByText('Ligada')[0].className).toContain('text-base')
+    expect(screen.getByText('Desligada').className).toContain('text-base')
+    expect(screen.getByText('Pontos lançados').className).toContain('text-base')
+    expect(screen.getByText('Ainda vai ser').className).toContain('text-base')
+    expect(screen.getByRole('navigation', { name: 'Onde você está' }).className).toContain('text-base')
+    expect(screen.getByRole('link', { name: 'Ranking' }).className).toContain('min-h-[var(--touch-min)]')
+    expect(editar.className).toContain('min-h-[var(--touch-min)]')
+    const link = await screen.findByRole('link', { name: 'Editar Culto de Sábado Santo no calendário' })
+    expect(link.className).toContain('min-h-[var(--touch-min)]')
+  })
+})
+
 describe('Regras de pontuação · eventos especiais', () => {
   it('uma linha por evento: selo, data, uniforme pelo nome do calendário, quem foi e link para o calendário', async () => {
     abrir(handlersRegras(criarRegras(eventos)))
@@ -105,7 +121,7 @@ describe('Regras de pontuação · eventos especiais', () => {
     expect(within(linhas[0]).getByText('sábado, 04/04/2026 · mais 5 pontos com o uniforme de gala · 38 foram')).toBeInTheDocument()
     expect(within(linhas[0]).getByText('+20')).toBeInTheDocument()
     expect(within(linhas[0]).getByText('por ir')).toBeInTheDocument()
-    expect(within(linhas[0]).getByRole('link', { name: 'Editar Culto de Sábado Santo no calendário' })).toHaveAttribute(
+    expect(await within(linhas[0]).findByRole('link', { name: 'Editar Culto de Sábado Santo no calendário' })).toHaveAttribute(
       'href',
       '/adm/calendario/eventos/00000000-0000-4000-8000-000000007001/editar',
     )
@@ -118,7 +134,7 @@ describe('Regras de pontuação · eventos especiais', () => {
     abrir(handlersRegras(criarRegras([])))
     expect(await screen.findByText('Nenhum evento especial neste ano')).toBeInTheDocument()
     expect(screen.getByText('Os pontos de um evento especial são definidos ao criá-lo no calendário.')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Criar evento no calendário' })).toHaveAttribute('href', '/adm/calendario/eventos/novo')
+    expect(await screen.findByRole('link', { name: 'Criar evento no calendário' })).toHaveAttribute('href', '/adm/calendario/eventos/novo')
   })
 
   it('sem evento e sem permissão do calendário: o botão de criar não aparece', async () => {
