@@ -27,6 +27,9 @@ detalhes como uniforme, local e horário, e o calendário do clube."*
    uniforme, e a página simplesmente não mostra a etiqueta nele.
 6. **O card não repete o tipo.** Mostra nome, horário, local e uniforme. O tipo aparece só nas cores e na
    legenda do calendário.
+7. **O calendário interno do app não muda.** Ele mostra uniforme só no evento especial
+   (`CalendarioDeLeitura.tsx:71`, `CartaoProximoEvento.tsx:46`, `adm/calendario/CalendarioDoCelular.tsx:39`,
+   `AdmCalendario.tsx:264`). O Adm cadastra o uniforme dos quatro tipos e o vê na página pública e no formulário.
 
 ## Problema
 
@@ -223,10 +226,6 @@ Rota `/agenda/:slug` fora do layout autenticado, no mesmo padrão de `rotasAcess
 
 1. Feriado e Férias aparecem como avisos na página pública (Classe Bíblica não).
 2. Slug do clube como parte do link, sem token. Quem souber o endereço vê; quem adivinhar o slug também.
-3. **O calendário do próprio app mostra uniforme só no evento especial** (`CalendarioDeLeitura.tsx:71`,
-   `CartaoProximoEvento.tsx:46`, `adm/calendario/CalendarioDoCelular.tsx:39`, `AdmCalendario.tsx:264`). Pelo
-   escopo, não mudam: o Adm cadastra o uniforme do acampamento e só o vê na página pública. Mostrá-lo também
-   no calendário interno é uma mudança pequena em telas existentes e fica para o usuário decidir.
 
 ## ONDE FICA
 
