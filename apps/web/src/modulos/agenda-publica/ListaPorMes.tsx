@@ -32,8 +32,8 @@ export function ListaPorMes({ compromissos }: { compromissos: Compromisso[] }) {
         <div key={grupo.chave} className="mt-6 first:mt-0">
           <h3 className="mb-2 text-base font-bold text-texto-2">{grupo.titulo}</h3>
           <ul className="m-0 grid list-none gap-1 p-0">
-            {grupo.itens.map((c) => (
-              <Item key={`${c.data}-${c.tipo}-${c.nome}`} compromisso={c} />
+            {grupo.itens.map((c, indice) => (
+              <Item key={`${c.data}-${c.tipo}-${c.nome}-${indice}`} compromisso={c} />
             ))}
           </ul>
         </div>
@@ -44,11 +44,12 @@ export function ListaPorMes({ compromissos }: { compromissos: Compromisso[] }) {
 
 function Dia({ compromisso: c }: { compromisso: Compromisso }) {
   const diaDe = (data: string): number => Number(data.slice(8, 10))
+  const mesesDoPeriodo = c.fim && mesDe(c.fim) !== mesDe(c.data) ? `${MESES_CURTOS[mesDe(c.data)]}–${MESES_CURTOS[mesDe(c.fim)]}` : null
   return (
     <div className="text-center leading-tight">
       <b className="block font-titulo text-2xl">{c.fim ? `${diaDe(c.data)}–${diaDe(c.fim)}` : diaDe(c.data)}</b>
       <span className="text-sm font-semibold tracking-wide text-texto-2 uppercase">
-        {c.fim ? MESES_CURTOS[mesDe(c.data)].toLowerCase() : diaDaSemana(c.data)}
+        {mesesDoPeriodo ? mesesDoPeriodo.toLowerCase() : c.fim ? MESES_CURTOS[mesDe(c.data)].toLowerCase() : diaDaSemana(c.data)}
       </span>
     </div>
   )

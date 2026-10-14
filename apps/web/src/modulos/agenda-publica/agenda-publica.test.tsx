@@ -96,6 +96,25 @@ describe('conteúdo', () => {
     expect(within(lista).queryByText('Reunião extra')).not.toBeInTheDocument()
   })
 
+  it('evento que vira o mês mostra os dois meses no rótulo do dia', async () => {
+    servidor.use(responder(agenda([compromisso({ data: '2026-10-30', fim: '2026-11-02', nome: 'Acampamento de virada', tipo: 'ACAMPAMENTO' })])))
+    montar()
+    const lista = await screen.findByRole('region', { name: 'Próximos compromissos' })
+    expect(within(lista).getByText('30–2')).toBeInTheDocument()
+    expect(within(lista).getByText('out–nov')).toBeInTheDocument()
+  })
+
+  it('dois compromissos iguais no mesmo dia aparecem sem aviso de key duplicada', async () => {
+    const erro = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const igual = compromisso({ data: '2026-10-22', nome: 'Ensaio', tipo: 'REUNIAO_EXTRA' })
+    servidor.use(responder(agenda([igual, { ...igual }])))
+    montar()
+    const lista = await screen.findByRole('region', { name: 'Próximos compromissos' })
+    expect(within(lista).getAllByText('Ensaio')).toHaveLength(2)
+    expect(erro.mock.calls.flat().join(' ')).not.toMatch(/same key|unique "key"/)
+    erro.mockRestore()
+  })
+
   it('Sem reunião, Feriado e Férias viram o aviso "Sem reunião", sem uniforme', async () => {
     servidor.use(responder(agenda([compromisso({ data: '2026-12-25', nome: 'Natal', tipo: 'FERIADO', horario: null, local: null, uniforme: null })])))
     montar()
