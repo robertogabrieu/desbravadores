@@ -57,11 +57,11 @@ function ClassesSemCronograma({ classes }: { classes: VisaoGeral['classesSemCron
       emDia="Todas as classes têm cronograma."
     >
       <ul className="flex flex-col">
-        {classes.map(({ classe }) => (
+        {classes.map(({ classe, idade }) => (
           <li key={classe.id}>
             <LinhaQueNavega to={`/adm/cronogramas?classe=${classe.id}`}>
               <span className="flex items-center justify-between gap-2">
-                <span className="text-base font-semibold text-texto">{classe.nome}</span>
+                <span className="text-base font-semibold text-texto">{idade === null ? classe.nome : `${classe.nome} · ${plural(idade, 'ano', 'anos')}`}</span>
                 <span className="text-base font-semibold text-marca">Montar</span>
               </span>
             </LinhaQueNavega>

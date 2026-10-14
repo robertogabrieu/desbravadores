@@ -77,7 +77,10 @@ describe('próximo evento', () => {
 })
 
 describe('classes sem cronograma', () => {
-  const classes = [{ classe: criarRefClasse(1, 'Pioneiro') }, { classe: criarRefClasse(2, 'Guia') }]
+  const classes = [
+    { classe: criarRefClasse(1, 'Pioneiro'), idade: 13 },
+    { classe: criarRefClasse(2, 'Guia'), idade: null },
+  ]
 
   it('lista as classes, o selo traz o número e o cartão diz o que ele conta', async () => {
     abrirCom({ classesSemCronograma: classes })
@@ -86,6 +89,14 @@ describe('classes sem cronograma', () => {
     expect(cartao.getByRole('link', { name: /Pioneiro/ })).toHaveAttribute('href', `/adm/cronogramas?classe=${uuid(1)}`)
     expect(cartao.getByRole('link', { name: /Guia/ })).toHaveAttribute('href', `/adm/cronogramas?classe=${uuid(2)}`)
     expect(cartao.getAllByText('Montar')).toHaveLength(2)
+  })
+
+  it('mostra a idade da classe, no singular com 1 ano, e some quando não há', async () => {
+    abrirCom({ classesSemCronograma: [...classes, { classe: criarRefClasse(3, 'Amigo'), idade: 1 }] })
+    const cartao = within(await screen.findByRole('region', { name: '3 classes sem cronograma' }))
+    expect(cartao.getByText('Pioneiro · 13 anos')).toBeInTheDocument()
+    expect(cartao.getByText('Amigo · 1 ano')).toBeInTheDocument()
+    expect(cartao.getByText('Guia')).toBeInTheDocument()
   })
 
   it('clicar em "Montar" abre a montagem da classe', async () => {

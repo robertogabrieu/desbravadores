@@ -13,7 +13,7 @@ type Visao = z.infer<typeof VisaoGeralSaida>
 export async function classesSemCronograma(prisma: PrismaService, clubeId: string, anoClube: number): Promise<Visao['classesSemCronograma']> {
   const ativas = await prisma.classe.findMany({
     where: { OR: [{ clubeId: null }, { clubeId }], ativa: true, ...ativaNoClube(clubeId) },
-    select: SELECAO_REF_CLASSE,
+    select: { ...SELECAO_REF_CLASSE, idade: true },
     orderBy: [{ ordem: 'asc' }, { id: 'asc' }],
   })
   const regularIds = ativas.filter((classe) => classe.tipo === 'REGULAR').map((classe) => classe.id)
@@ -28,5 +28,8 @@ export async function classesSemCronograma(prisma: PrismaService, clubeId: strin
   const jaTem = new Set(comCronograma.map((cronograma) => cronograma.classeId))
   return oferecidas
     .filter((classe) => !jaTem.has(classe.id))
-    .map((classe) => ({ classe: refClasse({ ...classe, nome: nomeDoPar(classe.nome, avancadaDaRegular.get(classe.id)?.nome) }) }))
+    .map((classe) => ({
+      classe: refClasse({ ...classe, nome: nomeDoPar(classe.nome, avancadaDaRegular.get(classe.id)?.nome) }),
+      idade: classe.idade,
+    }))
 }

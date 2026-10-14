@@ -124,4 +124,18 @@ describe('visao geral: classes sem cronograma', () => {
     expect(lista).toContain(amigo.id)
     expect(ids(await semCronogramaDe(outro.id))).toContain(doOutro.id)
   })
+
+  it('traz a idade da classe regular; o par mantem a idade da regular e idade nula segue nula', async () => {
+    const clube = await criarClube()
+    const amigo = await classeOficial('Amigo')
+    const avancada = await avancadaOficial(amigo.id)
+    const propria = await criarClasseDoClube(clube.id, 'Classe sem idade')
+    await prismaDeTeste().classe.update({ where: { id: amigo.id }, data: { idade: 10 } })
+    await prismaDeTeste().classe.update({ where: { id: avancada.id }, data: { idade: 15 } })
+    await prismaDeTeste().classe.update({ where: { id: propria.id }, data: { idade: null } })
+
+    const linhas = await semCronogramaDe(clube.id)
+    expect(linhas.find((linha) => linha.classe.id === amigo.id)?.idade).toBe(10)
+    expect(linhas.find((linha) => linha.classe.id === propria.id)?.idade).toBeNull()
+  })
 })
