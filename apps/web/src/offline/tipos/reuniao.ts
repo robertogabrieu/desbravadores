@@ -1,6 +1,7 @@
 import { ReuniaoEnvioSaida } from '@desbravadores/shared'
 import { toast } from 'sonner'
 import type { z } from 'zod'
+import { chavesVisaoGeral } from '../../api/visao-geral'
 import { registrarTipo } from '../index'
 import type { ContextoAposEnvio, ContextoEnvio, ItemFila, PayloadReuniao } from '../tipos'
 
@@ -11,7 +12,7 @@ export interface PayloadReuniaoFila extends PayloadReuniao {
 
 type Saida = z.infer<typeof ReuniaoEnvioSaida>
 
-const RAIZES_INVALIDADAS = ['reunioes', 'reuniao', 'grade', 'inicio', 'ranking']
+const RAIZES_INVALIDADAS = ['reunioes', 'reuniao', 'grade', 'inicio', 'ranking', chavesVisaoGeral.todas[0]]
 
 function diaMes(data: string): string {
   const [, mes, dia] = data.split('-')

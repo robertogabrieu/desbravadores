@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visão geral do Adm</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Prancheta: o computador, o celular e os estados raros. Tokens copiados de apps/web/src/ui/tokens.css; do desenho se copia estrutura e texto, nunca CSS. */
+:root {
+  --font-display: 'Bricolage Grotesque', system-ui, sans-serif; --font-body: 'Figtree', system-ui, sans-serif;
+  --primary: #1F4D3A; --primary-dark: #163828; --primary-soft: #E3EEE7; --accent: #F3E3C8; --on-primary-muted: #CFE0D6;
+  --bg: #F4F1EA; --bg-deep: #E8E3D7; --surface: #FFFFFF;
+  --text: #1B221F; --text-2: #5B645F; --text-3: #4A524E; --border-control: #8A8375; --divider: #EFEBE1;
+  --success: #1D7442; --danger: #B42318; --warning: #9A3412; --warning-bg: #FBEFE3;
+  --ev-bg: #EDE4F6; --ev-fg: #5B3391;
+  --r-md: 12px; --r-lg: 16px; --r-xl: 22px;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 32px; background: var(--bg-deep); color: var(--text); font-family: var(--font-body); font-size: 16px; line-height: 1.45; }
+h1, h2, h3 { font-family: var(--font-display); margin: 0; }
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; }
+.page { max-width: 1480px; margin: 0 auto; display: flex; flex-direction: column; gap: 48px; }
+.intro { max-width: 760px; display: flex; flex-direction: column; gap: 8px; }
+.intro h1 { font-size: 2rem; }
+.intro p { margin: 0; color: var(--text-2); }
+.grupo { display: flex; flex-direction: column; gap: 16px; }
+.grupo > h2 { font-size: 1.4rem; }
+.grupo > p { margin: 0; color: var(--text-2); max-width: 760px; }
+.legenda { font-size: 0.9rem; color: var(--text-2); }
+
+/* Moldura do computador */
+.pc { display: flex; background: var(--bg); border: 1px solid var(--border-control); border-radius: var(--r-lg); overflow: hidden; min-height: 760px; }
+.pc aside { flex: 0 0 248px; background: var(--primary); color: #fff; padding-bottom: 24px; }
+.marca { display: flex; align-items: center; gap: 8px; padding: 20px; font-family: var(--font-display); font-size: 18px; font-weight: 700; line-height: 1.2; }
+.menu { display: flex; flex-direction: column; gap: 2px; padding: 0 12px; }
+.menu span { display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: var(--r-md); color: var(--on-primary-muted); font-weight: 500; }
+.menu span.ativo { background: var(--primary-dark); color: #fff; font-weight: 700; }
+.pc .lado { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.topo { display: flex; align-items: center; justify-content: flex-end; gap: 16px; min-height: 72px; padding: 0 40px; background: var(--surface); border-bottom: 1px solid var(--divider); }
+.topo .eu { display: flex; align-items: center; gap: 12px; font-weight: 600; }
+.avatar { width: 40px; height: 40px; border-radius: 20px; background: var(--primary-soft); color: var(--primary); font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.papel { border-radius: 999px; background: var(--primary-soft); color: var(--primary); font-size: 14px; font-weight: 700; padding: 4px 12px; }
+.sino { position: relative; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; }
+.sino b { position: absolute; top: 4px; right: 2px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--danger); color: #fff; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; }
+.conteudo { padding: 32px 40px 40px; display: flex; flex-direction: column; gap: 32px; max-width: 1120px; width: 100%; }
+
+/* Peças */
+.titulo h1 { font-size: 28px; font-weight: 800; }
+.titulo p { margin: 4px 0 0; color: var(--text-2); }
+.secao { display: flex; flex-direction: column; gap: 12px; }
+.secao > h2 { font-size: 18px; font-weight: 700; }
+.atalhos { display: flex; flex-wrap: wrap; gap: 12px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 56px; padding: 0 24px; border-radius: var(--r-md); font-size: 16px; font-weight: 600; border: 1px solid var(--border-control); background: var(--surface); color: var(--text); }
+.btn.primario { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn.largo { width: 100%; }
+.cartao { padding: 20px; border: 1px solid var(--border-control); border-radius: var(--r-lg); background: var(--surface); }
+.cel .cartao { padding: 16px; }
+.selo { display: inline-flex; border-radius: 999px; background: var(--warning-bg); color: var(--warning); font-size: 14px; font-weight: 700; padding: 4px 12px; }
+.chip-ev { display: inline-flex; align-self: flex-start; border-radius: 999px; background: var(--ev-bg); color: var(--ev-fg); font-size: 14px; font-weight: 700; padding: 2px 12px; }
+.evento { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+.data { flex: 0 0 64px; height: 64px; border-radius: var(--r-md); background: var(--primary-soft); color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.data span { font-size: 14px; font-weight: 700; line-height: 1; }
+.data strong { font-family: var(--font-display); font-size: 28px; font-weight: 800; line-height: 1.1; }
+.evento .txt { flex: 1 1 220px; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.evento h3 { font-size: 18px; font-weight: 700; }
+.evento p, .sub { margin: 0; color: var(--text-2); }
+.link { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; color: var(--primary); font-weight: 600; }
+.duas { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.duas > .esq { flex: 3 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 24px; }
+.duas > .dir { flex: 2 1 320px; min-width: 0; }
+.pend { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.pend .cartao { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cab h3 { font-size: 16px; font-weight: 700; }
+.cab small { display: block; font-size: 14px; color: var(--text-2); }
+.linha { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 52px; border-top: 1px solid var(--divider); }
+.linha .nome { font-weight: 600; }
+.linha small { display: block; font-size: 14px; color: var(--text-2); font-weight: 400; }
+.linha .acao { color: var(--primary); font-weight: 600; }
+.rank .linha { justify-content: flex-start; gap: 12px; }
+.rank .pos { flex: 0 0 32px; height: 32px; border-radius: 16px; background: var(--primary-soft); color: var(--primary); font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.rank .linha .nome { flex: 1; }
+.rank .pts { color: var(--text-3); font-variant-numeric: tabular-nums; }
+.ok { display: flex; align-items: flex-start; gap: 12px; border-top: 1px solid var(--divider); padding-top: 12px; }
+.ok i { flex: none; width: 24px; height: 24px; border-radius: 12px; border: 2px solid var(--success); color: var(--success); font-style: normal; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; }
+.ok p { margin: 0; }
+
+/* Celular */
+.cel { width: 390px; background: var(--bg); border: 1px solid var(--border-control); border-radius: 28px; overflow: hidden; }
+.cel header { display: flex; align-items: center; gap: 8px; min-height: 64px; padding: 0 8px; background: var(--primary); color: #fff; }
+.cel header .hb { width: 48px; height: 48px; border-radius: var(--r-md); background: var(--primary-dark); display: inline-flex; align-items: center; justify-content: center; font-size: 22px; }
+.cel header .marca { flex: 1; padding: 0; }
+.cel main { padding: 20px 16px 24px; display: flex; flex-direction: column; gap: 24px; }
+.cel .titulo h1 { font-size: 24px; }
+.cel .atalhos { flex-direction: column; flex-wrap: nowrap; }
+.cel .evento { flex-wrap: nowrap; gap: 12px; }
+.cel .evento h3 { font-size: 16px; }
+.cel .evento p { font-size: 14px; }
+
+/* Folhas */
+.folhas { display: flex; flex-wrap: wrap; gap: 24px; }
+.folha-box { flex: 1 1 340px; max-width: 420px; display: flex; flex-direction: column; gap: 8px; }
+.folha { padding: 20px; border-radius: var(--r-xl); background: var(--surface); box-shadow: 0 8px 24px rgba(27, 34, 31, 0.18); display: flex; flex-direction: column; gap: 8px; }
+.folha h2 { font-size: 20px; font-weight: 700; }
+.folha .esc { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 60px; padding: 0 12px; border: 1px solid var(--border-control); border-radius: var(--r-md); background: var(--surface); }
+.folha .esc .nome { font-weight: 600; }
+.folha .esc small { display: block; font-size: 14px; color: var(--text-2); font-weight: 400; }
+.folha .btn { min-height: 52px; }
+.fechar { align-self: flex-end; min-height: 44px; padding: 0 16px; border: 0; border-radius: var(--r-md); background: transparent; color: var(--primary); font-size: 16px; font-weight: 600; }
+.seta { color: var(--primary); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="intro">
+  <h1>Visão geral do Adm</h1>
+  <p>A tela inicial do Adm responde "o que preciso fazer agora?". Ordem de cima para baixo = ordem de importância definida pelo Adm. Só a área de conteúdo muda: menu lateral, barra do topo e gaveta do celular são os de hoje. Nomes, datas e pontos são exemplos.</p>
+</header>
+
+<section class="grupo">
+  <h2>Computador</h2>
+  <p>Um único botão verde (gerar link de substituto). Os outros dois atalhos são brancos. Pendências em tom de alerta, sem competir com o verde.</p>
+  <div class="pc">
+    <aside>
+      <div class="marca">App do Desbravador</div>
+      <nav class="menu" aria-label="Menu do Adm">
+        <span class="ativo">Visão geral</span><span>Desbravadores</span><span>Usuários</span><span>Unidades</span><span>Classes e especialidades</span><span>Calendário do clube</span><span>Cronogramas</span><span>Biblioteca</span><span>Classe Bíblica</span><span>Configurações do clube</span><span>Ranking</span><span>Regras de pontuação</span><span>Relatórios</span>
+      </nav>
+    </aside>
+    <div class="lado">
+      <div class="topo"><span class="sino">Avisos<b>2</b></span><div class="eu"><span class="avatar">AS</span>Ana Souza<span class="papel">Adm</span></div></div>
+      <main class="conteudo">
+        <div class="titulo"><h1>Visão geral</h1><p>Terça-feira, 13 de outubro</p></div>
+
+        <section class="secao" aria-labelledby="a1">
+          <h2 id="a1">Atalhos</h2>
+          <div class="atalhos">
+            <button class="btn primario" type="button">Gerar link de substituto</button>
+            <button class="btn" type="button">Novo evento no calendário</button>
+            <button class="btn" type="button">Lançar chamada da Classe Bíblica</button>
+          </div>
+        </section>
+
+        <div class="duas">
+          <div class="esq">
+            <section class="secao" aria-labelledby="a2">
+              <h2 id="a2">Próximo evento</h2>
+              <a class="cartao evento" href="#">
+                <div class="data" aria-hidden="true"><span>OUT</span><strong>17</strong></div>
+                <div class="txt"><span class="chip-ev">Evento</span><h3>Culto Jovem de Desbravadores</h3><p>Sábado, 17 de outubro · 19h</p></div>
+                <span class="link">Abrir calendário <span class="seta">›</span></span>
+              </a>
+            </section>
+
+            <section class="secao" aria-labelledby="a3">
+              <h2 id="a3">Pendências</h2>
+              <div class="pend">
+                <div class="cartao">
+                  <div class="cab"><h3>Classes sem cronograma</h3><span class="selo">2</span></div>
+                  <a class="linha" href="#"><span class="nome">Pioneiro <span class="sub">· 13 anos</span></span><span class="acao">Montar ›</span></a>
+                  <a class="linha" href="#"><span class="nome">Guia <span class="sub">· 15 anos</span></span><span class="acao">Montar ›</span></a>
+                </div>
+                <div class="cartao">
+                  <div class="cab"><div><h3>Unidades sem chamada</h3><small>Reunião de domingo, 11/10</small></div><span class="selo">2</span></div>
+                  <a class="linha" href="#"><span class="nome">Falcões<small>Conselheiro Marcos</small></span><span class="seta">›</span></a>
+                  <a class="linha" href="#"><span class="nome">Lobos<small>Conselheira Paula</small></span><span class="seta">›</span></a>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <section class="secao dir" aria-labelledby="a4">
+            <h2 id="a4">Ranking das unidades</h2>
+            <div class="cartao rank">
+              <span class="sub" style="font-size:14px">Média de pontos por desbravador · outubro</span>
+              <div class="linha"><span class="pos">1</span><span class="nome">Águias</span><span class="pts">82,4 pts</span></div>
+              <div class="linha"><span class="pos">2</span><span class="nome">Leões</span><span class="pts">79,0 pts</span></div>
+              <div class="linha"><span class="pos">3</span><span class="nome">Falcões</span><span class="pts">74,7 pts</span></div>
+              <div class="linha"><span class="pos">4</span><span class="nome">Lobos</span><span class="pts">68,9 pts</span></div>
+              <div class="linha"><span class="pos">5</span><span class="nome">Pumas</span><span class="pts">65,3 pts</span></div>
+              <a class="link" href="#">Ver ranking completo <span class="seta">›</span></a>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+</section>
+
+<section class="grupo">
+  <h2>Celular</h2>
+  <p>Mesma ordem, uma coluna. Os três atalhos ocupam a largura toda; só o primeiro é verde.</p>
+  <div class="cel">
+    <header><span class="hb" aria-hidden="true">☰</span><span class="marca">App do Desbravador</span><span class="sino">Avisos<b>2</b></span></header>
+    <main>
+      <div class="titulo"><h1>Visão geral</h1><p>Terça-feira, 13 de outubro</p></div>
+      <section class="secao" aria-labelledby="c1">
+        <h2 id="c1">Atalhos</h2>
+        <div class="atalhos">
+          <button class="btn primario largo" type="button">Gerar link de substituto</button>
+          <button class="btn largo" type="button">Novo evento no calendário</button>
+          <button class="btn largo" type="button">Lançar chamada da Classe Bíblica</button>
+        </div>
+      </section>
+      <section class="secao" aria-labelledby="c2">
+        <h2 id="c2">Próximo evento</h2>
+        <a class="cartao evento" href="#">
+          <div class="data" aria-hidden="true"><span>OUT</span><strong>17</strong></div>
+          <div class="txt"><span class="chip-ev">Evento</span><h3>Culto Jovem de Desbravadores</h3><p>Sábado, 17 de outubro · 19h</p></div>
+          <span class="seta">›</span>
+        </a>
+      </section>
+      <section class="secao" aria-labelledby="c3">
+        <h2 id="c3">Pendências</h2>
+        <div class="cartao" style="display:flex;flex-direction:column;gap:8px">
+          <div class="cab"><h3>Classes sem cronograma</h3><span class="selo">2</span></div>
+          <a class="linha" href="#"><span class="nome">Pioneiro <span class="sub">· 13 anos</span></span><span class="acao">Montar ›</span></a>
+          <a class="linha" href="#"><span class="nome">Guia <span class="sub">· 15 anos</span></span><span class="acao">Montar ›</span></a>
+        </div>
+        <div class="cartao" style="display:flex;flex-direction:column;gap:8px">
+          <div class="cab"><div><h3>Unidades sem chamada</h3><small>Reunião de domingo, 11/10</small></div><span class="selo">2</span></div>
+          <a class="linha" href="#"><span class="nome">Falcões<small>Conselheiro Marcos</small></span><span class="seta">›</span></a>
+          <a class="linha" href="#"><span class="nome">Lobos<small>Conselheira Paula</small></span><span class="seta">›</span></a>
+        </div>
+      </section>
+      <section class="secao" aria-labelledby="c4">
+        <h2 id="c4">Ranking das unidades</h2>
+        <div class="cartao rank">
+          <span class="sub" style="font-size:14px">Média de pontos por desbravador · outubro</span>
+          <div class="linha"><span class="pos">1</span><span class="nome">Águias</span><span class="pts">82,4 pts</span></div>
+          <div class="linha"><span class="pos">2</span><span class="nome">Leões</span><span class="pts">79,0 pts</span></div>
+          <div class="linha"><span class="pos">3</span><span class="nome">Falcões</span><span class="pts">74,7 pts</span></div>
+          <div class="linha"><span class="pos">4</span><span class="nome">Lobos</span><span class="pts">68,9 pts</span></div>
+          <div class="linha"><span class="pos">5</span><span class="nome">Pumas</span><span class="pts">65,3 pts</span></div>
+          <a class="link" href="#">Ver ranking completo <span class="seta">›</span></a>
+        </div>
+      </section>
+    </main>
+  </div>
+</section>
+
+<section class="grupo">
+  <h2>Pendências quando está tudo em dia</h2>
+  <p>O bloco não some: diz que foi conferido. Vale para os dois cartões, no computador e no celular.</p>
+  <div class="pend" style="max-width:720px">
+    <div class="cartao" style="flex:1 1 280px;display:flex;flex-direction:column;gap:12px">
+      <div class="cab"><h3>Classes sem cronograma</h3></div>
+      <div class="ok"><i aria-hidden="true">✓</i><p>Todas as classes têm cronograma.</p></div>
+    </div>
+    <div class="cartao" style="flex:1 1 280px;display:flex;flex-direction:column;gap:12px">
+      <div class="cab"><div><h3>Unidades sem chamada</h3><small>Reunião de domingo, 11/10</small></div></div>
+      <div class="ok"><i aria-hidden="true">✓</i><p>Todas as unidades lançaram a chamada.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="grupo">
+  <h2>Atalho "Lançar chamada da Classe Bíblica"</h2>
+  <p>Uma chamada pendente: abre a lista de presença direto. Várias: abre a folha da esquerda. Nenhuma: abre a da direita. Cada linha da folha leva à chamada do grupo naquele encontro.</p>
+  <div class="folhas">
+    <div class="folha-box">
+      <span class="legenda">Quando há mais de uma chamada pendente</span>
+      <div class="folha" role="dialog" aria-labelledby="f1">
+        <h2 id="f1">Qual chamada lançar?</h2>
+        <p class="sub" style="margin:0 0 4px">Classe Bíblica</p>
+        <a class="esc" href="#"><span class="nome">Grupo Norte<small>Encontro de domingo, 11/10</small></span><span class="seta">›</span></a>
+        <a class="esc" href="#"><span class="nome">Grupo Sul<small>Encontro de domingo, 11/10</small></span><span class="seta">›</span></a>
+        <a class="esc" href="#"><span class="nome">Grupo Norte<small>Encontro de domingo, 04/10</small></span><span class="seta">›</span></a>
+        <button class="fechar" type="button">Fechar</button>
+      </div>
+    </div>
+    <div class="folha-box">
+      <span class="legenda">Quando não há nenhuma</span>
+      <div class="folha" role="dialog" aria-labelledby="f2">
+        <h2 id="f2">Nenhuma chamada pendente</h2>
+        <div class="ok" style="border-top:0;padding-top:0"><i aria-hidden="true">✓</i><p>As chamadas dos últimos 7 dias estão lançadas.</p></div>
+        <a class="btn largo" href="#" style="margin-top:4px">Ver edições da Classe Bíblica <span class="seta">›</span></a>
+        <button class="fechar" type="button">Fechar</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

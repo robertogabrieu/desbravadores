@@ -1,9 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ModoConexao } from '../../../offline'
-import { consultaConfiguracaoClube } from '../../../api/clube'
-import { criarConfiguracao, handlerConfiguracao, handlerErroConfiguracao } from '../../../testes/handlers/clube'
+import { criarConfiguracao, handlerConfiguracao } from '../../../testes/handlers/clube'
+import { handlerRankingUnidades } from '../../../testes/handlers/ranking'
 import { criarRefClasse, criarVisaoGeral, handlerErroVisaoGeral, handlerVisaoGeral } from '../../../testes/handlers/visao-geral'
 import { criarVinculo, handlersSessao, uuid } from '../../../testes/handlers/sessao'
 import { renderizarRotas } from '../../../testes/renderizar'
@@ -18,25 +18,42 @@ vi.mock('../../../offline', async (importarOriginal) => ({
   useConexao: () => ({ modo: conexao.modo }),
 }))
 
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-10-13T15:00:00Z'))
+  servidor.use(handlerConfiguracao(criarConfiguracao()), handlerRankingUnidades([]))
+})
+
 afterEach(() => {
+  vi.useRealTimers()
   conexao.modo = 'ONLINE'
 })
 
 const abrir = () => renderizarRotas(rotasAdmVisaoGeral, '/adm')
-const cartao = (nome: string) => within(screen.getByRole('group', { name: nome }))
+const comPermissao = () => servidor.use(...handlersSessao([criarVinculo('ADM')], undefined, ['usuario.gerenciar']))
+/** Espera as permissões chegarem junto da tela: o primeiro atalho só existe com `usuario.gerenciar`. */
+const secaoDosAtalhos = async () => {
+  await screen.findByRole('button', { name: 'Gerar link de substituto' })
+  return within(screen.getByRole('region', { name: 'Atalhos' }))
+}
 
-describe('A0 · quatro estados', () => {
+describe('quatro estados', () => {
   it('carregando: mostra o aviso de carregamento', () => {
     servidor.use(handlerVisaoGeral())
     abrir()
     expect(screen.getByRole('status', { name: 'Carregando a visão geral' })).toBeInTheDocument()
   })
 
-  it('vazio: clube sem desbravadores nem unidades leva ao cadastro', async () => {
+  it('vazio: clube novo, sem desbravadores nem unidades, continua com os atalhos e os vazios de cada bloco', async () => {
+    comPermissao()
     servidor.use(handlerVisaoGeral(criarVisaoGeral({ dbvsAtivos: 0, unidades: 0, unidadesResumo: [], frequenciaMes: null, variacaoFrequencia: null })))
     abrir()
-    expect(await screen.findByText('O clube ainda não tem desbravadores')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Cadastrar desbravador' })).toHaveAttribute('href', '/adm/desbravadores/novo')
+    expect(await screen.findByRole('button', { name: 'Gerar link de substituto' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Novo evento no calendário' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Lançar chamada da Classe Bíblica' })).toBeInTheDocument()
+    expect(screen.getByText('Nenhum evento marcado à frente.')).toBeInTheDocument()
+    expect(screen.getByText('Todas as classes têm cronograma.')).toBeInTheDocument()
+    expect(screen.queryByText('O clube ainda não tem desbravadores')).not.toBeInTheDocument()
   })
 
   it('erro: mostra a mensagem da API e repete a busca', async () => {
@@ -45,7 +62,7 @@ describe('A0 · quatro estados', () => {
     expect(await screen.findByText('Falha ao montar a visão geral.')).toBeInTheDocument()
     servidor.use(handlerVisaoGeral())
     await userEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }))
-    expect(await screen.findByRole('group', { name: 'Desbravadores' })).toBeInTheDocument()
+    expect(await screen.findByRole('region', { name: 'Atalhos' })).toBeInTheDocument()
   })
 
   it('sem conexão e sem dado: "Disponível quando houver internet"', async () => {
@@ -55,241 +72,72 @@ describe('A0 · quatro estados', () => {
   })
 })
 
-describe('A0 · conteúdo', () => {
-  it('cartões trazem os números e as variações', async () => {
+describe('cabeçalho', () => {
+  it('traz a data de hoje no fuso do clube', async () => {
     servidor.use(handlerVisaoGeral())
     abrir()
-    await screen.findByRole('group', { name: 'Desbravadores' })
-    expect(cartao('Desbravadores').getByText('58')).toBeInTheDocument()
-    expect(cartao('Desbravadores').getByText('+4 no trimestre')).toBeInTheDocument()
-    expect(cartao('Unidades').getByText('6')).toBeInTheDocument()
-    expect(cartao('Instrutores').getByText('5')).toBeInTheDocument()
-    expect(cartao('Instrutores').getByText('6 classes cobertas')).toBeInTheDocument()
-    expect(cartao('Frequência do mês').getByText('84%')).toBeInTheDocument()
-    expect(cartao('Frequência do mês').getByText('+3 pts vs. mês anterior')).toBeInTheDocument()
-    expect(cartao('Especialidades no ano').getByText('142')).toBeInTheDocument()
-    expect(cartao('Especialidades no ano').getByText('2,4 por DBV')).toBeInTheDocument()
+    expect(await screen.findByText('Terça-feira, 13 de outubro')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Visão geral', level: 1 })).toBeInTheDocument()
   })
 
-  it('frequência sem reuniões no mês aparece como traço', async () => {
-    servidor.use(handlerVisaoGeral(criarVisaoGeral({ frequenciaMes: null, variacaoFrequencia: null })))
+  it('a data segue o fuso configurado, não o relógio do navegador', async () => {
+    vi.setSystemTime(new Date('2026-10-13T23:00:00Z'))
+    servidor.use(handlerVisaoGeral(), handlerConfiguracao(criarConfiguracao({ fuso: 'Asia/Tokyo' })))
     abrir()
-    await screen.findByRole('group', { name: 'Frequência do mês' })
-    expect(cartao('Frequência do mês').getByText('—')).toBeInTheDocument()
-    expect(cartao('Frequência do mês').getByText('Nenhuma reunião registrada no mês')).toBeInTheDocument()
+    expect(await screen.findByText('Quarta-feira, 14 de outubro')).toBeInTheDocument()
   })
 
-  it('progresso por classe: média, DBVs e instrutores; classe sem dados', async () => {
-    servidor.use(
-      handlerVisaoGeral(
-        criarVisaoGeral({
-          progressoClasses: [
-            { classe: criarRefClasse(1, 'Amigo'), media: 64, totalDbvs: 9, instrutores: ['Priscila'] },
-            { classe: criarRefClasse(2, 'Pioneiro'), media: null, totalDbvs: 0, instrutores: [] },
-          ],
-        }),
-      ),
-    )
-    abrir()
-    expect(await screen.findByRole('progressbar', { name: 'Progresso médio de Amigo' })).toHaveAttribute('aria-valuenow', '64')
-    expect(screen.getByText('64%')).toBeInTheDocument()
-    expect(screen.getByText('9 DBVs · Priscila')).toBeInTheDocument()
-    expect(screen.getByText('Sem dados')).toBeInTheDocument()
-    expect(screen.getByText('0 DBVs · Sem instrutor')).toBeInTheDocument()
-  })
-
-  const duasUnidades = criarVisaoGeral({
-    unidadesResumo: [
-      { id: uuid(11), nome: 'Águias', conselheiros: ['Thiago'], totalDbvs: 8, frequenciaMes: 87 },
-      { id: uuid(12), nome: 'Tigres', conselheiros: [], totalDbvs: 10, frequenciaMes: 68 },
-    ],
-  })
-
-  it('unidades: marca a frequência abaixo do limiar do clube (60 não marca ninguém)', async () => {
-    servidor.use(handlerVisaoGeral(duasUnidades), handlerConfiguracao(criarConfiguracao({ limiarFrequenciaAlerta: 75 })))
-    abrir()
-    const aguias = within(await screen.findByRole('link', { name: /^Águias/ }))
-    const tigres = within(screen.getByRole('link', { name: /^Tigres/ }))
-    await waitFor(() => expect(tigres.getByText('68%')).toHaveAttribute('data-abaixo-do-limiar', 'true'))
-    expect(aguias.getByText('87%')).toHaveAttribute('data-abaixo-do-limiar', 'false')
-    expect(tigres.getByText('Sem conselheiro')).toBeInTheDocument()
-  })
-
-  it('o cartão da unidade leva à ficha dela', async () => {
-    servidor.use(handlerVisaoGeral(duasUnidades), handlerConfiguracao(criarConfiguracao()))
-    abrir()
-    expect(await screen.findByRole('link', { name: /^Águias/ })).toHaveAttribute('href', `/adm/unidades/${uuid(11)}`)
-    expect(screen.getByRole('link', { name: /^Tigres/ })).toHaveAttribute('href', `/adm/unidades/${uuid(12)}`)
-  })
-
-  it('o nome do cartão da unidade diz a contagem e a frequência, e avisa quando está abaixo do limite', async () => {
-    servidor.use(handlerVisaoGeral(duasUnidades), handlerConfiguracao(criarConfiguracao({ limiarFrequenciaAlerta: 75 })))
-    abrir()
-    expect(await screen.findByRole('link', { name: 'Águias · 8 DBVs · frequência do mês 87%' })).toBeInTheDocument()
-    expect(await screen.findByRole('link', { name: 'Tigres · 10 DBVs · frequência do mês 68%, abaixo do limite' })).toBeInTheDocument()
-  })
-
-  it('só o que abre leva seta: o cartão da unidade tem, os números do clube não', async () => {
-    servidor.use(handlerVisaoGeral(duasUnidades), handlerConfiguracao(criarConfiguracao()))
-    abrir()
-    const unidade = await screen.findByRole('link', { name: /^Águias/ })
-    expect(unidade.querySelector('[data-sinal="navega"]')).not.toBeNull()
-    for (const titulo of ['Desbravadores', 'Unidades', 'Instrutores', 'Frequência do mês', 'Especialidades no ano']) {
-      const indicador = screen.getByRole('group', { name: titulo })
-      expect(indicador.querySelector('[data-sinal="navega"]')).toBeNull()
-      expect(indicador.closest('a')).toBeNull()
-    }
-  })
-
-  it('"Novo desbravador" abre o cadastro, não a lista', async () => {
-    servidor.use(handlerVisaoGeral(duasUnidades), handlerConfiguracao(criarConfiguracao()))
-    abrir()
-    expect(await screen.findByRole('link', { name: 'Novo desbravador' })).toHaveAttribute('href', '/adm/desbravadores/novo')
-  })
-
-  it('limiar diferente de 70: com 90, 87% passa a ser marcado; com 60, 68% deixa de ser', async () => {
-    servidor.use(handlerVisaoGeral(duasUnidades), handlerConfiguracao(criarConfiguracao({ limiarFrequenciaAlerta: 90 })))
-    const primeira = abrir()
-    const aguias = within(await screen.findByRole('link', { name: /^Águias/ }))
-    await waitFor(() => expect(aguias.getByText('87%')).toHaveAttribute('data-abaixo-do-limiar', 'true'))
-    primeira.unmount()
-
-    servidor.use(handlerConfiguracao(criarConfiguracao({ limiarFrequenciaAlerta: 60 })))
-    abrir()
-    const tigres = within(await screen.findByRole('link', { name: /^Tigres/ }))
-    await waitFor(() => expect(tigres.getByText('68%')).toHaveAttribute('data-abaixo-do-limiar', 'false'))
-  })
-
-  it('configuração com erro: unidades aparecem sem destaque', async () => {
-    servidor.use(handlerVisaoGeral(duasUnidades), handlerErroConfiguracao())
-    abrir()
-    const tigres = within(await screen.findByRole('link', { name: /^Tigres/ }))
-    expect(tigres.getByText('68%')).toHaveAttribute('data-abaixo-do-limiar', 'false')
-  })
-
-  it('cronogramas enviados levam à publicação da classe; atividade recente lista os eventos', async () => {
-    servidor.use(
-      handlerVisaoGeral(
-        criarVisaoGeral({
-          cronogramasEnviados: [{ cronogramaId: uuid(21), classe: criarRefClasse(1, 'Amigo'), enviadoPor: 'Priscila', enviadoEm: '2026-09-25T13:00:00Z' }],
-          atividades: [
-            { id: uuid(31), descricao: 'Thiago registrou a reunião da unidade Águias', link: '/reunioes/x', criadaEm: '2026-09-26T13:40:00Z', autor: 'Thiago' },
-            { id: uuid(32), descricao: 'Nova foto na galeria', link: null, criadaEm: '2026-09-25T13:40:00Z', autor: null },
-          ],
-        }),
-      ),
-    )
-    abrir()
-    expect(await screen.findByRole('link', { name: 'Revisar cronograma de Amigo' })).toHaveAttribute('href', `/adm/cronogramas?classe=${uuid(1)}`)
-    expect(screen.getByText('Cronogramas aguardando publicação')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Thiago registrou a reunião da unidade Águias' })).toHaveAttribute('href', '/reunioes/x')
-    expect(screen.getByText('Nova foto na galeria')).toBeInTheDocument()
-  })
-
-  it('sem cronogramas enviados, o bloco não aparece', async () => {
+  it('não traz mais os números do clube nem o "Novo desbravador"', async () => {
     servidor.use(handlerVisaoGeral())
     abrir()
-    await screen.findByRole('group', { name: 'Desbravadores' })
-    expect(screen.queryByText('Cronogramas aguardando publicação')).not.toBeInTheDocument()
+    await screen.findByRole('region', { name: 'Atalhos' })
+    expect(screen.queryByRole('group', { name: 'Desbravadores' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Novo desbravador' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Progresso por classe')).not.toBeInTheDocument()
+    expect(screen.queryByText('Atividade recente')).not.toBeInTheDocument()
   })
 })
 
-const comAlerta = criarVisaoGeral({
-  unidadesResumo: [
-    { id: uuid(11), nome: 'Águias', conselheiros: ['Thiago'], totalDbvs: 8, frequenciaMes: 87 },
-    { id: uuid(12), nome: 'Tigres', conselheiros: [], totalDbvs: 10, frequenciaMes: 68 },
-  ],
-  cronogramasEnviados: [{ cronogramaId: uuid(21), classe: criarRefClasse(1, 'Amigo'), enviadoPor: 'Priscila', enviadoEm: '2026-09-25T13:00:00Z' }],
-  progressoClasses: [
-    { classe: criarRefClasse(1, 'Amigo'), media: 64, totalDbvs: 9, instrutores: ['Priscila'] },
-    { classe: criarRefClasse(2, 'Pioneiro'), media: null, totalDbvs: 0, instrutores: [] },
-  ],
-})
-
-describe('celular · o que precisa de atenção vem primeiro', () => {
-  it('"Precisa de atenção" aparece antes dos números, com a unidade abaixo do limite e o cronograma aguardando', async () => {
-    simularLargura(390)
-    servidor.use(handlerVisaoGeral(comAlerta), handlerConfiguracao(criarConfiguracao({ limiarFrequenciaAlerta: 75 })))
+describe('atalhos', () => {
+  it('são três, na ordem do desenho, e só o primeiro é o botão verde', async () => {
+    comPermissao()
+    servidor.use(handlerVisaoGeral())
     abrir()
-    const atencao = await screen.findByRole('region', { name: 'Precisa de atenção · 2' })
-    const numeros = screen.getByRole('region', { name: 'Números do clube' })
-    expect(atencao.compareDocumentPosition(numeros) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-
-    const dentro = within(atencao)
-    const tigres = dentro.getByRole('link', { name: /Tigres/ })
-    expect(tigres).toHaveAttribute('href', `/adm/unidades/${uuid(12)}`)
-    expect(within(tigres).getByText('Frequência 68% · abaixo do limite de 75%')).toBeInTheDocument()
-    expect(dentro.queryByRole('link', { name: /Águias/ })).not.toBeInTheDocument()
-
-    const cronograma = dentro.getByRole('link', { name: /Cronograma de Amigo para publicar/ })
-    expect(cronograma).toHaveAttribute('href', `/adm/cronogramas?classe=${uuid(1)}`)
-    expect(within(cronograma).getByText('Enviado por Priscila em 25/09')).toBeInTheDocument()
-    expect(within(cronograma).getByText('Revisar')).toBeInTheDocument()
+    const atalhos = await secaoDosAtalhos()
+    const nomes = [...atalhos.getAllByRole('button'), ...atalhos.getAllByRole('link')]
+      .sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
+      .map((elemento) => elemento.textContent)
+    expect(nomes).toEqual(['Gerar link de substituto', 'Novo evento no calendário', 'Lançar chamada da Classe Bíblica'])
+    expect(atalhos.getByRole('button', { name: 'Gerar link de substituto' })).toHaveClass('bg-marca')
+    expect(atalhos.getByRole('link', { name: 'Novo evento no calendário' })).not.toHaveClass('bg-marca')
+    expect(atalhos.getByRole('button', { name: 'Lançar chamada da Classe Bíblica' })).not.toHaveClass('bg-marca')
   })
 
-  it('a ordem segue: números, "Novo desbravador", unidades, progresso e atividade', async () => {
-    simularLargura(390)
-    servidor.use(handlerVisaoGeral(comAlerta), handlerConfiguracao(criarConfiguracao({ limiarFrequenciaAlerta: 75 })))
+  it('nenhum está desabilitado, nem sem chamada pendente', async () => {
+    comPermissao()
+    servidor.use(handlerVisaoGeral())
     abrir()
-    await screen.findByRole('region', { name: /Precisa de atenção/ })
-    const emOrdem = [
-      screen.getByRole('region', { name: 'Números do clube' }),
-      screen.getByRole('link', { name: 'Novo desbravador' }),
-      screen.getByRole('region', { name: 'Unidades' }),
-      screen.getByRole('heading', { name: 'Progresso por classe' }),
-      screen.getByRole('heading', { name: 'Atividade recente' }),
-    ]
-    for (let i = 1; i < emOrdem.length; i++) {
-      expect(emOrdem[i - 1].compareDocumentPosition(emOrdem[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    }
-    expect(screen.queryByText('Cronogramas aguardando publicação')).not.toBeInTheDocument()
+    const atalhos = await secaoDosAtalhos()
+    expect(atalhos.getByRole('button', { name: 'Lançar chamada da Classe Bíblica' })).toBeEnabled()
+    expect(atalhos.getByRole('button', { name: 'Gerar link de substituto' })).toBeEnabled()
   })
 
-  it('sem unidade abaixo do limite nem cronograma aguardando, a seção não aparece', async () => {
+  it('no celular cada um ocupa a linha inteira', async () => {
     simularLargura(390)
-    const acimaDoLimite = { id: uuid(13), nome: 'Lobos', conselheiros: [], totalDbvs: 6, frequenciaMes: 61 }
-    servidor.use(
-      handlerVisaoGeral(criarVisaoGeral({ ...comAlerta, unidadesResumo: [...comAlerta.unidadesResumo, acimaDoLimite], cronogramasEnviados: [] })),
-      handlerConfiguracao(criarConfiguracao({ limiarFrequenciaAlerta: 60 })),
-    )
-    const { clienteConsultas } = abrir()
-    await screen.findByRole('region', { name: 'Números do clube' })
-    await waitFor(() => expect(clienteConsultas.getQueryCache().find({ queryKey: consultaConfiguracaoClube.queryKey })?.state.status).toBe('success'))
-    const lobos = await screen.findByRole('link', { name: /^Lobos/ })
-    expect(lobos.querySelector('[data-abaixo-do-limiar]')).toHaveAttribute('data-abaixo-do-limiar', 'false')
-    expect(screen.queryByRole('region', { name: /Precisa de atenção/ })).not.toBeInTheDocument()
+    comPermissao()
+    servidor.use(handlerVisaoGeral())
+    abrir()
+    const atalhos = await secaoDosAtalhos()
+    for (const nome of ['Gerar link de substituto', 'Lançar chamada da Classe Bíblica']) expect(atalhos.getByRole('button', { name: nome })).toHaveClass('w-full')
+    expect(atalhos.getByRole('link', { name: 'Novo evento no calendário' })).toHaveClass('w-full')
   })
 
-  it('progresso por classe começa recolhido e abre no botão', async () => {
-    simularLargura(390)
-    servidor.use(handlerVisaoGeral(comAlerta), handlerConfiguracao(criarConfiguracao()))
-    abrir()
-    const botao = await screen.findByRole('button', { name: 'Ver progresso das 2 classes' })
-    expect(botao).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByRole('progressbar', { name: 'Progresso médio de Amigo' })).not.toBeInTheDocument()
-    await userEvent.click(botao)
-    expect(botao).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByRole('progressbar', { name: 'Progresso médio de Amigo' })).toBeInTheDocument()
-  })
-})
-
-describe('alerta de frequência em texto, não só na cor', () => {
-  it('no computador, o cartão da unidade abaixo do limite diz "abaixo de L%"', async () => {
-    servidor.use(handlerVisaoGeral(comAlerta), handlerConfiguracao(criarConfiguracao({ limiarFrequenciaAlerta: 75 })))
-    abrir()
-    const tigres = within(await screen.findByRole('link', { name: /^Tigres/ }))
-    expect(await tigres.findByText('abaixo de 75%')).toBeInTheDocument()
-    expect(within(screen.getByRole('link', { name: /^Águias/ })).queryByText(/abaixo de/)).not.toBeInTheDocument()
-    expect(screen.queryByRole('region', { name: /Precisa de atenção/ })).not.toBeInTheDocument()
-  })
-
-  it('no celular, o cartão da unidade também diz o motivo', async () => {
-    simularLargura(390)
-    servidor.use(handlerVisaoGeral(comAlerta), handlerConfiguracao(criarConfiguracao({ limiarFrequenciaAlerta: 75 })))
-    abrir()
-    const unidades = within(await screen.findByRole('region', { name: 'Unidades' }))
-    const tigres = within(unidades.getByRole('link', { name: /^Tigres/ }))
-    expect(await tigres.findByText('abaixo de 75%')).toBeInTheDocument()
+  it('"Novo evento" leva ao formulário e o "voltar" retorna à visão geral', async () => {
+    servidor.use(handlerVisaoGeral())
+    const { roteador } = abrir()
+    await userEvent.click(await screen.findByRole('link', { name: 'Novo evento no calendário' }))
+    await waitFor(() => expect(roteador.state.location.pathname).toBe('/adm/calendario/eventos/novo'))
+    expect(roteador.state.location.state).toMatchObject({ voltarPara: '/adm' })
   })
 })
 
@@ -298,30 +146,42 @@ describe('atalho "Gerar link de substituto"', () => {
     unidadesResumo: [{ id: uuid(11), nome: 'Águias', conselheiros: [], totalDbvs: 8, frequenciaMes: 87 }],
     progressoClasses: [{ classe: criarRefClasse(1, 'Amigo'), media: 64, totalDbvs: 9, instrutores: [] }],
   })
-  const comPermissao = () => servidor.use(...handlersSessao([criarVinculo('ADM')], undefined, ['usuario.gerenciar']))
 
-  it('aparece com usuario.gerenciar e leva à geração da unidade ou da classe escolhida', async () => {
+  it('abre a escolha em folha e leva à geração da unidade ou da classe escolhida', async () => {
     comPermissao()
-    servidor.use(handlerVisaoGeral(comDestinos), handlerConfiguracao(criarConfiguracao()))
+    servidor.use(handlerVisaoGeral(comDestinos))
     abrir()
     await userEvent.click(await screen.findByRole('button', { name: 'Gerar link de substituto' }))
-    expect(screen.getByRole('link', { name: 'Águias' })).toHaveAttribute('href', `/adm/unidades/${uuid(11)}/substituicao`)
-    expect(screen.getByRole('link', { name: 'Amigo' })).toHaveAttribute('href', `/adm/classes/${uuid(1)}/substituicao`)
-    expect(screen.getByRole('heading', { name: 'Unidades', level: 3 })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Classes', level: 3 })).toBeInTheDocument()
+    const folha = within(screen.getByRole('dialog'))
+    expect(folha.getByRole('link', { name: 'Águias' })).toHaveAttribute('href', `/adm/unidades/${uuid(11)}/substituicao`)
+    expect(folha.getByRole('link', { name: 'Amigo' })).toHaveAttribute('href', `/adm/classes/${uuid(1)}/substituicao`)
+    expect(folha.getByRole('heading', { name: 'Unidades', level: 3 })).toBeInTheDocument()
+    expect(folha.getByRole('heading', { name: 'Classes', level: 3 })).toBeInTheDocument()
+  })
+
+  it('Fechar fecha a folha e devolve o foco ao botão', async () => {
+    comPermissao()
+    servidor.use(handlerVisaoGeral(comDestinos))
+    abrir()
+    const botao = await screen.findByRole('button', { name: 'Gerar link de substituto' })
+    await userEvent.click(botao)
+    const fechar = within(screen.getByRole('dialog')).getAllByRole('button', { name: 'Fechar' })
+    await userEvent.click(fechar[fechar.length - 1])
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(botao).toHaveFocus()
   })
 
   it('some sem usuario.gerenciar', async () => {
     servidor.use(...handlersSessao([criarVinculo('ADM')], undefined, []))
-    servidor.use(handlerVisaoGeral(comDestinos), handlerConfiguracao(criarConfiguracao()))
+    servidor.use(handlerVisaoGeral(comDestinos))
     abrir()
-    await screen.findByRole('group', { name: 'Desbravadores' })
+    await screen.findByRole('region', { name: 'Atalhos' })
     expect(screen.queryByRole('button', { name: 'Gerar link de substituto' })).not.toBeInTheDocument()
   })
 
   it('sem unidades nem classes, explica que é preciso cadastrar antes', async () => {
     comPermissao()
-    servidor.use(handlerVisaoGeral(criarVisaoGeral()), handlerConfiguracao(criarConfiguracao()))
+    servidor.use(handlerVisaoGeral(criarVisaoGeral()))
     abrir()
     await userEvent.click(await screen.findByRole('button', { name: 'Gerar link de substituto' }))
     expect(screen.getByText(/cadastre antes uma unidade ou uma classe/)).toBeInTheDocument()
@@ -329,50 +189,51 @@ describe('atalho "Gerar link de substituto"', () => {
   })
 })
 
-describe('eventos especiais sem lista', () => {
-  const semLista = criarVisaoGeral({
-    eventosSemLista: [
-      { eventoId: uuid(61), nome: 'Culto de Ação de Graças', inicio: '2026-10-03', fim: '2026-10-03' },
-      { eventoId: uuid(62), nome: 'Aniversário do clube', inicio: '2026-10-10', fim: '2026-10-10' },
-    ],
+describe('atalho "Lançar chamada da Classe Bíblica"', () => {
+  const norte = { encontroId: uuid(71), data: '2026-10-11', grupoId: uuid(81), grupoNome: 'Grupo Norte' }
+  const sul = { encontroId: uuid(71), data: '2026-10-11', grupoId: uuid(82), grupoNome: 'Grupo Sul' }
+  const norteAntigo = { encontroId: uuid(72), data: '2026-10-04', grupoId: uuid(81), grupoNome: 'Grupo Norte' }
+
+  it('uma chamada pendente: vai direto a ela, com o voltar para a visão geral', async () => {
+    servidor.use(handlerVisaoGeral(criarVisaoGeral({ chamadasClasseBiblica: [norte] })))
+    const { roteador } = abrir()
+    await userEvent.click(await screen.findByRole('button', { name: 'Lançar chamada da Classe Bíblica' }))
+    await waitFor(() => expect(roteador.state.location.pathname).toBe(`/adm/classe-biblica/encontros/${uuid(71)}/grupos/${uuid(81)}/chamada`))
+    expect(roteador.state.location.state).toMatchObject({ voltarPara: '/adm' })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('celular: o item entra em "Precisa de atenção", leva à ficha e o total soma com os cronogramas', async () => {
-    simularLargura(390)
-    servidor.use(handlerVisaoGeral({ ...comAlerta, eventosSemLista: semLista.eventosSemLista }), handlerConfiguracao(criarConfiguracao({ limiarFrequenciaAlerta: 75 })))
+  it('várias: abre "Qual chamada lançar?" com uma linha por par, e cada linha leva à chamada dele', async () => {
+    servidor.use(handlerVisaoGeral(criarVisaoGeral({ chamadasClasseBiblica: [norte, sul, norteAntigo] })))
     abrir()
-    const atencao = await screen.findByRole('region', { name: 'Precisa de atenção · 4' })
-    const item = within(atencao).getByRole('link', { name: /Culto de Ação de Graças/ })
-    expect(item).toHaveAttribute('href', `/adm/calendario/eventos/${uuid(61)}`)
-    expect(within(item).getByText('Falta registrar quem foi')).toBeInTheDocument()
-    expect(within(item).getByText('Culto de Ação de Graças · sábado, 3 de outubro')).toBeInTheDocument()
-    expect(within(item).getByText('Registrar')).toBeInTheDocument()
+    await userEvent.click(await screen.findByRole('button', { name: 'Lançar chamada da Classe Bíblica' }))
+    const folha = within(screen.getByRole('dialog', { name: 'Qual chamada lançar?' }))
+    const linhas = folha.getAllByRole('link')
+    expect(linhas.map((linha) => linha.textContent)).toEqual([
+      'Grupo NorteEncontro de domingo, 11/10',
+      'Grupo SulEncontro de domingo, 11/10',
+      'Grupo NorteEncontro de domingo, 04/10',
+    ])
+    expect(linhas[2]).toHaveAttribute('href', `/adm/classe-biblica/encontros/${uuid(72)}/grupos/${uuid(81)}/chamada`)
   })
 
-  it('celular: só com evento sem lista a seção existe, com total 2', async () => {
-    simularLargura(390)
-    servidor.use(handlerVisaoGeral(semLista))
+  it('várias: Fechar fecha a folha e devolve o foco ao botão que a abriu', async () => {
+    servidor.use(handlerVisaoGeral(criarVisaoGeral({ chamadasClasseBiblica: [norte, sul] })))
     abrir()
-    expect(await screen.findByRole('region', { name: 'Precisa de atenção · 2' })).toBeInTheDocument()
+    const botao = await screen.findByRole('button', { name: 'Lançar chamada da Classe Bíblica' })
+    await userEvent.click(botao)
+    const fechar = within(screen.getByRole('dialog')).getAllByRole('button', { name: 'Fechar' })
+    await userEvent.click(fechar[fechar.length - 1])
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(botao).toHaveFocus()
   })
 
-  it('computador: cartão próprio "Eventos sem lista" com a contagem e o botão Registrar quem foi', async () => {
-    simularLargura(1280)
-    servidor.use(handlerVisaoGeral(semLista))
-    abrir()
-    const cartaoDosEventos = await screen.findByRole('region', { name: 'Eventos sem lista · 2' })
-    const dentro = within(cartaoDosEventos)
-    expect(dentro.getByText('Estes eventos especiais já terminaram e valem pontos, mas ninguém registrou quem foi.')).toBeInTheDocument()
-    expect(dentro.getByText('sábado, 3 de outubro')).toBeInTheDocument()
-    expect(dentro.getAllByRole('link', { name: /Registrar quem foi/ })[0]).toHaveAttribute('href', `/adm/calendario/eventos/${uuid(61)}`)
-    expect(screen.queryByRole('region', { name: /Precisa de atenção/ })).not.toBeInTheDocument()
-  })
-
-  it('computador: sem evento sem lista o cartão não aparece', async () => {
-    simularLargura(1280)
+  it('nenhuma: a folha diz que os últimos 7 dias estão lançados e leva às edições', async () => {
     servidor.use(handlerVisaoGeral())
     abrir()
-    await screen.findByRole('group', { name: 'Desbravadores' })
-    expect(screen.queryByText(/Eventos sem lista/)).not.toBeInTheDocument()
+    await userEvent.click(await screen.findByRole('button', { name: 'Lançar chamada da Classe Bíblica' }))
+    const folha = within(screen.getByRole('dialog', { name: 'Nenhuma chamada pendente' }))
+    expect(folha.getByText('As chamadas dos últimos 7 dias estão lançadas.')).toBeInTheDocument()
+    expect(folha.getByRole('link', { name: 'Ver edições da Classe Bíblica' })).toHaveAttribute('href', '/adm/classe-biblica')
   })
 })

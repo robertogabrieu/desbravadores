@@ -18,6 +18,10 @@ export function criarVisaoGeral(parcial: Partial<VisaoGeral> = {}): VisaoGeral {
     cronogramasEnviados: [],
     atividades: [],
     eventosSemLista: [],
+    classesSemCronograma: [],
+    unidadesSemChamada: null,
+    proximoEvento: null,
+    chamadasClasseBiblica: [],
     ...parcial,
   }
 }
