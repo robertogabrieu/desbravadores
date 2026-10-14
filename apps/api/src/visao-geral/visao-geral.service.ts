@@ -18,6 +18,10 @@ import { PrismaService } from '../comum/prisma/prisma.service'
 import { avancadasPareadas } from '../classes/par-regular-avancada'
 import { ServicoCronograma } from '../cronogramas/servico-cronograma'
 import { daDataCivil, paraDataCivil } from '../desbravadores/apoio'
+import { chamadasClasseBiblica } from './chamadas-classe-biblica'
+import { classesSemCronograma } from './classes-sem-cronograma'
+import { proximoEvento } from './proximo-evento'
+import { unidadesSemChamada } from './unidades-sem-chamada'
 
 type Visao = z.infer<typeof VisaoGeralSaida>
 
@@ -91,7 +95,7 @@ export class VisaoGeralService {
     const configuracao = await this.prisma.configuracaoClube.findUniqueOrThrow({ where: { clubeId } })
     const periodos = calcularPeriodos(hojeNoFuso(configuracao.fuso, new Date()), configuracao.inicioAnoClube)
 
-    const [numeros, chamadas, classes, unidades, cronogramasEnviados, atividades, eventosSemLista] = await Promise.all([
+    const [numeros, chamadas, classes, unidades, cronogramasEnviados, atividades, eventosSemLista, semCronograma, proximo, chamadasCB] = await Promise.all([
       this.numerosDoClube(clubeId, periodos),
       this.chamadasDosDoisMeses(clubeId, periodos),
       this.progressoDasClasses(clubeId, periodos.anoClube),
@@ -99,7 +103,11 @@ export class VisaoGeralService {
       this.cronogramasAguardando(clubeId),
       this.atividadeRecente(clubeId),
       this.eventosSemLista(clubeId, periodos.hoje),
+      classesSemCronograma(this.prisma, clubeId, periodos.anoClube),
+      proximoEvento(this.prisma, clubeId, periodos.hoje),
+      chamadasClasseBiblica(this.prisma, clubeId, periodos.hoje),
     ])
+    const semChamada = await unidadesSemChamada(this.prisma, clubeId, periodos.hoje, configuracao.diaReuniao, unidades.map(({ id, nome, conselheiros }) => ({ id, nome, conselheiros })))
 
     const doMes = chamadas.filter((linha) => linha.data >= periodos.inicioDoMes)
     const frequenciaMes = frequenciaDasLinhas(doMes)
@@ -124,6 +132,10 @@ export class VisaoGeralService {
       cronogramasEnviados,
       atividades,
       eventosSemLista,
+      classesSemCronograma: semCronograma,
+      unidadesSemChamada: semChamada,
+      proximoEvento: proximo,
+      chamadasClasseBiblica: chamadasCB,
     }
   }
 
