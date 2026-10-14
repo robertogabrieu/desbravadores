@@ -14,6 +14,7 @@ import { rotasAdmUsuarios } from './modulos/adm/usuarios/rotas'
 import { rotasAdmVisaoGeral } from './modulos/adm/visao-geral/rotas'
 import { rotasAdmCronogramas, rotasCronogramaMontagem } from './modulos/cronograma-montagem/rotas'
 import { rotasAdmBiblioteca, rotasBiblioteca } from './modulos/biblioteca/rotas'
+import { rotaDaAgendaPublica } from './modulos/agenda-publica/rotas'
 import { TelaConectar } from './modulos/conectar/TelaConectar'
 import { rotasConta } from './modulos/conta/rotas'
 import { PaginaNaoEncontrada } from './modulos/erro/PaginaNaoEncontrada'
@@ -68,6 +69,7 @@ export const rotas: RouteObject[] = [
   { path: '/', element: <RedirecionamentoRaiz /> },
   ...rotasAcessoPublicas,
   { path: '/conectar', element: <TelaConectar /> },
+  rotaDaAgendaPublica,
   { element: <GuardaRota semVinculo />, children: rotasAcessoPapel },
   {
     element: <GuardaRota papeis={['CONSELHEIRO', 'INSTRUTOR']} />,
