@@ -1,4 +1,4 @@
-import { BookOpen, CalendarDays, CalendarPlus } from 'lucide-react'
+import { BookOpen, CalendarDays, CalendarPlus, ExternalLink } from 'lucide-react'
 import { useId, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { VisaoGeral } from '../../../api/visao-geral'
@@ -47,6 +47,7 @@ export function Atalhos({ visao, celular }: { visao: VisaoGeral; celular: boolea
             <CalendarDays aria-hidden className="size-5" />
             Agenda para os pais{' '}
             <span className="sr-only">(abre em nova aba)</span>
+            <ExternalLink aria-hidden className="size-4" />
           </a>
         ) : null}
       </div>

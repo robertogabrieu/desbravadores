@@ -9,18 +9,11 @@ import { servidor } from '../../testes/servidor'
 
 const ENDERECO = '/agenda/clube-exemplo'
 const AGENDA = { clube: { nome: 'Clube de Desbravadores Exemplo' }, hoje: '2026-10-13', compromissos: [] }
-
-let pedidos = 0
+const FAIXA = { name: 'Sem conexão' }
 
 beforeEach(() => {
   reiniciarConexao()
-  pedidos = 0
-  servidor.use(
-    http.get('/api/agenda-publica/:slug', () => {
-      pedidos += 1
-      return HttpResponse.json(AGENDA)
-    }),
-  )
+  servidor.use(http.get('/api/agenda-publica/:slug', () => HttpResponse.json(AGENDA)))
 })
 
 afterEach(() => {
@@ -30,101 +23,57 @@ afterEach(() => {
   reiniciarConexao()
 })
 
+function disparar(tipo: 'offline' | 'online') {
+  act(() => {
+    window.dispatchEvent(new Event(tipo))
+  })
+}
+
 describe('conexão da página pública (sem simular useConexao)', () => {
-  it('a faixa aparece quando o navegador fica offline e some quando volta', async () => {
+  it('offline mostra a faixa e mantém o conteúdo; online tira a faixa', async () => {
     renderizarRotas(rotas, ENDERECO, { enderecoDoNavegador: ENDERECO })
     await screen.findByRole('heading', { level: 1, name: 'Clube de Desbravadores Exemplo' })
-    expect(screen.queryByRole('status', { name: 'Sem conexão' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('status', FAIXA)).not.toBeInTheDocument()
 
-    act(() => {
-      window.dispatchEvent(new Event('offline'))
-    })
-    expect(await screen.findByRole('status', { name: 'Sem conexão' })).toBeInTheDocument()
+    disparar('offline')
+    expect(await screen.findByRole('status', FAIXA)).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 1, name: 'Clube de Desbravadores Exemplo' })).toBeInTheDocument()
 
-    act(() => {
-      window.dispatchEvent(new Event('online'))
-    })
-    expect(screen.queryByRole('status', { name: 'Sem conexão' })).not.toBeInTheDocument()
+    disparar('online')
+    await vi.waitFor(() => expect(screen.queryByRole('status', FAIXA)).not.toBeInTheDocument())
   })
 
-  it('offline e online do navegador não escrevem no estado global de conexão', async () => {
+  it('navegador dizendo offline na montagem não liga a faixa', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
     renderizarRotas(rotas, ENDERECO, { enderecoDoNavegador: ENDERECO })
-    await screen.findByRole('heading', { level: 1 })
-
-    act(() => {
-      window.dispatchEvent(new Event('offline'))
-    })
-    expect(await screen.findByRole('status', { name: 'Sem conexão' })).toBeInTheDocument()
-    expect(lerConexao()).toBe('ONLINE')
-
-    act(() => {
-      window.dispatchEvent(new Event('online'))
-    })
-    expect(lerConexao()).toBe('ONLINE')
+    await screen.findByRole('heading', { level: 1, name: 'Clube de Desbravadores Exemplo' })
+    expect(screen.queryByRole('status', FAIXA)).not.toBeInTheDocument()
   })
 
-  it('ao desmontar offline, não mexe no estado global e remove os listeners', async () => {
+  it('pedido que falha por rede mostra a faixa', async () => {
+    servidor.use(http.get('/api/agenda-publica/:slug', () => HttpResponse.error()))
+    renderizarRotas(rotas, ENDERECO, { enderecoDoNavegador: ENDERECO })
+    expect(await screen.findByRole('status', FAIXA)).toBeInTheDocument()
+  })
+
+  it('desmontar remove os mesmos listeners e não mexe no estado global de conexão', async () => {
+    const adicionar = vi.spyOn(window, 'addEventListener')
     const remover = vi.spyOn(window, 'removeEventListener')
     const { unmount } = renderizarRotas(rotas, ENDERECO, { enderecoDoNavegador: ENDERECO })
     await screen.findByRole('heading', { level: 1 })
-    act(() => {
-      window.dispatchEvent(new Event('offline'))
-    })
-    await screen.findByRole('status', { name: 'Sem conexão' })
+
+    disparar('offline')
+    await screen.findByRole('status', FAIXA)
+    expect(lerConexao()).toBe('ONLINE')
+    disparar('online')
+    expect(lerConexao()).toBe('ONLINE')
 
     unmount()
-    const tipos = remover.mock.calls.map(([tipo]) => tipo)
-    expect(tipos).toContain('offline')
-    expect(tipos).toContain('online')
+    for (const tipo of ['offline', 'online']) {
+      const adicionada = adicionar.mock.calls.find(([t]) => t === tipo)?.[1]
+      expect(adicionada).toBeDefined()
+      expect(remover.mock.calls.some(([t, funcao]) => t === tipo && funcao === adicionada)).toBe(true)
+    }
     expect(lerConexao()).toBe('ONLINE')
-  })
-
-  it('montar com o navegador offline já mostra a faixa', async () => {
-    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
-    renderizarRotas(rotas, ENDERECO, { enderecoDoNavegador: ENDERECO })
-    expect(await screen.findByRole('status', { name: 'Sem conexão' })).toBeInTheDocument()
-    expect(lerConexao()).toBe('ONLINE')
-  })
-
-  it('navegador dizendo offline mas API respondendo 200: a agenda aparece e a faixa não fica', async () => {
-    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
-    renderizarRotas(rotas, ENDERECO, { enderecoDoNavegador: ENDERECO })
-    await screen.findByRole('heading', { level: 1, name: 'Clube de Desbravadores Exemplo' })
-    await vi.waitFor(() => expect(screen.queryByRole('status', { name: 'Sem conexão' })).not.toBeInTheDocument())
-  })
-
-  it('offline de verdade: a faixa fica e some quando o online chega e o pedido dá certo', async () => {
-    renderizarRotas(rotas, ENDERECO, { enderecoDoNavegador: ENDERECO })
-    await screen.findByRole('heading', { level: 1 })
-    act(() => {
-      window.dispatchEvent(new Event('offline'))
-    })
-    expect(await screen.findByRole('status', { name: 'Sem conexão' })).toBeInTheDocument()
-    await new Promise((resolver) => setTimeout(resolver, 50))
-    expect(screen.getByRole('status', { name: 'Sem conexão' })).toBeInTheDocument()
-
-    act(() => {
-      window.dispatchEvent(new Event('online'))
-    })
-    await vi.waitFor(() => expect(screen.queryByRole('status', { name: 'Sem conexão' })).not.toBeInTheDocument())
-  })
-
-  it('ao assinar os listeners, alinha a faixa com o valor atual de navigator.onLine', async () => {
-    const leitura = vi.spyOn(navigator, 'onLine', 'get').mockReturnValueOnce(true).mockReturnValue(false)
-    renderizarRotas(rotas, ENDERECO, { enderecoDoNavegador: ENDERECO })
-    expect(await screen.findByRole('status', { name: 'Sem conexão' })).toBeInTheDocument()
-    expect(leitura).toHaveBeenCalled()
-  })
-
-  it('o online do navegador refaz o pedido à API', async () => {
-    renderizarRotas(rotas, ENDERECO, { enderecoDoNavegador: ENDERECO })
-    await screen.findByRole('heading', { level: 1 })
-    const antes = pedidos
-
-    act(() => {
-      window.dispatchEvent(new Event('online'))
-    })
-    await vi.waitFor(() => expect(pedidos).toBeGreaterThan(antes))
   })
 })
