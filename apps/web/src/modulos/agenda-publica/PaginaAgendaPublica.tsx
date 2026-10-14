@@ -29,12 +29,14 @@ function useSemBuscador() {
  * Faixa cosmética local: o navegador não decide comportamento (o `online` só dispara um novo pedido,
  * que a API confirma) e nada é escrito no estado global de conexão.
  */
-function useOfflineLocal(aoVoltar: () => void) {
+function useOfflineLocal(aoVoltar: () => void, atualizadoEm: number) {
   const [offlineLocal, definirOfflineLocal] = useState(() => !navigator.onLine)
   const aoVoltarRef = useRef(aoVoltar)
   aoVoltarRef.current = aoVoltar
+  const atualizadoEmNaMontagem = useRef(atualizadoEm)
 
   useEffect(() => {
+    definirOfflineLocal(!navigator.onLine)
     const aoCair = () => definirOfflineLocal(true)
     const aoRetornar = () => {
       definirOfflineLocal(false)
@@ -47,6 +49,11 @@ function useOfflineLocal(aoVoltar: () => void) {
       window.removeEventListener('online', aoRetornar)
     }
   }, [])
+
+  // Resposta nova da API prova que há conexão, mesmo que o navegador diga o contrário.
+  useEffect(() => {
+    if (atualizadoEm !== atualizadoEmNaMontagem.current) definirOfflineLocal(false)
+  }, [atualizadoEm])
 
   return offlineLocal
 }
@@ -78,7 +85,7 @@ export function PaginaAgendaPublica() {
   const { slug = '' } = useParams()
   const { modo } = useConexao()
   const consulta = useAgendaPublica(slug)
-  const offlineLocal = useOfflineLocal(() => void consulta.refetch())
+  const offlineLocal = useOfflineLocal(() => void consulta.refetch({ cancelRefetch: false }), consulta.dataUpdatedAt)
   const erro = consulta.error
   const semRede = modo === 'SEM_CONEXAO' || offlineLocal || (erro instanceof ErroDaApi && erro.classe === 'REDE')
   const naoEncontrada = erro instanceof ErroDaApi && erro.status === 404
