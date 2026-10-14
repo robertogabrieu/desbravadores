@@ -99,7 +99,7 @@ describe('cabeçalho', () => {
 })
 
 describe('atalhos', () => {
-  it('são três, na ordem do desenho, e só o primeiro é o botão verde', async () => {
+  it('são quatro, na ordem do desenho, e só o primeiro é o botão verde', async () => {
     comPermissao()
     servidor.use(handlerVisaoGeral())
     abrir()
@@ -107,10 +107,30 @@ describe('atalhos', () => {
     const nomes = [...atalhos.getAllByRole('button'), ...atalhos.getAllByRole('link')]
       .sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
       .map((elemento) => elemento.textContent)
-    expect(nomes).toEqual(['Gerar link de substituto', 'Novo evento no calendário', 'Lançar chamada da Classe Bíblica'])
+    expect(nomes).toEqual(['Gerar link de substituto', 'Novo evento no calendário', 'Lançar chamada da Classe Bíblica', 'Agenda para os pais (abre em nova aba)'])
     expect(atalhos.getByRole('button', { name: 'Gerar link de substituto' })).toHaveClass('bg-marca')
     expect(atalhos.getByRole('link', { name: 'Novo evento no calendário' })).not.toHaveClass('bg-marca')
     expect(atalhos.getByRole('button', { name: 'Lançar chamada da Classe Bíblica' })).not.toHaveClass('bg-marca')
+  })
+
+  it('"Agenda para os pais" abre a página pública do clube em outra aba', async () => {
+    comPermissao()
+    servidor.use(handlerVisaoGeral())
+    abrir()
+    const atalhos = await secaoDosAtalhos()
+    const link = atalhos.getByRole('link', { name: 'Agenda para os pais (abre em nova aba)' })
+    expect(link).toHaveAttribute('href', '/agenda/clube-teste')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link.getAttribute('rel')).toContain('noopener')
+    expect(link).not.toHaveClass('bg-marca')
+  })
+
+  it('"Agenda para os pais" não aparece quando a sessão não traz o slug do clube', async () => {
+    const clube = { id: uuid(900), nome: 'Clube Teste', slug: '' }
+    servidor.use(...handlersSessao([criarVinculo('ADM', 1, { clube })], undefined, ['usuario.gerenciar']), handlerVisaoGeral())
+    abrir()
+    const atalhos = await secaoDosAtalhos()
+    expect(atalhos.queryByRole('link', { name: /Agenda para os pais/ })).not.toBeInTheDocument()
   })
 
   it('nenhum está desabilitado, nem sem chamada pendente', async () => {
@@ -130,6 +150,7 @@ describe('atalhos', () => {
     const atalhos = await secaoDosAtalhos()
     for (const nome of ['Gerar link de substituto', 'Lançar chamada da Classe Bíblica']) expect(atalhos.getByRole('button', { name: nome })).toHaveClass('w-full')
     expect(atalhos.getByRole('link', { name: 'Novo evento no calendário' })).toHaveClass('w-full')
+    expect(atalhos.getByRole('link', { name: /Agenda para os pais/ })).toHaveClass('w-full')
   })
 
   it('"Novo evento" leva ao formulário e o "voltar" retorna à visão geral', async () => {

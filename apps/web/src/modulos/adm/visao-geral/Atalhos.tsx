@@ -1,7 +1,8 @@
-import { BookOpen, CalendarPlus } from 'lucide-react'
+import { BookOpen, CalendarDays, CalendarPlus } from 'lucide-react'
 import { useId, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { VisaoGeral } from '../../../api/visao-geral'
+import { useSessao } from '../../../sessao/useSessao'
 import { Botao, estiloDoBotao } from '../../../ui/Botao'
 import { cn } from '../../../ui/cn'
 import { useEstadoDeVolta } from '../navegacao'
@@ -11,7 +12,7 @@ import { FolhaDaChamada } from './FolhaDaChamada'
 
 const ALTURA_DO_ATALHO = 'min-h-[56px]'
 
-/** Os três atalhos da semana: só o primeiro é verde; no celular cada um ocupa a linha inteira. */
+/** Os atalhos da semana: só o primeiro é verde; no celular cada um ocupa a linha inteira. */
 export function Atalhos({ visao, celular }: { visao: VisaoGeral; celular: boolean }) {
   const idDoTitulo = useId()
   const navegar = useNavigate()
@@ -19,6 +20,7 @@ export function Atalhos({ visao, celular }: { visao: VisaoGeral; celular: boolea
   const [folhaAberta, setFolhaAberta] = useState(false)
   const decisao = decidirChamada(visao.chamadasClasseBiblica)
   const largura = celular ? 'total' : 'auto'
+  const slug = useSessao().vinculoAtivo?.clube.slug
 
   const lancarChamada = () => {
     if (decisao.tipo === 'direto') void navegar(decisao.caminho, { state: estadoDeVolta })
@@ -40,6 +42,13 @@ export function Atalhos({ visao, celular }: { visao: VisaoGeral; celular: boolea
           <BookOpen aria-hidden className="size-5" />
           Lançar chamada da Classe Bíblica
         </Botao>
+        {slug ? (
+          <a href={`/agenda/${slug}`} target="_blank" rel="noopener noreferrer" className={cn(estiloDoBotao({ variante: 'secundario', largura }), ALTURA_DO_ATALHO)}>
+            <CalendarDays aria-hidden className="size-5" />
+            Agenda para os pais{' '}
+            <span className="sr-only">(abre em nova aba)</span>
+          </a>
+        ) : null}
       </div>
       <FolhaDaChamada aberta={folhaAberta} pares={visao.chamadasClasseBiblica} aoFechar={() => setFolhaAberta(false)} />
     </section>
