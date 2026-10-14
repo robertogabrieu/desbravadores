@@ -1,6 +1,7 @@
 import { ChamadaCBEnvio, ChamadaCBEnvioSaida } from '@desbravadores/shared'
 import { toast } from 'sonner'
 import { z } from 'zod'
+import { chavesVisaoGeral } from '../../api/visao-geral'
 import { diaMes } from '../../modulos/classe-biblica/formatos'
 import { itensDaChave, registrarTipo } from '../index'
 import type { ContextoAposEnvio, ContextoEnvio, ItemFila } from '../tipos'
@@ -24,7 +25,7 @@ const PayloadDaFila = z.object({
   corpo: ChamadaCBEnvio,
 })
 
-const RAIZES_INVALIDADAS = ['classe-biblica', 'inicio', 'ranking', 'progresso']
+const RAIZES_INVALIDADAS = ['classe-biblica', 'inicio', 'ranking', 'progresso', chavesVisaoGeral.todas[0]]
 
 export const chaveDaChamadaCB = (encontroId: string, grupoId: string): string => `classe-biblica:${encontroId}:${grupoId}`
 

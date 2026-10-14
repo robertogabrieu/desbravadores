@@ -70,7 +70,7 @@ Telas do Adm, sob `LayoutAdm` (menu lateral) e guardadas só para ADM, em `apps/
 
 | Rota | O que é |
 |---|---|
-| `/adm` | Visão geral: indicadores, progresso por classe, resumo das unidades, cronogramas enviados aguardando publicação, eventos especiais sem lista (`eventosSemLista`, ver "Eventos especiais") e atividade recente (`GET /api/visao-geral`, `relatorio.geral`) |
+| `/adm` | Visão geral: atalhos ("Gerar link de substituto", só para quem tem `usuario.gerenciar`; "Novo evento no calendário"; "Lançar chamada da Classe Bíblica"), próximo evento, pendências (classes sem cronograma, com a idade; unidades sem chamada da última reunião) e prévia do ranking das unidades no mês (`GET /api/visao-geral`, `relatorio.geral`). A tela é atualizada ao criar cronograma, enviar chamada de reunião, gravar chamada da Classe Bíblica e criar, editar ou excluir evento |
 | `/adm/classes` | Abas "Classes" e "Especialidades": ativar/desativar classe, escolher quem monta o cronograma, ajustar requisito (ativo, CAMPO) e acrescentar especialidade do clube |
 | `/adm/desbravadores` | Lista com filtros (busca, unidade, classe, situação, tipo) e página no endereço: recarregar ou voltar da ficha mantém a lista como estava. Ficha só de leitura em `/adm/desbravadores/:id` (o `/dbv/:id` redireciona o Adm para ela); cadastro em `/adm/desbravadores/novo` e edição em `/adm/desbravadores/:id/editar`, telas próprias no lugar do painel lateral |
 | `/adm/usuarios` | Lista por papel (`papel`, `busca` e `pagina` no endereço), ficha em `/adm/usuarios/:id` (com último acesso, um cartão por papel e Desativar no rodapé), `/adm/usuarios/novo` (convite com um papel), `/adm/usuarios/:id/papeis/novo` (acrescentar papel em dois passos; `papel` no endereço pula o primeiro), `/adm/usuarios/:id/papeis/:vinculoId` (alterar escopo e ajustes; Remover papel pede confirmação) e `/adm/usuarios/:id/editar` (só nome e gênero, só de quem ainda está convidado) |
@@ -89,7 +89,7 @@ O menu do Adm agora tem link em Visão geral, Classes e especialidades, Calendá
 
 | Endpoint | O que faz | Permissão |
 |---|---|---|
-| `GET /api/visao-geral` | Indicadores do clube, no formato `VisaoGeralSaida` (`packages/shared`) | `relatorio.geral` |
+| `GET /api/visao-geral` | Dados da visão geral do clube, no formato `VisaoGeralSaida` (`packages/shared`): além dos indicadores, traz `classesSemCronograma` (classes sem cronograma no ano do clube, com `idade`), `unidadesSemChamada` (unidades ativas sem chamada na última reunião; nulo sem dia de reunião no calendário), `proximoEvento` (primeiro evento com `fim` de hoje em diante, sem cancelado nem Classe Bíblica) e `chamadasClasseBiblica` (encontro e grupo sem chamada nos últimos 7 dias) | `relatorio.geral` |
 | `GET` / `PATCH /api/clube/configuracao` | Lê e edita a configuração do clube (PATCH parcial) | `clube.configurar` |
 | `PATCH /api/classes/:id` | Ativa/desativa a classe no clube e define `quemMontaCronograma`. Desativar com desbravador cursando no ano do clube é recusado | `classe.gerenciar` |
 | `PATCH /api/requisitos/:id/ajuste` | Ajuste do clube sobre requisito oficial (`ativo`, `campo`); `null` volta ao oficial | `classe.gerenciar` |
@@ -118,7 +118,7 @@ Evento do calendário (`EVENTO_ESPECIAL`) com uniforme (gala ou campo) e pontos 
 
 **Quem vê o quê.** `GET /api/calendario` e `GET /api/calendario/eventos/:id` trazem `uniforme` e os pontos para qualquer pessoa logada; só a sessão Adm recebe também `lista` (`concluidaEm`, `foram`, `uniformizados`). O conselheiro e o instrutor leem o calendário em `/calendario` (quinto item da barra de baixo, "Calendário"), a partir do pacote guardado, e o cartão "Próximo evento" do `/inicio` de cada um mostra o próximo evento especial, acampamento ou evento do clube, com uniforme e pontos.
 
-**Cobrança.** `GET /api/visao-geral` traz `eventosSemLista`: eventos especiais que já terminaram (`fim` antes de hoje) há no máximo 60 dias, que valem pontos (a soma dos dois valores é maior que 0) e não têm a lista concluída. Aparecem como "Falta registrar quem foi" em "Precisa de atenção" no celular e como o cartão "Eventos sem lista" no computador, com atalho para a lista.
+**Cobrança.** `GET /api/visao-geral` traz `eventosSemLista`: eventos especiais que já terminaram (`fim` antes de hoje) há no máximo 60 dias, que valem pontos (a soma dos dois valores é maior que 0) e não têm a lista concluída. A tela `/adm` atual não exibe mais esse campo; a API segue devolvendo.
 
 **Teste.** `e2e/eventos-especiais.spec.ts` cobre o fluxo, mas não é executado (o CI não tem job de e2e e a suíte não roda na máquina local).
 

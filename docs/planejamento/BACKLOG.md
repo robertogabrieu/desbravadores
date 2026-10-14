@@ -265,10 +265,10 @@ Como líder, quero consultar os cadernos, livros e manuais do clube sem pedir ao
 ## Adm
 
 ### A0 · Visão geral — `Adm-Inicio.dc.html` · Fase 3
-- Indicadores: DBVs ativos (e variação no trimestre), unidades, instrutores e classes cobertas,
-  frequência do mês (e variação), especialidades no ano.
-- Progresso por classe; unidades com frequência (limiar do clube, um valor só em todo o app).
-- Atividade recente real (chamadas registradas, aulas, publicações).
+- Atalhos: gerar link de substituto, novo evento no calendário e lançar chamada da Classe Bíblica.
+- Próximo evento do calendário.
+- Pendências: classes sem cronograma (com a idade) e unidades sem chamada da última reunião.
+- Prévia do ranking das unidades no mês.
 
 ### A1 · Cadastro de desbravadores — `Adm-Desbravadores.dc.html` · Fases 0 e 3
 - Tabela com busca e filtros de unidade e classe **funcionando**; "Novo desbravador".

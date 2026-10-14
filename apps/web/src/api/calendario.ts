@@ -1,7 +1,9 @@
 import { CalendarioSaida, EventoEntrada, EventoGravadoSaida, EventoSaida } from '@desbravadores/shared'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { QueryClient } from '@tanstack/react-query'
 import type { z } from 'zod'
 import { requisitar, requisitarSemResposta } from './cliente'
+import { chavesVisaoGeral } from './visao-geral'
 
 export type Calendario = z.infer<typeof CalendarioSaida>
 export type EventoCalendario = Calendario['eventos'][number]
@@ -13,6 +15,14 @@ export const chavesCalendario = {
   todas: ['calendario'] as const,
   ano: (ano: number) => ['calendario', ano] as const,
   evento: (id: string) => ['calendario', 'evento', id] as const,
+}
+
+/** A visão geral do Adm mostra o próximo evento: criar, editar ou excluir também a atualiza. */
+function invalidarCalendarioEVisaoGeral(cliente: QueryClient): Promise<unknown> {
+  return Promise.all([
+    cliente.invalidateQueries({ queryKey: chavesCalendario.todas }),
+    cliente.invalidateQueries({ queryKey: chavesVisaoGeral.todas }),
+  ])
 }
 
 /** Eventos que tocam o ano civil e os dias de reunião que sobram deles. */
@@ -39,7 +49,7 @@ export function useCriarEvento() {
       requisitar('/api/calendario/eventos', EventoGravadoSaida, { metodo: 'POST', corpo: EventoEntrada.parse(entrada) }),
     onSuccess: (gravado) => {
       cliente.setQueryData(chavesCalendario.evento(gravado.evento.id), gravado.evento)
-      return cliente.invalidateQueries({ queryKey: chavesCalendario.todas })
+      return invalidarCalendarioEVisaoGeral(cliente)
     },
   })
 }
@@ -51,7 +61,7 @@ export function useEditarEvento() {
       requisitar(`/api/calendario/eventos/${id}`, EventoGravadoSaida, { metodo: 'PATCH', corpo: EventoEntrada.parse(entrada) }),
     onSuccess: (gravado) => {
       cliente.setQueryData(chavesCalendario.evento(gravado.evento.id), gravado.evento)
-      return cliente.invalidateQueries({ queryKey: chavesCalendario.todas })
+      return invalidarCalendarioEVisaoGeral(cliente)
     },
   })
 }
@@ -63,7 +73,7 @@ export function useExcluirEvento() {
     // O evento excluído sai do cache: invalidar o disparava uma leitura que responde "não encontrado".
     onSuccess: (_, id) => {
       cliente.removeQueries({ queryKey: chavesCalendario.evento(id) })
-      return cliente.invalidateQueries({ queryKey: chavesCalendario.todas })
+      return invalidarCalendarioEVisaoGeral(cliente)
     },
   })
 }
