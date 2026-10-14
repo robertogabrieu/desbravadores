@@ -9,6 +9,7 @@ import { Botao, estiloDoBotao } from '../../../ui/Botao'
 import { CabecalhoDaPagina } from '../../../ui/CabecalhoDaPagina'
 import { Campo } from '../../../ui/Campo'
 import { CampoData } from '../../../ui/CampoData'
+import { CampoHorario } from '../../../ui/CampoHorario'
 import { ErroDeCarga, Carregando, DisponivelComInternet } from '../../../ui/EstadosDeCarga'
 import { ResumoDosErros, useErrosAVista } from '../../../ui/ErrosDoFormulario'
 import { IndicadorDeEtapas } from '../../../ui/IndicadorDeEtapas'
@@ -172,11 +173,9 @@ function Formulario({ edicao, padroes, aoNascer }: PropsDoFormulario) {
       >
         {DIAS_DA_SEMANA.map((dia, indice) => <option key={dia} value={indice}>{dia}</option>)}
       </Selecao>
-      <Campo
+      <CampoHorario
         rotulo="Horário"
         ajuda="Ex.: 14:00"
-        inputMode="numeric"
-        maxLength={5}
         value={valores.horario}
         erro={erros.horario}
         onChange={(e) => mudar('horario', e.target.value)}
