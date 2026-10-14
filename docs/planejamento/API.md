@@ -104,6 +104,7 @@ Convenções: listas paginadas com `?pagina=&porPagina=`; datas em `YYYY-MM-DD`;
 | `POST /calendario/eventos/{id}/presenca/concluir` | `{ foram, uniformizados }` (os totais vistos; divergência → 422); lança participação e uniforme, uma vez | `ranking.lancar_manual` |
 | `PATCH` / `DELETE /calendario/eventos/{id}` | Edita / exclui; idem conflitos. Evento `CLASSE_BIBLICA` (criado só pela edição da Classe Bíblica) não se cria, edita nem exclui aqui: 422 "Este encontro é da Classe Bíblica: remarque ou cancele pela edição." | `calendario.gerenciar` |
 | `GET /calendario/proxima-reuniao?unidadeId=` | Data, hora e local da próxima reunião (card do Início) | logado |
+| `GET /agenda-publica/{slug}` | Agenda dos pais: de hoje a 120 dias, eventos (sem Classe Bíblica) e reunião semanal, com `uniforme`; sem pontos, lista nem pessoas. Slug inexistente: 404. Limite 120/min por IP; `Cache-Control: public, max-age=60` | pública |
 
 ## Cronogramas
 
