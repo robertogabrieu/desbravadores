@@ -6,6 +6,7 @@ import {
   emConflito,
   hojeNoFuso,
   situacaoDaData,
+  TIPOS_COM_UNIFORME,
   type AulaAfetada as AulaAfetadaContrato,
   type CalendarioSaida,
   type EventoDoCalendario,
@@ -122,7 +123,7 @@ function paraSaida(evento: EventoCalendario): Saida {
   }
 }
 
-/** As colunas do evento a partir da entrada, campo a campo: os três do evento especial vão a `null` nos outros tipos. */
+/** As colunas do evento a partir da entrada, campo a campo: o uniforme vai a `null` fora dos tipos com uniforme e os pontos, fora do especial. */
 function paraColunas(entrada: Entrada) {
   const especial = entrada.tipo === 'EVENTO_ESPECIAL'
   return {
@@ -135,7 +136,7 @@ function paraColunas(entrada: Entrada) {
     temReuniao: entrada.temReuniao,
     temClasse: entrada.temClasse,
     bomParaCampo: entrada.bomParaCampo,
-    uniforme: especial ? (entrada.uniforme ?? null) : null,
+    uniforme: (TIPOS_COM_UNIFORME as readonly string[]).includes(entrada.tipo) ? (entrada.uniforme ?? null) : null,
     pontosParticipacao: especial ? (entrada.pontosParticipacao ?? null) : null,
     pontosUniforme: especial ? (entrada.pontosUniforme ?? null) : null,
   }

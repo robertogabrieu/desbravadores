@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, type PipeTransform } from '@nestjs/common'
-import { CalendarioFiltro, EventoEntrada, MARCACOES_PADRAO, Uuid, validarEvento, type CalendarioSaida, type EventoGravadoSaida, type EventoSaida } from '@desbravadores/shared'
+import { CalendarioFiltro, EventoEntrada, MARCACOES_PADRAO, TIPOS_COM_UNIFORME, Uuid, validarEvento, type CalendarioSaida, type EventoGravadoSaida, type EventoSaida } from '@desbravadores/shared'
 import { z } from 'zod'
 import { Logado } from '../comum/decorators/logado.decorator'
 import { Pode } from '../comum/decorators/pode.decorator'
@@ -28,10 +28,16 @@ const EventoGravar = z
 
 const IdDaRota = new ZodValidationPipe(Uuid)
 
-/** Fora do evento especial, uniforme e pontos não existem: o que vier é descartado. */
+/** O uniforme só existe nos tipos de `TIPOS_COM_UNIFORME` e os pontos só no especial: o que vier fora disso é descartado. */
 function semOsCamposDoEspecial(entrada: z.infer<typeof EventoGravar>): z.infer<typeof EventoGravar> {
-  if (entrada.tipo === 'EVENTO_ESPECIAL') return entrada
-  return { ...entrada, uniforme: null, pontosParticipacao: null, pontosUniforme: null }
+  const comUniforme = (TIPOS_COM_UNIFORME as readonly string[]).includes(entrada.tipo)
+  const especial = entrada.tipo === 'EVENTO_ESPECIAL'
+  return {
+    ...entrada,
+    uniforme: comUniforme ? entrada.uniforme : null,
+    pontosParticipacao: especial ? entrada.pontosParticipacao : null,
+    pontosUniforme: especial ? entrada.pontosUniforme : null,
+  }
 }
 
 /** Entrada com as marcações do padrão do tipo (Férias o força; a extra nunca é boa para campo), já validada. */

@@ -1,0 +1,252 @@
+<title>Agenda dos Pais</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: cabeçalho do clube, destaque do próximo compromisso, lista (esq.) + calendário (dir.); uma coluna no celular */
+:root {
+  --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
+  --font-body: 'Figtree', system-ui, sans-serif;
+  --primary: #1F4D3A;
+  --primary-dark: #163828;
+  --primary-soft: #E3EEE7;
+  --accent: #F3E3C8;
+  --on-primary-muted: #CFE0D6;
+  --bg: #F4F1EA;
+  --surface: #FFFFFF;
+  --surface-muted: #F9F7F2;
+  --text: #1B221F;
+  --text-2: #5B645F;
+  --border: #D9D3C5;
+  --border-control: #8A8375;
+  --divider: #EFEBE1;
+  --reuniao-bg: #E3EEE7; --reuniao-fg: #1F4D3A;
+  --sem-bg: #FBE4E1;     --sem-fg: #9F2A20;
+  --acamp-bg: #E6F0D4;   --acamp-fg: #3F6212;
+  --evento-bg: #EDE4F6;  --evento-fg: #5B3391;
+  --gala-bg: #E8ECF5; --gala-fg: #27407A;
+  --campo-bg: #E6F0D4; --campo-fg: #3F6212;
+  --sp1: 8px; --sp2: 16px; --sp3: 24px; --sp4: 32px; --sp5: 48px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --primary: #7FBF9C; --primary-dark: #0F2A1E; --primary-soft: #1D3A2C; --accent: #F3E3C8; --on-primary-muted: #CFE0D6;
+    --bg: #14181A; --surface: #1C2224; --surface-muted: #182022; --text: #ECEAE3; --text-2: #A8B0AB;
+    --border: #384140; --border-control: #7C857F; --divider: #2A3331;
+    --reuniao-bg: #1D3A2C; --reuniao-fg: #A9DBC0;
+    --sem-bg: #4A2420; --sem-fg: #F5B5AD;
+    --acamp-bg: #2C3A17; --acamp-fg: #BFDC8E;
+    --evento-bg: #35264A; --evento-fg: #D3BCF2;
+    --gala-bg: #22304F; --gala-fg: #B5C6F0;
+    --campo-bg: #2C3A17; --campo-fg: #BFDC8E;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --primary: #7FBF9C; --primary-dark: #0F2A1E; --primary-soft: #1D3A2C; --accent: #F3E3C8; --on-primary-muted: #CFE0D6;
+  --bg: #14181A; --surface: #1C2224; --surface-muted: #182022; --text: #ECEAE3; --text-2: #A8B0AB;
+  --border: #384140; --border-control: #7C857F; --divider: #2A3331;
+  --reuniao-bg: #1D3A2C; --reuniao-fg: #A9DBC0;
+  --sem-bg: #4A2420; --sem-fg: #F5B5AD;
+  --acamp-bg: #2C3A17; --acamp-fg: #BFDC8E;
+  --evento-bg: #35264A; --evento-fg: #D3BCF2;
+  --gala-bg: #22304F; --gala-fg: #B5C6F0;
+  --campo-bg: #2C3A17; --campo-fg: #BFDC8E;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 16px; line-height: 1.5; padding-inline: var(--sp2); padding-block: 0 var(--sp5); }
+h1, h2, h3 { font-family: var(--font-display); margin: 0; text-wrap: balance; line-height: 1.2; }
+p { margin: 0; }
+a { color: var(--primary); font-weight: 600; text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+.wrap { max-width: 1040px; margin-inline: auto; }
+
+.example { background: var(--accent); color: #3A2A12; font-size: 14px; text-align: center; padding: var(--sp1) var(--sp2); margin-inline: calc(var(--sp2) * -1); }
+
+header.club { display: flex; align-items: center; gap: var(--sp2); padding-block: var(--sp3); }
+.brasao { width: 56px; height: 56px; border-radius: 50%; background: var(--primary); color: #F3E3C8; display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; font-size: 22px; flex: none; }
+.club h1 { font-size: 24px; }
+.club p { color: var(--text-2); font-size: 16px; }
+
+.next { background: var(--primary); color: #fff; border-radius: 16px; padding: var(--sp3); display: grid; gap: var(--sp2); }
+:root[data-theme="dark"] .next, :root:not([data-theme="light"]) .next { }
+.next .rotulo { font-size: 14px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--on-primary-muted); }
+.next h2 { font-size: 28px; color: #fff; }
+.next dl { display: grid; gap: var(--sp1); margin: 0; }
+.next dl div { display: grid; grid-template-columns: 112px 1fr; gap: var(--sp1); align-items: baseline; }
+.next dt { color: var(--on-primary-muted); font-size: 14px; font-weight: 600; }
+.next dd { margin: 0; font-size: 18px; font-weight: 600; min-width: 0; }
+.next .obs { background: var(--primary-dark); border-radius: 12px; padding: var(--sp2); font-size: 16px; }
+.next a { color: var(--accent); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .next { background: #1F4D3A; } :root:not([data-theme="light"]) .next .obs { background: #163828; } }
+:root[data-theme="dark"] .next { background: #1F4D3A; }
+:root[data-theme="dark"] .next .obs { background: #163828; }
+
+main.cols { display: grid; gap: var(--sp4); margin-top: var(--sp4); grid-template-columns: 1fr; align-items: start; }
+@media (min-width: 880px) { main.cols { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); } }
+section > h2 { font-size: 22px; margin-bottom: var(--sp2); }
+
+.mes { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--text-2); text-transform: capitalize; margin: var(--sp3) 0 var(--sp1); }
+.mes:first-of-type { margin-top: 0; }
+.lista { display: grid; gap: 4px; list-style: none; margin: 0; padding: 0; }
+.item { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: var(--sp1) var(--sp2); display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: var(--sp2); align-items: center; }
+.dia { text-align: center; line-height: 1.1; }
+.dia b { display: block; font-family: var(--font-display); font-size: 24px; }
+.dia span { font-size: 14px; color: var(--text-2); text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+.item h3 { font-size: 16px; }
+.topo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px var(--sp1); }
+.topo .tags { margin-top: 0; }
+.meta { color: var(--text-2); font-size: 16px; }
+.meta strong { color: var(--text); font-weight: 600; }
+.tags { display: flex; flex-wrap: wrap; gap: var(--sp1); margin-top: var(--sp1); }
+.tag { font-size: 14px; font-weight: 600; padding: 2px 10px; border-radius: 999px; background: var(--reuniao-bg); color: var(--reuniao-fg); }
+.tag.acamp { background: var(--acamp-bg); color: var(--acamp-fg); }
+.tag.evento { background: var(--evento-bg); color: var(--evento-fg); }
+.tag.sem { background: var(--sem-bg); color: var(--sem-fg); }
+.tag.gala { background: var(--gala-bg); color: var(--gala-fg); }
+.tag.campo { background: var(--campo-bg); color: var(--campo-fg); }
+.item.sem { background: var(--surface-muted); }
+.item.sem h3 { color: var(--text-2); }
+
+.cal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: var(--sp2); }
+.cal-top { display: flex; align-items: center; justify-content: space-between; gap: var(--sp1); margin-bottom: var(--sp2); }
+.cal-top h3 { font-size: 20px; text-transform: capitalize; }
+.nav { min-width: 44px; min-height: 44px; border-radius: 12px; border: 1px solid var(--border-control); background: var(--surface); color: var(--text); font: 600 16px var(--font-body); cursor: pointer; padding: 0 var(--sp2); }
+.nav[disabled] { opacity: .45; cursor: default; }
+.grade { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.sem-dia { text-align: center; font-size: 14px; font-weight: 600; color: var(--text-2); padding-block: 4px; }
+.c { min-height: 52px; border-radius: 8px; padding: 4px; font-size: 14px; display: flex; flex-direction: column; gap: 2px; background: var(--surface-muted); }
+.c.vazio { background: transparent; }
+.c .n { font-weight: 600; }
+.c.hoje .n { background: var(--primary); color: var(--surface); border-radius: 999px; width: 24px; height: 24px; display: grid; place-items: center; }
+.c.reuniao { background: var(--reuniao-bg); color: var(--reuniao-fg); }
+.c.acamp { background: var(--acamp-bg); color: var(--acamp-fg); }
+.c.evento { background: var(--evento-bg); color: var(--evento-fg); }
+.c.sem { background: var(--sem-bg); color: var(--sem-fg); }
+.c small { font-size: 11px; font-weight: 700; line-height: 1.1; }
+.legenda { display: flex; flex-wrap: wrap; gap: var(--sp1) var(--sp2); margin-top: var(--sp2); padding-top: var(--sp2); border-top: 1px solid var(--divider); font-size: 14px; color: var(--text-2); }
+.legenda span { display: inline-flex; align-items: center; gap: 6px; }
+.legenda i { width: 16px; height: 16px; border-radius: 4px; display: inline-block; border: 1px solid var(--border); }
+
+footer { margin-top: var(--sp4); padding-top: var(--sp3); border-top: 1px solid var(--border); color: var(--text-2); font-size: 14px; display: grid; gap: 4px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+@media (max-width: 420px) { .next dl div { grid-template-columns: 1fr; gap: 0; } .c { min-height: 46px; } }
+</style>
+
+<div class="example">Mockup com dados de exemplo. Datas, locais e horários abaixo são fictícios.</div>
+
+<div class="wrap">
+  <header class="club">
+    <div class="brasao" aria-hidden="true">CD</div>
+    <div>
+      <h1>Clube de Desbravadores Exemplo</h1>
+      <p>Agenda para pais e responsáveis</p>
+    </div>
+  </header>
+
+  <article class="next" aria-labelledby="prox-titulo">
+    <p class="rotulo">Próximo compromisso · domingo, 18 de outubro</p>
+    <h2 id="prox-titulo">Reunião</h2>
+    <dl>
+      <div><dt>Horário</dt><dd>9h</dd></div>
+      <div><dt>Local</dt><dd>Igreja Central, Rua das Palmeiras, 120</dd></div>
+      <div><dt>Uniforme</dt><dd>Uniforme de campo</dd></div>
+    </dl>
+  </article>
+
+  <main class="cols">
+    <section aria-labelledby="lista-titulo">
+      <h2 id="lista-titulo">Próximos compromissos</h2>
+      <div id="lista"></div>
+    </section>
+
+    <section aria-labelledby="cal-titulo">
+      <h2 id="cal-titulo">Calendário do clube</h2>
+      <div class="cal">
+        <div class="cal-top">
+          <button class="nav" id="ant" type="button" aria-label="Mês anterior">← Anterior</button>
+          <h3 id="mes-atual" aria-live="polite"></h3>
+          <button class="nav" id="prox" type="button" aria-label="Próximo mês">Próximo →</button>
+        </div>
+        <div class="grade" id="grade"></div>
+        <div class="legenda">
+          <span><i style="background:var(--reuniao-bg)"></i>Reunião</span>
+          <span><i style="background:var(--acamp-bg)"></i>Acampamento</span>
+          <span><i style="background:var(--evento-bg)"></i>Evento</span>
+          <span><i style="background:var(--sem-bg)"></i>Sem reunião</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Dúvidas sobre horário ou local? Fale com a diretoria do clube.</p>
+  </footer>
+</div>
+
+<script>
+const HOJE = new Date(2026, 9, 13);
+const DS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+const fmt = (d, o) => d.toLocaleDateString('pt-BR', o);
+const d = (m, dia) => new Date(2026, m - 1, dia);
+
+// Exemplo. Todo compromisso com encontro tem uniforme (padrão: Campo). Só 'Sem reunião' não tem.
+const EV = [
+  { ini: d(10,18), nome: 'Reunião', tipo: 'reuniao', hora: '9h', local: 'Igreja Central', uni: 'Campo' },
+  { ini: d(10,22), nome: 'Ensaio da apresentação', tipo: 'extra', hora: '19h', local: 'Igreja Central', uni: 'Campo' },
+  { ini: d(10,25), nome: 'Reunião', tipo: 'reuniao', hora: '9h', local: 'Igreja Central', uni: 'Campo' },
+  { ini: d(10,31), nome: 'Dia do Desbravador', tipo: 'evento', hora: '14h', local: 'Parque Municipal', uni: 'Campo' },
+  { ini: d(11,1), nome: 'Reunião', tipo: 'reuniao', hora: '9h', local: 'Igreja Central', uni: 'Campo' },
+  { ini: d(11,8), nome: 'Reunião', tipo: 'reuniao', hora: '9h', local: 'Igreja Central', uni: 'Campo' },
+  { ini: d(11,14), fim: d(11,16), nome: 'Acampamento de unidades', tipo: 'acamp', hora: '19h', local: 'Sítio Recanto Verde', uni: 'Campo' },
+  { ini: d(11,22), nome: 'Reunião', tipo: 'reuniao', hora: '9h', local: 'Igreja Central', uni: 'Campo' },
+  { ini: d(11,29), nome: 'Sem reunião', tipo: 'sem', motivo: 'Fim de semana prolongado' },
+  { ini: d(12,6), nome: 'Reunião', tipo: 'reuniao', hora: '9h', local: 'Igreja Central', uni: 'Campo' },
+  { ini: d(12,13), nome: 'Investidura', tipo: 'especial', hora: '19h', local: 'Igreja Central', uni: 'Gala' },
+];
+const rotuloTipo = { reuniao: 'Reunião', extra: 'Reunião extra', acamp: 'Acampamento', evento: 'Evento', especial: 'Evento especial', sem: 'Sem reunião' };
+const fim = e => e.fim || e.ini;
+
+function dataItem(e) {
+  if (e.fim) return `<div class="dia"><b>${e.ini.getDate()}–${e.fim.getDate()}</b><span>${fmt(e.ini,{month:'short'}).replace('.','')}</span></div>`;
+  return `<div class="dia"><b>${e.ini.getDate()}</b><span>${DS[e.ini.getDay()]}</span></div>`;
+}
+function item(e) {
+  if (e.tipo === 'sem') return `<li class="item sem">${dataItem(e)}<div><div class="topo"><h3>${e.nome}</h3></div><p class="meta">${e.motivo}</p></div></li>`;
+  const tags = e.uni ? `<div class="tags"><span class="tag ${e.uni.toLowerCase()}">Uniforme de ${e.uni.toLowerCase()}</span></div>` : '';
+  return `<li class="item">${dataItem(e)}<div><div class="topo"><h3>${e.nome}</h3>${tags}</div>
+    <p class="meta"><strong>${e.hora}</strong> · ${e.local}</p></div></li>`;
+}
+(function lista() {
+  const futuros = EV.filter(e => fim(e) >= HOJE).slice(0, 8);
+  let html = '', mes = -1;
+  futuros.forEach(e => {
+    if (e.ini.getMonth() !== mes) { if (mes !== -1) html += '</ul>'; mes = e.ini.getMonth(); html += `<h3 class="mes">${fmt(e.ini,{month:'long',year:'numeric'})}</h3><ul class="lista">`; }
+    html += item(e);
+  });
+  document.getElementById('lista').innerHTML = html + '</ul>';
+})();
+
+let ver = { m: 9 };
+function desenhar() {
+  const m = ver.m, ano = 2026;
+  document.getElementById('mes-atual').textContent = fmt(new Date(ano, m, 1), { month: 'long', year: 'numeric' });
+  document.getElementById('ant').disabled = m <= 9;
+  document.getElementById('prox').disabled = m >= 11;
+  let h = DS.map(x => `<div class="sem-dia" aria-hidden="true">${x}</div>`).join('');
+  const primeiro = new Date(ano, m, 1).getDay(), total = new Date(ano, m + 1, 0).getDate();
+  for (let i = 0; i < primeiro; i++) h += '<div class="c vazio"></div>';
+  for (let n = 1; n <= total; n++) {
+    const dt = new Date(ano, m, n);
+    const e = EV.find(x => dt >= x.ini && dt <= fim(x));
+    const hoje = dt.getTime() === HOJE.getTime();
+    const abrev = e ? { reuniao: 'Reun.', extra: 'Extra', acamp: 'Acamp.', evento: 'Evento', especial: 'Evento', sem: 'Sem' }[e.tipo] : '';
+    const nome = e ? `, ${rotuloTipo[e.tipo]}` : '';
+    h += `<div class="c ${e ? (e.tipo === 'especial' ? 'evento' : e.tipo === 'extra' ? 'reuniao' : e.tipo) : ''} ${hoje ? 'hoje' : ''}" role="img" aria-label="${n}${nome}${hoje ? ', hoje' : ''}"><span class="n">${n}</span>${e ? `<small>${abrev}</small>` : ''}</div>`;
+  }
+  document.getElementById('grade').innerHTML = h;
+}
+document.getElementById('ant').onclick = () => { ver.m--; desenhar(); };
+document.getElementById('prox').onclick = () => { ver.m++; desenhar(); };
+desenhar();
+</script>

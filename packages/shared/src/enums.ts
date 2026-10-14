@@ -36,9 +36,11 @@ export const Horario = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Horário i
 // Fases 2 e 3
 export const TIPOS_EVENTO = ['SEM_REUNIAO', 'ACAMPAMENTO', 'EVENTO', 'EVENTO_ESPECIAL', 'FERIADO', 'FERIAS', 'REUNIAO_EXTRA', 'CLASSE_BIBLICA'] as const
 export const TipoEvento = z.enum(TIPOS_EVENTO)
-/** Uniforme que o evento especial pede: toda lista de presença tem a marca "com o uniforme". */
+/** Uniforme de gala ou de campo: pedido nos tipos de `TIPOS_COM_UNIFORME` (a lista de presença do especial marca "com o uniforme"). */
 export const UNIFORMES_EVENTO = ['GALA', 'CAMPO'] as const
 export const UniformeEvento = z.enum(UNIFORMES_EVENTO)
+/** Tipos de evento com encontro, que exigem uniforme. Os pontos continuam só no evento especial. */
+export const TIPOS_COM_UNIFORME = ['REUNIAO_EXTRA', 'EVENTO', 'EVENTO_ESPECIAL', 'ACAMPAMENTO'] as const
 export const STATUS_CRONOGRAMA = ['RASCUNHO', 'ENVIADO', 'PUBLICADO'] as const
 export const StatusCronograma = z.enum(STATUS_CRONOGRAMA)
 export const ALVOS_OBSERVACAO = ['AULA', 'DBV'] as const

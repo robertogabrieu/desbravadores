@@ -163,7 +163,8 @@ EventoCalendario(id, nome, tipo: SEM_REUNIAO|ACAMPAMENTO|EVENTO|EVENTO_ESPECIAL|
   inicio: date, fim: date, horario?, local?,
   temReuniao: bool, temClasse: bool,             # marcações afirmativas: "terá reunião", "terá classe"
   bomParaCampo: bool,
-  uniforme?: GALA|CAMPO, pontosParticipacao?: int, pontosUniforme?: int,   # só EVENTO_ESPECIAL (obrigatórios nele)
+  uniforme?: GALA|CAMPO,   # obrigatório em REUNIAO_EXTRA, EVENTO, EVENTO_ESPECIAL e ACAMPAMENTO
+  pontosParticipacao?: int, pontosUniforme?: int,   # só EVENTO_ESPECIAL (obrigatórios nele)
   listaConcluidaEm?: timestamp)                  # nulo = sem lista ou em rascunho; os pontos só entram ao concluir
 
 PresencaEventoEspecial(eventoId, dbvId, clubeId, foi: bool, comUniforme: bool,   # PK (eventoId, dbvId)

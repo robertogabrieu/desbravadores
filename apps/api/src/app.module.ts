@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
 import { SentryModule } from '@sentry/nestjs/setup'
+import { AgendaPublicaModule } from './agenda-publica/agenda-publica.module'
 import { AulasModule } from './aulas/aulas.module'
 import { ArquivosModule } from './arquivos/arquivos.module'
 import { AtividadesModule } from './atividades/atividades.module'
@@ -51,6 +52,7 @@ import { VisaoGeralModule } from './visao-geral/visao-geral.module'
     ComumModule,
     SaudeModule,
     AuthModule,
+    AgendaPublicaModule,
     UsuariosModule,
     DesbravadoresModule,
     UnidadesModule,

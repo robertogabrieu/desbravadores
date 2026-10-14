@@ -1,5 +1,6 @@
 import type { z } from 'zod'
 import type { SITUACOES_AULA, SituacaoData } from '../contratos/cronograma'
+import { TIPOS_COM_UNIFORME } from '../enums'
 import type { TipoEvento, Trilha, UniformeEvento } from '../enums'
 
 export type SituacaoDeData = z.infer<typeof SituacaoData>
@@ -207,9 +208,11 @@ export function validarEvento(
   if (entrada.tipo === 'REUNIAO_EXTRA' && !entrada.temReuniao && !entrada.temClasse) {
     problemas.push({ campo: 'temReuniao', mensagem: 'Marque Terá reunião, Terá classe ou as duas.' })
   }
-  // Fora do evento especial os três campos são descartados por quem grava: aqui não são conferidos.
+  // Fora dos tipos com uniforme o campo é descartado por quem grava; fora do especial, os pontos também.
+  if ((TIPOS_COM_UNIFORME as readonly string[]).includes(entrada.tipo) && !entrada.uniforme) {
+    problemas.push({ campo: 'uniforme', mensagem: 'Escolha o uniforme do evento.' })
+  }
   if (entrada.tipo === 'EVENTO_ESPECIAL') {
-    if (!entrada.uniforme) problemas.push({ campo: 'uniforme', mensagem: 'Escolha o uniforme do evento.' })
     if (entrada.pontosParticipacao == null) {
       problemas.push({ campo: 'pontosParticipacao', mensagem: 'Informe os pontos de quem for ao evento. Pode ser 0.' })
     } else if (!pontosValidos(entrada.pontosParticipacao)) {

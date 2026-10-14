@@ -271,7 +271,7 @@ describe('horarioELocalDoDia', () => {
 })
 
 describe('validarEvento', () => {
-  const base = { tipo: 'EVENTO' as const, inicio: '2026-10-10', fim: '2026-10-10', temReuniao: true, temClasse: false }
+  const base = { tipo: 'EVENTO' as const, inicio: '2026-10-10', fim: '2026-10-10', temReuniao: true, temClasse: false, uniforme: 'CAMPO' as const }
 
   it('fim antes do início', () => {
     expect(validarEvento({ ...base, fim: '2026-10-09' })).toEqual([{ campo: 'fim', mensagem: 'O fim não pode ser antes do início' }])
@@ -285,7 +285,24 @@ describe('validarEvento', () => {
     expect(validarEvento({ ...base, tipo: 'REUNIAO_EXTRA', temReuniao: false, temClasse: false })).toEqual([
       { campo: 'temReuniao', mensagem: 'Marque Terá reunião, Terá classe ou as duas.' },
     ])
-    expect(validarEvento(base)).toEqual([])
+    expect(validarEvento({ ...base, uniforme: 'CAMPO' })).toEqual([])
+  })
+
+  it('os quatro tipos com encontro exigem o uniforme; os outros o ignoram', () => {
+    const pontos = { pontosParticipacao: 0, pontosUniforme: 0 }
+    const semUniforme = [{ campo: 'uniforme', mensagem: 'Escolha o uniforme do evento.' }]
+    for (const tipo of ['REUNIAO_EXTRA', 'EVENTO', 'EVENTO_ESPECIAL', 'ACAMPAMENTO'] as const) {
+      expect(validarEvento({ ...base, ...pontos, tipo, uniforme: null })).toEqual(semUniforme)
+      expect(validarEvento({ ...base, ...pontos, tipo, uniforme: 'GALA' })).toEqual([])
+    }
+    for (const tipo of ['FERIADO', 'FERIAS', 'SEM_REUNIAO', 'CLASSE_BIBLICA'] as const) {
+      expect(validarEvento({ ...base, tipo, uniforme: null })).toEqual([])
+    }
+  })
+
+  it('só o especial exige os pontos', () => {
+    expect(validarEvento({ ...base, tipo: 'EVENTO_ESPECIAL', uniforme: 'GALA' }).map((p) => p.campo)).toEqual(['pontosParticipacao', 'pontosUniforme'])
+    expect(validarEvento({ ...base, tipo: 'ACAMPAMENTO', uniforme: 'GALA' })).toEqual([])
   })
 })
 
