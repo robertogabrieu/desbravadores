@@ -70,10 +70,43 @@ describe('conexão da página pública (sem simular useConexao)', () => {
 
     unmount()
     for (const tipo of ['offline', 'online']) {
-      const adicionada = adicionar.mock.calls.find(([t]) => t === tipo)?.[1]
-      expect(adicionada).toBeDefined()
-      expect(remover.mock.calls.some(([t, funcao]) => t === tipo && funcao === adicionada)).toBe(true)
+      const adicionadas = adicionar.mock.calls.filter(([t]) => t === tipo).map(([, funcao]) => funcao)
+      const removidas = remover.mock.calls.filter(([t]) => t === tipo).map(([, funcao]) => funcao)
+      expect(adicionadas.length).toBeGreaterThan(0)
+      for (const funcao of adicionadas) {
+        const saldo = adicionadas.filter((f) => f === funcao).length - removidas.filter((f) => f === funcao).length
+        expect(saldo).toBe(0)
+      }
     }
     expect(lerConexao()).toBe('ONLINE')
+  })
+
+  it('rede que volta depois de abrir a página sem internet refaz o pedido sozinha', async () => {
+    let falhar = true
+    servidor.use(http.get('/api/agenda-publica/:slug', () => (falhar ? HttpResponse.error() : HttpResponse.json(AGENDA))))
+    renderizarRotas(rotas, ENDERECO, { enderecoDoNavegador: ENDERECO })
+    expect(await screen.findByRole('status', FAIXA)).toBeInTheDocument()
+
+    falhar = false
+    disparar('online')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Clube de Desbravadores Exemplo' })).toBeInTheDocument()
+    await vi.waitFor(() => expect(screen.queryByRole('status', FAIXA)).not.toBeInTheDocument())
+  })
+
+  it('online com a consulta saudável não faz novo pedido', async () => {
+    let pedidos = 0
+    servidor.use(
+      http.get('/api/agenda-publica/:slug', () => {
+        pedidos += 1
+        return HttpResponse.json(AGENDA)
+      }),
+    )
+    renderizarRotas(rotas, ENDERECO, { enderecoDoNavegador: ENDERECO })
+    await screen.findByRole('heading', { level: 1, name: 'Clube de Desbravadores Exemplo' })
+    const antes = pedidos
+
+    disparar('online')
+    await new Promise((r) => setTimeout(r, 100))
+    expect(pedidos).toBe(antes)
   })
 })

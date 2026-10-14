@@ -1,6 +1,6 @@
 import { JANELA_DO_CALENDARIO_EM_DIAS } from '@desbravadores/shared'
 import { WifiOff } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { ErroDaApi } from '../../api/cliente'
 import { useConexao } from '../../offline'
@@ -25,13 +25,21 @@ function useSemBuscador() {
   }, [])
 }
 
-/** O `navigator` só liga uma faixa cosmética local: não decide comportamento nem escreve no estado global de conexão. */
-function useOfflineLocal() {
+/**
+ * O `navigator` só liga uma faixa cosmética local: não decide comportamento nem escreve no estado global de conexão.
+ * `aoRetornar` roda quando a rede volta, para refazer o pedido de quem abriu a página já sem internet.
+ */
+function useOfflineLocal(aoVoltarOnline: () => void) {
   const [offlineLocal, definirOfflineLocal] = useState(false)
+  const aoVoltarOnlineAtual = useRef(aoVoltarOnline)
+  aoVoltarOnlineAtual.current = aoVoltarOnline
 
   useEffect(() => {
     const aoCair = () => definirOfflineLocal(true)
-    const aoRetornar = () => definirOfflineLocal(false)
+    const aoRetornar = () => {
+      definirOfflineLocal(false)
+      aoVoltarOnlineAtual.current()
+    }
     window.addEventListener('offline', aoCair)
     window.addEventListener('online', aoRetornar)
     return () => {
@@ -70,7 +78,9 @@ export function PaginaAgendaPublica() {
   const { slug = '' } = useParams()
   const { modo } = useConexao()
   const consulta = useAgendaPublica(slug)
-  const offlineLocal = useOfflineLocal()
+  const offlineLocal = useOfflineLocal(() => {
+    if (consulta.isError) void consulta.refetch()
+  })
   const erro = consulta.error
   const semRede = modo === 'SEM_CONEXAO' || offlineLocal || (erro instanceof ErroDaApi && erro.classe === 'REDE')
   const naoEncontrada = erro instanceof ErroDaApi && erro.status === 404
