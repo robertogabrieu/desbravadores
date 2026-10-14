@@ -17,7 +17,7 @@ export const EventoEntrada = z.object({
   temReuniao: z.boolean(),
   temClasse: z.boolean(),
   bomParaCampo: z.boolean(),
-  /** Só no EVENTO_ESPECIAL (obrigatório nele, conferido por `validarEvento`); nulo nos outros tipos. */
+  /** Nos quatro tipos de `TIPOS_COM_UNIFORME` (obrigatório neles, conferido por `validarEvento`); nulo nos outros. Os pontos são só do EVENTO_ESPECIAL. */
   uniforme: UniformeEvento.nullable().optional(),
   pontosParticipacao: PontosDeEvento.nullable().optional(),
   pontosUniforme: PontosDeEvento.nullable().optional(),

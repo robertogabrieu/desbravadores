@@ -1,4 +1,4 @@
-import { EventoEntrada, MARCACOES_PADRAO, PontosDeEvento, validarEvento } from '@desbravadores/shared'
+import { EventoEntrada, MARCACOES_PADRAO, PontosDeEvento, TIPOS_COM_UNIFORME, validarEvento } from '@desbravadores/shared'
 import type { UniformeEvento } from '@desbravadores/shared'
 import { Check } from 'lucide-react'
 import { useId, useState } from 'react'
@@ -132,7 +132,7 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar, esco
   const [fim, setFim] = useState(evento?.fim ?? dataInicial)
   const [horario, setHorario] = useState(evento?.horario ?? '')
   const [local, setLocal] = useState(evento?.local ?? '')
-  const [uniforme, setUniforme] = useState<Uniforme | null>(evento?.uniforme ?? null)
+  const [uniforme, setUniforme] = useState<Uniforme | null>(evento?.uniforme ?? 'CAMPO')
   const [pontosDeIr, setPontosDeIr] = useState(pontosDoEvento(evento?.pontosParticipacao))
   const [pontosDoUniforme, setPontosDoUniforme] = useState(pontosDoEvento(evento?.pontosUniforme))
   const [marcacoes, setMarcacoes] = useState<Marcacoes>(
@@ -159,6 +159,7 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar, esco
   const pedeHorario = !ehFerias && !ehSemReuniao && tipo !== 'FERIADO'
   const pedeLocal = pedeHorario
   const ehEspecial = tipo === 'EVENTO_ESPECIAL'
+  const pedeUniforme = (TIPOS_COM_UNIFORME as readonly string[]).includes(tipo)
   const lista = evento?.lista
   const listaComecada = !!lista && (lista.concluidaEm !== null || lista.foram > 0)
   const pontosJaDados = lista?.concluidaEm != null && lista.foram > 0 ? lista.foram : 0
@@ -174,6 +175,18 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar, esco
       ? `Quem for ganha ${pontosPorExtenso(Number(pontosDeIr))}. Quem for com o uniforme de ${NOME_CURTO_DO_UNIFORME[uniforme]} ganha mais ${Number(pontosDoUniforme)}.`
       : null
 
+  const seletorDeUniforme = (
+    <EscolhaUnica
+      id="uniforme"
+      legenda="Uniforme do evento"
+      opcoes={UNIFORMES}
+      valor={uniforme}
+      aoEscolher={setUniforme}
+      erro={uniforme ? undefined : erros['uniforme']}
+      ajuda={listaComecada ? 'Se você trocar o uniforme, as marcas de quem foi com o uniforme continuam como estão. Confira a lista depois.' : undefined}
+    />
+  )
+
   const marcacoesDoPadrao = MARCACOES_PADRAO[tipo]
   const preenchido =
     nome !== '' ||
@@ -181,7 +194,7 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar, esco
     fim !== dataInicial ||
     horario !== '' ||
     local !== '' ||
-    uniforme !== null ||
+    uniforme !== 'CAMPO' ||
     pontosDeIr !== '' ||
     pontosDoUniforme !== '' ||
     marcacoes.temReuniao !== marcacoesDoPadrao.temReuniao ||
@@ -257,7 +270,8 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar, esco
       horario: pedeHorario ? horario.trim() || null : null,
       local: pedeLocal ? local.trim() || null : null,
       ...marcacoesDoTipo(),
-      ...(ehEspecial && { uniforme, pontosParticipacao: pontosDoTexto(pontosDeIr), pontosUniforme: pontosDoTexto(pontosDoUniforme) }),
+      ...(pedeUniforme && { uniforme }),
+      ...(ehEspecial && { pontosParticipacao: pontosDoTexto(pontosDeIr), pontosUniforme: pontosDoTexto(pontosDoUniforme) }),
     }
     const achados: Record<string, string> = {}
     const validacao = EventoEntrada.safeParse(entrada)
@@ -325,6 +339,7 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar, esco
           {pedeLocal && <Campo rotulo="Local" value={local} erro={erros['local']} onChange={(e) => setLocal(e.target.value)} />}
         </div>
       )}
+      {pedeUniforme && !ehEspecial && seletorDeUniforme}
       {ehEspecial && (
         <fieldset className="m-0 flex flex-col gap-4 border-0 p-0">
           <legend className="mb-3 p-0 font-titulo text-lg font-bold text-texto">Uniforme e pontos</legend>
@@ -339,15 +354,7 @@ export function FormularioEvento({ evento, dataInicial, aoGravar, cancelar, esco
             onChange={(e) => digitarPontos('pontosParticipacao', e.target.value)}
             onBlur={() => sairDosPontos('pontosParticipacao')}
           />
-          <EscolhaUnica
-            id="uniforme"
-            legenda="Uniforme do evento"
-            opcoes={UNIFORMES}
-            valor={uniforme}
-            aoEscolher={setUniforme}
-            erro={uniforme ? undefined : erros['uniforme']}
-            ajuda={listaComecada ? 'Se você trocar o uniforme, as marcas de quem foi com o uniforme continuam como estão. Confira a lista depois.' : undefined}
-          />
+          {seletorDeUniforme}
           <Campo
             rotulo="Pontos por usar o uniforme"
             type="number"

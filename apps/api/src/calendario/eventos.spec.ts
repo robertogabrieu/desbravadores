@@ -75,6 +75,7 @@ describe('calendário do clube — eventos', () => {
     fim: dia(10),
     horario: null,
     local: null,
+    uniforme: 'CAMPO',
     ...sobrescrever,
   })
 
@@ -652,17 +653,40 @@ describe('calendário do clube — eventos', () => {
       }
     })
 
-    it('fora do tipo especial os três campos são descartados, na criação e ao trocar o tipo', async () => {
+    it('reunião extra, evento do clube, especial e acampamento exigem o uniforme; os outros tipos o descartam', async () => {
+      const { adm } = await cenario()
+      for (const tipo of ['REUNIAO_EXTRA', 'EVENTO', 'EVENTO_ESPECIAL', 'ACAMPAMENTO']) {
+        const base = { tipo, ...(tipo === 'EVENTO_ESPECIAL' && { pontosParticipacao: 1, pontosUniforme: 1 }) }
+        const sem = await http.post('/api/calendario/eventos', adm.autorizacao, evento({ ...base, uniforme: null }))
+        expect(regra(sem)).toEqual({ status: 400, codigo: 'VALIDACAO' })
+        expect(sem.body).toMatchObject({ campos: { uniforme: 'Escolha o uniforme do evento.' } })
+        const com = await http.post('/api/calendario/eventos', adm.autorizacao, evento({ ...base, uniforme: 'GALA', temReuniao: true }))
+        expect(com.status).toBe(201)
+        expect(corpo<Gravado>(com).evento).toMatchObject({ tipo, uniforme: 'GALA' })
+      }
+      for (const tipo of ['FERIADO', 'FERIAS', 'SEM_REUNIAO']) {
+        const resposta = await http.post('/api/calendario/eventos', adm.autorizacao, evento({ tipo, uniforme: 'CAMPO', pontosParticipacao: 20, pontosUniforme: 10 }))
+        expect(resposta.status).toBe(201)
+        expect(corpo<Gravado>(resposta).evento).toMatchObject({ uniforme: null, pontosParticipacao: null, pontosUniforme: null })
+      }
+    })
+
+    it('fora do especial os pontos são descartados e o uniforme fica; trocar o tipo para um sem uniforme o apaga', async () => {
       const { adm } = await cenario()
       const comum = await http.post('/api/calendario/eventos', adm.autorizacao, evento({ uniforme: 'CAMPO', pontosParticipacao: 20, pontosUniforme: 10 }))
       expect(comum.status).toBe(201)
-      expect(corpo<Gravado>(comum).evento).toMatchObject({ uniforme: null, pontosParticipacao: null, pontosUniforme: null })
+      expect(corpo<Gravado>(comum).evento).toMatchObject({ uniforme: 'CAMPO', pontosParticipacao: null, pontosUniforme: null })
 
       const criado = corpo<Gravado>(await http.post('/api/calendario/eventos', adm.autorizacao, especial())).evento
       const trocado = await http.patch(`/api/calendario/eventos/${criado.id}`, adm.autorizacao, evento({ uniforme: 'GALA', pontosParticipacao: 5 }))
       expect(trocado.status).toBe(200)
       const linha = await prismaDeTeste().eventoCalendario.findUniqueOrThrow({ where: { id: criado.id } })
-      expect(linha).toMatchObject({ tipo: 'ACAMPAMENTO', uniforme: null, pontosParticipacao: null, pontosUniforme: null })
+      expect(linha).toMatchObject({ tipo: 'ACAMPAMENTO', uniforme: 'GALA', pontosParticipacao: null, pontosUniforme: null })
+
+      const emFeriado = await http.patch(`/api/calendario/eventos/${criado.id}`, adm.autorizacao, evento({ tipo: 'FERIADO', uniforme: 'GALA' }))
+      expect(emFeriado.status).toBe(200)
+      const feriado = await prismaDeTeste().eventoCalendario.findUniqueOrThrow({ where: { id: criado.id } })
+      expect(feriado).toMatchObject({ tipo: 'FERIADO', uniforme: null })
     })
 
     it('bundle antigo (cancelaReuniao ou bloqueiaAula) segue recusado no evento especial', async () => {

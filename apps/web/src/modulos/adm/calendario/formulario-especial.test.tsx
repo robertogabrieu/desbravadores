@@ -33,7 +33,7 @@ const pontosDeIr = () => screen.getByLabelText('Pontos por ir ao evento')
 const pontosDoUniforme = () => screen.getByLabelText('Pontos por usar o uniforme')
 
 describe('Evento especial · formulário novo', () => {
-  it('abre sem uniforme escolhido e sem pontos, com o texto de apoio do tipo', async () => {
+  it('abre com o uniforme de campo marcado e sem pontos, com o texto de apoio do tipo', async () => {
     await abrirNovoEspecial()
 
     expect(screen.getByText(APOIO_DO_TIPO)).toBeInTheDocument()
@@ -41,17 +41,26 @@ describe('Evento especial · formulário novo', () => {
     const uniforme = within(grupo).getByRole('group', { name: 'Uniforme do evento' })
     expect(within(uniforme).getAllByRole('radio').map((r) => r.closest('label')?.textContent)).toEqual(['Uniforme de gala', 'Uniforme de campo'])
     expect(within(uniforme).getByLabelText('Uniforme de gala')).not.toBeChecked()
-    expect(within(uniforme).getByLabelText('Uniforme de campo')).not.toBeChecked()
+    expect(within(uniforme).getByLabelText('Uniforme de campo')).toBeChecked()
     expect(pontosDeIr()).toHaveValue(null)
     expect(pontosDoUniforme()).toHaveValue(null)
     expect(screen.queryByText(/^Quem for ganha \d/)).not.toBeInTheDocument()
   })
 
-  it('outros tipos não mostram o grupo de uniforme e pontos', async () => {
-    await abrirNovoDoTipo('EVENTO')
+  it.each(['EVENTO', 'REUNIAO_EXTRA', 'ACAMPAMENTO'])('%s mostra o uniforme, com campo marcado, e não mostra os pontos', async (tipo) => {
+    await abrirNovoDoTipo(tipo)
 
     expect(screen.queryByRole('group', { name: 'Uniforme e pontos' })).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Pontos por ir ao evento')).not.toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Uniforme do evento' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Uniforme de campo')).toBeChecked()
+    expect(screen.getByLabelText('Uniforme de gala')).not.toBeChecked()
+  })
+
+  it.each(['FERIADO', 'FERIAS', 'SEM_REUNIAO'])('%s não pede uniforme', async (tipo) => {
+    await abrirNovoDoTipo(tipo)
+
+    expect(screen.queryByRole('group', { name: 'Uniforme do evento' })).not.toBeInTheDocument()
   })
 
   it('as marcações vêm neutras: reunião e classe marcadas, campo não', async () => {
@@ -75,7 +84,7 @@ describe('Evento especial · formulário novo', () => {
     expect(screen.queryByText(frase)).not.toBeInTheDocument()
   })
 
-  it('salvar sem nada leva o foco ao primeiro da fila (pontos por ir) e resume os três, na ordem da tela', async () => {
+  it('salvar sem pontos leva o foco ao primeiro da fila (pontos por ir) e resume os dois, na ordem da tela', async () => {
     let chamadas = 0
     await abrirNovoEspecial(handlerCriarEvento([], () => chamadas++))
     await userEvent.type(screen.getByLabelText('Nome'), 'Culto de Investidura')
@@ -83,38 +92,10 @@ describe('Evento especial · formulário novo', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
 
     await waitFor(() => expect(pontosDeIr()).toHaveFocus())
-    expect(screen.getByText('Escolha o uniforme do evento.')).toBeInTheDocument()
-    const resumo = screen.getByRole('region', { name: 'Revise 3 campos para salvar' })
-    expect(within(resumo).getAllByRole('link').map((l) => l.textContent)).toEqual(['Pontos por ir ao evento', 'Uniforme do evento', 'Pontos por usar o uniforme'])
-    await userEvent.click(within(resumo).getByRole('link', { name: 'Uniforme do evento' }))
-    expect(screen.getByLabelText('Uniforme de gala')).toHaveFocus()
-    expect(chamadas).toBe(0)
-  })
-
-  it('só o uniforme faltando: o foco vai a ele e o resumo diz 1 campo', async () => {
-    await abrirNovoEspecial()
-    await userEvent.type(screen.getByLabelText('Nome'), 'Culto de Investidura')
-    await userEvent.type(pontosDeIr(), '20')
-    await userEvent.type(pontosDoUniforme(), '10')
-
-    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
-
-    await waitFor(() => expect(screen.getByLabelText('Uniforme de gala')).toHaveFocus())
-    const resumo = screen.getByRole('region', { name: 'Revise 1 campo para salvar' })
-    await userEvent.click(within(resumo).getByRole('link', { name: 'Uniforme do evento' }))
-    expect(screen.getByLabelText('Uniforme de gala')).toHaveFocus()
-  })
-
-  it('escolher o uniforme tira o erro dele', async () => {
-    await abrirNovoEspecial()
-    await userEvent.type(screen.getByLabelText('Nome'), 'Culto')
-    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
-    await screen.findByText('Escolha o uniforme do evento.')
-
-    await userEvent.click(screen.getByLabelText('Uniforme de campo'))
-    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
-
     expect(screen.queryByText('Escolha o uniforme do evento.')).not.toBeInTheDocument()
+    const resumo = screen.getByRole('region', { name: 'Revise 2 campos para salvar' })
+    expect(within(resumo).getAllByRole('link').map((l) => l.textContent)).toEqual(['Pontos por ir ao evento', 'Pontos por usar o uniforme'])
+    expect(chamadas).toBe(0)
   })
 
   it('ao sair do campo vazio, a mensagem aparece junto dele e não vai ao resumo nem tira o foco', async () => {
@@ -126,7 +107,7 @@ describe('Evento especial · formulário novo', () => {
     const campo = pontosDeIr()
     expect(campo).toHaveAccessibleDescription(expect.stringContaining(SEM_PONTOS_DE_IR))
     expect(campo).toHaveAttribute('aria-invalid', 'true')
-    expect(screen.getByLabelText('Uniforme de gala')).toHaveFocus()
+    expect(screen.getByLabelText('Uniforme de campo')).toHaveFocus()
     expect(screen.queryByRole('region', { name: /Revise/ })).not.toBeInTheDocument()
   })
 
@@ -193,18 +174,42 @@ describe('Evento especial · formulário novo', () => {
     expect(screen.getByText(/Evento salvo\./)).toBeInTheDocument()
   })
 
-  it('evento de outro tipo não leva uniforme nem pontos na gravação', async () => {
+  it.each(['EVENTO', 'REUNIAO_EXTRA', 'ACAMPAMENTO'])('%s grava o uniforme de campo por padrão e o de gala se escolhido, sem pontos', async (tipo) => {
     let corpo: Record<string, unknown> = {}
     const criado = caixa(criarEvento(98, { id: uuid(899) }))
-    abrir('/adm/calendario/eventos/novo?data=2026-10-17&tipo=EVENTO', handlerEvento(criado), handlerCriarEvento([], (c) => (corpo = c as Record<string, unknown>)))
+    abrir(`/adm/calendario/eventos/novo?data=2026-10-17&tipo=${tipo}`, handlerEvento(criado), handlerCriarEvento([], (c) => (corpo = c as Record<string, unknown>)))
     await userEvent.type(await screen.findByLabelText('Nome'), 'Jantar')
-
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
-
-    await waitFor(() => expect(corpo).toMatchObject({ nome: 'Jantar', tipo: 'EVENTO' }))
-    expect(corpo).not.toHaveProperty('uniforme')
+    await waitFor(() => expect(corpo).toMatchObject({ nome: 'Jantar', tipo, uniforme: 'CAMPO' }))
     expect(corpo).not.toHaveProperty('pontosParticipacao')
     expect(corpo).not.toHaveProperty('pontosUniforme')
+  })
+
+  it('escolher gala num evento do clube grava gala', async () => {
+    let corpo: Record<string, unknown> = {}
+    abrir('/adm/calendario/eventos/novo?data=2026-10-17&tipo=EVENTO', handlerEvento(caixa(criarEvento(98, { id: uuid(899) }))), handlerCriarEvento([], (c) => (corpo = c as Record<string, unknown>)))
+    await userEvent.type(await screen.findByLabelText('Nome'), 'Jantar')
+    await userEvent.click(screen.getByLabelText('Uniforme de gala'))
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    await waitFor(() => expect(corpo).toMatchObject({ tipo: 'EVENTO', uniforme: 'GALA' }))
+  })
+
+  it('feriado não leva uniforme na gravação', async () => {
+    let corpo: Record<string, unknown> = {}
+    abrir('/adm/calendario/eventos/novo?data=2026-10-17&tipo=FERIADO', handlerEvento(caixa(criarEvento(98, { id: uuid(899) }))), handlerCriarEvento([], (c) => (corpo = c as Record<string, unknown>)))
+    await userEvent.type(await screen.findByLabelText('Nome'), 'Dia da Bandeira')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    await waitFor(() => expect(corpo).toMatchObject({ nome: 'Dia da Bandeira', tipo: 'FERIADO' }))
+    expect(corpo).not.toHaveProperty('uniforme')
+  })
+
+  it('editar evento antigo sem uniforme abre com campo marcado e o grava', async () => {
+    let enviado: Record<string, unknown> = {}
+    const antigo = caixa(criarEvento(97, { id: uuid(897), tipo: 'ACAMPAMENTO', uniforme: null }))
+    abrir(`/adm/calendario/eventos/${antigo.atual.id}/editar`, handlerEvento(antigo), handlerEditarEvento([], (_id, c) => (enviado = c as Record<string, unknown>)))
+    expect(await screen.findByLabelText('Uniforme de campo')).toBeChecked()
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await waitFor(() => expect(enviado).toMatchObject({ tipo: 'ACAMPAMENTO', uniforme: 'CAMPO' }))
   })
 })
 
