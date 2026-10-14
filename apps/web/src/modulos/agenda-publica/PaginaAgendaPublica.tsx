@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { ErroDaApi } from '../../api/cliente'
 import { useConexao } from '../../offline'
+import { definirConexao } from '../../offline/conexao'
 import { Botao } from '../../ui/Botao'
 import { Carregando } from '../../ui/EstadosDeCarga'
 import { EstadoVazio } from '../../ui/EstadoVazio'
@@ -14,8 +15,6 @@ import { CartaoProximo } from './CartaoProximo'
 import { aPartirDeHoje, iniciaisDoClube, mesesDaJanela, proximoCompromisso, somarDias } from './compromissos'
 import { ListaPorMes } from './ListaPorMes'
 
-const MAXIMO_DA_LISTA = 8
-
 /** A página fica fora dos buscadores: a meta sai junto com ela. */
 function useSemBuscador() {
   useEffect(() => {
@@ -24,6 +23,25 @@ function useSemBuscador() {
     meta.content = 'noindex'
     document.head.appendChild(meta)
     return () => meta.remove()
+  }, [])
+}
+
+/**
+ * Fora do layout autenticado ninguém alimenta o modo de conexão: esta página liga a mesma fonte
+ * aos eventos do navegador, para a faixa aparecer ao perder a rede e sumir ao voltar.
+ */
+function useConexaoDoNavegador() {
+  useEffect(() => {
+    const aoCair = () => definirConexao('SEM_CONEXAO')
+    const aoVoltar = () => definirConexao('ONLINE')
+    if (!navigator.onLine) aoCair()
+    window.addEventListener('offline', aoCair)
+    window.addEventListener('online', aoVoltar)
+    return () => {
+      window.removeEventListener('offline', aoCair)
+      window.removeEventListener('online', aoVoltar)
+      aoVoltar()
+    }
   }, [])
 }
 
@@ -51,6 +69,7 @@ function Esqueletos() {
 /** Rota pública /agenda/:slug: só leitura, sem login, sem buscador. */
 export function PaginaAgendaPublica() {
   useSemBuscador()
+  useConexaoDoNavegador()
   const { slug = '' } = useParams()
   const { modo } = useConexao()
   const consulta = useAgendaPublica(slug)
@@ -110,7 +129,7 @@ function Agenda({ dados }: { dados: NonNullable<ReturnType<typeof useAgendaPubli
               <h2 id="lista-titulo" className="mb-4 text-[22px] font-bold">
                 Próximos compromissos
               </h2>
-              <ListaPorMes compromissos={futuros.slice(0, MAXIMO_DA_LISTA)} hoje={dados.hoje} />
+              <ListaPorMes compromissos={futuros} hoje={dados.hoje} />
             </section>
             <section aria-labelledby="cal-titulo">
               <h2 id="cal-titulo" className="mb-4 text-[22px] font-bold">

@@ -126,6 +126,15 @@ describe('conteúdo', () => {
     erro.mockRestore()
   })
 
+  it('a lista mostra todos os compromissos da janela, sem corte de quantidade', async () => {
+    const muitos = Array.from({ length: 12 }, (_, i) => compromisso({ data: `2026-11-${String(i + 1).padStart(2, '0')}`, nome: `Compromisso ${i + 1}` }))
+    servidor.use(responder(agenda([...muitos, compromisso({ data: '2026-12-13', nome: 'Feriado de dezembro', tipo: 'FERIADO', horario: null, local: null, uniforme: null })])))
+    montar()
+    const lista = await screen.findByRole('region', { name: 'Próximos compromissos' })
+    expect(within(lista).getByRole('heading', { name: 'Compromisso 12' })).toBeInTheDocument()
+    expect(within(lista).getByRole('heading', { name: 'Sem reunião' })).toBeInTheDocument()
+  })
+
   it('Sem reunião, Feriado e Férias viram o aviso "Sem reunião", sem uniforme', async () => {
     servidor.use(responder(agenda([compromisso({ data: '2026-12-25', nome: 'Natal', tipo: 'FERIADO', horario: null, local: null, uniforme: null })])))
     montar()
