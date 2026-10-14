@@ -56,6 +56,8 @@ export const LIMITE_ESQUECI = {
   porEmail: { limit: 3, ttl: HORA_MS },
   porIp: { limit: 10, ttl: HORA_MS },
 }
+/** Agenda dos pais: leitura aberta, e a familia toda da igreja compartilha o IP; so o limite por IP, mais folgado que o do login. */
+export const LIMITE_AGENDA_PUBLICA = { porIp: { limit: 120, ttl: MINUTO_MS } }
 export const LIMITE_POR_IP = { porIp: { limit: 10, ttl: HORA_MS } }
 /** Aceite do convite por link: senha errada nao gasta o convite, entao o e-mail tem o limite do login. */
 export const LIMITE_ACEITE_POR_LINK = { porEmail: LIMITE_LOGIN.porEmail, ...LIMITE_POR_IP }
