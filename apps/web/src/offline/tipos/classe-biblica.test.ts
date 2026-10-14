@@ -92,7 +92,7 @@ describe('aoEnviar', () => {
     const [id, novo] = atualizarPayload.mock.calls[0] ?? []
     expect(id).toBe('seg')
     expect(novo?.corpo.linhas.map((l) => l.versaoVista)).toEqual(['2026-10-11T14:31:00.000-03:00', 'antiga'])
-    expect(invalidar.mock.calls.map(([filtro]) => filtro?.queryKey?.[0])).toEqual(['classe-biblica', 'inicio', 'ranking', 'progresso'])
+    expect(invalidar.mock.calls.map(([filtro]) => filtro?.queryKey?.[0])).toEqual(['classe-biblica', 'inicio', 'ranking', 'progresso', 'visao-geral'])
     expect(baixarPacote).toHaveBeenCalledOnce()
   })
 
