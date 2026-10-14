@@ -197,6 +197,17 @@ describe('Etapa 1 — dados', () => {
     expect(gravacoes[0]).toMatchObject({ metodo: 'PATCH', caminho: `/api/classe-biblica/edicoes/${EDICAO_CB_ID}`, corpo: { horario: '14:00' } })
   })
 
+  it('5b · o horário recebe os dois pontos sozinho e salva no formato 14:00', async () => {
+    const usuario = userEvent.setup()
+    const { gravacoes } = abrir(`/adm/classe-biblica/${EDICAO_CB_ID}/etapa/1`, { edicao: { ...RASCUNHO, horario: null } })
+    await screen.findByLabelText('Nome da edição')
+    await usuario.type(screen.getByLabelText('Horário'), '1400')
+    expect(screen.getByLabelText('Horário')).toHaveValue('14:00')
+    await usuario.tab()
+    await waitFor(() => expect(gravacoes).toHaveLength(1))
+    expect(gravacoes[0]).toMatchObject({ corpo: { horario: '14:00' } })
+  })
+
   it('D11 · sem conexão avisa que não fica salvo e não envia', async () => {
     const usuario = userEvent.setup()
     conexao.modo = 'SEM_CONEXAO'
@@ -514,7 +525,7 @@ describe('Etapa 1 — o endereço do rascunho que acabou de nascer', () => {
     expect(roteador.state.historyAction).toBe('REPLACE')
     expect(await screen.findByText('Salvo às 15:42. Pode sair e continuar depois de onde parou.')).toBeInTheDocument()
     expect(screen.getByLabelText('Horário')).toHaveFocus()
-    expect(screen.getByLabelText('Horário')).toHaveValue('14')
+    expect(screen.getByLabelText('Horário')).toHaveValue('14:')
     expect(screen.getByLabelText('Nome da edição')).toHaveValue('Classe Bíblica 2027 · 1º semestre')
 
     await usuario.click(screen.getByLabelText('Nome da edição'))

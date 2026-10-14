@@ -81,3 +81,10 @@
     font-size: 16px;
   }
 }
+
+/* O calendário do CampoData vem com o anel de foco azul do navegador; aqui ele passa a ser o verde da marca, igual ao dos campos. */
+.rdp-root button:focus-visible,
+.rdp-root .rdp-dropdown:focus-visible ~ .rdp-caption_label {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
