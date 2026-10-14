@@ -35,7 +35,7 @@ export function CalendarioPublico({ compromissos, hoje, meses }: Propriedades) {
   const diasDoMes = diasDaGrade(ano, mes)
 
   return (
-    <div className="rounded-cartao border border-borda bg-superficie p-4">
+    <div className="rounded-cartao border border-borda-controle bg-superficie p-4">
       <div className="mb-4 flex items-center justify-between gap-2">
         <button type="button" aria-label="Mês anterior" disabled={indice === 0} onClick={() => definirIndice(indice - 1)} className={ESTILO_DO_BOTAO}>
           ← Anterior
@@ -62,7 +62,7 @@ export function CalendarioPublico({ compromissos, hoje, meses }: Propriedades) {
       <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t border-divisor pt-4 text-sm text-texto-2">
         {LEGENDA.map(({ familia, rotulo }) => (
           <span key={familia} className="inline-flex items-center gap-1.5">
-            <i aria-hidden className={cn('inline-block size-4 rounded border border-borda', COR_DA_FAMILIA[familia])} />
+            <i aria-hidden className={cn('inline-block size-4 rounded border border-borda-controle', COR_DA_FAMILIA[familia])} />
             {rotulo}
           </span>
         ))}
@@ -86,7 +86,7 @@ function Dia({ data, numero, hoje, compromissos }: { data: string; numero: numbe
       )}
     >
       <span className={cn('font-semibold', ehHoje && 'grid size-6 place-items-center rounded-full bg-marca text-superficie')}>{numero}</span>
-      {compromisso && <small className="text-[11px] leading-tight font-bold break-words">{abreviacaoDoCompromisso(compromisso)}</small>}
+      {compromisso && <small className="text-xs leading-tight font-bold break-words">{abreviacaoDoCompromisso(compromisso)}</small>}
     </div>
   )
 }

@@ -69,7 +69,7 @@ function Item({ compromisso: c }: { compromisso: Compromisso }) {
   return (
     <li
       className={cn(
-        'grid grid-cols-[56px_minmax(0,1fr)] items-center gap-4 rounded-botao border border-borda px-4 py-2',
+        'grid grid-cols-[56px_minmax(0,1fr)] items-center gap-4 rounded-botao border border-borda-controle px-4 py-2',
         aviso ? 'bg-superficie-suave' : 'bg-superficie',
       )}
     >

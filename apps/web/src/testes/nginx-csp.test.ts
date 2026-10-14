@@ -6,16 +6,16 @@ const conteudo = readFileSync(resolve(__dirname, '../../nginx.conf'), 'utf8')
 const politicas = conteudo.split('\n').filter((linha) => linha.includes('Content-Security-Policy'))
 
 describe('nginx.conf: política de segurança de conteúdo', () => {
-  it('repete a política nos quatro blocos', () => {
-    expect(politicas).toHaveLength(4)
+  it('repete a política nos cinco blocos (service worker, assets, agenda, SPA e o restante)', () => {
+    expect(politicas).toHaveLength(5)
   })
 
-  it.each([0, 1, 2, 3])('o bloco %i libera blob: em img-src (miniatura de foto local)', (indice) => {
+  it.each([0, 1, 2, 3, 4])('o bloco %i libera blob: em img-src (miniatura de foto local)', (indice) => {
     const imgSrc = /img-src([^;]*);/.exec(politicas[indice] ?? '')
     expect(imgSrc?.[1]).toContain('blob:')
   })
 
-  it.each([0, 1, 2, 3])('o bloco %i libera o envio de erros ao Sentry em connect-src', (indice) => {
+  it.each([0, 1, 2, 3, 4])('o bloco %i libera o envio de erros ao Sentry em connect-src', (indice) => {
     const connectSrc = /connect-src([^;]*);/.exec(politicas[indice] ?? '')
     expect(connectSrc?.[1]).toContain('https://o4512184671272960.ingest.us.sentry.io')
   })
