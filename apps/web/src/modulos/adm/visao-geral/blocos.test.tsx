@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ModoConexao } from '../../../offline'
 import type { RankingUnidades } from '../../../api/ranking'
 import type { VisaoGeral } from '../../../api/visao-geral'
 import { criarConfiguracao, handlerConfiguracao } from '../../../testes/handlers/clube'
@@ -12,7 +13,15 @@ import { renderizarRotas } from '../../../testes/renderizar'
 import { servidor } from '../../../testes/servidor'
 import { rotasAdmVisaoGeral } from './rotas'
 
+const conexao = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao }))
+
+vi.mock('../../../offline', async (importarOriginal) => ({
+  ...(await importarOriginal<typeof import('../../../offline')>()),
+  useConexao: () => ({ modo: conexao.modo }),
+}))
+
 beforeEach(() => {
+  conexao.modo = 'ONLINE'
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date('2026-10-13T15:00:00Z'))
   servidor.use(handlerConfiguracao(criarConfiguracao()), handlerRankingUnidades([]))
@@ -218,6 +227,16 @@ describe('prévia do ranking', () => {
     servidor.use(handlerRankingUnidades([unidadeDoRanking(1, 0), unidadeDoRanking(2, 0)]))
     abrirCom({})
     expect(await screen.findByText('Ainda não há pontos neste mês.')).toBeInTheDocument()
+  })
+
+  it('sem conexão e ranking nunca buscado: o aviso "disponível com internet" dentro do cartão, não o erro', async () => {
+    conexao.modo = 'SEM_CONEXAO'
+    servidor.use(http.get('/api/ranking/unidades', () => HttpResponse.json({ codigo: 'ERRO_INTERNO', mensagem: 'Falha no ranking.' }, { status: 500 })))
+    abrirCom({})
+    const secao = within(await screen.findByRole('region', { name: 'Ranking das unidades' }))
+    expect(await secao.findByText('Disponível quando houver internet')).toBeInTheDocument()
+    expect(secao.queryByText('Falha no ranking.')).not.toBeInTheDocument()
+    expect(secao.getByRole('link', { name: 'Ver ranking completo' })).toBeInTheDocument()
   })
 
   it('vazio: lista vazia também', async () => {

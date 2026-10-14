@@ -8,6 +8,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { z } from 'zod'
 import { montarConsulta, requisitar } from './cliente'
+import { chavesVisaoGeral } from './visao-geral'
 
 export type Montagem = z.infer<typeof MontagemSaida>
 export type DataDaMontagem = Montagem['datas'][number]
@@ -43,12 +44,15 @@ export function useInicioAnoClube(ativa = true) {
   })
 }
 
-/** Toda gravação de montagem devolve a `MontagemSaida` nova: ela substitui o que a tela guardava. */
-function useGravacao<E>(classeId: string, ano: number | undefined, chamar: (entrada: E) => Promise<Montagem>) {
+/** Toda gravação de montagem devolve a `MontagemSaida` nova: ela substitui o que a tela guardava. `invalidaVisaoGeral`: a gravação muda a lista "classes sem cronograma". */
+function useGravacao<E>(classeId: string, ano: number | undefined, chamar: (entrada: E) => Promise<Montagem>, invalidaVisaoGeral = false) {
   const clienteConsultas = useQueryClient()
   return useMutation({
     mutationFn: chamar,
-    onSuccess: (saida) => clienteConsultas.setQueryData(chavesMontagem.da(classeId, ano), saida),
+    onSuccess: async (saida) => {
+      clienteConsultas.setQueryData(chavesMontagem.da(classeId, ano), saida)
+      if (invalidaVisaoGeral) await clienteConsultas.invalidateQueries({ queryKey: chavesVisaoGeral.todas })
+    },
   })
 }
 
@@ -57,6 +61,7 @@ const corpo = (metodo: 'POST' | 'PUT' | 'PATCH' | 'DELETE', dados?: unknown) => 
 export function useCriarCronograma(classeId: string, ano: number | undefined) {
   return useGravacao(classeId, ano, (entrada: z.infer<typeof CronogramaCriarEntrada>) =>
     requisitar('/api/cronogramas', MontagemSaida, corpo('POST', entrada)),
+    true,
   )
 }
 

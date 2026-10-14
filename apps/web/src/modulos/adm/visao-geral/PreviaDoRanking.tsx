@@ -2,17 +2,19 @@ import { useId } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useRankingUnidades } from '../../../api/ranking'
+import { useConexao } from '../../../offline'
 import { Cartao } from '../../../ui/Cartao'
-import { Carregando, ErroDeCarga } from '../../../ui/EstadosDeCarga'
+import { Carregando, DisponivelComInternet, ErroDeCarga } from '../../../ui/EstadosDeCarga'
 
 const LINHAS_DA_PREVIA = 5
 
 const formatarPontos = (media: number): string => `${media.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} pts`
 
-/** As cinco primeiras unidades do mês; carregando e erro ficam dentro do cartão, sem esconder o resto da tela. */
+/** As cinco primeiras unidades do mês; carregando, sem conexão e erro ficam dentro do cartão, sem esconder o resto da tela. */
 export function PreviaDoRanking({ mes }: { mes: string }) {
   const idDoTitulo = useId()
   const consulta = useRankingUnidades(undefined)
+  const { modo } = useConexao()
 
   let corpo: ReactNode
   if (consulta.data) {
@@ -31,7 +33,8 @@ export function PreviaDoRanking({ mes }: { mes: string }) {
         ))}
       </ol>
     )
-  } else if (consulta.isError) corpo = <ErroDeCarga erro={consulta.error} aoTentarDeNovo={() => void consulta.refetch()} />
+  } else if (modo === 'SEM_CONEXAO') corpo = <DisponivelComInternet />
+  else if (consulta.isError) corpo = <ErroDeCarga erro={consulta.error} aoTentarDeNovo={() => void consulta.refetch()} />
   else corpo = <Carregando rotulo="Carregando o ranking" />
 
   return (
