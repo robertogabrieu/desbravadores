@@ -21,7 +21,7 @@ export const VisaoGeralSaida = z.object({
   /** Eventos especiais que terminaram há até 60 dias, valem pontos e ainda não têm a lista concluída (`pendenciaDeLista`). */
   eventosSemLista: z.array(z.object({ eventoId: Uuid, nome: z.string(), inicio: DataCivil, fim: DataCivil })).default([]),
   /** Classes sem nenhum cronograma no ano do clube; a avançada pareada vem junto da regular, uma linha só. */
-  classesSemCronograma: z.array(z.object({ classe: RefClasse })).default([]),
+  classesSemCronograma: z.array(z.object({ classe: RefClasse, idade: z.number().int().nullable() })).default([]),
   /** Unidades ativas sem chamada na última reunião (estritamente antes de hoje); nulo quando o calendário não tem dia de reunião. */
   unidadesSemChamada: z.object({
     reuniao: DataCivil,
