@@ -1,10 +1,9 @@
 import { JANELA_DO_CALENDARIO_EM_DIAS } from '@desbravadores/shared'
 import { WifiOff } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { ErroDaApi } from '../../api/cliente'
 import { useConexao } from '../../offline'
-import { definirConexao } from '../../offline/conexao'
 import { Botao } from '../../ui/Botao'
 import { Carregando } from '../../ui/EstadosDeCarga'
 import { EstadoVazio } from '../../ui/EstadoVazio'
@@ -27,22 +26,29 @@ function useSemBuscador() {
 }
 
 /**
- * Fora do layout autenticado ninguém alimenta o modo de conexão: esta página liga a mesma fonte
- * aos eventos do navegador, para a faixa aparecer ao perder a rede e sumir ao voltar.
+ * Faixa cosmética local: o navegador não decide comportamento (o `online` só dispara um novo pedido,
+ * que a API confirma) e nada é escrito no estado global de conexão.
  */
-function useConexaoDoNavegador() {
+function useOfflineLocal(aoVoltar: () => void) {
+  const [offlineLocal, definirOfflineLocal] = useState(() => !navigator.onLine)
+  const aoVoltarRef = useRef(aoVoltar)
+  aoVoltarRef.current = aoVoltar
+
   useEffect(() => {
-    const aoCair = () => definirConexao('SEM_CONEXAO')
-    const aoVoltar = () => definirConexao('ONLINE')
-    if (!navigator.onLine) aoCair()
+    const aoCair = () => definirOfflineLocal(true)
+    const aoRetornar = () => {
+      definirOfflineLocal(false)
+      aoVoltarRef.current()
+    }
     window.addEventListener('offline', aoCair)
-    window.addEventListener('online', aoVoltar)
+    window.addEventListener('online', aoRetornar)
     return () => {
       window.removeEventListener('offline', aoCair)
-      window.removeEventListener('online', aoVoltar)
-      aoVoltar()
+      window.removeEventListener('online', aoRetornar)
     }
   }, [])
+
+  return offlineLocal
 }
 
 /** O layout autenticado não cobre esta rota, então a faixa é montada aqui. */
@@ -69,12 +75,12 @@ function Esqueletos() {
 /** Rota pública /agenda/:slug: só leitura, sem login, sem buscador. */
 export function PaginaAgendaPublica() {
   useSemBuscador()
-  useConexaoDoNavegador()
   const { slug = '' } = useParams()
   const { modo } = useConexao()
   const consulta = useAgendaPublica(slug)
+  const offlineLocal = useOfflineLocal(() => void consulta.refetch())
   const erro = consulta.error
-  const semRede = modo === 'SEM_CONEXAO' || (erro instanceof ErroDaApi && erro.classe === 'REDE')
+  const semRede = modo === 'SEM_CONEXAO' || offlineLocal || (erro instanceof ErroDaApi && erro.classe === 'REDE')
   const naoEncontrada = erro instanceof ErroDaApi && erro.status === 404
 
   return (
