@@ -110,7 +110,7 @@ function Agenda({ dados }: { dados: NonNullable<ReturnType<typeof useAgendaPubli
               <h2 id="lista-titulo" className="mb-4 text-[22px] font-bold">
                 Próximos compromissos
               </h2>
-              <ListaPorMes compromissos={futuros.slice(0, MAXIMO_DA_LISTA)} />
+              <ListaPorMes compromissos={futuros.slice(0, MAXIMO_DA_LISTA)} hoje={dados.hoje} />
             </section>
             <section aria-labelledby="cal-titulo">
               <h2 id="cal-titulo" className="mb-4 text-[22px] font-bold">

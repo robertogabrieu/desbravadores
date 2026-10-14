@@ -33,7 +33,8 @@ afterAll(async () => {
 
 describe('GET /api/agenda-publica/:slug', () => {
   it('slug inexistente responde 404', async () => {
-    await ver(`nao-existe-${randomUUID().slice(0, 8)}`).expect(404)
+    const resposta = await ver(`nao-existe-${randomUUID().slice(0, 8)}`).expect(404)
+    expect(resposta.headers['cache-control'] ?? '').not.toContain('public')
   })
 
   it('sem login responde 200, valida no contrato estrito e leva o cabeçalho de cache', async () => {

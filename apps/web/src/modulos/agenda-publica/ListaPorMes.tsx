@@ -12,23 +12,24 @@ const diaDaSemana = (data: string): string => {
 
 const mesDe = (data: string): number => Number(data.slice(5, 7)) - 1
 
-/** Os compromissos na ordem recebida, quebrados em um bloco por mês. */
-function agruparPorMes(compromissos: Compromisso[]): { chave: string; titulo: string; itens: Compromisso[] }[] {
+/** Os compromissos na ordem recebida, quebrados em um bloco por mês; o que já começou fica no mês de hoje. */
+function agruparPorMes(compromissos: Compromisso[], hoje: string): { chave: string; titulo: string; itens: Compromisso[] }[] {
   const grupos: { chave: string; titulo: string; itens: Compromisso[] }[] = []
   for (const c of compromissos) {
-    const chave = c.data.slice(0, 7)
+    const inicioNaLista = c.data > hoje ? c.data : hoje
+    const chave = inicioNaLista.slice(0, 7)
     const grupo = grupos.find((g) => g.chave === chave)
     if (grupo) grupo.itens.push(c)
-    else grupos.push({ chave, titulo: `${MESES[mesDe(c.data)]} de ${c.data.slice(0, 4)}`, itens: [c] })
+    else grupos.push({ chave, titulo: `${MESES[mesDe(inicioNaLista)]} de ${inicioNaLista.slice(0, 4)}`, itens: [c] })
   }
   return grupos
 }
 
 /** Lista agrupada por mês; cada item diz o dia, o nome, "horário · local" e o uniforme quando há. */
-export function ListaPorMes({ compromissos }: { compromissos: Compromisso[] }) {
+export function ListaPorMes({ compromissos, hoje }: { compromissos: Compromisso[]; hoje: string }) {
   return (
     <div>
-      {agruparPorMes(compromissos).map((grupo) => (
+      {agruparPorMes(compromissos, hoje).map((grupo) => (
         <div key={grupo.chave} className="mt-6 first:mt-0">
           <h3 className="mb-2 text-base font-bold text-texto-2">{grupo.titulo}</h3>
           <ul className="m-0 grid list-none gap-1 p-0">

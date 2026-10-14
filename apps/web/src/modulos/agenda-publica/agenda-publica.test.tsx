@@ -96,6 +96,17 @@ describe('conteúdo', () => {
     expect(within(lista).queryByText('Reunião extra')).not.toBeInTheDocument()
   })
 
+  it('compromisso em curso que começou no mês anterior fica sob o mês de hoje, com o intervalo no rótulo', async () => {
+    servidor.use(
+      responder({ ...agenda([compromisso({ data: '2026-10-30', fim: '2026-11-02', nome: 'Acampamento em curso', tipo: 'ACAMPAMENTO' })]), hoje: '2026-11-02' }),
+    )
+    montar()
+    const lista = await screen.findByRole('region', { name: 'Próximos compromissos' })
+    expect(within(lista).getByRole('heading', { name: 'Novembro de 2026' })).toBeInTheDocument()
+    expect(within(lista).queryByRole('heading', { name: 'Outubro de 2026' })).not.toBeInTheDocument()
+    expect(within(lista).getByText('30–2')).toBeInTheDocument()
+  })
+
   it('evento que vira o mês mostra os dois meses no rótulo do dia', async () => {
     servidor.use(responder(agenda([compromisso({ data: '2026-10-30', fim: '2026-11-02', nome: 'Acampamento de virada', tipo: 'ACAMPAMENTO' })])))
     montar()
@@ -221,6 +232,14 @@ describe('estados', () => {
     expect(await screen.findByText('Não foi possível carregar a agenda.')).toBeInTheDocument()
     expect(screen.getByRole('status', { name: 'Sem conexão' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Tentar de novo' })).toBeInTheDocument()
+  })
+
+  it('200 fora do contrato mostra só o erro com "Tentar de novo", sem a faixa de sem conexão', async () => {
+    servidor.use(http.get('/api/agenda-publica/:slug', () => HttpResponse.json({ qualquer: 'coisa' })))
+    montar()
+    expect(await screen.findByText('Não foi possível carregar a agenda.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Tentar de novo' })).toBeInTheDocument()
+    expect(screen.queryByRole('status', { name: 'Sem conexão' })).not.toBeInTheDocument()
   })
 
   it('link inexistente mostra "Agenda não encontrada"', async () => {

@@ -21,8 +21,8 @@ export async function buscarAgendaPublica(slug: string): Promise<AgendaPublicaSa
   const corpo: unknown = await resposta.json().catch(() => undefined)
   if (!resposta.ok) throw erroDeResposta(resposta.status, corpo)
   const lido = AgendaPublicaSaida.safeParse(corpo)
-  // 2xx que não é o contrato (portal de Wi-Fi, proxy) conta como rede, como no cliente do app.
-  if (!lido.success) throw new ErroDaApi(resposta.status, { codigo: 'ERRO_INTERNO', mensagem: MENSAGEM_DE_REDE }, 'REDE')
+  // 2xx fora do contrato é dado inválido do servidor, não falta de internet: erro sem a faixa "Sem conexão".
+  if (!lido.success) throw new ErroDaApi(resposta.status, { codigo: 'ERRO_INTERNO', mensagem: MENSAGEM_DE_REDE }, 'SERVIDOR')
   return lido.data
 }
 

@@ -1,6 +1,7 @@
-import { Controller, Get, Header, Param, UseGuards } from '@nestjs/common'
+import { Controller, Get, Param, Res, UseGuards } from '@nestjs/common'
 import { SkipThrottle, Throttle } from '@nestjs/throttler'
 import type { AgendaPublicaSaida } from '@desbravadores/shared'
+import type { Response } from 'express'
 import { z } from 'zod'
 import { GuardaLimite, LIMITE_AGENDA_PUBLICA } from '../auth/limite'
 import { Publica } from '../comum/decorators/publica.decorator'
@@ -18,9 +19,11 @@ export class AgendaPublicaController {
   @UseGuards(GuardaLimite)
   @SkipThrottle({ porEmail: true })
   @Throttle(LIMITE_AGENDA_PUBLICA)
-  @Header('Cache-Control', 'public, max-age=60')
   @Get(':slug')
-  ver(@Param('slug', SlugDaRota) slug: string): Promise<AgendaPublicaSaida> {
-    return this.agenda.ver(slug)
+  async ver(@Param('slug', SlugDaRota) slug: string, @Res({ passthrough: true }) res: Response): Promise<AgendaPublicaSaida> {
+    const saida = await this.agenda.ver(slug)
+    // Só a resposta de sucesso pode ser guardada: o 404 e os demais erros saem sem este cabeçalho.
+    res.setHeader('Cache-Control', 'public, max-age=60')
+    return saida
   }
 }
