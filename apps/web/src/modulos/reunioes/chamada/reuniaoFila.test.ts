@@ -120,7 +120,7 @@ describe('aoEnviar', () => {
     expect(id).toBe('item-2')
     expect(novo.corpo.linhas.map((l) => l.versaoVista)).toEqual(['2030-03-10T13:00:00.000Z', 'antiga'])
     expect(novo.corpo.cabecalho?.versaoVista).toBe('2030-03-10T13:00:00.000Z')
-    expect(invalidar.mock.calls.map(([filtro]) => filtro?.queryKey?.[0])).toEqual(['reunioes', 'reuniao', 'grade', 'inicio', 'ranking'])
+    expect(invalidar.mock.calls.map(([filtro]) => filtro?.queryKey?.[0])).toEqual(['reunioes', 'reuniao', 'grade', 'inicio', 'ranking', 'visao-geral'])
     expect(baixarPacote).toHaveBeenCalledOnce()
   })
 
