@@ -69,8 +69,10 @@ Cartão **"Entrar com digital ou rosto"** entre "Papel em uso" e "Sessão" (mesm
 4. **`rpID` e `origin` saem de `APP_URL`**: `rpID` = `new URL(APP_URL).hostname`; `origin` = a origem
    inteira (com porta). Em dev/teste sem `APP_URL`, `http://localhost:5173`. Esta leitura é nova (hoje
    `APP_URL` só monta link de e-mail); em produção ela falha no primeiro uso se `APP_URL` faltar. Só
-   essa origem vale: acessar por IP, `www` ou outro domínio recusa. Trocar o domínio de produção
-   invalida todas as passkeys: avisar no deploy.
+   essa origem vale: acessar por IP, `www` ou outro domínio recusa. Em produção:
+   `APP_URL=https://desbravadores.adventistastucuruvi.com.br`, logo `rpID` é esse host inteiro (e não
+   `adventistastucuruvi.com.br`: assim outro app do mesmo domínio não enxerga estas passkeys). Trocar o
+   domínio de produção invalida todas as passkeys: avisar no deploy.
 5. **Desafio de uso único, validade de 5 minutos**, no banco. Regras do desafio:
    - consumo **atômico antes de verificar** (marcar `usadoEm` só onde é nulo e `expiraEm` é futuro,
      como `token-uso-unico.service.ts:39-49`), dê certo ou errado;
