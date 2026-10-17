@@ -5,6 +5,7 @@ import request from 'supertest'
 import { criarAppDeTeste } from '../../../test/app'
 import {
   admDefinirClasseClube,
+  avancadaOficial,
   classeOficial,
   credencialDeSubstituicao,
   criarAcesso,
@@ -304,11 +305,12 @@ describe('guardas globais e filtro de erros', () => {
         .expect(200)
     })
 
-    it('escopo: unidadesDoConselheiro e classesDoInstrutor devolvem so o alvo do link', async () => {
+    it('escopo: unidadesDoConselheiro e classesDoInstrutor devolvem so o alvo do link (a classe e a avançada que anda com ela)', async () => {
       const escopo = app.get(ServicoEscopo, { strict: false })
       const clube = await criarClube()
       const alvo = await criarUnidade({ clubeId: clube.id })
       const amigo = await classeOficial('Amigo')
+      const avancadaDoAmigo = await avancadaOficial(amigo.id)
       const base = { usuarioId: 'u', clubeId: clube.id, vinculoId: 'sub' }
       const deUnidade: SessaoLogada = {
         ...base,
@@ -322,7 +324,7 @@ describe('guardas globais e filtro de erros', () => {
       }
       expect(await escopo.unidadesDoConselheiro(deUnidade)).toEqual([alvo.id])
       expect(await escopo.classesDoInstrutor(deUnidade)).toEqual([])
-      expect(await escopo.classesDoInstrutor(deClasse)).toEqual([amigo.id])
+      expect(await escopo.classesDoInstrutor(deClasse)).toEqual([amigo.id, avancadaDoAmigo.id])
       expect(await escopo.unidadesDoConselheiro(deClasse)).toEqual([])
     })
   })
