@@ -45,7 +45,10 @@ export function AtalhoDeSubstituto({ visao, className }: Propriedades) {
   if (!pode('usuario.gerenciar')) return null
 
   const unidades = visao.unidadesResumo.map(({ id, nome }) => ({ id, nome }))
-  const classes = visao.progressoClasses.map(({ classe }) => ({ id: classe.id, nome: classe.nome }))
+  // Regular e avançada são lecionadas juntas: o link é um só, o da regular.
+  const classes = visao.progressoClasses
+    .filter(({ classe }) => !(classe.tipo === 'AVANCADA' && classe.trilha === 'INDIVIDUAL'))
+    .map(({ classe }) => ({ id: classe.id, nome: classe.nome }))
   const semNada = unidades.length === 0 && classes.length === 0
   const fechar = () => setAberta(false)
 

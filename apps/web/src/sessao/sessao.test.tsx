@@ -26,7 +26,7 @@ const rotas: RouteObject[] = [
   { path: '/papel', element: <p>tela de papel</p> },
   { path: '/conectar', element: <p>tela de conectar</p> },
   { path: '/inicio', element: <p>tela de inicio</p> },
-  { path: '/adm/desbravadores', element: <p>tela adm</p> },
+  { path: '/adm', element: <p>tela adm</p> },
   {
     element: <GuardaRota />,
     children: [
@@ -45,7 +45,7 @@ describe('redirecionamento de "/"', () => {
     expect(roteador.state.location.pathname).toBe('/login')
   })
 
-  it('ADM vai a /adm/desbravadores', async () => {
+  it('ADM vai a /adm', async () => {
     servidor.use(...handlersSessao([criarVinculo('ADM')]))
     renderizarRotas(rotas, '/')
     expect(await screen.findByText('tela adm')).toBeInTheDocument()

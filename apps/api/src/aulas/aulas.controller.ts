@@ -52,7 +52,8 @@ export class AulasController {
     exigirLinkDeClasse(sessao, REGISTRO_NAO_ENCONTRADO)
     const detalhe = await this.aulas.detalhe(sessao, id)
     const { substituicao } = sessao
-    if (substituicao && (detalhe.classe.id !== substituicao.classeId || detalhe.data !== substituicao.data)) {
+    // A classe já passou pelo escopo do link (a regular e a avançada do par) em `detalhe`; aqui só o dia.
+    if (substituicao && detalhe.data !== substituicao.data) {
       throw new ErroApp('NAO_ENCONTRADO', REGISTRO_NAO_ENCONTRADO)
     }
     return detalhe

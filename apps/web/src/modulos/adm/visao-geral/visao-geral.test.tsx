@@ -180,6 +180,25 @@ describe('atalho "Gerar link de substituto"', () => {
     expect(folha.getByRole('heading', { name: 'Classes', level: 3 })).toBeInTheDocument()
   })
 
+  it('a avançada do par não aparece: o link da regular vale para as duas', async () => {
+    comPermissao()
+    servidor.use(
+      handlerVisaoGeral(
+        criarVisaoGeral({
+          progressoClasses: [
+            { classe: criarRefClasse(1, 'Amigo'), media: 64, totalDbvs: 9, instrutores: [] },
+            { classe: { ...criarRefClasse(2, 'Amigo Avançado'), tipo: 'AVANCADA' as const }, media: 10, totalDbvs: 3, instrutores: [] },
+          ],
+        }),
+      ),
+    )
+    abrir()
+    await userEvent.click(await screen.findByRole('button', { name: 'Gerar link de substituto' }))
+    const folha = within(screen.getByRole('dialog'))
+    expect(folha.getByRole('link', { name: 'Amigo' })).toBeInTheDocument()
+    expect(folha.queryByRole('link', { name: 'Amigo Avançado' })).not.toBeInTheDocument()
+  })
+
   it('Fechar fecha a folha e devolve o foco ao botão', async () => {
     comPermissao()
     servidor.use(handlerVisaoGeral(comDestinos))

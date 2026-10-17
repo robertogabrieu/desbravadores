@@ -12,7 +12,7 @@ export function escopoDoVinculo(vinculo: Vinculo): string {
 }
 
 /** Primeira tela de cada papel: o painel do Adm ou o início do celular. */
-export const inicioDoPapel = (papel: Papel): string => (papel === 'ADM' ? '/adm/desbravadores' : '/inicio')
+export const inicioDoPapel = (papel: Papel): string => (papel === 'ADM' ? '/adm' : '/inicio')
 
 /** Vínculos do clube da sessão: os papéis entre os quais a troca rápida do cabeçalho alterna. */
 export const vinculosDoClube = (vinculos: Vinculo[], ativo: Vinculo | null): Vinculo[] =>

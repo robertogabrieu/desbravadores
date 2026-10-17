@@ -27,7 +27,7 @@ test('depois de entrar, o app reabre sem rede em modo sem conexão', async ({ pa
   await page.getByLabel('Senha', { exact: true }).fill(SENHA)
   await page.getByLabel('Confirme a senha').fill(SENHA)
   await page.getByRole('button', { name: 'Definir senha' }).click()
-  await expect(page).toHaveURL(/\/adm\/desbravadores$/)
+  await expect(page).toHaveURL(/\/adm$/)
 
   // O service worker precisa controlar a página antes de a rede sumir: é ele que serve o app.
   await page.waitForFunction('navigator.serviceWorker.controller !== null')

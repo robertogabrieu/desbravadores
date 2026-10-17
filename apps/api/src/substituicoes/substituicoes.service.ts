@@ -3,6 +3,7 @@ import { hojeNoFuso, type DatasElegiveis, type SubstituicaoDoAlvo, type Substitu
 import type { z } from 'zod'
 import { ServicoCalendario } from '../calendario/servico-calendario'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
+import { regularDoPar } from '../classes/par-regular-avancada'
 import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { daDataCivil, paraDataCivil } from '../desbravadores/apoio'
@@ -27,7 +28,8 @@ export class SubstituicoesService {
     return janelas.map((janela) => ({ data: janela.data, inicioEm: janela.inicioEm.toISOString(), fimEm: janela.fimEm.toISOString() }))
   }
 
-  async aberta(sessao: SessaoLogada, tipo: TipoSubstituicao, alvoId: string): Promise<z.infer<typeof SubstituicaoDoAlvo>> {
+  async aberta(sessao: SessaoLogada, tipo: TipoSubstituicao, pedidoId: string): Promise<z.infer<typeof SubstituicaoDoAlvo>> {
+    const alvoId = await this.alvoDoLink(sessao.clubeId, tipo, pedidoId)
     await this.exigirAlvo(sessao.clubeId, tipo, alvoId)
     const aberta = await this.prisma.substituicao.findFirst({
       where: { ...this.doAlvo(sessao.clubeId, tipo, alvoId), ...abertaEm(new Date()) },
@@ -37,8 +39,9 @@ export class SubstituicoesService {
     return aberta ? apresentar(aberta) : null
   }
 
-  async gerar(sessao: SessaoLogada, tipo: TipoSubstituicao, alvoId: string, data: string): Promise<z.infer<typeof SubstituicaoGerada>> {
+  async gerar(sessao: SessaoLogada, tipo: TipoSubstituicao, pedidoId: string, data: string): Promise<z.infer<typeof SubstituicaoGerada>> {
     const { clubeId } = sessao
+    const alvoId = await this.alvoDoLink(clubeId, tipo, pedidoId)
     await this.exigirAlvo(clubeId, tipo, alvoId)
     const agora = new Date()
     const janela = (await this.janelas(clubeId, tipo, agora)).find((elegivel) => elegivel.data === data)
@@ -73,8 +76,9 @@ export class SubstituicoesService {
   }
 
   /** Nada se apaga: o link cancelado fica com quem cancelou e quando. */
-  async cancelar(sessao: SessaoLogada, tipo: TipoSubstituicao, alvoId: string): Promise<void> {
+  async cancelar(sessao: SessaoLogada, tipo: TipoSubstituicao, pedidoId: string): Promise<void> {
     const { clubeId } = sessao
+    const alvoId = await this.alvoDoLink(clubeId, tipo, pedidoId)
     await this.exigirAlvo(clubeId, tipo, alvoId)
     const agora = new Date()
     await this.prisma.substituicao.updateMany({
@@ -88,6 +92,12 @@ export class SubstituicoesService {
     const hoje = hojeNoFuso(clube.fuso, agora)
     const situacoes = await this.calendario.situacoes(clubeId, hoje, ultimoDiaElegivel(hoje))
     return janelasElegiveis(situacoes, tipo, clube, agora)
+  }
+
+  /** Regular e avançada do par são lecionadas juntas: o link de qualquer uma é o da regular, que vale para as duas. */
+  private async alvoDoLink(clubeId: string, tipo: TipoSubstituicao, pedidoId: string): Promise<string> {
+    if (tipo !== 'CLASSE') return pedidoId
+    return (await regularDoPar(this.prisma, clubeId, pedidoId)) ?? pedidoId
   }
 
   private doAlvo(clubeId: string, tipo: TipoSubstituicao, alvoId: string) {

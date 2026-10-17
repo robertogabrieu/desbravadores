@@ -37,7 +37,7 @@ test('domingo: a chamada feita sem rede chega sozinha, entra no histórico e no 
 
   // O Adm prepara o cenário: uma unidade com dois desbravadores e o conselheiro dela.
   await definirSenhaDoConvite(page, await caminhoDoConvite(admEmail))
-  await expect(page).toHaveURL(/\/adm\/desbravadores$/)
+  await expect(page).toHaveURL(/\/adm$/)
 
   await page.goto('/adm/unidades')
   await page.getByRole('link', { name: 'Nova unidade' }).click()

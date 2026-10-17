@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common'
 import { anoClube, hojeNoFuso, permissoesEfetivas, type ChavePermissao } from '@desbravadores/shared'
 import type { Prisma, StatusMatricula } from '../generated/prisma/client.js'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
+import { comParDeClasses } from '../classes/par-regular-avancada'
 import { PrismaService } from '../comum/prisma/prisma.service'
 
 /** "Hoje" e o ano do clube, no fuso e no inicio de ano configurados pelo clube. */
@@ -44,11 +45,13 @@ export class ServicoEscopo {
   }
 
   /**
-   * Com sessao de substituicao, so a classe do link: o link nao herda o par. Instrutor do clube: as classes do vinculo
-   * gravado. O par anda junto porque a gravacao do vinculo (e a ativacao da classe) grava as duas classes.
+   * Com sessao de substituicao, a classe do link e a parceira dela no par ativo (lecionadas juntas). Instrutor do
+   * clube: as classes do vinculo gravado, que ja trazem as duas porque a gravacao do vinculo grava o par.
    */
   async classesDoInstrutor(sessao: SessaoLogada): Promise<string[]> {
-    if (sessao.substituicao) return sessao.substituicao.classeId ? [sessao.substituicao.classeId] : []
+    if (sessao.substituicao) {
+      return sessao.substituicao.classeId ? comParDeClasses(this.prisma, sessao.clubeId, [sessao.substituicao.classeId]) : []
+    }
     const ligacoes = await this.prisma.vinculoClasse.findMany({ where: { vinculoId: sessao.vinculoId }, select: { classeId: true } })
     return ligacoes.map((ligacao) => ligacao.classeId)
   }

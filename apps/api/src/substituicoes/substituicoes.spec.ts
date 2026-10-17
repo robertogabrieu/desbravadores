@@ -5,6 +5,7 @@ import request from 'supertest'
 import type { z } from 'zod'
 import { criarAppDeAuth } from '../../test/app-auth'
 import {
+  avancadaOficial,
   classeOficial,
   configurarClube,
   criarAcesso,
@@ -260,6 +261,25 @@ describe('gerar, ler e cancelar o link', () => {
     const propria = await criarClasseDoClube(c.clube.id)
     await api.post(`/api/classes/${propria.id}/substituicao`, c.adm.autorizacao, { data: '2026-10-17' }).expect(400)
     await api.post(`/api/unidades/${c.unidade.id}/substituicao`, c.adm.autorizacao, { data: '2026-10-17' }).expect(201)
+  })
+})
+
+describe('regular e avançada do par têm um link só', () => {
+  it('gerar pela avançada grava o link na regular; ler ou cancelar por qualquer uma dos dois lados vale para as duas', async () => {
+    congelarRelogio('2026-10-10T11:00:00Z')
+    const c = await cenario()
+    const regular = await classeOficial('Companheiro')
+    const avancada = await avancadaOficial(regular.id)
+    const gerada = await gerar(c, '2026-10-10', `classes/${avancada.id}`)
+    const gravada = await prismaDeTeste().substituicao.findUniqueOrThrow({ where: { id: gerada.id } })
+    expect(gravada).toMatchObject({ tipo: 'CLASSE', classeId: regular.id })
+    for (const id of [regular.id, avancada.id]) {
+      const lida = SubstituicaoDoAlvo.parse((await api.get(`/api/classes/${id}/substituicao`, c.adm.autorizacao).expect(200)).body)
+      expect(lida?.id).toBe(gerada.id)
+    }
+    await apagar(`/api/classes/${regular.id}/substituicao`, c.adm.autorizacao).expect(204)
+    const aposCancelar = SubstituicaoDoAlvo.parse((await api.get(`/api/classes/${avancada.id}/substituicao`, c.adm.autorizacao).expect(200)).body)
+    expect(aposCancelar).toBeNull()
   })
 })
 
