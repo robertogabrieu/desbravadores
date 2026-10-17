@@ -232,6 +232,10 @@ export class VisaoGeralService {
       concluidosPorDbvEClasse.set(chave, (concluidosPorDbvEClasse.get(chave) ?? 0) + 1)
     }
 
+    // A avançada com par ativo anda com a regular: o link de substituto é um só, o da regular.
+    const pareadas = await avancadasPareadas(this.prisma, clubeId, ativas.filter((classe) => classe.tipo === 'REGULAR').map((classe) => classe.id))
+    const avancadasDeUmPar = new Set([...pareadas.values()].map((avancada) => avancada.id))
+
     return ativas.map((classe, indice) => {
       const dbvs = matriculas.filter((matricula) => matricula.classeId === classe.id)
       const percentuais = dbvs.map((matricula) =>
@@ -241,6 +245,7 @@ export class VisaoGeralService {
         classe: refClasse(classe),
         media: dbvs.length === 0 ? null : mediaTurma(percentuais),
         totalDbvs: dbvs.length,
+        avancadaDoPar: avancadasDeUmPar.has(classe.id),
         instrutores: (instrutoresPorClasse[indice] ?? []).map((instrutor) => instrutor.nome),
       }
     })

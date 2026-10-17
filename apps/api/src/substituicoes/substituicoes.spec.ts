@@ -283,6 +283,23 @@ describe('regular e avançada do par têm um link só', () => {
   })
 })
 
+describe('link que já nasceu na avançada', () => {
+  it('continua visível e cancelável pelo Adm, e gerar o da regular cancela o antigo', async () => {
+    congelarRelogio('2026-10-10T11:00:00Z')
+    const c = await cenario()
+    const regular = await classeOficial('Companheiro')
+    const avancada = await avancadaOficial(regular.id)
+    const antigo = await gerar(c, '2026-10-10', `classes/${regular.id}`)
+    await prismaDeTeste().substituicao.update({ where: { id: antigo.id }, data: { classeId: avancada.id } })
+    const lida = SubstituicaoDoAlvo.parse((await api.get(`/api/classes/${regular.id}/substituicao`, c.adm.autorizacao).expect(200)).body)
+    expect(lida?.id).toBe(antigo.id)
+    const novo = await gerar(c, '2026-10-10', `classes/${regular.id}`)
+    const cancelado = await prismaDeTeste().substituicao.findUniqueOrThrow({ where: { id: antigo.id } })
+    expect(cancelado.canceladoEm).not.toBeNull()
+    expect(novo.id).not.toBe(antigo.id)
+  })
+})
+
 describe('alvo fora do clube ou desativado → 404 (critério 6)', () => {
   it('unidade de outro clube, unidade inativa, classe de outro clube e oficial desativada no clube', async () => {
     congelarRelogio('2026-10-10T11:00:00Z')

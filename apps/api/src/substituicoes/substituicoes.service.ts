@@ -3,7 +3,7 @@ import { hojeNoFuso, type DatasElegiveis, type SubstituicaoDoAlvo, type Substitu
 import type { z } from 'zod'
 import { ServicoCalendario } from '../calendario/servico-calendario'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
-import { regularDoPar } from '../classes/par-regular-avancada'
+import { avancadaPareadaDe, regularDoPar } from '../classes/par-regular-avancada'
 import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { daDataCivil, paraDataCivil } from '../desbravadores/apoio'
@@ -32,7 +32,7 @@ export class SubstituicoesService {
     const alvoId = await this.alvoDoLink(sessao.clubeId, tipo, pedidoId)
     await this.exigirAlvo(sessao.clubeId, tipo, alvoId)
     const aberta = await this.prisma.substituicao.findFirst({
-      where: { ...this.doAlvo(sessao.clubeId, tipo, alvoId), ...abertaEm(new Date()) },
+      where: { ...(await this.filtroDoAlvo(sessao.clubeId, tipo, alvoId)), ...abertaEm(new Date()) },
       orderBy: { criadoEm: 'desc' },
       include: { substituto: { select: { nome: true } } },
     })
@@ -57,7 +57,7 @@ export class SubstituicoesService {
       if (tipo === 'CHAMADA') await tx.$queryRaw`SELECT id FROM "Unidade" WHERE id = ${alvoId}::uuid FOR UPDATE`
       else await tx.$queryRaw`SELECT id FROM "Classe" WHERE id = ${alvoId}::uuid FOR UPDATE`
       await tx.substituicao.updateMany({
-        where: { ...doAlvo, ...abertaEm(agora) },
+        where: { ...(await this.filtroDoAlvo(clubeId, tipo, alvoId)), ...abertaEm(agora) },
         data: { canceladoEm: agora, canceladoPorId: sessao.usuarioId },
       })
       return tx.substituicao.create({
@@ -82,7 +82,7 @@ export class SubstituicoesService {
     await this.exigirAlvo(clubeId, tipo, alvoId)
     const agora = new Date()
     await this.prisma.substituicao.updateMany({
-      where: { ...this.doAlvo(clubeId, tipo, alvoId), ...abertaEm(agora) },
+      where: { ...(await this.filtroDoAlvo(clubeId, tipo, alvoId)), ...abertaEm(agora) },
       data: { canceladoEm: agora, canceladoPorId: sessao.usuarioId },
     })
   }
@@ -98,6 +98,13 @@ export class SubstituicoesService {
   private async alvoDoLink(clubeId: string, tipo: TipoSubstituicao, pedidoId: string): Promise<string> {
     if (tipo !== 'CLASSE') return pedidoId
     return (await regularDoPar(this.prisma, clubeId, pedidoId)) ?? pedidoId
+  }
+
+  /** Onde procurar link aberto: no link da classe, também o que nasceu antes na avançada do par. */
+  private async filtroDoAlvo(clubeId: string, tipo: TipoSubstituicao, alvoId: string) {
+    if (tipo !== 'CLASSE') return this.doAlvo(clubeId, tipo, alvoId)
+    const avancada = await avancadaPareadaDe(this.prisma, clubeId, alvoId)
+    return { clubeId, tipo, unidadeId: null, classeId: { in: avancada ? [alvoId, avancada.id] : [alvoId] } }
   }
 
   private doAlvo(clubeId: string, tipo: TipoSubstituicao, alvoId: string) {

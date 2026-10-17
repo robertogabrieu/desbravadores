@@ -165,7 +165,7 @@ describe('atalhos', () => {
 describe('atalho "Gerar link de substituto"', () => {
   const comDestinos = criarVisaoGeral({
     unidadesResumo: [{ id: uuid(11), nome: 'Águias', conselheiros: [], totalDbvs: 8, frequenciaMes: 87 }],
-    progressoClasses: [{ classe: criarRefClasse(1, 'Amigo'), media: 64, totalDbvs: 9, instrutores: [] }],
+    progressoClasses: [{ classe: criarRefClasse(1, 'Amigo'), media: 64, totalDbvs: 9, instrutores: [], avancadaDoPar: false }],
   })
 
   it('abre a escolha em folha e leva à geração da unidade ou da classe escolhida', async () => {
@@ -186,8 +186,9 @@ describe('atalho "Gerar link de substituto"', () => {
       handlerVisaoGeral(
         criarVisaoGeral({
           progressoClasses: [
-            { classe: criarRefClasse(1, 'Amigo'), media: 64, totalDbvs: 9, instrutores: [] },
-            { classe: { ...criarRefClasse(2, 'Amigo Avançado'), tipo: 'AVANCADA' as const }, media: 10, totalDbvs: 3, instrutores: [] },
+            { classe: criarRefClasse(1, 'Amigo'), media: 64, totalDbvs: 9, instrutores: [], avancadaDoPar: false },
+            { classe: { ...criarRefClasse(2, 'Amigo Avançado'), tipo: 'AVANCADA' as const }, media: 10, totalDbvs: 3, instrutores: [], avancadaDoPar: true },
+            { classe: { ...criarRefClasse(3, 'Sem Par'), tipo: 'AVANCADA' as const }, media: 5, totalDbvs: 1, instrutores: [], avancadaDoPar: false },
           ],
         }),
       ),
@@ -197,6 +198,7 @@ describe('atalho "Gerar link de substituto"', () => {
     const folha = within(screen.getByRole('dialog'))
     expect(folha.getByRole('link', { name: 'Amigo' })).toBeInTheDocument()
     expect(folha.queryByRole('link', { name: 'Amigo Avançado' })).not.toBeInTheDocument()
+    expect(folha.getByRole('link', { name: 'Sem Par' })).toBeInTheDocument()
   })
 
   it('Fechar fecha a folha e devolve o foco ao botão', async () => {
