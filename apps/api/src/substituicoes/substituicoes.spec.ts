@@ -283,6 +283,20 @@ describe('regular e avançada do par têm um link só', () => {
   })
 })
 
+describe('agrupadas: regular e avançada também têm um link só', () => {
+  it('gerar pela avançada das agrupadas grava na regular das agrupadas', async () => {
+    congelarRelogio('2026-10-10T11:00:00Z')
+    const c = await cenario()
+    const regular = await prismaDeTeste().classe.findFirstOrThrow({ where: { trilha: 'AGRUPADAS', tipo: 'REGULAR', clubeId: null } })
+    const avancada = await prismaDeTeste().classe.findFirstOrThrow({ where: { tipo: 'AVANCADA', classeBaseId: regular.id, clubeId: null } })
+    const gerada = await gerar(c, '2026-10-10', `classes/${avancada.id}`)
+    const gravada = await prismaDeTeste().substituicao.findUniqueOrThrow({ where: { id: gerada.id } })
+    expect(gravada.classeId).toBe(regular.id)
+    const lida = SubstituicaoDoAlvo.parse((await api.get(`/api/classes/${avancada.id}/substituicao`, c.adm.autorizacao).expect(200)).body)
+    expect(lida?.id).toBe(gerada.id)
+  })
+})
+
 describe('link que já nasceu na avançada', () => {
   it('continua visível e cancelável pelo Adm, e gerar o da regular cancela o antigo', async () => {
     congelarRelogio('2026-10-10T11:00:00Z')

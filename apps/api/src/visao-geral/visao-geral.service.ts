@@ -15,7 +15,7 @@ import type { z } from 'zod'
 import { refClasse, SELECAO_REF_CLASSE } from '../classes/apresentacao-classe'
 import { nomeDoAutor } from '../comum/nome-do-autor'
 import { PrismaService } from '../comum/prisma/prisma.service'
-import { avancadasPareadas } from '../classes/par-regular-avancada'
+import { avancadasDoLink, avancadasPareadas } from '../classes/par-regular-avancada'
 import { ServicoCronograma } from '../cronogramas/servico-cronograma'
 import { daDataCivil, paraDataCivil } from '../desbravadores/apoio'
 import { chamadasClasseBiblica } from './chamadas-classe-biblica'
@@ -232,9 +232,9 @@ export class VisaoGeralService {
       concluidosPorDbvEClasse.set(chave, (concluidosPorDbvEClasse.get(chave) ?? 0) + 1)
     }
 
-    // A avançada com par ativo anda com a regular: o link de substituto é um só, o da regular.
-    const pareadas = await avancadasPareadas(this.prisma, clubeId, ativas.filter((classe) => classe.tipo === 'REGULAR').map((classe) => classe.id))
-    const avancadasDeUmPar = new Set([...pareadas.values()].map((avancada) => avancada.id))
+    // A avançada (individual ou agrupadas) anda com a regular: o link de substituto é um só, o da regular.
+    const doLink = await avancadasDoLink(this.prisma, clubeId, ativas.filter((classe) => classe.tipo === 'REGULAR').map((classe) => classe.id))
+    const avancadasDeUmPar = new Set([...doLink.values()].map((avancada) => avancada.id))
 
     return ativas.map((classe, indice) => {
       const dbvs = matriculas.filter((matricula) => matricula.classeId === classe.id)

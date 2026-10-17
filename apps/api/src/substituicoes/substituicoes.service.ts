@@ -3,7 +3,7 @@ import { hojeNoFuso, type DatasElegiveis, type SubstituicaoDoAlvo, type Substitu
 import type { z } from 'zod'
 import { ServicoCalendario } from '../calendario/servico-calendario'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
-import { avancadaPareadaDe, regularDoPar } from '../classes/par-regular-avancada'
+import { classesDoLink, regularDoLink } from '../classes/par-regular-avancada'
 import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { daDataCivil, paraDataCivil } from '../desbravadores/apoio'
@@ -94,17 +94,16 @@ export class SubstituicoesService {
     return janelasElegiveis(situacoes, tipo, clube, agora)
   }
 
-  /** Regular e avançada do par são lecionadas juntas: o link de qualquer uma é o da regular, que vale para as duas. */
+  /** Regular e avançada (individual ou agrupadas) são lecionadas juntas: o link de qualquer uma é o da regular, que vale para as duas. */
   private async alvoDoLink(clubeId: string, tipo: TipoSubstituicao, pedidoId: string): Promise<string> {
     if (tipo !== 'CLASSE') return pedidoId
-    return (await regularDoPar(this.prisma, clubeId, pedidoId)) ?? pedidoId
+    return regularDoLink(this.prisma, clubeId, pedidoId)
   }
 
   /** Onde procurar link aberto: no link da classe, também o que nasceu antes na avançada do par. */
   private async filtroDoAlvo(clubeId: string, tipo: TipoSubstituicao, alvoId: string) {
     if (tipo !== 'CLASSE') return this.doAlvo(clubeId, tipo, alvoId)
-    const avancada = await avancadaPareadaDe(this.prisma, clubeId, alvoId)
-    return { clubeId, tipo, unidadeId: null, classeId: { in: avancada ? [alvoId, avancada.id] : [alvoId] } }
+    return { clubeId, tipo, unidadeId: null, classeId: { in: await classesDoLink(this.prisma, clubeId, alvoId) } }
   }
 
   private doAlvo(clubeId: string, tipo: TipoSubstituicao, alvoId: string) {
