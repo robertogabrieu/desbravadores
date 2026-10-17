@@ -24,10 +24,32 @@ Um cartão novo, **"Entrar com digital ou rosto"**, entre "Papel em uso" e "Sess
   pode trocá-lo ao ativar.
 - **Remover** pede confirmação. Remover a última não tira o acesso: a senha continua valendo.
 
+### Primeiro login — o convite (jeito de app de banco)
+
+Logo depois de um **login por senha** num aparelho que suporta e ainda não tem passkey deste app, antes
+de abrir o app aparece uma tela: **"Quer entrar com digital ou rosto da próxima vez?"** com **"Ativar"**
+e **"Agora não"**.
+
+- **Ativar** não pede a senha de novo: ela acabou de ser digitada. O servidor aceita o cadastro sem
+  senha só se a sessão nasceu de um login por senha há menos de 5 minutos (regra 15).
+- **Agora não** guarda a escolha neste aparelho e não pergunta de novo por 30 dias. O cartão da Minha
+  conta continua disponível.
+- Quem entrou por convite de acesso (primeira senha) recebe o mesmo convite.
+
 ### Login — entrar
 
-Abaixo do botão "Entrar", um botão secundário **"Entrar com digital ou rosto"** (só se o aparelho
-suporta). Não pede e-mail: o celular mostra as passkeys dele para este site e a pessoa escolhe.
+**Aparelho com passkey ativada** (o app lembra disso em `localStorage`, junto com o e-mail): a tela abre
+com o e-mail já preenchido, o botão principal **"Entrar com digital ou rosto"** e, abaixo, o link
+"Usar senha". A digital é pedida assim que a pessoa toca no botão (não automaticamente, para não
+assustar nem travar quem quer trocar de conta).
+
+**Aparelho sem passkey ativada**: o formulário de sempre, com o botão secundário **"Entrar com digital
+ou rosto"** só se o aparelho suporta.
+
+Nos dois casos o botão **não depende do e-mail**: o celular mostra as passkeys dele para este site e a
+pessoa escolhe; o e-mail lembrado é só conforto. Passkey apagada do celular (a pessoa removeu pelas
+configurações do sistema): o toque falha com a mensagem de recusa e a tela volta para o formulário de
+senha, esquecendo a marca do aparelho.
 
 - **Certo:** entra como no login por senha (mesmo papel inicial, mesma sessão).
 - **Cancelou no celular:** nada acontece, sem mensagem de erro.
@@ -60,6 +82,10 @@ suporta). Não pede e-mail: o celular mostra as passkeys dele para este site e a
 13. **Substituição (`tipo` no JWT) não muda:** passkey só abre sessão normal.
 14. **Tela de celular trata os quatro estados** (carregando, vazio, erro, sem conexão) no cartão da
     conta; sem conexão, "Ativar" e "Remover" ficam desligados com o motivo escrito.
+15. **Cadastro sem senha só logo após login por senha.** `POST /eu/passkeys/opcoes` aceita ou a senha
+    ou a prova de que a família de refresh da sessão foi criada por senha há menos de 5 minutos
+    (`criadoEm` da família + marca do método). Sessão renovada, aberta por passkey ou por convite
+    de substituição nunca serve.
 
 ## Dados
 
@@ -75,11 +101,15 @@ Nenhum dos dois leva `clubeId`: usuário é global.
 
 ## Rotas
 
+Aparelho compartilhado: o e-mail lembrado fica no aparelho depois de "Sair" (como nos bancos). O cartão
+da Minha conta tem **"Esquecer este aparelho"**, que apaga a marca e o e-mail do `localStorage` sem
+mexer nas passkeys do servidor.
+
 | Rota | Declara | Faz |
 |---|---|---|
 | `POST /auth/passkey/login/opcoes` | `@Publica` + limite | gera desafio, devolve opções + id do desafio |
 | `POST /auth/passkey/login` | `@Publica` + limite | verifica, abre sessão (mesmo corpo de `/auth/login`) |
-| `POST /eu/passkeys/opcoes` | `@Autenticado` | confere a senha, gera desafio de cadastro |
+| `POST /eu/passkeys/opcoes` | `@Autenticado` | confere a senha (ou a sessão recente por senha), gera desafio de cadastro |
 | `POST /eu/passkeys` | `@Autenticado` | verifica e grava a credencial |
 | `GET /eu/passkeys` | `@Autenticado` | lista as não revogadas |
 | `DELETE /eu/passkeys/:id` | `@Autenticado` | revoga (404 se não for da sessão) |
@@ -105,7 +135,6 @@ própria, para não pesar no carregamento de toda tela). `Usuario` ganha só a r
 
 ## Fora do escopo
 
-- Sugerir a passkey logo após um login por senha (candidata a próxima entrega).
 - Tirar a senha (conta só com passkey).
 - Passkey para a credencial de substituição.
 
@@ -114,7 +143,7 @@ própria, para não pesar no carregamento de toda tela). `Usuario` ganha só a r
 - API (integração, banco próprio): cada linha da tabela de estados; senha errada no cadastro;
   passkey de outra pessoa em listar/remover; contador zero aceito; desafio reutilizado recusado.
   A verificação criptográfica é simulada no limite da biblioteca, com um autenticador de teste.
-- Web: cartão da conta nos quatro estados; aparelho sem suporte; login com cancelamento silencioso.
+- Web: cartão da conta nos quatro estados; aparelho sem suporte; login com cancelamento silencioso; convite após o primeiro login (ativar, agora não, não repetir em 30 dias); tela com e-mail lembrado.
 - e2e roda só no CI (nginx/HTTPS reais); não cobre biometria.
 
 ## Antes de ir ao ar
