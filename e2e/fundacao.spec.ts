@@ -81,7 +81,7 @@ test('do clube:criar até o conselheiro ver só a própria unidade', async ({ pa
   )
 
   await definirSenhaDoConvite(page, await caminhoDoConvite(admEmail))
-  await expect(page).toHaveURL(/\/adm\/desbravadores$/)
+  await expect(page).toHaveURL(/\/adm$/)
 
   await criarUnidade(page, unidadeA)
   await criarUnidade(page, unidadeB)

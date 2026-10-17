@@ -20,6 +20,7 @@ import {
   criarSubstituicao,
   criarUnidade,
   criarUsuarioDeSubstituicao,
+  avancadaOficial,
   desconectarPrismaDeTeste,
   prismaDeTeste,
   type Acesso,
@@ -367,7 +368,7 @@ describe('GET /sync/pacote com a credencial', () => {
     expect(pacote.instrutor).toBeNull()
   })
 
-  it('link de classe: só a classe do link e membros[].voce sempre falso', async () => {
+  it('link de classe: só a classe do link e a avançada que anda com ela, e membros[].voce sempre falso', async () => {
     const clube = await criarClube()
     const membro = await criarAcesso({ clubeId: clube.id, papel: 'INSTRUTOR' })
     const c = await cenarioClasse({ clube, substitutoId: membro.usuario.id })
@@ -377,8 +378,9 @@ describe('GET /sync/pacote com a credencial', () => {
     expect(pacote.usuarioId).toBe(c.substituicao.id)
     expect(pacote.vinculoId).toBe(c.substituicao.id)
     expect(pacote.unidades).toEqual([])
-    expect(pacote.instrutor?.classes.map((k) => k.classe.id)).toEqual([c.classe.id])
-    const membros = pacote.instrutor?.classes[0]?.membros ?? []
+    const avancada = await avancadaOficial(c.classe.id)
+    expect(pacote.instrutor?.classes.map((k) => k.classe.id).sort()).toEqual([c.classe.id, avancada.id].sort())
+    const membros = pacote.instrutor?.classes.find((k) => k.classe.id === c.classe.id)?.membros ?? []
     expect(membros.map((m) => m.dbvId).sort()).toEqual([c.ana.id, fichaDoMembro.id].sort())
     expect(membros.every((m) => !m.voce)).toBe(true)
   })

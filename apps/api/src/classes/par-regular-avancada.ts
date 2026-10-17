@@ -148,3 +148,41 @@ export async function igualarQuemMontaDoPar(db: ClienteDeQuemMonta, clubeId: str
     })
   }
 }
+
+/**
+ * Avançada que anda com cada regular no link de substituto. Ao contrário do par do resto do sistema, vale também
+ * nas agrupadas: lá a avançada é lecionada junto da regular do mesmo jeito. Havendo mais de uma, vale a de menor `ordem`.
+ */
+export async function avancadasDoLink(db: Cliente, clubeId: string, regularIds: string[]): Promise<Map<string, Classe>> {
+  const doLink = new Map<string, Classe>()
+  if (regularIds.length === 0) return doLink
+  const avancadas = await db.classe.findMany({
+    where: {
+      tipo: 'AVANCADA',
+      ativa: true,
+      classeBaseId: { in: regularIds },
+      OR: [{ clubeId: null }, { clubeId }],
+      ...ativaNoClube(clubeId),
+      classeBase: { is: { ativa: true, ...ativaNoClube(clubeId) } },
+    },
+    orderBy: [{ ordem: 'asc' }, { id: 'asc' }],
+  })
+  for (const avancada of avancadas) {
+    if (avancada.classeBaseId && !doLink.has(avancada.classeBaseId)) doLink.set(avancada.classeBaseId, avancada)
+  }
+  return doLink
+}
+
+/** A classe a que o link de substituto fica ligado: a regular, quando a classe é a avançada que anda com ela. */
+export async function regularDoLink(db: Cliente, clubeId: string, classeId: string): Promise<string> {
+  const classe = await db.classe.findFirst({ where: { id: classeId, tipo: 'AVANCADA', OR: [{ clubeId: null }, { clubeId }] }, select: { classeBaseId: true } })
+  if (!classe?.classeBaseId) return classeId
+  return (await avancadasDoLink(db, clubeId, [classe.classeBaseId])).get(classe.classeBaseId)?.id === classeId ? classe.classeBaseId : classeId
+}
+
+/** O que o link de uma classe alcança: ela e a parceira dela (regular com avançada), nas duas trilhas. */
+export async function classesDoLink(db: Cliente, clubeId: string, classeId: string): Promise<string[]> {
+  const regularId = await regularDoLink(db, clubeId, classeId)
+  const avancada = (await avancadasDoLink(db, clubeId, [regularId])).get(regularId)
+  return avancada ? [regularId, avancada.id] : [regularId]
+}

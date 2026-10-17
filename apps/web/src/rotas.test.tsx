@@ -134,7 +134,7 @@ describe('rotas do calendário de leitura', () => {
   it('o Adm que abre /calendario cai no início do painel', async () => {
     entrar('ADM')
     const { roteador } = renderizarRotas(rotas, '/calendario')
-    await waitFor(() => expect(roteador.state.location.pathname).toBe('/adm/desbravadores'))
+    await waitFor(() => expect(roteador.state.location.pathname).toBe('/adm'))
     expect(screen.queryByRole('heading', { level: 1, name: 'Calendário do clube' })).not.toBeInTheDocument()
   })
 

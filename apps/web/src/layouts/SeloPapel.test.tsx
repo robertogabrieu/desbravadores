@@ -48,7 +48,7 @@ const rotas: RouteObject[] = [
   },
   {
     element: <GuardaRota papeis={['ADM']} />,
-    children: [{ element: <LayoutAdm />, children: [{ path: '/adm/desbravadores', element: <p>lista do adm</p> }] }],
+    children: [{ element: <LayoutAdm />, children: [{ path: '/adm', element: <p>lista do adm</p> }] }],
   },
 ]
 
@@ -144,7 +144,7 @@ describe('selo do papel', () => {
     await userEvent.click(within(menu).getByRole('menuitemradio', { name: /Adm/ }))
 
     await screen.findByText('lista do adm')
-    expect(roteador.state.location.pathname).toBe('/adm/desbravadores')
+    expect(roteador.state.location.pathname).toBe('/adm')
     expect(screen.getByRole('button', { name: 'Papel: Adm. Trocar de papel' })).toBeInTheDocument()
     expect(await screen.findByText('Agora você está como Adm.')).toHaveAttribute('role', 'status')
   })

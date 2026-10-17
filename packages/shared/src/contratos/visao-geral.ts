@@ -14,7 +14,7 @@ export const VisaoGeralSaida = z.object({
   variacaoFrequencia: z.number().int().nullable(), // pontos percentuais vs mês anterior
   especialidadesAno: z.number().int(),
   especialidadesPorDbv: z.number(),
-  progressoClasses: z.array(z.object({ classe: RefClasse, media: z.number().int().nullable(), totalDbvs: z.number().int(), instrutores: z.array(z.string()) })),
+  progressoClasses: z.array(z.object({ classe: RefClasse, media: z.number().int().nullable(), totalDbvs: z.number().int(), instrutores: z.array(z.string()), avancadaDoPar: z.boolean().default(false) })),
   unidadesResumo: z.array(z.object({ id: Uuid, nome: z.string(), conselheiros: z.array(z.string()), totalDbvs: z.number().int(), frequenciaMes: z.number().int().nullable() })),
   cronogramasEnviados: z.array(z.object({ cronogramaId: Uuid, classe: RefClasse, enviadoPor: z.string(), enviadoEm: InstanteIso })),
   atividades: z.array(AtividadeSaida).max(10),
