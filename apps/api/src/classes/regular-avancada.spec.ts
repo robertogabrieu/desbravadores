@@ -1,6 +1,5 @@
-import { randomUUID } from 'node:crypto'
 import type { INestApplication } from '@nestjs/common'
-import { hojeNoFuso, type ClasseDetalheSaida } from '@desbravadores/shared'
+import type { ClasseDetalheSaida } from '@desbravadores/shared'
 import type { z } from 'zod'
 import { criarAppDeTeste } from '../../test/app'
 import {
