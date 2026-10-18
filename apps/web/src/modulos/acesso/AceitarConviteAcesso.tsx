@@ -12,6 +12,7 @@ import { Botao } from '../../ui/Botao'
 import { Campo } from '../../ui/Campo'
 import { Carregando, ErroDeCarga } from '../../ui/EstadosDeCarga'
 import { descricaoDoPapelDoConvite } from '../adm/desbravadores/mensagem-convite'
+import { destinoAposSenha } from '../passkey/convite'
 import {
   MENSAGEM_CONTA_INATIVA,
   MENSAGEM_CONTA_PENDENTE,
@@ -100,7 +101,7 @@ function FormularioDoAcesso({ token }: { token: string }) {
   const enviar = handleSubmit(async ({ email, senha }) => {
     try {
       await entrar(await aceitar.mutateAsync({ email, senha }))
-      void navegar('/', { replace: true })
+      void navegar(destinoAposSenha(senha), { replace: true })
     } catch (erro) {
       if (erro instanceof ErroDaApi && erro.erro.codigo === 'CONTA_EXISTENTE') {
         if (modo.current) {

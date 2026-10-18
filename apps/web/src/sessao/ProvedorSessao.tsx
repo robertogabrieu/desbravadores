@@ -20,6 +20,7 @@ import { limparAoPerderOAcesso, limparFilaDeAbertura } from '../offline/limpeza'
 import { iniciarMotor, liberarTrocaDePapel, pararMotor, pausarParaTrocaDePapel } from '../offline/motor'
 import { baixarPacoteAoVoltarConexao, baixarPacoteSeVelho } from '../offline/pacote'
 import { VALIDADE_DO_MODO_SEM_CONEXAO_MS, tempos } from '../offline/tempos'
+import { apagarSenhaDoConvite } from '../modulos/passkey/aparelho'
 import { avisarTrocaDePapel, ouvirOutrasAbas } from './abasDaSessao'
 import { ContextoDaSessao, SEM_ACESSO } from './useSessao'
 import type { ContextoSessao, Eu } from './useSessao'
@@ -78,6 +79,7 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
 
   const descartarSessao = useCallback(() => {
     geracao.current += 1
+    apagarSenhaDoConvite()
     definirTokenAcesso(null)
     estadoOffline.trocaParaVinculo = null
     clienteConsultas.clear()

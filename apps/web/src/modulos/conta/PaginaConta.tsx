@@ -6,6 +6,7 @@ import { Botao, estiloDoBotao } from '../../ui/Botao'
 import { Cartao } from '../../ui/Cartao'
 import { Confirmacao } from '../../ui/Confirmacao'
 import { escopoDoVinculo, rotuloDoPapel } from '../acesso/papeis'
+import { CartaoPasskeys } from './CartaoPasskeys'
 
 type Saida = 'SAIR' | 'SAIR_DE_TODOS'
 
@@ -53,6 +54,8 @@ export function PaginaConta() {
           )}
         </Cartao>
       )}
+
+      <CartaoPasskeys />
 
       <Cartao className="flex flex-col gap-3">
         <h2 className="text-base font-bold text-texto">Sessão</h2>
