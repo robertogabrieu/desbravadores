@@ -8,7 +8,8 @@ import { daDataCivil } from '../desbravadores/apoio'
 import { ServicoEscopo, type RelogioDoClube } from '../desbravadores/escopo.service'
 import type { TipoPessoa } from '../generated/prisma/client.js'
 import { ServicoPontos } from '../pontos/servico-pontos'
-import { ehViolacaoUnica, exigirDataDoAnoCorrente, exigirFichaDeOutraPessoa, jaConcluido } from './conclusoes'
+import { ehViolacaoUnica } from '../comum/violacao-unica'
+import { exigirDataDoAnoCorrente, exigirFichaDeOutraPessoa, jaConcluido } from './conclusoes'
 import { ServicoProgresso } from './servico-progresso'
 
 type ProgressoDbv = z.infer<typeof ProgressoDbvSaida>

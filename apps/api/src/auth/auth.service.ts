@@ -83,8 +83,15 @@ export class AuthService {
 
   async redefinirSenha(entrada: { token: string; senha: string }): Promise<void> {
     const usuarioId = await this.tokens.consumir(entrada.token, 'SENHA')
-    await this.prisma.usuario.update({ where: { id: usuarioId }, data: { senhaHash: await hashDaSenha(entrada.senha) } })
-    await this.refresh.revogarFamilias(usuarioId)
+    const senhaHash = await hashDaSenha(entrada.senha)
+    const agora = new Date()
+    // Senha nova, sessoes e passkeys caem juntas: uma passkey plantada por quem invadiu a conta nao
+    // pode sobreviver a recuperacao (SPEC passkeys, regra 11).
+    await this.prisma.$transaction(async (tx) => {
+      await tx.usuario.update({ where: { id: usuarioId }, data: { senhaHash } })
+      await this.refresh.revogarFamilias(usuarioId, agora, tx)
+      await tx.credencialPasskey.updateMany({ where: { usuarioId, revogadaEm: null }, data: { revogadaEm: agora } })
+    })
   }
 
   /** `GET /eu`: papel e permissoes vem do banco a cada chamada (D9). */

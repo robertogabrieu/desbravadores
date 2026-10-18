@@ -1,4 +1,3 @@
-import { Prisma } from '../generated/prisma/client.js'
 import type { SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { ErroApp } from '../comum/erros'
 import { paraDataCivil } from '../desbravadores/apoio'
@@ -29,9 +28,4 @@ export function ehFichaDaSessao(sessao: Pick<SessaoLogada, 'papel' | 'usuarioId'
 
 export function exigirFichaDeOutraPessoa(sessao: Pick<SessaoLogada, 'papel' | 'usuarioId'>, usuarioIdDaFicha: string | null): void {
   if (ehFichaDaSessao(sessao, usuarioIdDaFicha)) throw new ErroApp('REGRA', 'Outro instrutor ou o Adm registra os seus requisitos.')
-}
-
-/** Corrida de duas marcacoes: o indice parcial de "conclusao ativa" recusa a segunda. */
-export function ehViolacaoUnica(erro: unknown): boolean {
-  return erro instanceof Prisma.PrismaClientKnownRequestError && erro.code === 'P2002'
 }
