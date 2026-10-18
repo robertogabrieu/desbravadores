@@ -85,6 +85,8 @@ export class AuthService {
     const usuarioId = await this.tokens.consumir(entrada.token, 'SENHA')
     await this.prisma.usuario.update({ where: { id: usuarioId }, data: { senhaHash: await hashDaSenha(entrada.senha) } })
     await this.refresh.revogarFamilias(usuarioId)
+    // Uma passkey plantada por quem invadiu a conta nao pode sobreviver a recuperacao (SPEC passkeys, regra 11).
+    await this.prisma.credencialPasskey.updateMany({ where: { usuarioId, revogadaEm: null }, data: { revogadaEm: new Date() } })
   }
 
   /** `GET /eu`: papel e permissoes vem do banco a cada chamada (D9). */

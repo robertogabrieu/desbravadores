@@ -2,8 +2,11 @@ import { randomUUID } from 'node:crypto'
 import { JwtService } from '@nestjs/jwt'
 import argon2 from 'argon2'
 import { PrismaSistema } from '../src/comum/prisma/prisma-sistema'
+import { userHandleDe } from '../src/auth/passkeys.config'
+import { AutenticadorDeTeste } from './autenticador'
 import { MARCACOES_PADRAO, anoClube as anoDoClube, hojeNoFuso } from '@desbravadores/shared'
 import type {
+  CredencialPasskey,
   RequisitoAjuste,
   Especialidade,
   ClasseClube,
@@ -124,6 +127,29 @@ export async function criarUsuarioDeSubstituicao(dados: { nome?: string } = {}):
       status: 'SUBSTITUTO',
     },
   })
+}
+
+/** Passkey ja cadastrada do usuario, com o aparelho de teste que sabe assinar por ela. */
+export async function criarPasskey(dados: {
+  usuarioId: string
+  nome?: string
+  contador?: number
+  revogadaEm?: Date
+}): Promise<{ credencial: CredencialPasskey; autenticador: AutenticadorDeTeste }> {
+  const autenticador = new AutenticadorDeTeste((dados.contador ?? 0) + 1)
+  autenticador.userHandle = userHandleDe(dados.usuarioId)
+  const credencial = await prismaDeTeste().credencialPasskey.create({
+    data: {
+      usuarioId: dados.usuarioId,
+      credentialId: autenticador.id,
+      chavePublica: new Uint8Array(autenticador.chavePublicaCose()),
+      contador: dados.contador ?? 0,
+      transportes: ['internal'],
+      nome: dados.nome ?? `Aparelho ${unico()}`,
+      revogadaEm: dados.revogadaEm ?? null,
+    },
+  })
+  return { credencial, autenticador }
 }
 
 export async function criarUnidade(dados: { clubeId: string; nome?: string; tipo?: TipoUnidade }): Promise<Unidade> {

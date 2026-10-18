@@ -28,6 +28,11 @@ enum Papel {
   INSTRUTOR
 }
 
+enum FinalidadeDesafioPasskey {
+  CADASTRO
+  LOGIN
+}
+
 enum StatusUsuario {
   CONVIDADO
   ATIVO
@@ -271,6 +276,8 @@ model Usuario {
   vinculos                      Vinculo[]
   tokens                        TokenUsoUnico[]
   refreshTokens                 RefreshToken[]
+  credenciaisPasskey            CredencialPasskey[]
+  desafiosPasskey               DesafioPasskey[]
   desbravadores                 Desbravador[]
   convitesAcessoCriados         ConviteAcesso[]
   reunioesRegistradas           Reuniao[]                @relation("ReuniaoRegistradaPor")
@@ -379,6 +386,39 @@ model TokenUsoUnico {
   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
 
   @@index([usuarioId, finalidade])
+}
+
+// Passkey (WebAuthn): so a metade publica da chave. Nunca apagada: remover preenche revogadaEm.
+// Usuario e global, entao nenhum dos dois modelos leva clubeId nem entra em MODELOS_DE_CLUBE.
+model CredencialPasskey {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  usuarioId    String    @db.Uuid
+  credentialId String    @unique
+  chavePublica Bytes
+  contador     Int       @default(0)
+  transportes  String[]
+  nome         String
+  criadoEm     DateTime  @default(now()) @db.Timestamptz
+  ultimoUsoEm  DateTime? @db.Timestamptz
+  revogadaEm   DateTime? @db.Timestamptz
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+
+  @@index([usuarioId])
+}
+
+// Desafio de uso unico (5 min). Os vencidos ha mais de 1 hora sao apagados a cada desafio criado.
+model DesafioPasskey {
+  id         String                   @id @default(uuid(7)) @db.Uuid
+  desafio    String
+  finalidade FinalidadeDesafioPasskey
+  usuarioId  String?                  @db.Uuid
+  expiraEm   DateTime                 @db.Timestamptz
+  usadoEm    DateTime?                @db.Timestamptz
+
+  usuario Usuario? @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+
+  @@index([expiraEm])
 }
 
 // Convite de acesso por link, gerado na ficha do desbravador: a conta ainda nao existe, por isso

@@ -43,6 +43,17 @@ export class ServicoSessao {
   }
 
   /**
+   * Conta desativada = nenhum vinculo ativo em clube algum (e o que o login recusa). Nesse caso as
+   * passkeys sao revogadas e reativar a conta nao as ressuscita (SPEC passkeys, regra 11). Quem ainda
+   * tem acesso em outro clube mantem as suas.
+   */
+  async revogarPasskeysSeSemAcesso(usuarioId: string, agora: Date = new Date()): Promise<void> {
+    const ativos = await this.prisma.vinculo.count({ where: { usuarioId, ativo: true } })
+    if (ativos > 0) return
+    await this.prisma.credencialPasskey.updateMany({ where: { usuarioId, revogadaEm: null }, data: { revogadaEm: agora } })
+  }
+
+  /**
    * Vinculo da sessao (D8): o preferido, se ativo e do usuario; senao o unico ativo; senao `null`
    * (o front vai a `/papel`). Usuario sem nenhum vinculo ativo: `VINCULO_INATIVO`.
    */

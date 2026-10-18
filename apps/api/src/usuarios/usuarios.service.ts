@@ -23,6 +23,7 @@ import { ServicoTipoDaFicha } from '../desbravadores/tipo-da-ficha.service'
 import { emailAdicionado, emailConvite } from '../email/modelos'
 import { SERVICO_EMAIL, type ServicoEmail } from '../email/servico-email'
 import type { Prisma, Usuario } from '../generated/prisma/client.js'
+import { ServicoSessao } from '../sessao/sessao.service'
 import { ServicoTokenUsoUnico } from '../sessao/token-uso-unico.service'
 
 type Saida = z.infer<typeof UsuarioSaida>
@@ -78,6 +79,7 @@ export class UsuariosService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tokens: ServicoTokenUsoUnico,
+    private readonly sessaoDeAcesso: ServicoSessao,
     @Inject(SERVICO_EMAIL) private readonly email: ServicoEmail,
     private readonly tipo: ServicoTipoDaFicha,
   ) {}
@@ -174,6 +176,7 @@ export class UsuariosService {
       await tx.vinculo.updateMany({ where: { clubeId, usuarioId: id, ativo: true }, data: { ativo: false } })
       await this.tipo.sincronizarConta(tx, clubeId, id, hoje)
     })
+    await this.sessaoDeAcesso.revogarPasskeysSeSemAcesso(id)
     return montarSaida(await this.carregar(clubeId, id))
   }
 
@@ -209,6 +212,7 @@ export class UsuariosService {
       await this.substituirRelacoes(tx, clubeId, vinculo.id, entrada)
       await this.tipo.sincronizarConta(tx, clubeId, vinculo.usuarioId, hoje)
     })
+    if (entrada.ativo === false) await this.sessaoDeAcesso.revogarPasskeysSeSemAcesso(vinculo.usuarioId)
     return montarSaida(await this.carregar(clubeId, vinculo.usuarioId))
   }
 
