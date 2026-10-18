@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { Injectable } from '@nestjs/common'
 import { ErroApp } from '../comum/erros'
 import { PrismaSistema } from '../comum/prisma/prisma-sistema'
+import type { Prisma } from '../generated/prisma/client.js'
 import { ServicoSessao } from './sessao.service'
 import { gerarTokenOpaco, hashDoToken } from './tokens'
 
@@ -88,8 +89,12 @@ export class ServicoRefresh {
   }
 
   /** Sair de todos, redefinicao de senha: revoga todas as familias do usuario. */
-  async revogarFamilias(usuarioId: string, agora: Date = new Date()): Promise<void> {
-    await this.prisma.refreshToken.updateMany({ where: { usuarioId, revogadoEm: null }, data: { revogadoEm: agora } })
+  async revogarFamilias(
+    usuarioId: string,
+    agora: Date = new Date(),
+    cliente: Pick<Prisma.TransactionClient, 'refreshToken'> = this.prisma,
+  ): Promise<void> {
+    await cliente.refreshToken.updateMany({ where: { usuarioId, revogadoEm: null }, data: { revogadoEm: agora } })
   }
 
   private async revogarFamilia(familia: string, agora: Date): Promise<void> {

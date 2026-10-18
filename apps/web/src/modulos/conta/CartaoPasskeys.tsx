@@ -45,12 +45,17 @@ export function CartaoPasskeys() {
     definirAtivando(true)
   }
 
+  const fecharAtivacao = () => {
+    definirSenha('')
+    definirAtivando(false)
+  }
+
   const confirmarAtivacao = async () => {
     definirErroAoAtivar(null)
     try {
       await ativar.mutateAsync({ senha, nome: nome.trim() })
       definirAparelho(lerAparelho())
-      definirAtivando(false)
+      fecharAtivacao()
     } catch (erro) {
       definirErroAoAtivar(mensagemDoErro(erro))
     }
@@ -83,7 +88,10 @@ export function CartaoPasskeys() {
           <Esqueleto className="h-12" />
         </Carregando>
       ) : lista.isError ? (
-        <ErroDeCarga erro={lista.error} aoTentarDeNovo={() => void lista.refetch()} />
+        <>
+          <ErroDeCarga erro={lista.error} aoTentarDeNovo={() => void lista.refetch()} />
+          {semConexao && <p className="text-sm text-texto-2">{MOTIVO_SEM_CONEXAO}</p>}
+        </>
       ) : (
         <>
           {lista.data.itens.length === 0 ? (
@@ -130,7 +138,7 @@ export function CartaoPasskeys() {
         aberta={ativando}
         titulo="Ativar digital ou rosto"
         rotuloConfirmar="Ativar"
-        aoCancelar={() => definirAtivando(false)}
+        aoCancelar={fecharAtivacao}
         aoConfirmar={() => void confirmarAtivacao()}
         ocupada={ativar.isPending}
         confirmarDesabilitado={senha === '' || !nomeValido}

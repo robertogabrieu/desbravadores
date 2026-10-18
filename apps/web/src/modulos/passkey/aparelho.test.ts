@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   apagarSenhaDoConvite,
   esquecerAparelho,
@@ -48,6 +48,31 @@ describe('senha do convite', () => {
     expect(lerSenhaDoConvite(1000 + 5 * 60 * 1000 - 1)).toBe('segredo')
     expect(lerSenhaDoConvite(1000 + 5 * 60 * 1000)).toBeNull()
     expect(lerSenhaDoConvite(1000)).toBeNull()
+  })
+
+  describe('com relógio falso', () => {
+    beforeEach(() => vi.useFakeTimers())
+    afterEach(() => vi.useRealTimers())
+
+    it('sai da memória em 5 minutos mesmo sem ninguém ler', () => {
+      guardarSenhaDoConvite('segredo')
+      vi.advanceTimersByTime(5 * 60 * 1000 - 1)
+      expect(lerSenhaDoConvite()).toBe('segredo')
+      vi.advanceTimersByTime(1)
+      expect(vi.getTimerCount()).toBe(0)
+      expect(lerSenhaDoConvite()).toBeNull()
+    })
+
+    it('apagar limpa o temporizador; guardar de novo reinicia o prazo', () => {
+      guardarSenhaDoConvite('a')
+      apagarSenhaDoConvite()
+      expect(vi.getTimerCount()).toBe(0)
+      guardarSenhaDoConvite('b')
+      vi.advanceTimersByTime(4 * 60 * 1000)
+      guardarSenhaDoConvite('c')
+      vi.advanceTimersByTime(4 * 60 * 1000)
+      expect(lerSenhaDoConvite()).toBe('c')
+    })
   })
 
   it('nunca vai para o localStorage', () => {

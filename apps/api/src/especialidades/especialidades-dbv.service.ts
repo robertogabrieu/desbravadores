@@ -8,7 +8,8 @@ import { PrismaService } from '../comum/prisma/prisma.service'
 import { daDataCivil, paraDataCivil } from '../desbravadores/apoio'
 import { ServicoEscopo } from '../desbravadores/escopo.service'
 import { ServicoPontos } from '../pontos/servico-pontos'
-import { ehViolacaoUnica, exigirDataDoAnoCorrente, jaConcluido } from '../progresso/conclusoes'
+import { ehViolacaoUnica } from '../comum/violacao-unica'
+import { exigirDataDoAnoCorrente, jaConcluido } from '../progresso/conclusoes'
 import { ServicoProgresso } from '../progresso/servico-progresso'
 
 type EspecialidadesDoDbv = z.infer<typeof EspecialidadesDoDbvSaida>

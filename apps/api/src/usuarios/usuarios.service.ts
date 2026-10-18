@@ -175,8 +175,8 @@ export class UsuariosService {
       await this.exigirOutroAdm(tx, clubeId, ativos.map((v) => v.id), ativos.some((v) => v.papel === 'ADM'))
       await tx.vinculo.updateMany({ where: { clubeId, usuarioId: id, ativo: true }, data: { ativo: false } })
       await this.tipo.sincronizarConta(tx, clubeId, id, hoje)
+      await this.sessaoDeAcesso.revogarPasskeysSeSemAcesso(tx, id)
     })
-    await this.sessaoDeAcesso.revogarPasskeysSeSemAcesso(id)
     return montarSaida(await this.carregar(clubeId, id))
   }
 
@@ -211,8 +211,8 @@ export class UsuariosService {
       if (entrada.ativo !== undefined) await tx.vinculo.update({ where: { id: vinculo.id, clubeId }, data: { ativo: entrada.ativo } })
       await this.substituirRelacoes(tx, clubeId, vinculo.id, entrada)
       await this.tipo.sincronizarConta(tx, clubeId, vinculo.usuarioId, hoje)
+      if (entrada.ativo === false) await this.sessaoDeAcesso.revogarPasskeysSeSemAcesso(tx, vinculo.usuarioId)
     })
-    if (entrada.ativo === false) await this.sessaoDeAcesso.revogarPasskeysSeSemAcesso(vinculo.usuarioId)
     return montarSaida(await this.carregar(clubeId, vinculo.usuarioId))
   }
 

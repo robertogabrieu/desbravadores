@@ -20,6 +20,8 @@ import { TelaAcesso } from './TelaAcesso'
 const avisoDoEstado = (estado: unknown): string | undefined =>
   typeof estado === 'object' && estado !== null && 'aviso' in estado && typeof estado.aviso === 'string' ? estado.aviso : undefined
 
+const MENSAGEM_TENTE_DE_NOVO = 'Tente de novo em instantes.'
+
 type CamposLogin = z.input<typeof LoginEntrada>
 
 export function Login() {
@@ -46,6 +48,7 @@ export function Login() {
     register,
     handleSubmit,
     setFocus,
+    setValue,
     formState: { errors },
   } = useForm<CamposLogin, unknown, z.output<typeof LoginEntrada>>({
     resolver: zodResolver(LoginEntrada),
@@ -89,6 +92,11 @@ export function Login() {
       void navegar('/', { replace: true })
     } catch (erro) {
       if (!(erro instanceof ErroDaApi)) return
+      if (erro.erro.codigo !== 'CREDENCIAIS') {
+        // Limite de tentativas traz a mensagem da API; o resto (servidor, rede) nao diz nada sobre a digital.
+        definirRecusaDaPasskey(erro.status === 429 ? erro.erro.mensagem : MENSAGEM_TENTE_DE_NOVO)
+        return
+      }
       definirRecusaDaPasskey(erro.erro.mensagem)
       definirUsarSenha(true)
       definirFocarSenha(true)
@@ -98,6 +106,7 @@ export function Login() {
   const esquecer = () => {
     esquecerAparelho()
     definirAparelho(lerAparelho())
+    setValue('email', '')
     definirUsarSenha(false)
   }
 

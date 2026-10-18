@@ -4,6 +4,7 @@ import { HttpResponse, http } from 'msw'
 import type { RouteObject } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { GuardaRota } from '../../sessao/GuardaRota'
+import { useSessao } from '../../sessao/useSessao'
 import { erroDaApi, handlerLogin } from '../../testes/handlers/auth'
 import { TOKEN_CONVITE_ACESSO, handlerAceitarConviteAcesso, handlerConvitePublico } from '../../testes/handlers/convite-acesso'
 import { criarEu, criarSessao, criarVinculo, handlerSemSessao, handlersSessao } from '../../testes/handlers/sessao'
@@ -21,6 +22,11 @@ const rotas: RouteObject[] = [
   ...rotasAcessoPublicas,
   { element: <GuardaRota semVinculo />, children: rotasAcessoPapel },
 ]
+
+function BotaoSair() {
+  const { sair } = useSessao()
+  return <button onClick={() => void sair()}>sair</button>
+}
 
 const opcoesDeLogin = { challenge: 'desafio', rpId: 'localhost' }
 const opcoesDeCadastro = {
@@ -179,13 +185,40 @@ describe('login: aparelho com a marca', () => {
     expect(lerAparelho().passkey).toBe(true)
   })
 
+  it.each([
+    ['limite de tentativas (429)', 429, 'LIMITE_EXCEDIDO', 'Muitas tentativas. Aguarde um minuto.', 'Muitas tentativas. Aguarde um minuto.'],
+    ['erro do servidor (500)', 500, 'ERRO_INTERNO', 'Falha interna.', 'Tente de novo em instantes.'],
+  ])('%s: mostra mensagem de espera, não foca a senha nem fala em recusa da digital', async (_nome, status, codigo, mensagemDaApi, esperada) => {
+    servidorDePasskey()
+    servidor.use(http.post('/api/auth/passkey/login', () => erroDaApi(status, codigo, mensagemDaApi)))
+    navegador.startAuthentication.mockResolvedValue(respostaDeLogin)
+    renderizarRotas(rotas, '/login')
+    await userEvent.click(await screen.findByRole('button', { name: 'Entrar com digital ou rosto' }))
+
+    expect(await screen.findByText(esperada)).toBeInTheDocument()
+    expect(screen.queryByText('Não foi possível entrar com a digital. Use sua senha.')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Senha')).not.toBeInTheDocument()
+    expect(lerAparelho().passkey).toBe(true)
+  })
+
+  it('falha de rede: mensagem de espera, sem mostrar a senha', async () => {
+    servidorDePasskey()
+    servidor.use(http.post('/api/auth/passkey/login', () => HttpResponse.error()))
+    navegador.startAuthentication.mockResolvedValue(respostaDeLogin)
+    renderizarRotas(rotas, '/login')
+    await userEvent.click(await screen.findByRole('button', { name: 'Entrar com digital ou rosto' }))
+
+    expect(await screen.findByText('Tente de novo em instantes.')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Senha')).not.toBeInTheDocument()
+  })
+
   it('"Esquecer este aparelho" apaga a marca e o e-mail e devolve o formulário de sempre', async () => {
     servidor.use(handlerSemSessao())
     renderizarRotas(rotas, '/login')
     await userEvent.click(await screen.findByRole('button', { name: 'Esquecer este aparelho' }))
 
     expect(await screen.findByLabelText('Senha')).toBeInTheDocument()
-    expect(screen.getByLabelText('E-mail')).toHaveValue('ana@clube.test')
+    expect(screen.getByLabelText('E-mail')).toHaveValue('')
     expect(lerAparelho()).toEqual({})
     expect(screen.getByRole('button', { name: 'Entrar com digital ou rosto' })).toBeInTheDocument()
   })
@@ -331,6 +364,28 @@ describe('convite depois do aceite de convite de acesso', () => {
 
     expect(await screen.findByRole('heading', { name: 'Quer entrar com digital ou rosto da próxima vez?' })).toBeInTheDocument()
     expect(roteador.state.location.pathname).toBe('/digital/convite')
+  })
+})
+
+describe('senha em memória do convite', () => {
+  it('fechar a tela do convite (Agora não) apaga a senha', async () => {
+    servidorDePasskey()
+    servidor.use(...handlersSessao(vinculos))
+    guardarSenhaDoConvite('recem-digitada')
+    renderizarRotas(rotas, '/digital/convite')
+    await userEvent.click(await screen.findByRole('button', { name: 'Agora não' }))
+
+    await screen.findByText('raiz')
+    expect(lerSenhaDoConvite()).toBeNull()
+  })
+
+  it('sair da sessão apaga a senha', async () => {
+    servidor.use(http.post('/api/auth/logout', () => new HttpResponse(null, { status: 204 })), ...handlersSessao(vinculos))
+    guardarSenhaDoConvite('recem-digitada')
+    renderizarRotas([...rotas, { path: '/privada', element: <BotaoSair /> }], '/privada')
+    await userEvent.click(await screen.findByRole('button', { name: 'sair' }))
+
+    await waitFor(() => expect(lerSenhaDoConvite()).toBeNull())
   })
 })
 

@@ -25,6 +25,8 @@ import {
   prismaDeTeste,
 } from '../../test/fabricas'
 import type { FinalidadeDesafioPasskey } from '../generated/prisma/client.js'
+import { ServicoRefresh } from '../sessao/refresh.service'
+import { ServicoSessao } from '../sessao/sessao.service'
 import { ServicoTokenUsoUnico } from '../sessao/token-uso-unico.service'
 import { origemWebauthn, userHandleDe } from './passkeys.config'
 
@@ -176,6 +178,13 @@ describe('POST /auth/passkey/login: tabela de estados', () => {
     recusado(await entrarCom(autenticador, { contador: 5 }))
     recusado(await entrarCom(autenticador, { contador: 0 }))
     comStatus(await entrarCom(autenticador, { contador: 6 }), 200)
+    expect((await prisma.credencialPasskey.findUniqueOrThrow({ where: { id: credencial.id } })).contador).toBe(6)
+  })
+
+  it('duas respostas com o mesmo contador, ao mesmo tempo: so uma entra, a outra e CREDENCIAIS', async () => {
+    const { autenticador, credencial } = await usuarioComPasskey({ contador: 5 })
+    const [a, b] = await Promise.all([entrarCom(autenticador, { contador: 6 }), entrarCom(autenticador, { contador: 6 })])
+    expect([a.status, b.status].sort()).toEqual([200, 401])
     expect((await prisma.credencialPasskey.findUniqueOrThrow({ where: { id: credencial.id } })).contador).toBe(6)
   })
 
@@ -491,6 +500,16 @@ describe('revogacao de passkeys', () => {
     expect((await linhas(alvo.usuario.id)).every((l) => l.revogadaEm === null)).toBe(true)
   })
 
+  it('redefinir a senha e uma transacao so: se revogar as sessoes falha, a senha antiga continua valendo', async () => {
+    const alvo = await usuarioComPasskey()
+    const antes = (await prisma.usuario.findUniqueOrThrow({ where: { id: alvo.usuario.id } })).senhaHash
+    const token = await app.get(ServicoTokenUsoUnico).gerar(alvo.usuario.id, 'SENHA')
+    const espiao = jest.spyOn(app.get(ServicoRefresh), 'revogarFamilias').mockRejectedValueOnce(new Error('falha'))
+    await request(servidor()).post('/api/auth/senha/redefinir').send({ token, senha: 'OutraSenha@77' }).expect(500)
+    espiao.mockRestore()
+    expect((await prisma.usuario.findUniqueOrThrow({ where: { id: alvo.usuario.id } })).senhaHash).toBe(antes)
+  })
+
   describe('desativar a conta (usuarios)', () => {
     async function cenario() {
       const clube = await criarClube()
@@ -521,6 +540,16 @@ describe('revogacao de passkeys', () => {
       await prisma.vinculo.update({ where: { id: vinculoFora.id }, data: { ativo: false } })
       await request(servidor()).put(`/api/vinculos/${vinculo.id}`).set('Authorization', autorizacaoAdm).send({ ativo: false }).expect(200)
       expect((await linhas(alvo.id)).every((l) => l.revogadaEm !== null)).toBe(true)
+    })
+
+    it('a revogacao roda na mesma transacao: se ela falha, os vinculos nao ficam desligados', async () => {
+      const { autorizacaoAdm, alvo, vinculo } = await cenario()
+      const espiao = jest.spyOn(app.get(ServicoSessao), 'revogarPasskeysSeSemAcesso').mockRejectedValue(new Error('falha'))
+      await request(servidor()).post(`/api/usuarios/${alvo.id}/desativar`).set('Authorization', autorizacaoAdm).expect(500)
+      await request(servidor()).put(`/api/vinculos/${vinculo.id}`).set('Authorization', autorizacaoAdm).send({ ativo: false }).expect(500)
+      espiao.mockRestore()
+      expect((await prisma.vinculo.findUniqueOrThrow({ where: { id: vinculo.id } })).ativo).toBe(true)
+      expect((await linhas(alvo.id)).every((l) => l.revogadaEm === null)).toBe(true)
     })
 
     it('desativar quem ainda tem acesso em outro clube preserva as passkeys', async () => {

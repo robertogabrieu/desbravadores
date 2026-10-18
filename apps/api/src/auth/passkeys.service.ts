@@ -18,8 +18,8 @@ import {
 import type { z } from 'zod'
 import { ErroApp } from '../comum/erros'
 import { PrismaSistema } from '../comum/prisma/prisma-sistema'
+import { ehViolacaoUnica } from '../comum/violacao-unica'
 import type { CredencialPasskey, FinalidadeDesafioPasskey } from '../generated/prisma/client.js'
-import { ehViolacaoUnica } from '../progresso/conclusoes'
 import { AuthService, type SessaoEmitida } from './auth.service'
 import { origemWebauthn, userHandleDe } from './passkeys.config'
 import { senhaConfere } from './senha'
@@ -92,10 +92,12 @@ export class PasskeysService {
     }
 
     const agora = new Date()
-    await this.prisma.credencialPasskey.update({
-      where: { id: credencial.id },
+    // Duas respostas com o mesmo contador lido: so a primeira grava; a segunda e um clone ou repeticao.
+    const { count } = await this.prisma.credencialPasskey.updateMany({
+      where: { id: credencial.id, contador: credencial.contador, revogadaEm: null },
       data: { contador, ultimoUsoEm: agora },
     })
+    if (count === 0) throw recusa()
     const sessao = await this.auth.abrirSessao(credencial.usuarioId, aparelho)
     await this.prisma.usuario.update({ where: { id: credencial.usuarioId }, data: { ultimoAcessoEm: agora } })
     return sessao

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import type { Papel } from '../generated/prisma/client.js'
+import type { Papel, Prisma } from '../generated/prisma/client.js'
 import { ErroApp } from '../comum/erros'
 import { PrismaSistema } from '../comum/prisma/prisma-sistema'
 import { alvoAtivo, alvoDoLink } from '../substituicoes/alvo'
@@ -45,12 +45,21 @@ export class ServicoSessao {
   /**
    * Conta desativada = nenhum vinculo ativo em clube algum (e o que o login recusa). Nesse caso as
    * passkeys sao revogadas e reativar a conta nao as ressuscita (SPEC passkeys, regra 11). Quem ainda
-   * tem acesso em outro clube mantem as suas.
+   * tem acesso em outro clube mantem as suas. Roda na transacao de quem desliga o vinculo, para que
+   * os dois fiquem juntos. A contagem passa pelo usuario porque o client da transacao e o guardado,
+   * que recusa `vinculo` sem `clubeId`; aqui a pergunta e global de proposito.
    */
-  async revogarPasskeysSeSemAcesso(usuarioId: string, agora: Date = new Date()): Promise<void> {
-    const ativos = await this.prisma.vinculo.count({ where: { usuarioId, ativo: true } })
-    if (ativos > 0) return
-    await this.prisma.credencialPasskey.updateMany({ where: { usuarioId, revogadaEm: null }, data: { revogadaEm: agora } })
+  async revogarPasskeysSeSemAcesso(
+    tx: Pick<Prisma.TransactionClient, 'usuario' | 'credencialPasskey'>,
+    usuarioId: string,
+    agora: Date = new Date(),
+  ): Promise<void> {
+    const usuario = await tx.usuario.findUnique({
+      where: { id: usuarioId },
+      select: { _count: { select: { vinculos: { where: { ativo: true } } } } },
+    })
+    if (!usuario || usuario._count.vinculos > 0) return
+    await tx.credencialPasskey.updateMany({ where: { usuarioId, revogadaEm: null }, data: { revogadaEm: agora } })
   }
 
   /**

@@ -60,9 +60,13 @@ export function esquecerAparelho(): void {
 
 /** A senha acabou de ser digitada e só serve para o convite: vive nesta variável, nunca em armazenamento nem em estado de navegação. */
 let senhaDoConvite: { senha: string; ate: number } | null = null
+let temporizadorDaSenha: ReturnType<typeof setTimeout> | undefined
 
 export function guardarSenhaDoConvite(senha: string, agora = Date.now()): void {
+  clearTimeout(temporizadorDaSenha)
   senhaDoConvite = { senha, ate: agora + VALIDADE_DA_SENHA_MS }
+  // Sem leitura nenhuma, a senha ainda sai da memoria no prazo.
+  temporizadorDaSenha = setTimeout(apagarSenhaDoConvite, VALIDADE_DA_SENHA_MS)
 }
 
 export function lerSenhaDoConvite(agora = Date.now()): string | null {
@@ -71,5 +75,6 @@ export function lerSenhaDoConvite(agora = Date.now()): string | null {
 }
 
 export function apagarSenhaDoConvite(): void {
+  clearTimeout(temporizadorDaSenha)
   senhaDoConvite = null
 }

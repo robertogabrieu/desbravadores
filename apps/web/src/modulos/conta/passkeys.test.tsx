@@ -136,6 +136,15 @@ describe('Minha conta: entrar com digital ou rosto', () => {
     expect(screen.getByText(/Sem conexão: conecte-se à internet para ativar ou remover\./)).toBeInTheDocument()
   })
 
+  it('sem conexão e sem a lista carregada: mostra o motivo além do aviso de erro', async () => {
+    conexao.modo = 'SEM_CONEXAO'
+    servidor.use(http.get('/api/eu/passkeys', () => erroDaApi(500, 'ERRO_INTERNO', 'Falha ao carregar as digitais.')))
+    renderizarRotas(rotas, '/conta')
+
+    expect(await screen.findByText('Falha ao carregar as digitais.')).toBeInTheDocument()
+    expect(screen.getByText(/Sem conexão: conecte-se à internet para ativar ou remover\./)).toBeInTheDocument()
+  })
+
   it('Remover pede confirmação, apaga a certa e atualiza a lista', async () => {
     let itens = [...minhas]
     const removidas: string[] = []
