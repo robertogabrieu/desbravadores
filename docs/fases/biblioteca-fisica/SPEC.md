@@ -13,7 +13,7 @@ Biblioteca:
   exemplares), do mesmo jeito que cadastra um PDF.
 - **Qualquer Adm, conselheiro ou instrutor** vê se há exemplar disponível e **empresta** para
   **qualquer desbravador do clube**, de qualquer unidade ou classe. A data de devolução já vem
-  preenchida com 14 dias depois.
+  calculada pelo sistema, sempre 14 dias depois, e quem empresta não a escolhe.
 - Quem empresta (ou o Adm) **registra a devolução**.
 - O **Adm** vê numa tela só com quem está cada livro, o que está atrasado e o que vence hoje, e
   os atrasados aparecem como pendência na **Visão Geral**, a primeira tela que ele abre.
@@ -28,7 +28,7 @@ Biblioteca:
 | D2 | **Exemplar** é uma linha própria (Exemplar 1, 2, 3…). Empréstimo e devolução são por exemplar. | Contar só "quantidade" não diria com quem está cada cópia nem qual voltou. |
 | D3 | **Empréstimo nunca se apaga.** Devolver preenche a data de devolução; o histórico é o próprio empréstimo. | CLAUDE.md: nunca apagar linha com histórico. |
 | D4 | **Atrasado é calculado**, não gravado: tem devolução prevista antes de hoje e ainda não foi devolvido. Sem tarefa agendada. | Evita estado que envelhece sozinho e um job a mais. |
-| D5 | **Prazo padrão de 14 dias**, vem preenchido e o emprestador pode mudar a data na hora do empréstimo. | O pedido diz "automaticamente 2 semanas". Editável porque a realidade tem exceção. |
+| D5 | **Prazo fixo de 14 dias.** A data de devolução é só de leitura: o servidor calcula `emprestadoEm + 14 dias` e o contrato não tem campo de devolução. Quem empresta informa apenas a data do empréstimo. *Definido pelo cliente.* | Prazo editável deixaria cada emprestador com uma regra e "atrasado" deixaria de significar a mesma coisa. |
 | D6 | Nova permissão **`biblioteca.emprestar`**, padrão ADM, CONSELHEIRO e INSTRUTOR (ajustável por vínculo como as outras). Cadastrar livro físico segue em `biblioteca.gerenciar`. | Emprestar é de toda a diretoria; montar a estante continua só do Adm. |
 | D7 | Para escolher o desbravador, uma **busca própria do clube inteiro**, que devolve só nome e unidade. Não reaproveita a lista de desbravadores, que filtra por unidade/classe do papel. | O pedido exige emprestar fora da própria unidade/classe. A busca nova não abre mais nenhum dado da ficha. |
 | D8 | **Toda a diretoria** (Adm, conselheiro, instrutor) **vê com quem está** cada exemplar emprestado. *Confirmado pelo cliente.* | Quem empresta precisa saber a quem cobrar. Dado exposto: nome e unidade. |
@@ -50,8 +50,7 @@ Biblioteca:
 
 - Livro com **zero exemplares disponíveis** mostra "Todos emprestados" e o botão Emprestar fica
   desligado, com o motivo escrito ao lado (não só apagado).
-- Devolução prevista não pode ser **antes** da data do empréstimo. Data do empréstimo não pode ser
-  futura.
+- Devolução prevista = data do empréstimo + 14 dias, sempre. Mudou a data do empréstimo, a tela recalcula na hora. Data do empréstimo não pode ser futura.
 - Um desbravador tem **no máximo um empréstimo aberto** (D13). Trava no banco (único parcial por desbravador) e na API; devolver libera. A resposta de recusa diz com qual livro ele está.
 - Desbravador inativo não aparece na busca para empréstimo novo; o empréstimo que já tinha continua
   visível e devolvível.
@@ -63,7 +62,7 @@ Biblioteca:
 - `ItemBiblioteca` ganha `tipo` e `arquivoId` passa a ser opcional (só digital tem PDF). Livro físico
   usa capa como hoje.
 - `ExemplarBiblioteca`: `clubeId`, `itemId`, `numero`, `baixadoEm?`, `baixadoPorId?`.
-- `EmprestimoBiblioteca`: `clubeId`, `exemplarId`, `desbravadorId`, `emprestadoEm`, `devolverAte`,
+- `EmprestimoBiblioteca`: `clubeId`, `exemplarId`, `desbravadorId`, `emprestadoEm`, `devolverAte` (gravada pelo servidor: `emprestadoEm` + 14 dias),
   `devolvidoEm?`, `emprestadoPorId`, `devolvidoPorId?`. Único parcial: um empréstimo aberto por
   exemplar.
 - Todas as operações levam `clubeId`; `include` aninhado de exemplares/empréstimos entra nos testes
@@ -77,7 +76,7 @@ Biblioteca:
 | `POST /biblioteca/itens` (já existe) | `biblioteca.gerenciar` | aceita `tipo: FISICO` com quantidade |
 | `POST /biblioteca/itens/:id/exemplares` e `POST .../exemplares/:id/baixa` | `biblioteca.gerenciar` | acrescenta exemplar; dá baixa |
 | `GET /biblioteca/itens/:id/exemplares` | `@Logado` | exemplares, com quem estão, devolução prevista, histórico |
-| `POST /biblioteca/emprestimos` | `biblioteca.emprestar` | empresta (exemplar, desbravador, datas) |
+| `POST /biblioteca/emprestimos` | `biblioteca.emprestar` | empresta (exemplar, desbravador, data do empréstimo). Sem campo de devolução: o servidor calcula |
 | `POST /biblioteca/emprestimos/:id/devolucao` | `biblioteca.emprestar` | registra a devolução |
 | `GET /biblioteca/emprestimos` | `@Logado` com `biblioteca.emprestar` | abertos, atrasados, filtro (D8: toda a diretoria vê; só o Adm tem a aba, os demais veem pelo livro) |
 | `GET /biblioteca/desbravadores?busca=` | `biblioteca.emprestar` | busca do clube todo (D7) |
@@ -92,7 +91,7 @@ existe.
 2. **Biblioteca, Adm, aba "Empréstimos"**: tabela com quem está com o quê; atrasados no topo.
 3. **Biblioteca no celular (conselheiro/instrutor)**: alternador "Digitais | Físicos", busca por nome.
 4. **Detalhe do livro físico**: exemplares um por um, com Emprestar / Devolver.
-5. **Diálogo Emprestar**: busca do desbravador, data do empréstimo (hoje), devolver até (+14).
+5. **Diálogo Emprestar**: busca do desbravador, data do empréstimo (hoje), "devolver até" **só de leitura**, 14 dias depois, com a regra escrita embaixo.
 6. **Diálogo Adicionar livro físico**: escolha do tipo, quantidade de exemplares.
 7. **Diálogo Devolver**: confirma e mostra se estava atrasado.
 8. **Visão Geral do Adm**: terceiro cartão em Pendências, "Livros atrasados", no formato dos dois que já existem (`docs/fases/visao-geral-adm/mockup.html:159-171`). Bloco sem atraso mostra "Nenhum livro atrasado"; clube sem livro físico não mostra o cartão. Os campos novos vêm do servidor, como os outros (decisão D3 daquela spec), e a lista é a de atrasados com livro, desbravador, unidade e dias.
@@ -136,6 +135,7 @@ parte da listagem de desbravadores do Adm.
 - Teste de concorrência: dois empréstimos simultâneos do mesmo exemplar, um falha com mensagem.
 - Teste de permissão: conselheiro e instrutor emprestam para desbravador de outra unidade/classe;
   nenhum dos dois cadastra, dá baixa ou abre a aba Empréstimos.
+- Teste do prazo: contrato recusa campo de devolução; empréstimo de 21/10 devolve até 04/11; mudar a data do empréstimo muda a devolução; os 14 dias vêm de uma constante só, usada na API e na tela.
 - Teste do limite: segundo empréstimo do mesmo desbravador é recusado, com o título do livro que ele já tem; depois de devolver, o empréstimo passa.
 - Visão Geral: cartão de atrasados aparece só com livro físico no clube, só traz empréstimo do próprio clube, e o número do selo bate com a aba Empréstimos (mesma função calcula os dois).
 - Medido no DOM em 390, 820 e 1280 px, sem rolagem lateral.
