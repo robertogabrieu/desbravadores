@@ -113,7 +113,7 @@ function cartao(l,adm){
 
 function menu(on){
  var it=[['dash','Visão geral'],['us','Desbravadores'],['gp','Usuários'],['cal','Calendário do clube'],['bk','Biblioteca']];
- return '<aside><div style="display:flex;align-items:center;gap:8px;padding:20px">'+logo+'<span class="t" style="font-size:18px;font-weight:700;line-height:1.25">App do<br>Desbravador</span></div><nav style="display:flex;flex-direction:column;gap:4px;padding:8px">'+it.map(function(x){return '<span class="nav'+(x[1]==='Biblioteca'?' on':'')+'">'+ic(x[0])+x[1]+'</span>'}).join('')+'</nav></aside>'}
+ return '<aside><div style="display:flex;align-items:center;gap:8px;padding:20px">'+logo+'<span class="t" style="font-size:18px;font-weight:700;line-height:1.25">App do<br>Desbravador</span></div><nav style="display:flex;flex-direction:column;gap:4px;padding:8px">'+it.map(function(x){return '<span class="nav'+(x[1]===(on||'Biblioteca')?' on':'')+'">'+ic(x[0])+x[1]+'</span>'}).join('')+'</nav></aside>'}
 function topoAdm(){return '<header style="display:flex;align-items:center;justify-content:flex-end;gap:4px;padding:8px 32px;background:#fff;border-bottom:1px solid var(--borda2);min-height:61px"><span class="btn txt">'+ic('bell',22)+'</span><span class="btn txt">Ana Paula Ribeiro '+ic('dn',16)+'</span></header>'}
 function cab(resumo,botoes){return '<header style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px"><div><h1 class="t" style="margin:0;font-size:24px;font-weight:700">Biblioteca</h1><p style="margin:0;color:var(--tinta2)">'+resumo+'</p></div><span style="display:flex;gap:8px">'+botoes+'</span></header>'}
 function abas(a){var n=['Livros digitais','Livros físicos','Empréstimos'];return '<div class="abas">'+n.map(function(x,i){return '<span class="aba'+(i===a?' on':'')+'">'+x+(i===2?' <span class="pilula atr" style="margin-left:8px;padding:2px 8px;font-size:13px">2 atrasados</span>':'')+'</span>'}).join('')+'</div>'}
@@ -160,7 +160,7 @@ S.emprestar={t:'Diálogo Emprestar',nota:['nova','Abre pelo botão Emprestar de 
  passo:[['Data de devolução já preenchida','14 dias depois de hoje, com a regra escrita embaixo do campo. Dá para mudar.'],['Qualquer desbravador do clube','A lista traz nome e unidade. O instrutor da classe A empresta para quem é da classe B.'],['Um destaque','Registrar empréstimo é o botão cheio; Cancelar é texto.']],
  h:function(){var l=LIVROS[0];return '<div class="c" style="position:relative">'+topoCel()+'<main style="flex:1;padding:16px;display:flex;flex-direction:column;gap:16px;opacity:.5">'+cabCel('Amigo · exemplar 1')+'<div class="cartao" style="height:240px"></div></main><div class="fundo"></div>'+
  '<div class="dialogo" style="left:12px;right:12px;top:96px"><h2>Emprestar “Amigo”</h2><p class="ajuda" style="margin-top:-8px">Exemplar 1 · disponível</p>'+
- '<div class="campo"><span class="lbl">Desbravador</span><span class="in">'+ic('sr',18)+'<span>Lu</span></span><div class="lista"><div class="sel"><b>Lucas Ferreira</b><span class="conta">Unidade Águia</span></div><div><b>Luísa Martins</b><span class="conta">Unidade Leão</span></div><div><b>Luan Pereira</b><span class="conta">Unidade Lobo</span></div></div></div>'+
+ '<div class="campo"><span class="lbl">Desbravador</span><span class="in">'+ic('sr',18)+'<span>Lu</span></span><div class="lista"><div class="sel"><b>Lucas Ferreira</b><span class="conta">Unidade Águia</span></div><div style="background:#F1EEE6;color:var(--tinta2)"><b>Luísa Martins</b><span class="conta">Unidade Leão · já está com “Companheiro”. Só devolvendo para pegar outro.</span></div><div><b>Luan Pereira</b><span class="conta">Unidade Lobo</span></div></div></div>'+
  '<div style="display:flex;gap:12px"><div class="campo" style="flex:1"><span class="lbl">Emprestado em</span><span class="in tabnum">21/10/2026</span></div><div class="campo" style="flex:1"><span class="lbl">Devolver até</span><span class="in tabnum">04/11/2026</span></div></div><p class="ajuda" style="margin-top:-8px">O prazo padrão é de 14 dias. Você pode mudar a data.</p>'+
  '<div style="display:flex;justify-content:flex-end;gap:8px"><span class="btn txt">Cancelar</span><span class="btn pri">Registrar empréstimo</span></div></div></div>'}};
 /* 6 */
@@ -184,7 +184,20 @@ S.dev={t:'Diálogo Devolver',nota:['nova','Aparece ao tocar em Devolver. Confirm
  '<p class="ajuda" style="background:var(--aviso-suave);color:var(--aviso);padding:10px 12px;border-radius:9px;font-weight:600">Devolução prevista para 19/10: 2 dias de atraso.</p>'+
  '<div style="display:flex;justify-content:flex-end;gap:8px"><span class="btn txt">Cancelar</span><span class="btn pri">Registrar devolução</span></div></div></div>'}};
 
-var ordem=['adm','emp','lista','det','emprestar','novo','dev'];
+/* 8 */
+S.vg={t:'Visão geral (Adm)',nota:['alt','Tela inicial do Adm. Ganha um terceiro cartão em Pendências, no mesmo formato dos outros dois. Os atalhos e o resto não mudam.'],
+ passo:[['Mesmo formato das pendências','Cartão com título, selo de alerta com a contagem e uma linha por livro atrasado.'],['Leva a quem cobrar','Cada linha mostra livro, desbravador, unidade e há quantos dias está atrasado; tocar abre a aba Empréstimos.'],['Sem atraso, o bloco fica','Mostra "Nenhum livro atrasado", como os outros blocos mostram "tudo em dia". Clube sem livro físico não mostra o cartão.']],
+ h:function(){function lin(a,b,c){return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:52px;padding:6px 14px;border-top:1px solid var(--borda2)"><span style="display:flex;flex-direction:column;min-width:0"><b>'+a+'</b><span class="conta">'+b+'</span></span><span style="color:var(--tinta2);white-space:nowrap">'+c+' ›</span></div>'}
+ function pend(t,n,l){return '<div class="cartao" style="overflow:hidden;min-width:0"><div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px"><b style="font-size:16px">'+t+'</b><span class="pilula hoje">'+n+'</span></div>'+l+'</div>'}
+ return '<div class="d">'+menu('Visão geral')+'<div style="flex:1;min-width:0;display:flex;flex-direction:column">'+topoAdm()+'<main style="padding:32px 48px;display:flex;flex-direction:column;gap:24px"><h1 class="t" style="margin:0;font-size:24px;font-weight:700">Visão geral</h1>'+
+ '<div style="display:flex;gap:12px;flex-wrap:wrap"><span class="btn pri" style="min-height:56px">Gerar link de substituto</span><span class="btn sec" style="min-height:56px">Novo evento</span><span class="btn sec" style="min-height:56px">Lançar chamada da Classe Bíblica</span></div>'+
+ '<section style="display:flex;flex-direction:column;gap:12px"><h2 class="h2">Pendências</h2><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">'+
+ pend('Classes sem cronograma','2',lin('Pioneiro','13 anos','Montar')+lin('Guia','15 anos','Montar'))+
+ pend('Unidades sem chamada','2',lin('Falcões','Conselheiro Marcos','')+lin('Lobos','Conselheira Paula',''))+
+ pend('Livros atrasados','2',lin('Companheiro · Lucas Ferreira','Unidade Águia','5 dias')+lin('Amigo · Beatriz Nunes','Unidade Leão','2 dias'))+
+ '</div></section></main></div></div>'}};
+
+var ordem=['adm','emp','lista','det','emprestar','novo','dev','vg'];
 var sel=document.getElementById('seletor'),q=document.getElementById('quadro'),nt=document.getElementById('nota'),ps=document.getElementById('passo');
 function mostrar(k){
  var s=S[k];q.innerHTML=s.h();
