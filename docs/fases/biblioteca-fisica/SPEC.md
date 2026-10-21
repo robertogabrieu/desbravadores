@@ -1,6 +1,6 @@
-# Biblioteca: livros físicos e empréstimos — SPEC (rascunho 1)
+# Biblioteca: livros físicos e empréstimos — SPEC (rascunho 2)
 
-Estado: **rascunho inicial, aguardando aprovação do mockup.** Depois dele vêm duas revisões desta
+Estado: **rascunho com as respostas do cliente incorporadas, aguardando aprovação do mockup.** Depois dele vêm duas revisões desta
 spec e só então o PLANO. Nenhum código foi tocado.
 
 ## O que muda para quem usa
@@ -15,8 +15,9 @@ Biblioteca:
   **qualquer desbravador do clube**, de qualquer unidade ou classe. A data de devolução já vem
   preenchida com 14 dias depois.
 - Quem empresta (ou o Adm) **registra a devolução**.
-- O **Adm** vê numa tela só com quem está cada livro, o que está atrasado e o que vence esta
-  semana.
+- O **Adm** vê numa tela só com quem está cada livro, o que está atrasado e o que vence hoje, e
+  os atrasados aparecem como pendência na **Visão Geral**, a primeira tela que ele abre.
+- Cada desbravador pode estar com **um livro por vez**.
 - Fica o **histórico**: quem já pegou cada livro, e quando devolveu.
 
 ## Decisões
@@ -30,10 +31,12 @@ Biblioteca:
 | D5 | **Prazo padrão de 14 dias**, vem preenchido e o emprestador pode mudar a data na hora do empréstimo. | O pedido diz "automaticamente 2 semanas". Editável porque a realidade tem exceção. |
 | D6 | Nova permissão **`biblioteca.emprestar`**, padrão ADM, CONSELHEIRO e INSTRUTOR (ajustável por vínculo como as outras). Cadastrar livro físico segue em `biblioteca.gerenciar`. | Emprestar é de toda a diretoria; montar a estante continua só do Adm. |
 | D7 | Para escolher o desbravador, uma **busca própria do clube inteiro**, que devolve só nome e unidade. Não reaproveita a lista de desbravadores, que filtra por unidade/classe do papel. | O pedido exige emprestar fora da própria unidade/classe. A busca nova não abre mais nenhum dado da ficha. |
-| D8 | Conselheiro e instrutor **veem com quem está** cada exemplar emprestado. | Quem empresta precisa saber a quem cobrar. Dado exposto: nome e unidade. |
+| D8 | **Toda a diretoria** (Adm, conselheiro, instrutor) **vê com quem está** cada exemplar emprestado. *Confirmado pelo cliente.* | Quem empresta precisa saber a quem cobrar. Dado exposto: nome e unidade. |
 | D9 | "**Quem já leu**" = tem empréstimo **devolvido** daquele livro. Não há marcação separada de leitura. | Evita um segundo registro que ninguém vai manter. Limite: devolver não prova que leu. |
 | D10 | **Tirar exemplar do acervo** (perdido, estragado) é "dar baixa": só o Adm, só se o exemplar não estiver emprestado, e o histórico fica. | Nunca apagar. |
 | D11 | Dois empréstimos do mesmo exemplar ao mesmo tempo **não podem existir**: trava no banco e na API. Quem chegou segundo vê "Esse exemplar acabou de ser emprestado". | Dois instrutores abrindo a mesma tela é o caso comum. |
+| D13 | **Um livro por desbravador por vez.** A API recusa o segundo empréstimo aberto do mesmo desbravador; a busca mostra o desbravador apagado, com "já está com <livro>". *Confirmado pelo cliente.* | Sem a trava, o limite dependeria de a pessoa lembrar. Trava só na API deixaria a tela oferecer o que vai falhar. |
+| D14 | **Atraso não gera aviso**: só aparece na aba Empréstimos e como terceira pendência da Visão Geral do Adm. *Confirmado pelo cliente.* | Notificação ficou de fora a pedido. |
 | D12 | Empréstimo e devolução **exigem internet** (aviso padrão `DisponivelComInternet`); não entram no modo sem conexão. | Registro offline de estoque duplicaria exemplar. |
 
 ## Regras (tabela de estados do exemplar)
@@ -49,7 +52,7 @@ Biblioteca:
   desligado, com o motivo escrito ao lado (não só apagado).
 - Devolução prevista não pode ser **antes** da data do empréstimo. Data do empréstimo não pode ser
   futura.
-- Um desbravador **pode** ter mais de um livro; não há limite (pergunta aberta 3).
+- Um desbravador tem **no máximo um empréstimo aberto** (D13). Trava no banco (único parcial por desbravador) e na API; devolver libera. A resposta de recusa diz com qual livro ele está.
 - Desbravador inativo não aparece na busca para empréstimo novo; o empréstimo que já tinha continua
   visível e devolvível.
 - Data é de calendário (sem hora), no fuso do clube. "Hoje" vem do servidor, nunca do relógio do
@@ -76,7 +79,7 @@ Biblioteca:
 | `GET /biblioteca/itens/:id/exemplares` | `@Logado` | exemplares, com quem estão, devolução prevista, histórico |
 | `POST /biblioteca/emprestimos` | `biblioteca.emprestar` | empresta (exemplar, desbravador, datas) |
 | `POST /biblioteca/emprestimos/:id/devolucao` | `biblioteca.emprestar` | registra a devolução |
-| `GET /biblioteca/emprestimos` | `biblioteca.gerenciar` | tela do Adm: abertos, atrasados, filtro |
+| `GET /biblioteca/emprestimos` | `@Logado` com `biblioteca.emprestar` | abertos, atrasados, filtro (D8: toda a diretoria vê; só o Adm tem a aba, os demais veem pelo livro) |
 | `GET /biblioteca/desbravadores?busca=` | `biblioteca.emprestar` | busca do clube todo (D7) |
 
 Recurso de outro clube ou inexistente responde 404. Toda escrita pega o `travarBiblioteca` que já
@@ -92,6 +95,7 @@ existe.
 5. **Diálogo Emprestar**: busca do desbravador, data do empréstimo (hoje), devolver até (+14).
 6. **Diálogo Adicionar livro físico**: escolha do tipo, quantidade de exemplares.
 7. **Diálogo Devolver**: confirma e mostra se estava atrasado.
+8. **Visão Geral do Adm**: terceiro cartão em Pendências, "Livros atrasados", no formato dos dois que já existem (`docs/fases/visao-geral-adm/mockup.html:159-171`). Bloco sem atraso mostra "Nenhum livro atrasado"; clube sem livro físico não mostra o cartão. Os campos novos vêm do servidor, como os outros (decisão D3 daquela spec), e a lista é a de atrasados com livro, desbravador, unidade e dias.
 
 Telas irmãs usadas como base: `TelaBiblioteca.tsx` (cabeçalho, seção por categoria, grade de
 cartões), `CartaoDoItem.tsx` (capa 3:4, botões), `DialogosDaBiblioteca.tsx` (diálogos). Desvios:
@@ -113,20 +117,17 @@ parte da listagem de desbravadores do Adm.
 ## Fora de escopo
 
 - Renovar empréstimo, multa, reserva de livro, fila de espera.
-- Aviso automático de atraso (e-mail/notificação); atraso aparece só em tela (pergunta aberta 2).
+- Aviso automático de atraso (e-mail/notificação), a pedido do cliente.
 - Código de barras / etiqueta de exemplar.
-- Importar a planilha atual (pergunta aberta 4).
+- Importar a planilha atual: o cliente tem poucos livros e prefere cadastrar à mão.
 - Livro físico sem categoria; empréstimo para quem não é desbravador do clube.
 
-## Perguntas para o cliente (encaminhar)
+## Respostas do cliente
 
-1. **Quem vê com quem está o livro?** Hoje proponho que toda a diretoria veja (D8), porque quem
-   empresta precisa cobrar. Alternativa: só o Adm, e os demais veem só "emprestado".
-2. **O Adm quer ser avisado dos atrasos?** Proponho só mostrar na tela e na Visão Geral. Aviso
-   automático ficaria para depois.
-3. **Há limite de livros por desbravador?** Proponho sem limite.
-4. **Vale importar a planilha atual?** Eu poderia trazer livros e empréstimos em aberto; precisa de
-   um modelo da planilha.
+1. Toda a diretoria vê com quem está o livro (D8).
+2. O Adm não precisa de aviso; só ver no sistema, com destaque na Visão Geral (D14, tela 8).
+3. Um livro por desbravador por vez (D13).
+4. Sem importação da planilha.
 
 ## Critério de pronto (rascunho)
 
@@ -135,6 +136,8 @@ parte da listagem de desbravadores do Adm.
 - Teste de concorrência: dois empréstimos simultâneos do mesmo exemplar, um falha com mensagem.
 - Teste de permissão: conselheiro e instrutor emprestam para desbravador de outra unidade/classe;
   nenhum dos dois cadastra, dá baixa ou abre a aba Empréstimos.
+- Teste do limite: segundo empréstimo do mesmo desbravador é recusado, com o título do livro que ele já tem; depois de devolver, o empréstimo passa.
+- Visão Geral: cartão de atrasados aparece só com livro físico no clube, só traz empréstimo do próprio clube, e o número do selo bate com a aba Empréstimos (mesma função calcula os dois).
 - Medido no DOM em 390, 820 e 1280 px, sem rolagem lateral.
 - Cada tela do mockup vira item do roteiro de QA.
 
