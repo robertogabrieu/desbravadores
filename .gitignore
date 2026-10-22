@@ -9,3 +9,6 @@ playwright-report
 .arquivos/
 .deployed-commit
 backups/
+
+# cache de transpilação do Jest nos testes em container (scripts/agente-stack.sh testar)
+.jest-cache/

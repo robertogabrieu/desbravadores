@@ -1,0 +1,108 @@
+# ===========================================
+# Stack LOCAL por agente do Desbravadores — independente do docker-compose.yml (portas fixas
+# 5442, 1026 e 8026) e do docker-compose.prod.yml. Quem sobe e derruba é scripts/agente-stack.sh.
+#
+# Cada agente tem banco, e-mail e app próprios, portas sorteadas e teto de memória sem swap
+# (mem_limit igual a memswap_limit): estourou, o kernel mata o container e não o WSL. O app roda
+# em modo desenvolvimento, com o código da worktree montado: o Vite aplica a edição na hora e a
+# API recompila e reinicia sozinha, sem build de imagem.
+# ===========================================
+
+name: desbravadores-agente
+
+volumes:
+  dados:
+  node_modules:
+  api_node_modules:
+  web_node_modules:
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "127.0.0.1::5432"
+    volumes:
+      - dados:/var/lib/postgresql/data
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 1.0
+    labels:
+      - "agente.tipo=${AGENTE_TIPO:-efemero}"
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "127.0.0.1::8025"
+      - "127.0.0.1::1025"
+    mem_limit: 96m
+    memswap_limit: 96m
+    cpus: 0.25
+    labels:
+      - "agente.tipo=${AGENTE_TIPO:-efemero}"
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.agente
+    image: desbravadores/agente:dev
+    user: "${AGENTE_UID:-1000}:${AGENTE_GID:-1000}"
+    working_dir: /app
+    # API (3001, recompila com tsc --watch) e Vite (5173) no mesmo container: o proxy do Vite
+    # fala com a API por localhost
+    command: sh -c "npm run dev -w api & exec npm run dev -w web -- --host 0.0.0.0"
+    environment:
+      HOME: /tmp
+      TZ: America/Sao_Paulo
+      NODE_OPTIONS: "--max-old-space-size=1280"
+      DATABASE_URL: postgresql://desbravador:desbravador@postgres:5432/desbravador
+      DATABASE_URL_ADMIN: postgresql://postgres:postgres@postgres:5432/postgres
+      PORTA_API: "3001"
+      # os links de convite e de e-mail usam esta origem: precisa ser a porta sorteada, que o
+      # scripts/agente-stack.sh escolhe antes de subir
+      APP_URL: http://localhost:${AGENTE_PORTA_WEB:-5173}
+      # segredos só de desenvolvimento (32 bytes em hex), descartados junto com a stack
+      JWT_SEGREDO: "4444444444444444444444444444444444444444444444444444444444444444"
+      ARQUIVOS_SEGREDO: "5555555555555555555555555555555555555555555555555555555555555555"
+      COOKIE_SECURE: "false"
+      TRUST_PROXY: "0"
+      SMTP_HOST: mailpit
+      SMTP_PORTA: "1025"
+      SMTP_USUARIO: ""
+      SMTP_SENHA: ""
+      SMTP_FROM: "App do Desbravador <nao-responda@desbravadores.local>"
+      ARQUIVOS_DIR: /tmp/arquivos
+      TAREFAS_PERIODICAS: "1"
+    ports:
+      - "127.0.0.1:${AGENTE_PORTA_WEB:-5173}:5173"
+      - "127.0.0.1::3001"
+    volumes:
+      - .:/app:cached
+      - node_modules:/app/node_modules
+      - api_node_modules:/app/apps/api/node_modules
+      - web_node_modules:/app/apps/web/node_modules
+    tmpfs:
+      - /tmp
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 5173 && nc -z 127.0.0.1 3001"]
+      start_period: 90s
+      interval: 15s
+      timeout: 5s
+      retries: 8
+    # tsc em modo watch, a API e o Vite (que passa de 1 GB na primeira carga) no mesmo container
+    mem_limit: 2g
+    memswap_limit: 2g
+    cpus: 2.0
+    labels:
+      - "agente.tipo=${AGENTE_TIPO:-efemero}"
