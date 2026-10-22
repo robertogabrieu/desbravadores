@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ModoConexao } from '../../offline'
 import { GuardaRota } from '../../sessao/GuardaRota'
 import type { CategoriaBiblioteca, ChamadaBiblioteca } from '../../testes/handlers/biblioteca'
-import { criarCategoriaBiblioteca, criarItemBiblioteca, handlerBiblioteca, handlersEscritaBiblioteca } from '../../testes/handlers/biblioteca'
+import { criarCategoriaBiblioteca, criarItemBiblioteca, criarItemFisico, handlerBiblioteca, handlersEscritaBiblioteca } from '../../testes/handlers/biblioteca'
 import { criarVinculo, handlersSessao } from '../../testes/handlers/sessao'
 import { renderizarRotas } from '../../testes/renderizar'
 import { servidor } from '../../testes/servidor'
@@ -20,10 +20,18 @@ vi.mock('../../offline', async (importarOriginal) => ({
   useConexao: () => ({ modo: estado.modo }),
 }))
 
-const abrir = () =>
+vi.mock('./AbaEmprestimos', () => ({
+  AbaEmprestimos: ({ filtroInicial }: { filtroInicial?: string }) => <p>{`Aba Empréstimos (${filtroInicial ?? 'sem filtro'})`}</p>,
+}))
+
+vi.mock('./DialogoEmprestar', () => ({
+  DialogoEmprestar: ({ aberto, item }: { aberto: boolean; item: { nome: string } | null }) => (aberto && item ? <p>{`Emprestando ${item.nome}`}</p> : null),
+}))
+
+const abrir = (endereco = '/biblioteca') =>
   renderizarRotas(
     [{ element: <GuardaRota />, children: [{ path: '/biblioteca', element: <TelaBiblioteca /> }, { path: '/inicio', element: <p>Início</p> }] }],
-    '/biblioteca',
+    endereco,
   )
 
 const amigo = criarItemBiblioteca(1, { nome: 'Amigo', descricao: 'Classe regular e avançada' })
@@ -1082,5 +1090,364 @@ describe('Biblioteca — carregando, erro e sem conexão', () => {
     expect(consulta?.observers[0]?.options).toMatchObject({ staleTime: 5 * 60_000, refetchInterval: 8 * 60_000, refetchOnWindowFocus: true, gcTime: 0 })
     unmount()
     await waitFor(() => expect(clienteConsultas.getQueryCache().findAll({ queryKey: ['biblioteca'] })).toHaveLength(0))
+  })
+})
+
+describe('Biblioteca — livros físicos', () => {
+  const pesquisador = criarItemFisico(1, { capaUrl: 'https://arquivos.test/capa-f1.jpg', nome: 'Pesquisador', total: 2, disponiveis: 1 })
+  const guia = criarItemFisico(2, { capaUrl: 'https://arquivos.test/capa-f2.jpg', nome: 'Guia', total: 2, disponiveis: 0 })
+  const orfao = criarItemFisico(3, { capaUrl: 'https://arquivos.test/capa-f3.jpg', nome: 'Sem cópias', total: 0, disponiveis: 0 })
+  const unico = criarItemFisico(4, { capaUrl: 'https://arquivos.test/capa-f4.jpg', nome: 'Exemplar único', total: 1, disponiveis: 1 })
+  const cadernosMistos = criarCategoriaBiblioteca(1, [amigo, pesquisador, guia, orfao], { nome: 'Cadernos de Classes' })
+  const soFisicos = criarCategoriaBiblioteca(4, [unico], { nome: 'Só físicos' })
+  const mista: CategoriaBiblioteca[] = [cadernosMistos, livros, manuais, soFisicos]
+  const COM_EMPRESTAR = ['biblioteca.emprestar']
+
+  function comoAdmDaEstante(categorias: CategoriaBiblioteca[] = mista, permissoes = ['biblioteca.gerenciar', ...COM_EMPRESTAR]) {
+    servidor.use(...handlersSessao([criarVinculo('ADM')], undefined, permissoes), handlerBiblioteca(categorias), ...handlersEscritaBiblioteca(chamadas))
+  }
+
+  function comoConselheiro(categorias: CategoriaBiblioteca[] = mista, permissoes = COM_EMPRESTAR) {
+    servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO')], undefined, permissoes), handlerBiblioteca(categorias))
+  }
+
+  const cartaoDe = (nome: string) => within(screen.getByText(nome).closest('li') as HTMLElement)
+
+  describe('abas do Adm', () => {
+    it('mostra Livros digitais, Livros físicos e Empréstimos, abrindo nos digitais', async () => {
+      comoAdmDaEstante()
+      abrir()
+      const abas = within(await screen.findByRole('tablist', { name: 'Tipo de livro' }))
+      expect(abas.getAllByRole('tab').map((aba) => aba.textContent)).toEqual(['Livros digitais', 'Livros físicos', 'Empréstimos'])
+      expect(abas.getByRole('tab', { name: 'Livros digitais' })).toHaveAttribute('aria-selected', 'true')
+      expect(await screen.findByRole('link', { name: 'Ler Amigo' })).toBeInTheDocument()
+      expect(screen.queryByText('Pesquisador')).not.toBeInTheDocument()
+    })
+
+    it('Livros físicos mostra só os físicos, sem Ler nem Baixar, e o Adm vê a categoria sem físico', async () => {
+      comoAdmDaEstante()
+      const usuario = userEvent.setup()
+      abrir()
+      await usuario.click(await screen.findByRole('tab', { name: 'Livros físicos' }))
+      expect(await screen.findByText('Pesquisador')).toBeInTheDocument()
+      expect(screen.queryByText('Amigo')).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: /^Ler / })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: /^Baixar / })).not.toBeInTheDocument()
+      expect(secao('Livros').getByText('Nenhum item nesta categoria.')).toBeInTheDocument()
+      expect(secao('Cadernos de Classes').getByText('3 livros · 4 exemplares')).toBeInTheDocument()
+    })
+
+    it('o resumo da aba Físicos conta livros e exemplares disponíveis', async () => {
+      comoAdmDaEstante()
+      const usuario = userEvent.setup()
+      abrir()
+      await usuario.click(await screen.findByRole('tab', { name: 'Livros físicos' }))
+      expect(await screen.findByText('4 livros físicos · 2 exemplares disponíveis')).toBeInTheDocument()
+    })
+
+    it('o resumo usa o singular com 1 livro e 1 exemplar', async () => {
+      comoAdmDaEstante([criarCategoriaBiblioteca(1, [unico], { nome: 'Cadernos de Classes' })])
+      abrir('/biblioteca?aba=fisicos')
+      expect(await screen.findByText('1 livro físico · 1 exemplar disponível')).toBeInTheDocument()
+    })
+
+    it('Empréstimos abre a aba com o filtro da URL e some com os botões de adicionar', async () => {
+      comoAdmDaEstante()
+      abrir('/biblioteca?aba=emprestimos&situacao=atrasados')
+      expect(await screen.findByText('Aba Empréstimos (atrasados)')).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: 'Empréstimos' })).toHaveAttribute('aria-selected', 'true')
+      expect(screen.queryByRole('button', { name: 'Adicionar à biblioteca' })).not.toBeInTheDocument()
+    })
+
+    it('Empréstimos sem filtro na URL abre sem filtro; filtro desconhecido é ignorado; trocar de aba volta e vai', async () => {
+      comoAdmDaEstante()
+      const usuario = userEvent.setup()
+      abrir('/biblioteca?aba=emprestimos&situacao=qualquer')
+      expect(await screen.findByText('Aba Empréstimos (sem filtro)')).toBeInTheDocument()
+      await usuario.click(screen.getByRole('tab', { name: 'Livros físicos' }))
+      expect(await screen.findByText('Pesquisador')).toBeInTheDocument()
+      await usuario.click(screen.getByRole('tab', { name: 'Empréstimos' }))
+      expect(await screen.findByText('Aba Empréstimos (sem filtro)')).toBeInTheDocument()
+    })
+  })
+
+  describe('quem não gerencia', () => {
+    it('tem o alternador Digitais | Físicos, sem Empréstimos, e esconde a categoria sem item do tipo', async () => {
+      comoConselheiro()
+      const usuario = userEvent.setup()
+      abrir()
+      const abas = within(await screen.findByRole('tablist', { name: 'Tipo de livro' }))
+      expect(abas.getAllByRole('tab').map((aba) => aba.textContent)).toEqual(['Digitais', 'Físicos'])
+      await screen.findByRole('link', { name: 'Ler Amigo' })
+      expect(screen.queryByRole('region', { name: 'Só físicos' })).not.toBeInTheDocument()
+      await usuario.click(abas.getByRole('tab', { name: 'Físicos' }))
+      expect(await screen.findByText('Pesquisador')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'Só físicos' })).toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'Livros' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'Manuais & Documentos' })).not.toBeInTheDocument()
+    })
+
+    it('?aba=emprestimos não abre a aba Empréstimos: cai nos digitais', async () => {
+      comoConselheiro()
+      abrir('/biblioteca?aba=emprestimos')
+      expect(await screen.findByRole('link', { name: 'Ler Amigo' })).toBeInTheDocument()
+      expect(screen.queryByText(/Aba Empréstimos/)).not.toBeInTheDocument()
+    })
+
+    it('busca por nome na aba Físicos, sem acento nem maiúscula, e limpa quando nada combina', async () => {
+      comoConselheiro()
+      const usuario = userEvent.setup()
+      abrir('/biblioteca?aba=fisicos')
+      const busca = await screen.findByRole('searchbox', { name: 'Buscar livro' })
+      await usuario.type(busca, 'EXEMPLAR unico')
+      expect(screen.getByText('Exemplar único')).toBeInTheDocument()
+      expect(screen.queryByText('Pesquisador')).not.toBeInTheDocument()
+      await usuario.clear(busca)
+      await usuario.type(busca, 'zzz')
+      expect(screen.getByText('Nenhum livro com esse nome.')).toBeInTheDocument()
+      await usuario.click(screen.getByRole('button', { name: 'Limpar a busca' }))
+      expect(screen.getByText('Pesquisador')).toBeInTheDocument()
+      expect(busca).toHaveValue('')
+    })
+
+    it('não há busca nos digitais', async () => {
+      comoConselheiro()
+      abrir()
+      await screen.findByRole('link', { name: 'Ler Amigo' })
+      expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
+    })
+
+    it('sem livro físico: "O Adm ainda não cadastrou livros físicos."', async () => {
+      comoConselheiro(estante)
+      abrir('/biblioteca?aba=fisicos')
+      expect(await screen.findByText('Nenhum livro físico ainda.')).toBeInTheDocument()
+      expect(screen.getByText('O Adm ainda não cadastrou livros físicos.')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /Adicionar|Cadastre/ })).not.toBeInTheDocument()
+    })
+
+    it('só com livros físicos, os digitais dizem "Nenhum livro digital ainda."', async () => {
+      comoConselheiro([soFisicos])
+      abrir()
+      expect(await screen.findByText('Nenhum livro digital ainda.')).toBeInTheDocument()
+    })
+  })
+
+  describe('o cartão do livro físico', () => {
+    beforeEach(() => comoConselheiro())
+
+    it('mostra a pílula de disponibilidade e Emprestar e Exemplares, sem Ler nem Baixar', async () => {
+      abrir('/biblioteca?aba=fisicos')
+      await screen.findByText('Pesquisador')
+      const cartao = cartaoDe('Pesquisador')
+      expect(cartao.getByText('1 de 2 disponíveis')).toBeInTheDocument()
+      expect(cartao.getByRole('button', { name: 'Emprestar Pesquisador' })).toBeEnabled()
+      expect(cartao.getByRole('link', { name: 'Exemplares de Pesquisador' })).toHaveAttribute('href', `/biblioteca/livros/${pesquisador.id}`)
+      expect(cartao.queryByRole('link', { name: /Ler|Baixar/ })).not.toBeInTheDocument()
+      expect(cartaoDe('Exemplar único').getByText('1 de 1 disponível')).toBeInTheDocument()
+    })
+
+    it('0 disponíveis: pílula "Todos emprestados", Emprestar desligado e o motivo escrito', async () => {
+      abrir('/biblioteca?aba=fisicos')
+      await screen.findByText('Guia')
+      const cartao = cartaoDe('Guia')
+      expect(cartao.getByText('Todos emprestados')).toBeInTheDocument()
+      const emprestar = cartao.getByRole('button', { name: 'Emprestar Guia' })
+      expect(emprestar).toBeDisabled()
+      expect(emprestar).toHaveAccessibleDescription('Todos os exemplares estão emprestados.')
+      expect(cartao.getByRole('link', { name: 'Exemplares de Guia' })).toBeInTheDocument()
+    })
+
+    it('sem exemplares: "Sem exemplares", Emprestar desligado e o motivo escrito', async () => {
+      abrir('/biblioteca?aba=fisicos')
+      await screen.findByText('Sem cópias')
+      const cartao = cartaoDe('Sem cópias')
+      expect(cartao.getByText('Sem exemplares')).toBeInTheDocument()
+      expect(cartao.getByRole('button', { name: 'Emprestar Sem cópias' })).toBeDisabled()
+      expect(cartao.getByRole('button', { name: 'Emprestar Sem cópias' })).toHaveAccessibleDescription('Este livro não tem exemplares.')
+    })
+
+    it('Emprestar abre o diálogo de empréstimo com o livro do cartão', async () => {
+      const usuario = userEvent.setup()
+      abrir('/biblioteca?aba=fisicos')
+      await usuario.click(await screen.findByRole('button', { name: 'Emprestar Pesquisador' }))
+      expect(screen.getByText('Emprestando Pesquisador')).toBeInTheDocument()
+    })
+
+    it('sem conexão: Emprestar desligado dizendo que precisa de internet', async () => {
+      estado.modo = 'SEM_CONEXAO'
+      abrir('/biblioteca?aba=fisicos')
+      await screen.findByText('Pesquisador')
+      const emprestar = cartaoDe('Pesquisador').getByRole('button', { name: 'Emprestar Pesquisador' })
+      expect(emprestar).toBeDisabled()
+      expect(emprestar).toHaveAccessibleDescription('Emprestar precisa de internet.')
+    })
+
+    it('sem a permissão de emprestar: só a pílula, sem Emprestar nem Exemplares', async () => {
+      comoConselheiro(mista, [])
+      abrir('/biblioteca?aba=fisicos')
+      await screen.findByText('Pesquisador')
+      const cartao = cartaoDe('Pesquisador')
+      expect(cartao.getByText('1 de 2 disponíveis')).toBeInTheDocument()
+      expect(cartao.queryByRole('button', { name: /Emprestar/ })).not.toBeInTheDocument()
+      expect(cartao.queryByRole('link', { name: /Exemplares/ })).not.toBeInTheDocument()
+      expect(cartao.queryByRole('button', { name: /Opções/ })).not.toBeInTheDocument()
+    })
+  })
+
+  describe('o cartão do Adm', () => {
+    it('Exemplares leva ao detalhe do Adm e Opções traz Editar, Mover e Remover', async () => {
+      comoAdmDaEstante()
+      const usuario = userEvent.setup()
+      abrir('/biblioteca?aba=fisicos')
+      await screen.findByText('Guia')
+      const cartao = cartaoDe('Guia')
+      expect(cartao.getByRole('link', { name: 'Exemplares de Guia' })).toHaveAttribute('href', `/adm/biblioteca/livros/${guia.id}`)
+      await usuario.click(cartao.getByRole('button', { name: 'Opções de Guia' }))
+      expect(screen.getByRole('menuitem', { name: 'Editar' })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: 'Mover para cima' })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: 'Remover' })).toBeInTheDocument()
+    })
+
+    it('Editar abre o diálogo sem falar de PDF', async () => {
+      comoAdmDaEstante()
+      const usuario = userEvent.setup()
+      abrir('/biblioteca?aba=fisicos')
+      await screen.findByText('Guia')
+      await usuario.click(cartaoDe('Guia').getByRole('button', { name: 'Opções de Guia' }))
+      await usuario.click(screen.getByRole('menuitem', { name: 'Editar' }))
+      const dialogo = within(await screen.findByRole('dialog'))
+      expect(dialogo.getByLabelText('Nome')).toHaveValue('Guia')
+      expect(dialogo.queryByText(/PDF/)).not.toBeInTheDocument()
+    })
+  })
+
+  describe('vazios do Adm', () => {
+    it('sem livro físico: "Cadastre o primeiro livro físico" com o botão que abre o diálogo já no tipo físico', async () => {
+      comoAdmDaEstante(estante)
+      const usuario = userEvent.setup()
+      abrir('/biblioteca?aba=fisicos')
+      expect(await screen.findByText('Cadastre o primeiro livro físico')).toBeInTheDocument()
+      await usuario.click(screen.getByRole('button', { name: 'Adicionar livro físico' }))
+      const dialogo = within(await screen.findByRole('dialog', { name: 'Adicionar à biblioteca' }))
+      expect(dialogo.getByRole('radio', { name: 'Livro físico' })).toBeChecked()
+    })
+
+    it('o vazio dos digitais continua falando do PDF', async () => {
+      comoAdmDaEstante([criarCategoriaBiblioteca(1, [], { nome: 'Cadernos de Classes' })])
+      abrir()
+      expect(await screen.findByText(/para colocar o primeiro PDF/)).toBeInTheDocument()
+    })
+
+    it('"Adicionar à biblioteca" na aba Físicos já abre no tipo físico', async () => {
+      comoAdmDaEstante()
+      const usuario = userEvent.setup()
+      abrir('/biblioteca?aba=fisicos')
+      await usuario.click(await screen.findByRole('button', { name: 'Adicionar à biblioteca' }))
+      expect(within(await screen.findByRole('dialog')).getByRole('radio', { name: 'Livro físico' })).toBeChecked()
+    })
+  })
+
+  describe('adicionar um livro físico', () => {
+    async function abrirNoTipoFisico(usuario: ReturnType<typeof userEvent.setup>) {
+      comoAdmDaEstante(estante)
+      abrir()
+      const dialogo = await abrirAdicionar(usuario)
+      await usuario.click(dialogo.getByRole('radio', { name: 'Livro físico' }))
+      return dialogo
+    }
+
+    it('o tipo vem no topo, digital é o padrão e físico troca o PDF pela quantidade', async () => {
+      comoAdmDaEstante(estante)
+      const usuario = userEvent.setup()
+      abrir()
+      const dialogo = await abrirAdicionar(usuario)
+      expect(dialogo.getByRole('radio', { name: 'Livro digital (PDF)' })).toBeChecked()
+      expect(dialogo.getByLabelText('PDF')).toBeInTheDocument()
+      expect(dialogo.queryByLabelText('Quantidade de exemplares')).not.toBeInTheDocument()
+      await usuario.click(dialogo.getByRole('radio', { name: 'Livro físico' }))
+      expect(dialogo.queryByLabelText('PDF')).not.toBeInTheDocument()
+      expect(dialogo.getByLabelText('Quantidade de exemplares')).toHaveValue(1)
+      expect(dialogo.getByText('Cada exemplar vira uma linha para emprestar e devolver. Você pode acrescentar mais depois.')).toBeInTheDocument()
+      expect(dialogo.getByLabelText('Capa')).toBeInTheDocument()
+    })
+
+    it('cria o livro pela rota de físicos com a quantidade e fecha o diálogo', async () => {
+      const usuario = userEvent.setup()
+      const dialogo = await abrirNoTipoFisico(usuario)
+      await usuario.type(dialogo.getByLabelText('Nome'), 'Novo físico')
+      await usuario.clear(dialogo.getByLabelText('Quantidade de exemplares'))
+      await usuario.type(dialogo.getByLabelText('Quantidade de exemplares'), '3')
+      await usuario.click(dialogo.getByRole('button', { name: 'Adicionar' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(chamadas).toContainEqual({ metodo: 'POST', caminho: '/api/biblioteca/itens-fisicos', corpo: { nome: 'Novo físico', descricao: null, categoriaId: cadernos.id, quantidade: 3 } })
+    })
+
+    it('depois de criar, envia a capa escolhida no mesmo passo do digital', async () => {
+      const envio = simularEnvios([{ status: 200, corpo: criarItemFisico(9, { nome: 'Novo físico' }) }])
+      const usuario = userEvent.setup()
+      const dialogo = await abrirNoTipoFisico(usuario)
+      await usuario.type(dialogo.getByLabelText('Nome'), 'Novo físico')
+      await usuario.upload(dialogo.getByLabelText('Capa'), capaDe())
+      await usuario.click(dialogo.getByRole('button', { name: 'Adicionar' }))
+      await waitFor(() => expect(envio.enviados).toHaveLength(1))
+      expect(envio.enviados[0]).toMatchObject({ metodo: 'PUT', campo: 'capa' })
+      expect(envio.enviados[0].url).toMatch(/^\/api\/biblioteca\/itens\/.+\/capa$/)
+    })
+
+    it.each([
+      ['0', 'Informe ao menos 1 exemplar'],
+      ['51', 'No máximo 50 exemplares por vez'],
+    ])('quantidade %s: "%s", e nada é enviado', async (quantidade, mensagem) => {
+      const usuario = userEvent.setup()
+      const dialogo = await abrirNoTipoFisico(usuario)
+      await usuario.type(dialogo.getByLabelText('Nome'), 'Novo físico')
+      await usuario.clear(dialogo.getByLabelText('Quantidade de exemplares'))
+      await usuario.type(dialogo.getByLabelText('Quantidade de exemplares'), quantidade)
+      await usuario.click(dialogo.getByRole('button', { name: 'Adicionar' }))
+      expect(dialogo.getByText(mensagem)).toBeInTheDocument()
+      expect(chamadas).toHaveLength(0)
+    })
+
+    it('sem nome pede o nome e não chama a API', async () => {
+      const usuario = userEvent.setup()
+      const dialogo = await abrirNoTipoFisico(usuario)
+      await usuario.click(dialogo.getByRole('button', { name: 'Adicionar' }))
+      expect(dialogo.getByText('Dê um nome ao item.')).toBeInTheDocument()
+      expect(chamadas).toHaveLength(0)
+    })
+
+    it('mostra a recusa da API dentro do diálogo', async () => {
+      const usuario = userEvent.setup()
+      const dialogo = await abrirNoTipoFisico(usuario)
+      servidor.use(http.post('/api/biblioteca/itens-fisicos', () => HttpResponse.json({ codigo: 'ERRO_INTERNO', mensagem: 'Categoria não existe mais.' }, { status: 404 })))
+      await usuario.type(dialogo.getByLabelText('Nome'), 'Novo físico')
+      await usuario.click(dialogo.getByRole('button', { name: 'Adicionar' }))
+      expect(await dialogo.findByText('Categoria não existe mais.')).toBeInTheDocument()
+    })
+  })
+
+  describe('carregando, erro e sem conexão na aba Físicos', () => {
+    it('carregando, e depois os livros', async () => {
+      comoConselheiro()
+      abrir('/biblioteca?aba=fisicos')
+      expect(await screen.findByRole('status', { name: 'Carregando a biblioteca' })).toBeInTheDocument()
+      expect(await screen.findByText('Pesquisador')).toBeInTheDocument()
+    })
+
+    it('erro com a mensagem da API e "Tentar de novo"', async () => {
+      servidor.use(
+        ...handlersSessao([criarVinculo('CONSELHEIRO')], undefined, COM_EMPRESTAR),
+        http.get('/api/biblioteca', () => HttpResponse.json({ codigo: 'ERRO_INTERNO', mensagem: 'Não deu para abrir a biblioteca.' }, { status: 500 })),
+      )
+      abrir('/biblioteca?aba=fisicos')
+      expect(await screen.findByText('Não deu para abrir a biblioteca.')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Tentar de novo' })).toBeInTheDocument()
+    })
+
+    it('sem rede: "Disponível quando houver internet"', async () => {
+      servidor.use(...handlersSessao([criarVinculo('CONSELHEIRO')], undefined, COM_EMPRESTAR), http.get('/api/biblioteca', () => HttpResponse.error()))
+      abrir('/biblioteca?aba=fisicos')
+      expect(await screen.findByText('Disponível quando houver internet')).toBeInTheDocument()
+    })
   })
 })

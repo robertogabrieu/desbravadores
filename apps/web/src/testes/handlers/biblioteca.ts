@@ -1,16 +1,21 @@
-import type { BibliotecaSaida, CategoriaBibliotecaSaida, ItemBibliotecaSaida } from '@desbravadores/shared'
+import type { BibliotecaSaida, CategoriaBibliotecaSaida, ItemBibliotecaSaida, ItemDigitalSaida, ItemFisicoSaida } from '@desbravadores/shared'
 import { HttpResponse, http } from 'msw'
 import { uuid } from './sessao'
 
 export type ItemBiblioteca = ItemBibliotecaSaida
 export type CategoriaBiblioteca = CategoriaBibliotecaSaida
 
-export function criarItemBiblioteca(n: number, parcial: Partial<ItemBiblioteca> = {}): ItemBiblioteca {
+export function criarItemBiblioteca(n: number, parcial: Partial<ItemDigitalSaida> = {}): ItemDigitalSaida {
   return {
-    id: uuid(7000 + n), categoriaId: uuid(6001), nome: `Livro ${n}`, descricao: null, bytes: 1_258_291,
+    id: uuid(7000 + n), tipo: 'DIGITAL', categoriaId: uuid(6001), nome: `Livro ${n}`, descricao: null, bytes: 1_258_291,
     urlLer: `https://arquivos.test/ler-${n}.pdf`, urlBaixar: `https://arquivos.test/baixar-${n}.pdf`, capaUrl: null,
     ...parcial,
   }
+}
+
+/** Livro físico com 3 exemplares, 2 disponíveis, salvo o que `parcial` mudar. */
+export function criarItemFisico(n: number, parcial: Partial<ItemFisicoSaida> = {}): ItemFisicoSaida {
+  return { id: uuid(7500 + n), tipo: 'FISICO', categoriaId: uuid(6001), nome: `Livro físico ${n}`, descricao: null, capaUrl: null, total: 3, disponiveis: 2, ...parcial }
 }
 
 export function criarCategoriaBiblioteca(n: number, itens: ItemBiblioteca[] = [], parcial: Partial<CategoriaBiblioteca> = {}): CategoriaBiblioteca {
@@ -54,6 +59,11 @@ export const handlersEscritaBiblioteca = (chamadas: ChamadaBiblioteca[]) => [
   http.delete('/api/biblioteca/categorias/:id', async ({ request }) => {
     await registrar(chamadas, request)
     return semConteudo()
+  }),
+  http.post('/api/biblioteca/itens-fisicos', async ({ request }) => {
+    await registrar(chamadas, request)
+    const corpo = chamadas[chamadas.length - 1]?.corpo as { nome: string; quantidade: number }
+    return HttpResponse.json(criarItemFisico(9, { nome: corpo.nome, total: corpo.quantidade, disponiveis: corpo.quantidade }), { status: 201 })
   }),
   http.patch('/api/biblioteca/itens/:id', async ({ request, params }) => {
     await registrar(chamadas, request)

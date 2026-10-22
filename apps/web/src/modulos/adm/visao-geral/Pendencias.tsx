@@ -1,3 +1,4 @@
+import { textoDeDias } from '@desbravadores/shared'
 import { Check, TriangleAlert } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { VisaoGeral } from '../../../api/visao-geral'
@@ -8,6 +9,7 @@ import { diaDaSemana, diaEMes, dosDiasDeReuniao } from '../calendario/datas'
 import { useEstadoDeVolta } from '../navegacao'
 
 const MAXIMO_DE_UNIDADES = 5
+const ABA_DE_ATRASADOS = '/adm/biblioteca?aba=emprestimos&situacao=atrasados'
 
 const plural = (n: number, singular: string, muitos: string): string => `${n} ${n === 1 ? singular : muitos}`
 
@@ -108,7 +110,43 @@ function UnidadesSemChamada({ pendencia }: { pendencia: NonNullable<VisaoGeral['
   )
 }
 
-/** Classes sem cronograma e unidades sem chamada; sem unidade ativa (ou sem dia de reunião no calendário) o cartão de chamada não existe. */
+function LivrosAtrasados({ pendencia }: { pendencia: NonNullable<VisaoGeral['livrosAtrasados']> }) {
+  const { total, itens } = pendencia
+  const restantes = total - itens.length
+  return (
+    <CartaoDePendencia
+      titulo="Livros atrasados"
+      nome={total > 0 ? plural(total, 'livro atrasado', 'livros atrasados') : 'Livros atrasados'}
+      total={total}
+      emDia="Nenhum livro atrasado."
+    >
+      <ul className="flex flex-col">
+        {itens.map((atrasado) => (
+          <li key={atrasado.emprestimoId}>
+            <LinhaQueNavega to={ABA_DE_ATRASADOS}>
+              <span className="flex items-center justify-between gap-2">
+                <span className="flex min-w-0 flex-col">
+                  <span className="text-base font-semibold break-words text-texto">{`${atrasado.titulo} · ${atrasado.desbravadorNome}`}</span>
+                  <span className="text-sm text-texto-2">{atrasado.unidade ?? 'Sem unidade'}</span>
+                </span>
+                <span className="shrink-0 text-base font-semibold text-alerta">{textoDeDias(atrasado.dias)}</span>
+              </span>
+            </LinhaQueNavega>
+          </li>
+        ))}
+        {restantes > 0 && (
+          <li>
+            <LinhaQueNavega to={ABA_DE_ATRASADOS}>
+              <span className="text-base font-semibold text-marca">{`E mais ${plural(restantes, 'livro', 'livros')}`}</span>
+            </LinhaQueNavega>
+          </li>
+        )}
+      </ul>
+    </CartaoDePendencia>
+  )
+}
+
+/** Classes sem cronograma, unidades sem chamada e livros atrasados; sem unidade ativa (ou sem dia de reunião no calendário) o cartão de chamada não existe, e sem livro físico no clube o de livros também não. */
 export function Pendencias({ visao }: { visao: VisaoGeral }) {
   const chamada = visao.unidades > 0 ? visao.unidadesSemChamada : null
   return (
@@ -116,6 +154,7 @@ export function Pendencias({ visao }: { visao: VisaoGeral }) {
       <h2 className="font-titulo text-lg font-bold text-texto">Pendências</h2>
       <ClassesSemCronograma classes={visao.classesSemCronograma} />
       {chamada && <UnidadesSemChamada pendencia={chamada} />}
+      {visao.livrosAtrasados && <LivrosAtrasados pendencia={visao.livrosAtrasados} />}
     </section>
   )
 }

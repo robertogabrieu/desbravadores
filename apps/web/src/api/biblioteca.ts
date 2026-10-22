@@ -1,9 +1,11 @@
-import { BibliotecaSaida, CategoriaBibliotecaSaida, ItemBibliotecaSaida } from '@desbravadores/shared'
-import type { CategoriaBibliotecaEntrada, ItemBibliotecaDados, ItemBibliotecaEditar, MoverNaBiblioteca } from '@desbravadores/shared'
+import { BibliotecaSaida, CategoriaBibliotecaSaida, ItemBibliotecaSaida, ItemFisicoSaida } from '@desbravadores/shared'
+import type { CategoriaBibliotecaEntrada, ItemBibliotecaDados, ItemBibliotecaEditar, LivroFisicoEntrada, MoverNaBiblioteca } from '@desbravadores/shared'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ErroDaApi, erroDeResposta, lerTokenAcesso, renovarSessao, requisitar, requisitarSemResposta } from './cliente'
 
 export type ItemBiblioteca = ItemBibliotecaSaida
+export type ItemDigital = Extract<ItemBibliotecaSaida, { tipo: 'DIGITAL' }>
+export type ItemFisico = ItemFisicoSaida
 export type CategoriaBiblioteca = CategoriaBibliotecaSaida
 export type DirecaoNaBiblioteca = MoverNaBiblioteca['direcao']
 
@@ -55,6 +57,10 @@ export const useMoverCategoria = () =>
 
 export const useExcluirCategoria = () =>
   useEscrita((id: string) => requisitarSemResposta(`/api/biblioteca/categorias/${id}`, { metodo: 'DELETE' }))
+
+/** POST /biblioteca/itens-fisicos: o livro físico nasce com os exemplares e sem arquivo; a capa vai depois, por `enviarCapa`. */
+export const useCriarLivroFisico = () =>
+  useEscrita((entrada: LivroFisicoEntrada) => requisitar('/api/biblioteca/itens-fisicos', ItemFisicoSaida, { metodo: 'POST', corpo: entrada }))
 
 export const useEditarItem = () =>
   useEscrita(({ id, ...corpo }: ItemBibliotecaEditar & { id: string }) =>

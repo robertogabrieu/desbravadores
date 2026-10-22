@@ -22,6 +22,7 @@ export function criarVisaoGeral(parcial: Partial<VisaoGeral> = {}): VisaoGeral {
     unidadesSemChamada: null,
     proximoEvento: null,
     chamadasClasseBiblica: [],
+    livrosAtrasados: null,
     ...parcial,
   }
 }
