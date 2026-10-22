@@ -36,5 +36,13 @@ export const VisaoGeralSaida = z.object({
   chamadasClasseBiblica: z.array(z.object({
     encontroId: Uuid, data: DataCivil, grupoId: Uuid, grupoNome: z.string(),
   })).default([]),
+  /** Nulo quando o clube não tem livro físico (o cartão some); `total` é o real, `itens` traz no máximo 5. */
+  livrosAtrasados: z.object({
+    total: z.number().int().min(0),
+    itens: z.array(z.object({
+      emprestimoId: Uuid, titulo: z.string(), desbravadorNome: z.string(), desbravadorAtivo: z.boolean(),
+      unidade: z.string().nullable(), dias: z.number().int().min(1),
+    })).max(5),
+  }).nullable().default(null),
 })
 // GET /visao-geral → VisaoGeralSaida

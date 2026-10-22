@@ -64,3 +64,28 @@ export function instanteDoHorario(data: string, horario: string, fuso: string): 
   const primeiro = comoUtc - deslocamentoDoFuso(fuso, comoUtc) * 60_000
   return new Date(comoUtc - deslocamentoDoFuso(fuso, primeiro) * 60_000)
 }
+
+/** Prazo fixo do empréstimo de livro físico: o servidor grava `devolverAte = emprestadoEm + 14 dias`. */
+export const PRAZO_DE_EMPRESTIMO_EM_DIAS = 14
+
+const MS_POR_DIA = 86_400_000
+
+function diaEmUtc(data: string): number {
+  const { ano, mes, dia } = partesDaData(data)
+  return Date.UTC(ano, mes - 1, dia)
+}
+
+/** Soma dias a uma data civil "AAAA-MM-DD", sem fuso: a conta é de calendário. */
+export function somarDiasAData(data: string, dias: number): string {
+  return new Date(diaEmUtc(data) + dias * MS_POR_DIA).toISOString().slice(0, 10)
+}
+
+export const SITUACOES_DO_EMPRESTIMO = ['NO_PRAZO', 'VENCE_HOJE', 'ATRASADO'] as const
+export type SituacaoDoEmprestimo = (typeof SITUACOES_DO_EMPRESTIMO)[number]
+
+/** `dias` é o atraso em dias de calendário; 0 fora do atraso. A aba, o detalhe e a Visão Geral usam só esta função. */
+export function situacaoDoEmprestimo(devolverAte: string, hoje: string): { situacao: SituacaoDoEmprestimo; dias: number } {
+  const atraso = Math.round((diaEmUtc(hoje) - diaEmUtc(devolverAte)) / MS_POR_DIA)
+  if (atraso > 0) return { situacao: 'ATRASADO', dias: atraso }
+  return { situacao: atraso === 0 ? 'VENCE_HOJE' : 'NO_PRAZO', dias: 0 }
+}
