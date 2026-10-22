@@ -118,6 +118,8 @@ describe('guarda de clube: modelos de clube', () => {
         'Substituicao',
         'CategoriaBiblioteca',
         'ItemBiblioteca',
+        'ExemplarBiblioteca',
+        'EmprestimoBiblioteca',
       ].sort(),
     )
     expect([...MODELOS_MISTOS].sort()).toEqual(['Classe', 'Especialidade'])

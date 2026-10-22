@@ -179,6 +179,55 @@ describe('unidades sem chamada', () => {
   })
 })
 
+describe('livros atrasados', () => {
+  const atrasado = (n: number, parcial: Partial<NonNullable<VisaoGeral['livrosAtrasados']>['itens'][number]> = {}) => ({
+    emprestimoId: uuid(300 + n), titulo: `Livro ${n}`, desbravadorNome: `Dbv ${n}`, desbravadorAtivo: true, unidade: 'Águias', dias: n, ...parcial,
+  })
+  const ENDERECO = '/adm/biblioteca?aba=emprestimos&situacao=atrasados'
+
+  it('lista livro, desbravador, unidade e dias, e cada linha leva à aba Empréstimos em Atrasados', async () => {
+    abrirCom({ livrosAtrasados: { total: 2, itens: [atrasado(5), atrasado(1, { unidade: null })] } })
+    const cartao = within(await screen.findByRole('region', { name: '2 livros atrasados' }))
+    expect(cartao.getByRole('heading', { name: 'Livros atrasados' })).toBeInTheDocument()
+    const primeira = cartao.getByRole('link', { name: /Livro 5/ })
+    expect(primeira).toHaveAttribute('href', ENDERECO)
+    expect(within(primeira).getByText('Livro 5 · Dbv 5')).toBeInTheDocument()
+    expect(within(primeira).getByText('Águias')).toBeInTheDocument()
+    expect(within(primeira).getByText('5 dias')).toBeInTheDocument()
+    const segunda = cartao.getByRole('link', { name: /Livro 1/ })
+    expect(within(segunda).getByText('1 dia')).toBeInTheDocument()
+    expect(within(segunda).getByText('Sem unidade')).toBeInTheDocument()
+  })
+
+  it('fica empilhado depois dos outros dois cartões de pendência', async () => {
+    abrirCom({ unidades: 1, unidadesSemChamada: { reuniao: '2026-10-11', unidades: [] }, livrosAtrasados: { total: 1, itens: [atrasado(2)] } })
+    await screen.findByRole('region', { name: '1 livro atrasado' })
+    const nomes = within(screen.getByRole('region', { name: 'Pendências' })).getAllByRole('heading', { level: 3 }).map((titulo) => titulo.textContent)
+    expect(nomes).toEqual(['Classes sem cronograma', 'Unidades sem chamada', 'Livros atrasados'])
+  })
+
+  it('nenhum atrasado: "Nenhum livro atrasado.", sem selo', async () => {
+    abrirCom({ livrosAtrasados: { total: 0, itens: [] } })
+    const cartao = within(await screen.findByRole('region', { name: 'Livros atrasados' }))
+    expect(cartao.getByText('Nenhum livro atrasado.')).toBeInTheDocument()
+    expect(document.querySelector('[data-tom="alerta"]')).toBeNull()
+    expect(cartao.queryByRole('link')).not.toBeInTheDocument()
+  })
+
+  it('clube sem livro físico (nulo): o cartão não aparece', async () => {
+    abrirCom({ livrosAtrasados: null })
+    await screen.findByText('Todas as classes têm cronograma.')
+    expect(screen.queryByText('Livros atrasados')).not.toBeInTheDocument()
+  })
+
+  it('mais de 5: mostra 5 e "E mais N livros" leva à aba Empréstimos em Atrasados', async () => {
+    abrirCom({ livrosAtrasados: { total: 8, itens: [1, 2, 3, 4, 5].map((n) => atrasado(n)) } })
+    const cartao = within(await screen.findByRole('region', { name: '8 livros atrasados' }))
+    expect(cartao.getAllByRole('link')).toHaveLength(6)
+    expect(cartao.getByRole('link', { name: 'E mais 3 livros' })).toHaveAttribute('href', ENDERECO)
+  })
+})
+
 describe('prévia do ranking', () => {
   const unidadeDoRanking = (n: number, mediaPontos: number): RankingUnidades[number] => ({
     posicao: n,

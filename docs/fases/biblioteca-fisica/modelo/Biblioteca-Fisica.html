@@ -1,0 +1,224 @@
+<title>Biblioteca Física</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: seletor de telas no topo; cada tela é um quadro do tamanho real (1280 ou 390 px), com rolagem própria. Tokens copiados de docs/fases/biblioteca/modelo (só estrutura e cores, nunca CSS do app). */
+:root{
+  --fundo:#F4F1EA; --papel:#fff; --tinta:#1B221F; --tinta2:#5B645F; --marca:#1F4D3A; --marca-esc:#163828; --marca-suave:#E3F0E8;
+  --borda:#8A8375; --borda2:#D9D3C5; --perigo:#B42318; --perigo-suave:#FCE8E6; --aviso:#7A4B00; --aviso-suave:#FBEFD5; --menu:#CFE0D6;
+  --titulo:'Bricolage Grotesque',system-ui,sans-serif; --corpo:'Figtree',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fundo);color:var(--tinta);font-family:var(--corpo);font-size:16px;padding-block:24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.t{font-family:var(--titulo)}
+.topo{max-width:1280px;margin:0 auto 16px;display:flex;flex-direction:column;gap:12px}
+.topo h1{font-family:var(--titulo);font-size:26px;font-weight:800;margin:0;text-wrap:balance}
+.topo p{margin:0;color:var(--tinta2);max-width:62rem}
+.seletor{display:flex;flex-wrap:wrap;gap:8px}
+.seletor button{font:600 15px var(--corpo);min-height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--borda);background:var(--papel);color:var(--tinta);cursor:pointer}
+.seletor button[aria-selected=true]{background:var(--marca);color:#fff;border-color:var(--marca)}
+.seletor button:focus-visible,.btn:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
+.nota{max-width:1280px;margin:0 auto 12px;font-size:14px;color:var(--tinta2);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.etiqueta{display:inline-block;border-radius:999px;padding:4px 12px;font-size:13px;font-weight:700;letter-spacing:.04em;color:#fff}
+.nova{background:var(--marca)}.alt{background:#9A3412}
+.moldura{max-width:1280px;margin:0 auto;overflow-x:auto;border:1px solid var(--borda2);border-radius:12px}
+.quadro{position:relative;background:var(--fundo)}
+.d{width:1280px;display:flex;min-height:760px}
+.c{width:390px;display:flex;flex-direction:column;min-height:820px;margin:0 auto}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 20px;border-radius:12px;font:600 16px var(--corpo);border:0;white-space:nowrap;cursor:default;text-decoration:none}
+.pri{background:var(--marca);color:#fff}.sec{background:#fff;color:var(--tinta);border:1px solid var(--borda)}.out{background:#fff;color:var(--marca);border:1px solid var(--marca)}.txt{background:transparent;color:var(--tinta);padding:0 12px}.per{background:var(--perigo);color:#fff}
+.off{background:#E8E3D7;color:#5B645F;border:1px solid var(--borda2)}
+.cartao{background:#fff;border:1px solid var(--borda);border-radius:16px}
+aside{width:248px;flex-shrink:0;background:var(--marca);color:#fff}
+.nav{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:12px;color:var(--menu);font-weight:600}
+.nav.on{background:var(--marca-esc);color:#fff}
+.h2{font-family:var(--titulo);font-size:18px;font-weight:700;margin:0}
+.conta{font-size:14px;color:var(--tinta2)}
+.abas{display:flex;gap:4px;border-bottom:1px solid var(--borda2)}
+.aba{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;font-weight:600;color:var(--tinta2);border-bottom:3px solid transparent;margin-bottom:-1px}
+.aba.on{color:var(--marca);border-color:var(--marca)}
+.seg{display:flex;background:#E8E3D7;border-radius:12px;padding:4px}
+.seg span{flex:1;display:flex;align-items:center;justify-content:center;min-height:40px;border-radius:9px;font-weight:600;color:var(--tinta2)}
+.seg span.on{background:#fff;color:var(--marca);box-shadow:0 1px 3px rgba(27,34,31,.2)}
+.capa{container-type:inline-size;position:relative;aspect-ratio:3/4;border-radius:9px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:10px;color:#fff}
+.capa small{font-size:9px;font-weight:700;letter-spacing:.08em;opacity:.9}
+.capa i{position:absolute;right:-18%;bottom:-8%;width:80%;aspect-ratio:1;border-radius:50%;background:rgba(255,255,255,.14)}
+.capa b{position:relative;font-family:var(--titulo);font-size:min(22px,12cqw);font-weight:800;line-height:1}
+.nome{font-size:16px;font-weight:700;line-height:1.3;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.desc{font-size:14px;color:var(--tinta2);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pilula{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font-size:14px;font-weight:700;white-space:nowrap}
+.ok{background:var(--marca-suave);color:var(--marca)}.tudo{background:var(--aviso-suave);color:var(--aviso)}.atr{background:var(--perigo-suave);color:var(--perigo)}.hoje{background:var(--aviso-suave);color:var(--aviso)}.dev{background:#E8E3D7;color:var(--tinta2)}
+.grade{margin:0;padding:0;list-style:none;display:grid;gap:16px}
+.card{padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.lbl{font-size:14px;font-weight:600}.ajuda{font-size:14px;color:var(--tinta2);margin:0}
+.campo{display:flex;flex-direction:column;gap:6px}
+.in{display:flex;align-items:center;gap:8px;min-height:44px;border:1px solid var(--borda);border-radius:9px;background:#fff;padding:0 14px}
+.fundo{position:absolute;inset:0;background:rgba(27,34,31,.4);z-index:10}
+.dialogo{position:absolute;z-index:11;background:#fff;border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:16px;box-shadow:0 20px 40px rgba(27,34,31,.25)}
+.dialogo h2{font-family:var(--titulo);font-size:20px;font-weight:700;margin:0}
+.lista{border:1px solid var(--borda);border-radius:9px;overflow:hidden}
+.lista div{display:flex;flex-direction:column;padding:10px 14px;min-height:52px;justify-content:center}
+.lista div+div{border-top:1px solid var(--borda2)}
+.lista .sel{background:var(--marca-suave)}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--tinta2);padding:10px 14px;border-bottom:1px solid var(--borda2)}
+td{padding:12px 14px;border-bottom:1px solid var(--borda2);vertical-align:middle}
+tr.late td{background:#FFF7F6}
+.tabnum{font-variant-numeric:tabular-nums}
+.chip{display:flex;flex-direction:column;gap:2px;padding:14px 18px;min-width:170px}
+.chip b{font-family:var(--titulo);font-size:28px;line-height:1}
+.passo{max-width:1280px;margin:16px auto 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.passo div{padding:14px 16px;font-size:15px;min-width:0}
+.passo b{display:block;margin-bottom:4px}
+</style>
+
+<div class="topo">
+  <h1>Biblioteca: livros físicos e empréstimos</h1>
+  <p>Mockup da spec <code>docs/fases/biblioteca-fisica/SPEC.md</code> (rascunho 3). Parte da Biblioteca que já existe, com o mesmo menu, cartões e botões. Capas, nomes e datas são fictícios; hoje é 21/10/2026.</p>
+  <div class="seletor" role="tablist" id="seletor"></div>
+</div>
+<div class="nota" id="nota"></div>
+<div class="moldura"><div class="quadro" id="quadro"></div></div>
+<div class="passo" id="passo"></div>
+
+<script>
+(function(){
+var I={
+ pl:'<path d="M5 12h14"/><path d="M12 5v14"/>',
+ bk:'<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+ dn:'<path d="m6 9 6 6 6-6"/>',lf:'<path d="m15 18-6-6 6-6"/>',
+ bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+ dash:'<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',
+ us:'<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>',
+ gp:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+ cal:'<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+ sr:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+ ck:'<path d="M20 6 9 17l-5-5"/>'
+};
+function ic(n,s){s=s||20;return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+I[n]+'</svg>'}
+var logo='<svg width="28" height="32" viewBox="0 0 28 32" aria-hidden="true"><path d="M2 3h24L14 30z" fill="#E8701A" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 7h12l-6 13z" fill="#fff" opacity=".9"/><path d="M11 9h6l-3 7z" fill="#E8701A"/></svg>';
+
+var LIVROS=[
+ {n:'Amigo',d:'Classe regular · requisito de leitura',c:'#2F5FB3',k:'CLASSE',t:3,u:1},
+ {n:'Companheiro',d:'Classe regular · requisito de leitura',c:'#B3362F',k:'CLASSE',t:2,u:0},
+ {n:'Pesquisador',d:'Classe avançada',c:'#6B4C9A',k:'CLASSE',t:2,u:1},
+ {n:'Caminhando com Jesus',d:'Livro de estudo bíblico',c:'#2F7A5A',k:'LIVRO',t:4,u:4},
+ {n:'Manual do Desbravador',d:'Manual oficial',c:'#8A5A1F',k:'MANUAL',t:1,u:1}
+];
+function disp(l){return l.u===0?'<span class="pilula tudo">Todos emprestados</span>':'<span class="pilula ok">'+l.u+' de '+l.t+(l.t>1?' disponíveis':' disponível')+'</span>'}
+function capa(l){return '<div class="capa" style="background:'+l.c+'"><small>'+l.k+'</small><i></i><b>'+l.n.split(' ')[0].toUpperCase()+'</b></div>'}
+function cartao(l,adm){
+ var bot=l.u===0?'<span class="btn off" style="flex:1;padding:0 8px">Emprestar</span>':'<span class="btn out" style="flex:1;padding:0 8px">Emprestar</span>';
+ return '<li class="cartao card">'+capa(l)+'<div style="display:flex;flex-direction:column;gap:6px;min-height:84px"><p class="nome">'+l.n+'</p><p class="desc">'+l.d+'</p>'+disp(l)+'</div><div style="display:flex;gap:8px;margin-top:auto">'+bot+'<span class="btn sec" style="flex:1;padding:0 8px">Exemplares</span></div>'+(adm?'<div style="display:flex;justify-content:flex-end"><span class="btn txt">Opções '+ic('dn',16)+'</span></div>':'')+'</li>'}
+
+function menu(on){
+ var it=[['dash','Visão geral'],['us','Desbravadores'],['gp','Usuários'],['cal','Calendário do clube'],['bk','Biblioteca']];
+ return '<aside><div style="display:flex;align-items:center;gap:8px;padding:20px">'+logo+'<span class="t" style="font-size:18px;font-weight:700;line-height:1.25">App do<br>Desbravador</span></div><nav style="display:flex;flex-direction:column;gap:4px;padding:8px">'+it.map(function(x){return '<span class="nav'+(x[1]===(on||'Biblioteca')?' on':'')+'">'+ic(x[0])+x[1]+'</span>'}).join('')+'</nav></aside>'}
+function topoAdm(){return '<header style="display:flex;align-items:center;justify-content:flex-end;gap:4px;padding:8px 32px;background:#fff;border-bottom:1px solid var(--borda2);min-height:61px"><span class="btn txt">'+ic('bell',22)+'</span><span class="btn txt">Ana Paula Ribeiro '+ic('dn',16)+'</span></header>'}
+function cab(resumo,botoes){return '<header style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px"><div><h1 class="t" style="margin:0;font-size:24px;font-weight:700">Biblioteca</h1><p style="margin:0;color:var(--tinta2)">'+resumo+'</p></div><span style="display:flex;gap:8px">'+botoes+'</span></header>'}
+function abas(a){var n=['Livros digitais','Livros físicos','Empréstimos'];return '<div class="abas">'+n.map(function(x,i){return '<span class="aba'+(i===a?' on':'')+'">'+x+(i===2?' <span class="pilula atr" style="margin-left:8px;padding:2px 8px;font-size:13px">2 atrasados</span>':'')+'</span>'}).join('')+'</div>'}
+function topoCel(){return '<header style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:var(--marca);color:#fff"><span style="display:flex;align-items:center;gap:8px">'+logo+'<span class="t" style="font-size:18px;font-weight:700;line-height:1.25">App do<br>Desbravador</span></span><span style="display:flex;align-items:center;gap:6px;font-weight:600">'+ic('bell',22)+' Marcos Vie... '+ic('dn',16)+'</span></header>'}
+function cabCel(r){return '<header style="display:flex;align-items:flex-start;gap:8px"><span class="btn txt" style="padding:0 6px">'+ic('lf',24)+'</span><div><h1 class="t" style="margin:0;font-size:24px;font-weight:800">Biblioteca</h1><p style="margin:0;font-size:14px;color:var(--tinta2)">'+r+'</p></div></header>'}
+
+var S={};
+/* 1 */
+S.adm={t:'Estante física (Adm)',nota:['alt','Aba nova dentro da Biblioteca. A estante é a mesma de hoje; muda o que o cartão mostra e qual botão destaca.'],
+ passo:[['Um destaque por cartão','Emprestar é o botão de contorno verde. Quando não há exemplar, ele fica apagado e a pílula diz por quê.'],['Mesma estante','Categorias, "Opções" e cartões 3:4 iguais aos dos livros digitais.'],['Contagem à vista','"2 de 3 disponíveis" sai do número de exemplares sem empréstimo aberto.']],
+ h:function(){return '<div class="d">'+menu()+'<div style="flex:1;min-width:0;display:flex;flex-direction:column">'+topoAdm()+'<main style="padding:32px 48px;display:flex;flex-direction:column;gap:24px">'+cab('5 livros físicos · 7 exemplares disponíveis','<span class="btn sec">Nova categoria</span><span class="btn pri">'+ic('pl')+'Adicionar à biblioteca</span>')+abas(1)+
+ '<section style="display:flex;flex-direction:column;gap:12px"><div style="display:flex;justify-content:space-between;align-items:center"><h2 class="h2">Cadernos de Classes</h2><span class="conta">3 livros · 7 exemplares</span></div><ul class="grade" style="grid-template-columns:repeat(4,minmax(0,1fr))">'+LIVROS.slice(0,3).map(function(l){return cartao(l,true)}).join('')+'</ul></section>'+
+ '<section style="display:flex;flex-direction:column;gap:12px"><div style="display:flex;justify-content:space-between;align-items:center"><h2 class="h2">Livros</h2><span class="conta">2 livros · 5 exemplares</span></div><ul class="grade" style="grid-template-columns:repeat(4,minmax(0,1fr))">'+LIVROS.slice(3).map(function(l){return cartao(l,true)}).join('')+'</ul></section></main></div></div>'}};
+/* 2 */
+var EMP=[
+ ['Companheiro · ex. 1','Lucas Ferreira','Águias','02/10','16/10','atr','Atrasado há 5 dias'],
+ ['Amigo · ex. 3','Beatriz Nunes','Leões','05/10','19/10','atr','Atrasado há 2 dias'],
+ ['Pesquisador · ex. 2','Davi Mendes','Águias','07/10','21/10','hoje','Vence hoje'],
+ ['Companheiro · ex. 2','Sofia Almeida (inativa)','Lobos','12/10','26/10','ok','No prazo'],
+ ['Amigo · ex. 1','Pedro Rocha','Leões','14/10','28/10','ok','No prazo']];
+S.emp={t:'Empréstimos (Adm)',nota:['nova','Aba só do Adm. Responde "com quem está" e "quem está atrasado" sem abrir livro por livro.'],
+ passo:[['Atrasados primeiro','A ordem é do mais atrasado para o mais no prazo. A linha atrasada tem fundo avermelhado e a pílula escreve quantos dias.'],['Cor nunca é o único sinal','Cada situação tem texto: "Atrasado há 5 dias", "Vence hoje", "No prazo".'],['Uma ação por linha','Devolver é o único botão da linha; o resto é leitura.']],
+ h:function(){return '<div class="d">'+menu()+'<div style="flex:1;min-width:0;display:flex;flex-direction:column">'+topoAdm()+'<main style="padding:32px 48px;display:flex;flex-direction:column;gap:24px">'+cab('5 livros emprestados','')+abas(2)+
+ '<div style="display:flex;gap:12px;flex-wrap:wrap"><div class="cartao chip"><b>5</b><span class="conta">Emprestados agora</span></div><div class="cartao chip" style="border-color:var(--perigo)"><b style="color:var(--perigo)">2</b><span class="conta">Atrasados</span></div><div class="cartao chip"><b>1</b><span class="conta">Vencem hoje</span></div></div>'+
+ '<div style="display:flex;gap:8px;flex-wrap:wrap"><span class="in" style="max-width:320px">'+ic('sr',18)+'<span style="color:var(--tinta2)">Buscar livro ou desbravador</span></span><span class="in" style="width:auto">Situação: Todas '+ic('dn',16)+'</span></div>'+
+ '<div class="cartao" style="overflow-x:auto"><table><thead><tr><th>Livro</th><th>Com quem está</th><th>Emprestado em</th><th>Devolver até</th><th>Situação</th><th></th></tr></thead><tbody>'+EMP.map(function(r){return '<tr'+(r[5]==='atr'?' class="late"':'')+'><td><b>'+r[0]+'</b></td><td>'+r[1]+'<div class="conta">'+r[2]+'</div></td><td class="tabnum">'+r[3]+'</td><td class="tabnum">'+r[4]+'</td><td><span class="pilula '+r[5]+'">'+r[6]+'</span></td><td style="text-align:right"><span class="btn sec" style="min-height:40px">Devolver</span></td></tr>'}).join('')+'</tbody></table></div></main></div></div>'}};
+/* 3 */
+S.lista={t:'Biblioteca no celular',nota:['alt','Tela que o conselheiro e o instrutor já abrem. Ganha o alternador Digitais | Físicos; a lista digital continua igual.'],
+ passo:[['Quem empresta consulta aqui','A pílula responde se há exemplar antes de abrir o livro.'],['Sem gerenciar','Não há "Opções" nem "Adicionar": só ver e emprestar.'],['Busca','Campo de busca por nome só na aba Físicos (a lista digital segue como hoje).']],
+ h:function(){return '<div class="c">'+topoCel()+'<main style="flex:1;padding:16px;display:flex;flex-direction:column;gap:16px">'+cabCel('5 livros físicos · 7 exemplares disponíveis')+'<div class="seg"><span>Digitais</span><span class="on">Físicos</span></div><span class="in">'+ic('sr',18)+'<span style="color:var(--tinta2)">Buscar livro</span></span>'+
+ '<section style="display:flex;flex-direction:column;gap:12px"><div style="display:flex;justify-content:space-between"><h2 class="h2">Cadernos de Classes</h2><span class="conta">3 livros</span></div><ul class="grade" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">'+LIVROS.slice(0,3).map(function(l){return cartao(l,false)}).join('')+'</ul></section></main></div>'}};
+/* 4 */
+S.det={t:'Detalhe do livro',nota:['nova','Abre pelo botão "Exemplares" do cartão. Mostra cada cópia e com quem está.'],
+ passo:[['Um exemplar por linha','Cada cópia tem a própria situação e a própria ação (Emprestar ou Devolver).'],['Com quem está','Conselheiro e instrutor veem nome e unidade (decisão D8, pergunta 1 da spec).'],['Quem já leu','Lista de quem já devolveu este livro, do mais recente para o mais antigo.']],
+ h:function(){var l=LIVROS[0];function ex(n,s,b,x){return '<div style="display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-top:1px solid var(--borda2)"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>Exemplar '+n+'</b>'+s+'</div>'+x+b+'</div>'}
+ return '<div class="c">'+topoCel()+'<main style="flex:1;padding:16px;display:flex;flex-direction:column;gap:16px">'+'<header style="display:flex;align-items:center;gap:8px"><span class="btn txt" style="padding:0 6px">'+ic('lf',24)+'</span><h1 class="t" style="margin:0;font-size:22px;font-weight:800">Amigo</h1></header>'+
+ '<div style="display:flex;gap:14px;align-items:flex-start"><div style="width:110px;flex-shrink:0">'+capa(l)+'</div><div style="display:flex;flex-direction:column;gap:8px;min-width:0"><p class="desc" style="white-space:normal">Classe regular · requisito de leitura</p><span class="pilula ok">1 de 3 disponíveis</span><span class="conta">Cadernos de Classes · livro físico</span></div></div>'+
+ '<div class="cartao" style="overflow:hidden">'+ex(1,'<span class="pilula ok">No prazo</span>','<span class="btn sec">Devolver</span>','<div class="conta">Com <b style="color:var(--tinta)">Pedro Rocha</b> · Leões<br>Emprestado em 14/10 · devolver até 28/10</div>')+
+ ex(2,'<span class="pilula ok">Disponível</span>','<span class="btn pri">Emprestar</span>','')+
+ ex(3,'<span class="pilula atr">Atrasado há 2 dias</span>','<span class="btn sec">Devolver</span>','<div class="conta">Com <b style="color:var(--tinta)">Beatriz Nunes</b> · Leões<br>Emprestado em 05/10 · devolver até 19/10</div>')+'</div>'+
+ '<section style="display:flex;flex-direction:column;gap:8px"><h2 class="h2">Quem já leu</h2><p class="ajuda">Aparece quem já devolveu o livro. Devolver não prova que leu.</p><div class="cartao lista" style="border:0"><div><b>Rafael Costa</b><span class="conta">Lobos · devolveu em 30/09</span></div><div><b>Ana Clara Lima</b><span class="conta">Águias · devolveu em 18/09</span></div></div></section></main></div>'}};
+/* 5 */
+S.emprestar={t:'Diálogo Emprestar',nota:['nova','Abre pelo botão Emprestar de qualquer exemplar disponível. A busca mostra o clube inteiro, sem filtrar por unidade ou classe.'],
+ passo:[['Data de devolução só de leitura','Campo cinza, calculado: 14 dias depois da data do empréstimo, com a regra escrita embaixo. Quem empresta não escolhe o prazo.'],['Qualquer desbravador do clube','A lista traz nome e unidade. O instrutor da classe A empresta para quem é da classe B.'],['Um destaque','Registrar empréstimo é o botão cheio; Cancelar é texto.']],
+ h:function(){var l=LIVROS[0];return '<div class="c" style="position:relative">'+topoCel()+'<main style="flex:1;padding:16px;display:flex;flex-direction:column;gap:16px;opacity:.5">'+cabCel('Amigo · exemplar 1')+'<div class="cartao" style="height:240px"></div></main><div class="fundo"></div>'+
+ '<div class="dialogo" style="left:12px;right:12px;top:96px"><h2>Emprestar “Amigo”</h2><p class="ajuda" style="margin-top:-8px">Exemplar 2 · disponível</p>'+
+ '<div class="campo"><span class="lbl">Desbravador</span><span class="in">'+ic('sr',18)+'<span>Lu</span></span><div class="lista"><div style="background:#F1EEE6;color:var(--tinta2)"><b>Lucas Ferreira</b><span class="conta">Águias · já está com “Companheiro”. Peça a devolução antes.</span></div><div class="sel"><b>Luísa Martins</b><span class="conta">Leões</span></div><div><b>Luan Pereira</b><span class="conta">Lobos</span></div></div></div>'+
+ '<div style="display:flex;gap:12px"><div class="campo" style="flex:1"><span class="lbl">Emprestado em</span><span class="in tabnum">21/10/2026</span></div><div class="campo" style="flex:1"><span class="lbl">Devolver até</span><span class="in tabnum" style="background:#E8E3D7;border-color:var(--borda2);color:var(--tinta)" aria-readonly="true">04/11/2026</span></div></div><p class="ajuda" style="margin-top:-8px">A devolução é sempre 14 dias depois do empréstimo. Esta data não pode ser alterada.</p>'+
+ '<div style="display:flex;justify-content:flex-end;gap:8px"><span class="btn txt">Cancelar</span><span class="btn pri">Registrar empréstimo</span></div></div></div>'}};
+/* 6 */
+S.novo={t:'Adicionar livro físico (Adm)',nota:['alt','O diálogo "Adicionar à biblioteca" de hoje ganha a escolha do tipo. Livro digital segue igual; físico troca o PDF por quantidade.'],
+ passo:[['Tipo primeiro','A escolha vem no topo porque muda os campos de baixo. Digital é o padrão, como hoje.'],['Sem PDF','Livro físico não pede arquivo. A capa continua opcional.'],['Quantidade com explicação','O campo diz que cada exemplar vira uma linha para emprestar. Depois dá para acrescentar ou dar baixa.']],
+ h:function(){return '<div class="d" style="position:relative;height:760px;overflow:hidden">'+menu()+'<div style="flex:1;opacity:.5"><header style="padding:32px 48px"><h1 class="t" style="margin:0;font-size:24px;font-weight:700">Biblioteca</h1></header></div><div class="fundo"></div>'+
+ '<div class="dialogo" style="left:50%;top:32px;width:520px;margin-left:-260px"><h2>Adicionar à biblioteca</h2>'+
+ '<div class="campo"><span class="lbl">Tipo</span><div class="seg"><span>Livro digital (PDF)</span><span class="on">Livro físico</span></div></div>'+
+ '<div class="campo"><span class="lbl">Nome</span><span class="in">Amigo</span></div>'+
+ '<div class="campo"><span class="lbl">Descrição</span><span class="in">Classe regular · requisito de leitura</span></div>'+
+ '<div class="campo"><span class="lbl">Categoria</span><span class="in" style="justify-content:space-between">Cadernos de Classes '+ic('dn',16)+'</span></div>'+
+ '<div class="campo"><span class="lbl">Quantidade de exemplares</span><div style="display:flex;align-items:center;gap:8px"><span class="btn sec" style="min-width:44px;padding:0">−</span><span class="in tabnum" style="width:80px;justify-content:center">3</span><span class="btn sec" style="min-width:44px;padding:0">+</span></div><p class="ajuda">Cada exemplar vira uma linha para emprestar e devolver. Você pode acrescentar mais depois.</p></div>'+
+ '<p class="ajuda">Depois de adicionar, o sistema oferece enviar a capa, como no livro digital.</p>'+
+ '<div style="display:flex;justify-content:flex-end;gap:8px"><span class="btn txt">Cancelar</span><span class="btn pri">Adicionar</span></div></div></div>'}};
+/* 7 */
+S.dev={t:'Diálogo Devolver',nota:['nova','Aparece ao tocar em Devolver. Confirma antes de gravar e mostra se o livro estava atrasado.'],
+ passo:[['Confirma, não interroga','Um botão cheio (Registrar devolução). Cancelar é texto.'],['Atraso dito em palavras','Avisa o atraso sem tom de culpa; é informação para o Adm, não bronca para quem devolve.'],['Fica no histórico','Depois de devolver, o nome entra em "Quem já leu" daquele livro.']],
+ h:function(){return '<div class="c" style="position:relative">'+topoCel()+'<main style="flex:1;padding:16px;display:flex;flex-direction:column;gap:16px;opacity:.5">'+cabCel('Amigo · exemplar 3')+'<div class="cartao" style="height:240px"></div></main><div class="fundo"></div>'+
+ '<div class="dialogo" style="left:12px;right:12px;top:150px"><h2>Registrar devolução</h2><p style="margin:0">“Amigo”, exemplar 3, volta de <b>Beatriz Nunes</b> (Leões).</p>'+
+ '<div class="campo"><span class="lbl">Devolvido em</span><span class="in tabnum" style="background:#E8E3D7;border-color:var(--borda2)" aria-readonly="true">21/10/2026</span></div>'+
+ '<p class="ajuda" style="background:var(--aviso-suave);color:var(--aviso);padding:10px 12px;border-radius:9px;font-weight:600">Devolução prevista para 19/10: 2 dias de atraso.</p>'+
+ '<div style="display:flex;justify-content:flex-end;gap:8px"><span class="btn txt">Cancelar</span><span class="btn pri">Registrar devolução</span></div></div></div>'}};
+
+/* 8 */
+S.vg={t:'Visão geral (Adm)',nota:['alt','Tela inicial do Adm. Ganha um terceiro cartão em Pendências, no mesmo formato dos outros dois. Os atalhos e o resto não mudam.'],
+ passo:[['Mesmo formato das pendências','Cartão com título, selo de alerta com a contagem e uma linha por livro atrasado.'],['Leva a quem cobrar','Cada linha mostra livro, desbravador, unidade e há quantos dias está atrasado; tocar abre a aba Empréstimos.'],['Sem atraso, o bloco fica','Mostra "Nenhum livro atrasado", como os outros blocos mostram "tudo em dia". Clube sem livro físico não mostra o cartão.']],
+ h:function(){function lin(a,b,c){return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:52px;padding:6px 14px;border-top:1px solid var(--borda2)"><span style="display:flex;flex-direction:column;min-width:0"><b>'+a+'</b><span class="conta">'+b+'</span></span><span style="color:var(--tinta2);white-space:nowrap">'+c+' ›</span></div>'}
+ function pend(t,n,l){return '<div class="cartao" style="overflow:hidden;min-width:0"><div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px"><b style="font-size:16px">'+t+'</b><span class="pilula hoje">'+n+'</span></div>'+l+'</div>'}
+ return '<div class="d">'+menu('Visão geral')+'<div style="flex:1;min-width:0;display:flex;flex-direction:column">'+topoAdm()+'<main style="padding:32px 48px;display:flex;flex-direction:column;gap:24px"><h1 class="t" style="margin:0;font-size:24px;font-weight:700">Visão geral</h1>'+
+ '<div style="display:flex;gap:12px;flex-wrap:wrap"><span class="btn pri" style="min-height:56px">Gerar link de substituto</span><span class="btn sec" style="min-height:56px">Novo evento</span><span class="btn sec" style="min-height:56px">Lançar chamada da Classe Bíblica</span></div>'+
+ '<section style="display:flex;flex-direction:column;gap:12px"><h2 class="h2">Pendências</h2><div style="display:flex;flex-direction:column;gap:16px;max-width:640px">'+
+ pend('Classes sem cronograma','2',lin('Pioneiro','13 anos','Montar')+lin('Guia','15 anos','Montar'))+
+ pend('Unidades sem chamada','2',lin('Falcões','Conselheiro Marcos','')+lin('Lobos','Conselheira Paula',''))+
+ pend('Livros atrasados','2',lin('Companheiro · Lucas Ferreira','Águias','5 dias')+lin('Amigo · Beatriz Nunes','Leões','2 dias'))+
+ '</div></section></main></div></div>'}};
+
+/* 9 */
+S.est={t:'Estados do celular',nota:['nova','Os quatro estados que toda tela de celular trata. Valem para as abas Digitais e Físicas, o detalhe do livro e os diálogos Emprestar e Devolver. Os componentes são os padrão do app (Carregando, EstadoVazio, ErroDeCarga, DisponivelComInternet); o texto exato sai deles.'],
+ passo:[['Carregando','Texto "Carregando a biblioteca", sem esqueleto de cartão.'],['Vazio','Dois vazios diferentes: nada cadastrado (ensina e, para o Adm, oferece o botão) e busca sem resultado (oferece limpar).'],['Erro e sem conexão','Erro tem "Tentar de novo". Sem conexão avisa que a tela precisa de internet; Emprestar e Devolver ficam desligados com o motivo.']],
+ h:function(){function est(t,x){return '<div class="cartao" style="padding:16px;display:flex;flex-direction:column;gap:6px"><span class="conta" style="text-transform:uppercase;letter-spacing:.04em;font-weight:700">'+t+'</span>'+x+'</div>'}
+ return '<div class="c">'+topoCel()+'<main style="flex:1;padding:16px;display:flex;flex-direction:column;gap:12px">'+cabCel('Livros físicos')+
+ est('Carregando','<b>Carregando a biblioteca</b>')+
+ est('Vazio · nada cadastrado','<b>Nenhum livro físico ainda.</b><span class="conta">O Adm ainda não cadastrou livros físicos.</span>')+
+ est('Vazio · busca sem resultado','<b>Nenhum livro com esse nome.</b><span class="btn sec" style="align-self:flex-start">Limpar a busca</span>')+
+ est('Erro','<b>Não foi possível carregar a biblioteca.</b><span class="btn sec" style="align-self:flex-start">Tentar de novo</span>')+
+ est('Sem conexão','<b>Emprestar e devolver precisam de internet.</b><span class="conta">Conecte-se para continuar.</span><span class="btn off" style="align-self:flex-start">Emprestar</span>')+
+ '</main></div>'}};
+
+var ordem=['adm','emp','lista','det','emprestar','novo','dev','vg','est'];
+var sel=document.getElementById('seletor'),q=document.getElementById('quadro'),nt=document.getElementById('nota'),ps=document.getElementById('passo');
+function mostrar(k){
+ var s=S[k];q.innerHTML=s.h();
+ nt.innerHTML='<span class="etiqueta '+s.nota[0]+'">'+(s.nota[0]==='nova'?'NOVA':'ALTERADA')+'</span><span>'+s.nota[1]+'</span>';
+ ps.innerHTML=s.passo.map(function(p){return '<div class="cartao"><b>'+p[0]+'</b>'+p[1]+'</div>'}).join('');
+ Array.prototype.forEach.call(sel.children,function(b){b.setAttribute('aria-selected',b.dataset.k===k)});
+ try{history.replaceState(null,'','#'+k)}catch(e){}
+}
+ordem.forEach(function(k,i){var b=document.createElement('button');b.type='button';b.setAttribute('role','tab');b.dataset.k=k;b.textContent=(i+1)+'. '+S[k].t;b.onclick=function(){mostrar(k)};sel.appendChild(b)});
+var h=(location.hash||'').slice(1);mostrar(S[h]?h:'adm');
+})();
+</script>

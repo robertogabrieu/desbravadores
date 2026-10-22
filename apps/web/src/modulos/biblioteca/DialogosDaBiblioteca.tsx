@@ -1,4 +1,4 @@
-import { LIMITE_BYTES_CAPA_BIBLIOTECA, LIMITE_BYTES_PDF_BIBLIOTECA } from '@desbravadores/shared'
+import { LIMITE_BYTES_CAPA_BIBLIOTECA, LIMITE_BYTES_PDF_BIBLIOTECA, LivroFisicoEntrada } from '@desbravadores/shared'
 import { useRef, useState } from 'react'
 import type { ItemBibliotecaEditar } from '@desbravadores/shared'
 import type { ChangeEvent, FormEvent } from 'react'
@@ -8,6 +8,7 @@ import {
   enviarCapa,
   enviarItem,
   useCriarCategoria,
+  useCriarLivroFisico,
   useEditarItem,
   useExcluirCategoria,
   useRelerBiblioteca,
@@ -20,11 +21,13 @@ import { Botao } from '../../ui/Botao'
 import { Campo } from '../../ui/Campo'
 import { CampoArquivo } from '../../ui/CampoArquivo'
 import { Confirmacao } from '../../ui/Confirmacao'
+import { EscolhaUnica } from '../../ui/EscolhaUnica'
+import type { OpcaoDaEscolha } from '../../ui/EscolhaUnica'
 import { Selecao } from '../../ui/Selecao'
 import { CapaDoItem } from './CartaoDoItem'
 
 export type Acao =
-  | { tipo: 'adicionar' }
+  | { tipo: 'adicionar'; livro?: ItemBiblioteca['tipo'] }
   | { tipo: 'nova-categoria' }
   | { tipo: 'renomear-categoria'; categoriaId: string }
   | { tipo: 'excluir-categoria'; categoriaId: string }
@@ -41,9 +44,21 @@ const CAPAS_ACEITAS = 'image/jpeg,image/png,image/webp'
 const AJUDA_DO_NOME = 'É o nome que aparece na estante e no arquivo baixado.'
 const AJUDA_DA_DESCRICAO = 'Opcional. Uma linha abaixo do nome.'
 const AVISO_DO_ENVIO = 'Não feche esta janela até terminar.'
+const AJUDA_DA_QUANTIDADE = 'Cada exemplar vira uma linha para emprestar e devolver. Você pode acrescentar mais depois.'
+const TIPOS_DE_LIVRO: OpcaoDaEscolha<ItemBiblioteca['tipo']>[] = [
+  { valor: 'DIGITAL', rotulo: 'Livro digital (PDF)' },
+  { valor: 'FISICO', rotulo: 'Livro físico' },
+]
 
 const erroDoPdf = (arquivo: File): string | null => (arquivo.size > LIMITE_BYTES_PDF_BIBLIOTECA ? `O PDF pode ter até ${MB_DO_PDF} MB.` : null)
 const erroDaCapa = (arquivo: File): string | null => (arquivo.size > LIMITE_BYTES_CAPA_BIBLIOTECA ? `A capa pode ter até ${MB_DA_CAPA} MB.` : null)
+/** A mesma regra do contrato (1 a 50); o campo de número devolve texto, então vazio e fração são tratados antes. */
+function erroDaQuantidade(texto: string): string | null {
+  const quantidade = texto.trim() === '' ? 0 : Number(texto)
+  if (!Number.isInteger(quantidade)) return 'Informe um número inteiro de exemplares.'
+  const lida = LivroFisicoEntrada.shape.quantidade.safeParse(quantidade)
+  return lida.success ? null : lida.error.issues[0].message
+}
 const semPontoFinal = (texto: string): string => texto.replace(/\.$/, '')
 const comecandoEmMinuscula = (texto: string): string => texto.charAt(0).toLowerCase() + texto.slice(1)
 
@@ -141,7 +156,9 @@ function DialogoRemoverItem({ item, aoFechar }: { item: ItemBiblioteca; aoFechar
       aoConfirmar={() => remover.mutate(item.id, { onSuccess: aoFechar })}
       aoCancelar={aoFechar}
     >
-      O arquivo é apagado e não dá para desfazer.
+      {item.tipo === 'FISICO'
+        ? 'O livro sai da estante, mas o histórico de empréstimos fica. Só dá para remover com todos os exemplares devolvidos.'
+        : 'O arquivo é apagado e não dá para desfazer.'}
     </Confirmacao>
   )
 }
@@ -204,11 +221,14 @@ function DialogoCapaRecusada({ item, motivoInicial, aoFechar }: { item: ItemBibl
   )
 }
 
-type Etapa = 'preenchendo' | 'pdf' | 'capa'
+type Etapa = 'preenchendo' | 'pdf' | 'criando' | 'capa'
 
-function DialogoAdicionar({ categorias, aoFechar }: { categorias: CategoriaBiblioteca[]; aoFechar: () => void }) {
+function DialogoAdicionar({ categorias, livroInicial, aoFechar }: { categorias: CategoriaBiblioteca[]; livroInicial: ItemBiblioteca['tipo']; aoFechar: () => void }) {
   const reler = useRelerBiblioteca()
+  const criarLivroFisico = useCriarLivroFisico()
   const interrupcao = useRef<AbortController | null>(null)
+  const [tipoDoLivro, definirTipoDoLivro] = useState(livroInicial)
+  const [quantidade, definirQuantidade] = useState('1')
   const [pdf, definirPdf] = useState<File | null>(null)
   const [erroPdf, definirErroPdf] = useState<string | null>(null)
   const [nome, definirNome] = useState('')
@@ -223,6 +243,18 @@ function DialogoAdicionar({ categorias, aoFechar }: { categorias: CategoriaBibli
   const [capaRecusada, definirCapaRecusada] = useState<{ item: ItemBiblioteca; motivo: string } | null>(null)
   const enviando = etapa !== 'preenchendo'
   const nomeLimpo = nome.trim()
+  const fisico = tipoDoLivro === 'FISICO'
+  const erroQuantidade = erroDaQuantidade(quantidade)
+
+  const escolherTipo = (escolhido: ItemBiblioteca['tipo']) => {
+    definirErroDoEnvio(null)
+    definirTipoDoLivro(escolhido)
+  }
+
+  const mudarQuantidade = (evento: ChangeEvent<HTMLInputElement>) => {
+    definirErroDoEnvio(null)
+    definirQuantidade(evento.target.value)
+  }
 
   const escolherPdf = (evento: ChangeEvent<HTMLInputElement>) => {
     definirErroDoEnvio(null)
@@ -263,16 +295,18 @@ function DialogoAdicionar({ categorias, aoFechar }: { categorias: CategoriaBibli
 
   const adicionar = async () => {
     definirTentou(true)
-    if (!pdf) definirErroPdf((atual) => atual ?? 'Escolha o PDF.')
-    if (!pdf || nomeLimpo === '' || categoriaId === '' || erroCapa) return
+    const arquivo = fisico ? null : pdf
+    if (!fisico && !pdf) definirErroPdf((atual) => atual ?? 'Escolha o PDF.')
+    if ((!fisico && !arquivo) || (fisico && erroQuantidade) || nomeLimpo === '' || categoriaId === '' || erroCapa) return
     const controle = new AbortController()
     interrupcao.current = controle
     const { signal } = controle
+    const dados = { nome: nomeLimpo, descricao: descricao.trim() === '' ? null : descricao.trim(), categoriaId }
     definirErroDoEnvio(null)
-    definirEtapa('pdf')
+    definirEtapa(fisico ? 'criando' : 'pdf')
     let item: ItemBiblioteca
     try {
-      item = await enviarItem(pdf, { nome: nomeLimpo, descricao: descricao.trim() === '' ? null : descricao.trim(), categoriaId }, definirPorcento, signal)
+      item = arquivo ? await enviarItem(arquivo, dados, definirPorcento, signal) : await criarLivroFisico.mutateAsync({ ...dados, quantidade: Number(quantidade) })
     } catch (falha) {
       if (!signal.aborted) definirErroDoEnvio(mensagemDe(falha))
       definirEtapa('preenchendo')
@@ -305,7 +339,8 @@ function DialogoAdicionar({ categorias, aoFechar }: { categorias: CategoriaBibli
       aoCancelar={cancelar}
     >
       <div className="flex flex-col gap-3">
-        <CampoArquivo rotulo="PDF" accept="application/pdf" disabled={enviando} ajuda={`Até ${MB_DO_PDF} MB.`} erro={erroPdf ?? undefined} onChange={escolherPdf} />
+        <EscolhaUnica legenda="Tipo" opcoes={TIPOS_DE_LIVRO} valor={tipoDoLivro} aoEscolher={escolherTipo} disabled={enviando} />
+        {!fisico && <CampoArquivo rotulo="PDF" accept="application/pdf" disabled={enviando} ajuda={`Até ${MB_DO_PDF} MB.`} erro={erroPdf ?? undefined} onChange={escolherPdf} />}
         <Campo
           rotulo="Nome"
           value={nome}
@@ -319,6 +354,20 @@ function DialogoAdicionar({ categorias, aoFechar }: { categorias: CategoriaBibli
         <Selecao rotulo="Categoria" value={categoriaId} disabled={enviando} onChange={mudarCategoria}>
           <OpcoesDeCategoria categorias={categorias} />
         </Selecao>
+        {fisico && (
+          <Campo
+            rotulo="Quantidade de exemplares"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={50}
+            value={quantidade}
+            disabled={enviando}
+            ajuda={AJUDA_DA_QUANTIDADE}
+            erro={tentou ? (erroQuantidade ?? undefined) : undefined}
+            onChange={mudarQuantidade}
+          />
+        )}
         <CampoArquivo
           rotulo="Capa"
           accept={CAPAS_ACEITAS}
@@ -459,7 +508,7 @@ function DialogoEditar({ item, categorias, aoFechar }: { item: ItemBiblioteca; c
           )}
           {porcento !== null && <Andamento legenda="Enviando a capa…" rotulo="Envio da capa" porcento={porcento} aviso={AVISO_DO_ENVIO} />}
         </div>
-        <p className="text-sm text-texto-2">Para trocar o PDF, remova o item e adicione de novo.</p>
+        {item.tipo === 'DIGITAL' && <p className="text-sm text-texto-2">Para trocar o PDF, remova o item e adicione de novo.</p>}
       </div>
     </Confirmacao>
   )
@@ -481,7 +530,7 @@ export function DialogosDaBiblioteca({ acao, categorias, aoFechar }: Propriedade
 
   switch (acao.tipo) {
     case 'adicionar':
-      return <DialogoAdicionar categorias={categorias} aoFechar={aoFechar} />
+      return <DialogoAdicionar categorias={categorias} livroInicial={acao.livro ?? 'DIGITAL'} aoFechar={aoFechar} />
     case 'nova-categoria':
       return <DialogoDeCategoria aoFechar={aoFechar} />
     case 'renomear-categoria':
