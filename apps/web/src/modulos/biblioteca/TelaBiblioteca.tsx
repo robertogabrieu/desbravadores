@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import type { CategoriaBiblioteca, DirecaoNaBiblioteca, ItemBiblioteca, ItemFisico } from '../../api/biblioteca'
 import { useBiblioteca, useMoverCategoria, useMoverItem } from '../../api/biblioteca'
+import { useEmprestimos } from '../../api/emprestimos'
 import { useSessao } from '../../sessao/useSessao'
 import { Abas } from '../../ui/Abas'
 import type { AbaDefinida } from '../../ui/Abas'
@@ -40,7 +41,7 @@ const ABAS_DE_QUEM_LE: AbaDefinida[] = [
   { id: 'fisicos', rotulo: 'Físicos' },
 ]
 
-/** O selo "N atrasados" da aba Empréstimos entra aqui (pacote dos empréstimos); com 0 a aba fica só com o nome. */
+/** O selo "N atrasados" da aba Empréstimos vem do total da própria aba, lido mesmo com ela fechada; com 0 a aba fica só com o nome. */
 const abasDoAdm = (atrasados: number): AbaDefinida[] => [
   { id: 'digitais', rotulo: 'Livros digitais' },
   { id: 'fisicos', rotulo: 'Livros físicos' },
@@ -178,6 +179,7 @@ export function TelaBiblioteca() {
   const { pode } = useSessao()
   const gerencia = pode('biblioteca.gerenciar')
   const biblioteca = useBiblioteca()
+  const emprestimos = useEmprestimos({}, gerencia)
   const moverCategoria = useMoverCategoria()
   const moverItem = useMoverItem()
   const [parametros, definirParametros] = useSearchParams()
@@ -291,7 +293,7 @@ export function TelaBiblioteca() {
       <Cabecalho gerencia={gerencia} resumo={resumo}>
         {botoes}
       </Cabecalho>
-      <Abas rotulo="Tipo de livro" abas={gerencia ? abasDoAdm(0) : ABAS_DE_QUEM_LE} ativa={aba} aoMudar={mudarAba} idDoPainel={ID_DO_PAINEL} />
+      <Abas rotulo="Tipo de livro" abas={gerencia ? abasDoAdm(emprestimos.data?.totais.atrasados ?? 0) : ABAS_DE_QUEM_LE} ativa={aba} aoMudar={mudarAba} idDoPainel={ID_DO_PAINEL} />
       {!gerencia && aba === 'fisicos' && haFisicos && (
         <Campo type="search" rotulo="Buscar livro" value={busca} onChange={(evento) => definirBusca(evento.target.value)} />
       )}

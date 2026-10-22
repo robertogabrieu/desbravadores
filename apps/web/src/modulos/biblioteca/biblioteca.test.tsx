@@ -7,6 +7,7 @@ import type { ModoConexao } from '../../offline'
 import { GuardaRota } from '../../sessao/GuardaRota'
 import type { CategoriaBiblioteca, ChamadaBiblioteca } from '../../testes/handlers/biblioteca'
 import { criarCategoriaBiblioteca, criarItemBiblioteca, criarItemFisico, handlerBiblioteca, handlersEscritaBiblioteca } from '../../testes/handlers/biblioteca'
+import { criarEmprestimos, handlerEmprestimos } from '../../testes/handlers/emprestimos'
 import { criarVinculo, handlersSessao } from '../../testes/handlers/sessao'
 import { renderizarRotas } from '../../testes/renderizar'
 import { servidor } from '../../testes/servidor'
@@ -47,6 +48,7 @@ function comoAdm(categorias: CategoriaBiblioteca[] = estante) {
   servidor.use(
     ...handlersSessao([criarVinculo('ADM')], undefined, ['biblioteca.gerenciar']),
     handlerBiblioteca(categorias),
+    handlerEmprestimos(() => criarEmprestimos([])),
     ...handlersEscritaBiblioteca(chamadas),
   )
 }
@@ -1104,7 +1106,7 @@ describe('Biblioteca — livros físicos', () => {
   const COM_EMPRESTAR = ['biblioteca.emprestar']
 
   function comoAdmDaEstante(categorias: CategoriaBiblioteca[] = mista, permissoes = ['biblioteca.gerenciar', ...COM_EMPRESTAR]) {
-    servidor.use(...handlersSessao([criarVinculo('ADM')], undefined, permissoes), handlerBiblioteca(categorias), ...handlersEscritaBiblioteca(chamadas))
+    servidor.use(...handlersSessao([criarVinculo('ADM')], undefined, permissoes), handlerBiblioteca(categorias), handlerEmprestimos(() => criarEmprestimos([])), ...handlersEscritaBiblioteca(chamadas))
   }
 
   function comoConselheiro(categorias: CategoriaBiblioteca[] = mista, permissoes = COM_EMPRESTAR) {

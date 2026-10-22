@@ -9,6 +9,7 @@ import {
   criarAcesso,
   criarClube,
   criarCronograma,
+  criarDbv,
   criarUnidade,
   criarUsuario,
   criarVinculo,
@@ -265,4 +266,46 @@ test('biblioteca: o Adm adiciona um PDF em Livros e o conselheiro o vê na estan
   const cartao = paginaConselheiro.getByRole('region', { name: 'Livros' }).getByRole('listitem').filter({ hasText: nomeDoItem })
   await expect(cartao).toBeVisible()
   await expect(cartao.getByRole('link', { name: `Ler ${nomeDoItem}` })).toHaveAttribute('href', /\/api\/arquivos\/[^?]+\?.*\bv=original\b/)
+})
+
+test('biblioteca: o Adm cadastra um livro físico, empresta um exemplar a um desbravador e registra a devolução', async ({ browser }) => {
+  const clube = await criarClube()
+  const adm = await criarAcesso({ clubeId: clube.id, papel: 'ADM' })
+  const sufixo = randomUUID().slice(0, 8)
+  const nomeDoLivro = `Livro físico ${sufixo}`
+  const nomeDoDesbravador = `Beatriz Biblioteca ${sufixo}`
+  await criarDbv({ clubeId: clube.id, nome: nomeDoDesbravador })
+
+  // O Adm cadastra o livro físico com dois exemplares, na aba Livros físicos.
+  const pagina = await novaSessao(browser, adm.usuario.email)
+  await pagina.goto('/adm/biblioteca')
+  await pagina.getByRole('tab', { name: 'Livros físicos' }).click()
+  await pagina.getByRole('button', { name: 'Adicionar à biblioteca' }).click()
+  const cadastro = pagina.getByRole('dialog', { name: 'Adicionar à biblioteca' })
+  await cadastro.getByRole('radio', { name: 'Livro físico' }).check()
+  await cadastro.getByLabel('Nome', { exact: true }).fill(nomeDoLivro)
+  await escolher(pagina, cadastro.getByLabel('Categoria', { exact: true }), { label: 'Livros' })
+  await cadastro.getByLabel('Quantidade de exemplares').fill('2')
+  await cadastro.getByRole('button', { name: 'Adicionar', exact: true }).click()
+  await expect(cadastro).toHaveCount(0)
+  const cartao = pagina.getByRole('region', { name: 'Livros' }).getByRole('listitem').filter({ hasText: nomeDoLivro })
+  await expect(cartao.getByText('2 de 2 disponíveis')).toBeVisible()
+
+  // Pelo cartão, o menor exemplar livre é emprestado a um desbravador achado pelo nome.
+  await cartao.getByRole('button', { name: `Emprestar ${nomeDoLivro}` }).click()
+  const emprestar = pagina.getByRole('dialog', { name: `Emprestar “${nomeDoLivro}”` })
+  await expect(emprestar.getByText('Exemplar 1 · disponível')).toBeVisible()
+  await emprestar.getByLabel('Desbravador', { exact: true }).fill('Beatriz Biblioteca')
+  await emprestar.getByRole('button', { name: new RegExp(nomeDoDesbravador) }).click()
+  await emprestar.getByRole('button', { name: 'Registrar empréstimo' }).click()
+  await expect(emprestar).toHaveCount(0)
+  await expect(cartao.getByText('1 de 2 disponíveis')).toBeVisible()
+
+  // O empréstimo aparece na aba Empréstimos e a devolução o tira de lá.
+  await pagina.getByRole('tab', { name: /Empréstimos/ }).click()
+  const linha = pagina.getByRole('row').filter({ hasText: nomeDoDesbravador })
+  await expect(linha.getByText('No prazo')).toBeVisible()
+  await linha.getByRole('button', { name: /^Devolver/ }).click()
+  await pagina.getByRole('dialog', { name: 'Registrar devolução' }).getByRole('button', { name: 'Registrar devolução' }).click()
+  await expect(pagina.getByText('Nenhum livro emprestado agora')).toBeVisible()
 })
