@@ -686,6 +686,36 @@ describe('biblioteca do clube', () => {
       expect([await ordemDoItem(a.item.id), await ordemDoItem(b.item.id)]).toEqual([1, 2])
     })
 
+    it('item so troca com vizinho do mesmo tipo, ignorando o outro tipo no meio', async () => {
+      const { clube, adm } = await cenario()
+      const categoria = await categoriaDireta(clube.id, 'Livros', 1)
+      const base = { clubeId: clube.id, categoriaId: categoria.id, enviadoPorId: adm.usuario.id }
+      const d1 = await itemDireto({ ...base, nome: 'D1', ordem: 1 })
+      const f1 = await fisicoDireto({ ...base, nome: 'F1', ordem: 2 })
+      const d2 = await itemDireto({ ...base, nome: 'D2', ordem: 3 })
+
+      await enviar('post', adm, `/api/biblioteca/itens/${d2.item.id}/mover`, { direcao: 'acima' }).expect(204)
+      expect([await ordemDoItem(d1.item.id), await ordemDoItem(f1.item.id), await ordemDoItem(d2.item.id)]).toEqual([3, 2, 1])
+
+      await enviar('post', adm, `/api/biblioteca/itens/${d2.item.id}/mover`, { direcao: 'abaixo' }).expect(204)
+      expect([await ordemDoItem(d1.item.id), await ordemDoItem(f1.item.id), await ordemDoItem(d2.item.id)]).toEqual([1, 2, 3])
+    })
+
+    it('fisico unico no tipo nao troca com digital, nem acima nem abaixo', async () => {
+      const { clube, adm } = await cenario()
+      const categoria = await categoriaDireta(clube.id, 'Livros', 1)
+      const base = { clubeId: clube.id, categoriaId: categoria.id, enviadoPorId: adm.usuario.id }
+      const d1 = await itemDireto({ ...base, nome: 'D1', ordem: 1 })
+      const f1 = await fisicoDireto({ ...base, nome: 'F1', ordem: 2 })
+      const d2 = await itemDireto({ ...base, nome: 'D2', ordem: 3 })
+
+      const ordens = async () => [await ordemDoItem(d1.item.id), await ordemDoItem(f1.item.id), await ordemDoItem(d2.item.id)]
+      await enviar('post', adm, `/api/biblioteca/itens/${f1.item.id}/mover`, { direcao: 'acima' }).expect(204)
+      expect(await ordens()).toEqual([1, 2, 3])
+      await enviar('post', adm, `/api/biblioteca/itens/${f1.item.id}/mover`, { direcao: 'abaixo' }).expect(204)
+      expect(await ordens()).toEqual([1, 2, 3])
+    })
+
     it('duas trocas simultaneas na mesma categoria nao repetem a ordem', async () => {
       const { clube, adm } = await cenario()
       const categoria = await categoriaDireta(clube.id, 'Livros', 1)

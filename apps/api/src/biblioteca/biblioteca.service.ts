@@ -294,7 +294,7 @@ export class BibliotecaService {
       const atual = await this.exigirItemAtivo(tx, clubeId, id)
       const { where, orderBy } = aFrenteOuAtras(entrada.direcao, atual)
       const vizinho = await tx.itemBiblioteca.findFirst({
-        where: { clubeId, categoriaId: atual.categoriaId, removidoEm: null, ...where },
+        where: { clubeId, categoriaId: atual.categoriaId, tipo: atual.tipo, removidoEm: null, ...where },
         orderBy,
         select: { id: true, ordem: true },
       })
