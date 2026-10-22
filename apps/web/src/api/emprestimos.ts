@@ -18,8 +18,6 @@ const RAIZ = 'biblioteca'
 export const MINIMO_DE_LETRAS_DA_BUSCA = 2
 
 const DesbravadoresParaEmprestimo = z.array(DesbravadorParaEmprestimoSaida)
-/** As escritas de exemplar devolvem o item com os totais novos (ou o detalhe); a tela relê o detalhe de qualquer jeito. */
-const RespostaDeExemplar = LivroFisicoDetalheSaida.or(ItemFisicoSaida)
 
 /** GET /biblioteca/itens/:id/exemplares: exige `biblioteca.emprestar`; sem ela a tela nem pergunta. */
 export function useDetalheDoLivro(itemId: string | undefined, habilitada = true) {
@@ -76,10 +74,10 @@ export const useDevolver = () =>
 
 export const useAcrescentarExemplares = () =>
   useEscritaDeEmprestimo(({ itemId, quantidade }: AcrescentarExemplares & { itemId: string }) =>
-    requisitar(`/api/biblioteca/itens/${itemId}/exemplares`, RespostaDeExemplar, { metodo: 'POST', corpo: { quantidade } }),
+    requisitar(`/api/biblioteca/itens/${itemId}/exemplares`, ItemFisicoSaida, { metodo: 'POST', corpo: { quantidade } }),
   )
 
 export const useDarBaixa = () =>
   useEscritaDeEmprestimo(({ itemId, exemplarId }: { itemId: string; exemplarId: string }) =>
-    requisitar(`/api/biblioteca/itens/${itemId}/exemplares/${exemplarId}/baixa`, RespostaDeExemplar, { metodo: 'POST', corpo: {} }),
+    requisitar(`/api/biblioteca/itens/${itemId}/exemplares/${exemplarId}/baixa`, ItemFisicoSaida, { metodo: 'POST', corpo: {} }),
   )

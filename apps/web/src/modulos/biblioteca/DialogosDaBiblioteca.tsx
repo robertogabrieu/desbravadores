@@ -156,7 +156,9 @@ function DialogoRemoverItem({ item, aoFechar }: { item: ItemBiblioteca; aoFechar
       aoConfirmar={() => remover.mutate(item.id, { onSuccess: aoFechar })}
       aoCancelar={aoFechar}
     >
-      O arquivo é apagado e não dá para desfazer.
+      {item.tipo === 'FISICO'
+        ? 'O livro sai da estante, mas o histórico de empréstimos fica. Só dá para remover com todos os exemplares devolvidos.'
+        : 'O arquivo é apagado e não dá para desfazer.'}
     </Confirmacao>
   )
 }

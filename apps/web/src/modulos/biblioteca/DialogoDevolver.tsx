@@ -6,7 +6,7 @@ import { Confirmacao } from '../../ui/Confirmacao'
 import { isoParaTexto } from '../../ui/mascaraData'
 import { dataCurta } from '../aulas/datas'
 import { mensagemDe } from './DialogosDaBiblioteca'
-import { hojeDaTela, nomeComSituacao, unidadeOuSem } from './hoje'
+import { useHojeDoClube, nomeComSituacao, unidadeOuSem } from './hoje'
 
 /** O que o diálogo precisa saber do empréstimo; a aba e o detalhe do livro montam isto de suas próprias linhas. */
 export interface EmprestimoParaDevolver {
@@ -31,7 +31,7 @@ const SEM_INTERNET = 'Registrar a devolução precisa de internet. Conecte-se pa
 function Conteudo({ emprestimo, onFechar }: { emprestimo: EmprestimoParaDevolver; onFechar: () => void }) {
   const devolver = useDevolver()
   const { modo } = useConexao()
-  const hoje = hojeDaTela()
+  const hoje = useHojeDoClube()
   const atraso = situacaoDoEmprestimo(emprestimo.devolverAte, hoje)
   const semInternet = modo !== 'ONLINE'
 

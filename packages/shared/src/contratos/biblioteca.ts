@@ -80,7 +80,7 @@ export const LivroFisicoEntrada = z.object({
   quantidade: QuantidadeDeExemplares,
 })
 export type LivroFisicoEntrada = z.input<typeof LivroFisicoEntrada>
-/** POST /biblioteca/itens/:id/exemplares → LivroFisicoDetalheSaida. */
+/** POST /biblioteca/itens/:id/exemplares → ItemFisicoSaida (o item com os totais novos). */
 export const AcrescentarExemplares = z.object({ quantidade: QuantidadeDeExemplares })
 export type AcrescentarExemplares = z.input<typeof AcrescentarExemplares>
 
@@ -102,7 +102,7 @@ const SituacaoComDias = {
   dias: z.number().int().min(0),
 }
 
-/** POST /biblioteca/emprestimos e POST /biblioteca/emprestimos/:id/devolver. */
+/** POST /biblioteca/emprestimos e POST /biblioteca/emprestimos/:id/devolucao. */
 export const EmprestimoSaida = z.object({
   id: Uuid,
   exemplarId: Uuid,

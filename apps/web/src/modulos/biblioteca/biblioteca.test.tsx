@@ -1321,6 +1321,18 @@ describe('Biblioteca — livros físicos', () => {
       expect(dialogo.getByLabelText('Nome')).toHaveValue('Guia')
       expect(dialogo.queryByText(/PDF/)).not.toBeInTheDocument()
     })
+    it('Remover de livro físico diz que sai da estante, que o histórico fica e que precisa de todos os exemplares devolvidos', async () => {
+      comoAdmDaEstante()
+      const usuario = userEvent.setup()
+      abrir('/biblioteca?aba=fisicos')
+      await screen.findByText('Guia')
+      await usuario.click(cartaoDe('Guia').getByRole('button', { name: 'Opções de Guia' }))
+      await usuario.click(screen.getByRole('menuitem', { name: 'Remover' }))
+      const dialogo = within(await screen.findByRole('dialog', { name: 'Remover “Guia” da biblioteca?' }))
+      expect(dialogo.getByText(/histórico de empréstimos fica/)).toBeInTheDocument()
+      expect(dialogo.getByText(/todos os exemplares/)).toBeInTheDocument()
+      expect(dialogo.queryByText(/arquivo é apagado/)).not.toBeInTheDocument()
+    })
   })
 
   describe('vazios do Adm', () => {

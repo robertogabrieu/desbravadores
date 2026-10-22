@@ -13,7 +13,7 @@ import { cn } from '../../ui/cn'
 import { Confirmacao } from '../../ui/Confirmacao'
 import { isoParaTexto } from '../../ui/mascaraData'
 import { mensagemDe } from './DialogosDaBiblioteca'
-import { hojeDaTela, unidadeOuSem } from './hoje'
+import { useHojeDoClube, unidadeOuSem } from './hoje'
 
 /** O exemplar a emprestar quando a tela já escolheu (o detalhe do livro); sem ele, o diálogo pega o menor número livre. */
 export interface ExemplarEscolhido {
@@ -116,7 +116,7 @@ function Conteudo({ item, exemplar, onFechar }: { item: ItemFisico; exemplar?: E
   const detalhe = useDetalheDoLivro(item.id, exemplar === undefined)
   const emprestar = useEmprestar()
   const { modo } = useConexao()
-  const hoje = hojeDaTela()
+  const hoje = useHojeDoClube()
   const maisAntiga = somarDiasAData(hoje, -DIAS_PARA_TRAS)
   const [escolhido, definirEscolhido] = useState<DesbravadorParaEmprestimo | null>(null)
   const [data, definirData] = useState(hoje)

@@ -5,6 +5,7 @@ import { delay, http } from 'msw'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ModoConexao } from '../../offline'
+import { criarPacote } from '../../testes/handlers/offline'
 import { GuardaRota } from '../../sessao/GuardaRota'
 import { criarCategoriaBiblioteca, criarItemFisico, handlerBiblioteca } from '../../testes/handlers/biblioteca'
 import type { ChamadaDeEmprestimo, RecusaDaApi } from '../../testes/handlers/emprestimos'
@@ -31,11 +32,12 @@ import { DialogoEmprestar } from './DialogoEmprestar'
 import type { ExemplarEscolhido } from './DialogoEmprestar'
 import { TelaBiblioteca } from './TelaBiblioteca'
 
-const estado = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao }))
+const estado = vi.hoisted(() => ({ modo: 'ONLINE' as ModoConexao, fuso: null as string | null }))
 
 vi.mock('../../offline', async (importarOriginal) => ({
   ...(await importarOriginal<typeof import('../../offline')>()),
   useConexao: () => ({ modo: estado.modo }),
+  usePacote: () => ({ pacote: estado.fuso ? criarPacote({ clube: { ...criarPacote().clube, fuso: estado.fuso } }) : null, carregando: false, baixadoEm: null }),
 }))
 
 const LIVRO = criarItemFisico(1, { nome: 'Amigo', descricao: 'Classe regular' })
@@ -75,6 +77,7 @@ const detalheDoAmigo = () =>
 
 beforeEach(() => {
   estado.modo = 'ONLINE'
+  estado.fuso = null
   chamadas = []
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date('2026-10-21T12:00:00Z'))
@@ -347,6 +350,14 @@ describe('diálogo Emprestar', () => {
     expect(screen.getByText('28/10/2026')).toBeInTheDocument()
   })
 
+  it('"hoje" é o do fuso do clube, não o do aparelho: com o clube já em 22/10, empresta de 22/10 e devolve até 05/11', async () => {
+    estado.fuso = 'Pacific/Kiritimati'
+    prepararEmprestar()
+    abrirEmprestar({ id: uuid(8002), numero: 2 })
+    expect(await screen.findByLabelText('Emprestado em')).toHaveValue('22/10/2026')
+    expect(screen.getByText('05/11/2026')).toBeInTheDocument()
+  })
+
   it('grava o empréstimo sem campo de devolução e sem data quando é hoje', async () => {
     prepararEmprestar()
     const usuario = userEvent.setup()
@@ -458,6 +469,14 @@ describe('diálogo Devolver', () => {
     expect(dialogo.getByText('Devolução prevista para 19/10: 2 dias de atraso.')).toBeInTheDocument()
     expect(dialogo.getByText('21/10/2026')).toBeInTheDocument()
     expect(dialogo.queryByRole('textbox')).not.toBeInTheDocument()
+  })
+
+  it('"Devolvido em" e o atraso seguem o fuso do clube: com o clube já em 22/10, 21/10 é 1 dia de atraso', async () => {
+    estado.fuso = 'Pacific/Kiritimati'
+    abrirDevolver({ ...BEATRIZ, devolverAte: '2026-10-21' })
+    const dialogo = within(await screen.findByRole('dialog', { name: 'Registrar devolução' }))
+    expect(dialogo.getByText('22/10/2026')).toBeInTheDocument()
+    expect(dialogo.getByText('Devolução prevista para 21/10: 1 dia de atraso.')).toBeInTheDocument()
   })
 
   it('um dia de atraso fica no singular', async () => {
@@ -590,6 +609,21 @@ describe('aba Empréstimos', () => {
     await usuario.click(dialogo.getByRole('button', { name: 'Registrar devolução' }))
     await waitFor(() => expect(chamadas).toHaveLength(1))
     expect(chamadas[0].caminho).toBe(`/api/biblioteca/emprestimos/${LINHAS[0].emprestimoId}/devolucao`)
+  })
+})
+
+describe('aba Empréstimos — paginação', () => {
+  it('devolver o único livro da página 2 volta para a última página que existe, sem lista vazia', async () => {
+    const todas = Array.from({ length: 21 }, (_, indice) => criarLinhaDeEmprestimo(indice + 1))
+    abrirAba(undefined, () => criarEmprestimos(chamadas.length === 0 ? todas : todas.slice(0, 20)))
+    const usuario = userEvent.setup()
+    await usuario.click(await screen.findByRole('button', { name: 'Próxima página' }))
+    await usuario.click(await screen.findByRole('button', { name: 'Devolver Amigo, exemplar 21' }))
+    const dialogo = within(await screen.findByRole('dialog', { name: 'Registrar devolução' }))
+    await usuario.click(dialogo.getByRole('button', { name: 'Registrar devolução' }))
+    expect(await screen.findByRole('button', { name: 'Devolver Amigo, exemplar 20' })).toBeInTheDocument()
+    expect(screen.queryByText('Nenhum livro emprestado agora')).not.toBeInTheDocument()
+    expect(screen.getByText(/1–20 de 20/)).toBeInTheDocument()
   })
 })
 

@@ -132,6 +132,7 @@ export const AbaEmprestimos: FunctionComponent<Propriedades> = ({ filtroInicial 
       return <Carregando rotulo="Carregando os empréstimos" />
     }
     const itens = lista.data.itens
+    const paginaVisivel = Math.min(pagina, Math.max(1, Math.ceil(itens.length / POR_PAGINA)))
     const vazio = comFiltro ? (
       <EstadoVazio
         titulo="Nenhum empréstimo com esses filtros"
@@ -147,9 +148,9 @@ export const AbaEmprestimos: FunctionComponent<Propriedades> = ({ filtroInicial 
     return (
       <Tabela
         colunas={colunas}
-        itens={itens.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)}
+        itens={itens.slice((paginaVisivel - 1) * POR_PAGINA, paginaVisivel * POR_PAGINA)}
         chaveItem={(linha) => linha.emprestimoId}
-        pagina={pagina}
+        pagina={paginaVisivel}
         porPagina={POR_PAGINA}
         total={itens.length}
         aoMudarPagina={definirPagina}
