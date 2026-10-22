@@ -40,6 +40,11 @@ enum StatusUsuario {
   SUBSTITUTO
 }
 
+enum TipoItemBiblioteca {
+  DIGITAL
+  FISICO
+}
+
 enum TipoSubstituicao {
   CHAMADA
   CLASSE
@@ -233,6 +238,7 @@ model Clube {
   notificacoes             Notificacao[]
   atividades               Atividade[]
   convitesAcesso           ConviteAcesso[]
+  emprestimosBiblioteca    EmprestimoBiblioteca[]
   tarefas                  TarefaCasa[]
   tarefaItens              TarefaItem[]
   edicoesClasseBiblica     EdicaoClasseBiblica[]
@@ -246,18 +252,19 @@ model Clube {
   substituicoes            Substituicao[]
   categoriasBiblioteca     CategoriaBiblioteca[]
   itensBiblioteca          ItemBiblioteca[]
+  exemplaresBiblioteca     ExemplarBiblioteca[]
 }
 
 model ConfiguracaoClube {
-  clubeId                String         @id @db.Uuid
-  fuso                   String         @default("America/Sao_Paulo")
-  diaReuniao             Int            @default(0)
-  horaReuniao            String         @default("09:00")
+  clubeId                String  @id @db.Uuid
+  fuso                   String  @default("America/Sao_Paulo")
+  diaReuniao             Int     @default(0)
+  horaReuniao            String  @default("09:00")
   localReuniaoPadrao     String?
-  inicioAnoClube         String         @default("02-01")
-  limiarFrequenciaAlerta Int            @default(70)
-  limiarProgressoAlerta  Int            @default(40)
-  metaFrequencia         Int            @default(80)
+  inicioAnoClube         String  @default("02-01")
+  limiarFrequenciaAlerta Int     @default(70)
+  limiarProgressoAlerta  Int     @default(40)
+  metaFrequencia         Int     @default(80)
 
   clube Clube @relation(fields: [clubeId], references: [id], onDelete: Restrict)
 }
@@ -318,6 +325,9 @@ model Usuario {
   categoriasBibliotecaRemovidas CategoriaBiblioteca[]    @relation("CategoriaBibliotecaRemovidaPor")
   itensBibliotecaEnviados       ItemBiblioteca[]         @relation("ItemBibliotecaEnviadoPor")
   itensBibliotecaRemovidos      ItemBiblioteca[]         @relation("ItemBibliotecaRemovidoPor")
+  exemplaresBaixados            ExemplarBiblioteca[]     @relation("ExemplarBibliotecaBaixadoPor")
+  emprestimosFeitos             EmprestimoBiblioteca[]   @relation("EmprestimoBibliotecaEmprestadoPor")
+  emprestimosRecebidos          EmprestimoBiblioteca[]   @relation("EmprestimoBibliotecaDevolvidoPor")
 }
 
 model Vinculo {
@@ -508,6 +518,7 @@ model Desbravador {
   especialidadesConcluidas EspecialidadeConcluida[]
   observacoes              Observacao[]
   convitesAcesso           ConviteAcesso[]
+  emprestimosBiblioteca    EmprestimoBiblioteca[]
   presencasClasseBiblica   PresencaClasseBiblica[]
   presencasEventoEspecial  PresencaEventoEspecial[]
 
@@ -1261,30 +1272,79 @@ model CategoriaBiblioteca {
 }
 
 model ItemBiblioteca {
-  id            String    @id @default(uuid(7)) @db.Uuid
-  clubeId       String    @db.Uuid
-  categoriaId   String    @db.Uuid
+  id            String             @id @default(uuid(7)) @db.Uuid
+  clubeId       String             @db.Uuid
+  categoriaId   String             @db.Uuid
   nome          String
   descricao     String?
   ordem         Int
-  arquivoId     String    @unique @db.Uuid
-  capaId        String?   @unique @db.Uuid
-  enviadoPorId  String    @db.Uuid
-  criadoEm      DateTime  @default(now()) @db.Timestamptz
-  atualizadoEm  DateTime  @updatedAt @db.Timestamptz
-  removidoEm    DateTime? @db.Timestamptz
-  removidoPorId String?   @db.Uuid
+  tipo          TipoItemBiblioteca @default(DIGITAL)
+  arquivoId     String?            @unique @db.Uuid
+  capaId        String?            @unique @db.Uuid
+  enviadoPorId  String             @db.Uuid
+  criadoEm      DateTime           @default(now()) @db.Timestamptz
+  atualizadoEm  DateTime           @updatedAt @db.Timestamptz
+  removidoEm    DateTime?          @db.Timestamptz
+  removidoPorId String?            @db.Uuid
 
-  clube       Clube               @relation(fields: [clubeId], references: [id], onDelete: Restrict)
-  categoria   CategoriaBiblioteca @relation(fields: [clubeId, categoriaId], references: [clubeId, id], onDelete: Restrict)
-  arquivo     Arquivo             @relation("PdfDoItem", fields: [clubeId, arquivoId], references: [clubeId, id], onDelete: Restrict)
-  capa        Arquivo?            @relation("CapaDoItem", fields: [clubeId, capaId], references: [clubeId, id], onDelete: Restrict)
-  enviadoPor  Usuario             @relation("ItemBibliotecaEnviadoPor", fields: [enviadoPorId], references: [id], onDelete: Restrict)
-  removidoPor Usuario?            @relation("ItemBibliotecaRemovidoPor", fields: [removidoPorId], references: [id], onDelete: Restrict)
+  clube       Clube                @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  categoria   CategoriaBiblioteca  @relation(fields: [clubeId, categoriaId], references: [clubeId, id], onDelete: Restrict)
+  arquivo     Arquivo?             @relation("PdfDoItem", fields: [clubeId, arquivoId], references: [clubeId, id], onDelete: Restrict)
+  capa        Arquivo?             @relation("CapaDoItem", fields: [clubeId, capaId], references: [clubeId, id], onDelete: Restrict)
+  enviadoPor  Usuario              @relation("ItemBibliotecaEnviadoPor", fields: [enviadoPorId], references: [id], onDelete: Restrict)
+  removidoPor Usuario?             @relation("ItemBibliotecaRemovidoPor", fields: [removidoPorId], references: [id], onDelete: Restrict)
+  exemplares  ExemplarBiblioteca[]
 
+  @@unique([clubeId, id])
   @@unique([clubeId, arquivoId])
   @@unique([clubeId, capaId])
   @@index([clubeId, categoriaId, ordem])
+}
+
+// Cópia de papel de um livro físico. Baixa (perdido, estragado) preenche `baixadoEm`; a linha fica.
+model ExemplarBiblioteca {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  clubeId      String    @db.Uuid
+  itemId       String    @db.Uuid
+  numero       Int
+  criadoEm     DateTime  @default(now()) @db.Timestamptz
+  baixadoEm    DateTime? @db.Timestamptz
+  baixadoPorId String?   @db.Uuid
+
+  clube       Clube                  @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  item        ItemBiblioteca         @relation(fields: [clubeId, itemId], references: [clubeId, id], onDelete: Restrict)
+  baixadoPor  Usuario?               @relation("ExemplarBibliotecaBaixadoPor", fields: [baixadoPorId], references: [id], onDelete: Restrict)
+  emprestimos EmprestimoBiblioteca[]
+
+  @@unique([clubeId, id])
+  @@unique([itemId, numero])
+}
+
+// Empréstimo nunca se apaga: devolver preenche `devolvidoEm`. `devolverAte` é gravada pelo servidor.
+// Dois únicos parciais (onde `devolvidoEm` é nulo) estão escritos à mão na migration: um aberto por
+// exemplar e um aberto por desbravador.
+model EmprestimoBiblioteca {
+  id              String    @id @default(uuid(7)) @db.Uuid
+  clubeId         String    @db.Uuid
+  exemplarId      String    @db.Uuid
+  desbravadorId   String    @db.Uuid
+  emprestadoEm    DateTime  @db.Date
+  devolverAte     DateTime  @db.Date
+  devolvidoEm     DateTime? @db.Date
+  emprestadoPorId String    @db.Uuid
+  devolvidoPorId  String?   @db.Uuid
+  criadoEm        DateTime  @default(now()) @db.Timestamptz
+
+  clube         Clube              @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  exemplar      ExemplarBiblioteca @relation(fields: [clubeId, exemplarId], references: [clubeId, id], onDelete: Restrict)
+  desbravador   Desbravador        @relation(fields: [clubeId, desbravadorId], references: [clubeId, id], onDelete: Restrict)
+  emprestadoPor Usuario            @relation("EmprestimoBibliotecaEmprestadoPor", fields: [emprestadoPorId], references: [id], onDelete: Restrict)
+  devolvidoPor  Usuario?           @relation("EmprestimoBibliotecaDevolvidoPor", fields: [devolvidoPorId], references: [id], onDelete: Restrict)
+
+  @@unique([clubeId, id])
+  @@index([clubeId, devolvidoEm])
+  @@index([exemplarId])
+  @@index([desbravadorId])
 }
 
 // FASE 2-3 — sino.
