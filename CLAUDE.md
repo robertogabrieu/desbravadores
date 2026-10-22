@@ -36,3 +36,37 @@ Planejamento em `docs/planejamento/`; decisões de cada fase em `docs/fases/<fas
 - **Upload novo acima do limite padrão do nginx** exige um `location` próprio em
   `apps/web/nginx.conf` com `client_max_body_size` e aviso de deploy para o nginx do host
   (fora do repo): sem isso o envio morre em 413 só em produção.
+
+## Ambiente local por agente (Docker)
+
+Cada agente sobe a **própria** stack — banco, e-mail e app (API e web), com portas sorteadas e teto de
+memória —, para vários agentes validarem a interface ao mesmo tempo sem se atrapalhar nem travar o WSL.
+Ela não usa o `docker-compose.yml` (portas fixas 5442, 1026 e 8026) nem o `docker-compose.prod.yml`, e
+não depende do seu `.env`.
+
+```bash
+scripts/agente-stack.sh up --tipo efemero      # QA do próprio agente: cai sozinha
+scripts/agente-stack.sh up --tipo validacao    # o usuário vai olhar: só ele manda derrubar
+scripts/agente-stack.sh portas                 # URLs sorteadas: frontend, api, mailpit
+scripts/agente-stack.sh testar --api src/saude/saude.controller.spec.ts   # relativo a apps/api
+scripts/agente-stack.sh testar --web src/testes/cursor.test.ts            # relativo a apps/web
+scripts/agente-stack.sh testar --shared        # packages/shared
+scripts/agente-stack.sh down                   # efêmera cai; validação recusa sem a decisão do usuário
+```
+
+- **Quem orquestra pergunta ao usuário se ele vai validar localmente antes de despachar** os
+  implementadores, grava a resposta (`ambiente validacao <worktree> sim|nao`) e já roda `up` em
+  segundo plano. A primeira subida constrói a imagem (cerca de 2 minutos); depois leva menos de 1 minuto.
+- **Primeiro acesso**: o `up` roda as migrations, a carga oficial e cria o "Clube QA" convidando
+  `adm@qa.local`. O link do convite sai no fim do `up` e o e-mail chega ao Mailpit (porta `mailpit`
+  do `portas`); abra o link para definir a senha.
+- **Teste roda em container descartável** (`testar`): 2 GB, 2 núcleos; na API o Postgres também é
+  descartável e vive em memória (o Jest cria um banco por execução e aplica as migrations nele). O
+  ponta a ponta (Playwright) não roda aqui: só no CI do GitHub ou contra produção. Não rode `jest`
+  nem `vitest` direto na máquina.
+- A API monta links com a origem do navegador, então a porta é escolhida antes de subir; use a URL
+  que o `portas` imprime, com `localhost`.
+- `down` de uma stack de validação é recusado: quem decide é o usuário, por `ambiente derrubar`.
+  No `gh pr ready`, `scripts/agente-stack.sh liberar` derruba a efêmera e avisa se há validação.
+- `scripts/agente-stack.sh` é o núcleo, igual em todos os projetos que usam o esquema; o que muda
+  daqui fica em `scripts/agente-stack.conf.sh`, `docker-compose.agente*.yml` e `docker/Dockerfile.agente`.
