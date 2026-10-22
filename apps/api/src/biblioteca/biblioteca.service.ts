@@ -2,13 +2,16 @@ import { readFile, rm } from 'node:fs/promises'
 import { Inject, Injectable, Logger } from '@nestjs/common'
 import {
   COTA_DA_BIBLIOTECA_BYTES,
+  AcrescentarExemplares,
   ItemBibliotecaDados,
+  LivroFisicoEntrada,
   Uuid,
   type BibliotecaSaida,
   type CategoriaBibliotecaEntrada,
   type CategoriaBibliotecaSaida,
   type ItemBibliotecaEditar,
   type ItemBibliotecaSaida,
+  type ItemFisicoSaida,
   type MoverNaBiblioteca,
 } from '@desbravadores/shared'
 import type { z } from 'zod'
@@ -35,10 +38,16 @@ export interface ArquivoEmDisco {
 }
 
 /** Cliente com guarda ou transação: o que as conferências precisam, venham de onde vierem. */
-type Banco = Pick<PrismaService, 'arquivo' | 'categoriaBiblioteca' | 'itemBiblioteca'>
+type Banco = Pick<PrismaService, 'arquivo' | 'categoriaBiblioteca' | 'itemBiblioteca' | 'exemplarBiblioteca' | 'emprestimoBiblioteca'>
 
 const CATEGORIA_NAO_ENCONTRADA = 'Categoria não encontrada.'
 const ITEM_NAO_ENCONTRADO = 'Item não encontrado.'
+const LIVRO_NAO_ENCONTRADO = 'Livro não encontrado.'
+const QUANTIDADE_INVALIDA = 'Um livro pode ter de 1 a 50 exemplares.'
+const EXEMPLAR_EMPRESTADO = 'Esse exemplar está emprestado. Registre a devolução antes.'
+const EXEMPLAR_JA_BAIXADO = 'Esse exemplar já foi retirado.'
+const LIVRO_EMPRESTADO = 'Devolva os exemplares antes de remover.'
+const MAXIMO_DE_EXEMPLARES = 50
 const NOME_REPETIDO = 'Já existe uma categoria com esse nome.'
 const CATEGORIA_COM_ITENS = 'Tire os itens da categoria antes de excluí-la.'
 const NAO_E_PDF = 'O arquivo não é um PDF.'
@@ -54,6 +63,7 @@ const SELECAO_DO_ITEM = {
   nome: true,
   descricao: true,
   ordem: true,
+  tipo: true,
   arquivoId: true,
   capaId: true,
   arquivo: { select: { bytes: true, caminho: true } },
@@ -71,10 +81,16 @@ interface LinhaDoItem {
   nome: string
   descricao: string | null
   ordem: number
-  arquivoId: string
+  tipo: 'DIGITAL' | 'FISICO'
+  arquivoId: string | null
   capaId: string | null
-  arquivo: { bytes: number; caminho: string }
+  arquivo: { bytes: number; caminho: string } | null
   capa: { bytes: number; caminho: string; miniaturaCaminho: string | null } | null
+}
+
+interface Contagem {
+  total: number
+  disponiveis: number
 }
 
 interface Posicao {
@@ -92,6 +108,20 @@ function lerDados(corpo: unknown): z.output<typeof ItemBibliotecaDados> {
     json = undefined
   }
   return DadosDoItem.transform(json)
+}
+
+/** A quantidade fora de 1 a 50 tem mensagem própria da spec, no lugar da lista de campos do pipe. */
+function lerComQuantidade<T extends z.ZodType>(schema: T, corpo: unknown): z.output<T> {
+  const resultado = schema.safeParse(corpo)
+  if (resultado.success) return resultado.data
+  if (resultado.error.issues.some((problema) => problema.path[0] === 'quantidade')) {
+    throw new ErroApp('VALIDACAO', QUANTIDADE_INVALIDA, { quantidade: QUANTIDADE_INVALIDA })
+  }
+  return new ZodValidationPipe(schema).transform(corpo)
+}
+
+function idsDosFisicos(itens: Array<Pick<LinhaDoItem, 'id' | 'tipo'>>): string[] {
+  return itens.filter((item) => item.tipo === 'FISICO').map((item) => item.id)
 }
 
 /** Quem vem antes (`acima`) ou depois (`abaixo`) de `atual` na ordem `(ordem, id)`, e a ordenação que põe o mais próximo primeiro. */
@@ -130,10 +160,11 @@ export class BibliotecaService {
         select: SELECAO_DO_ITEM,
       }),
     ])
+    const contagens = await this.contarExemplares(this.prisma, clubeId, idsDosFisicos(itens))
     const itensDaCategoria = new Map<string, ItemBibliotecaSaida[]>()
     for (const item of itens) {
       const daCategoria = itensDaCategoria.get(item.categoriaId) ?? []
-      daCategoria.push(this.saidaDoItem(clubeId, item))
+      daCategoria.push(this.saidaDoItem(clubeId, item, contagens.get(item.id)))
       itensDaCategoria.set(item.categoriaId, daCategoria)
     }
     return { categorias: categorias.map((categoria) => ({ ...categoria, itens: itensDaCategoria.get(categoria.id) ?? [] })) }
@@ -167,7 +198,8 @@ export class BibliotecaService {
         orderBy: [{ ordem: 'asc' }, { id: 'asc' }],
         select: SELECAO_DO_ITEM,
       })
-      return { ...renomeada, itens: itens.map((item) => this.saidaDoItem(clubeId, item)) }
+      const contagens = await this.contarExemplares(tx, clubeId, idsDosFisicos(itens))
+      return { ...renomeada, itens: itens.map((item) => this.saidaDoItem(clubeId, item, contagens.get(item.id))) }
     })
   }
 
@@ -225,7 +257,7 @@ export class BibliotecaService {
           ...mudancaDeCategoria,
         },
       })
-      return this.saidaDoItem(clubeId, await this.exigirItemAtivo(tx, clubeId, id))
+      return this.saidaComContagem(tx, clubeId, await this.exigirItemAtivo(tx, clubeId, id))
     })
   }
 
@@ -247,10 +279,10 @@ export class BibliotecaService {
     const { clubeId } = sessao
     const { saida, antiga } = await this.escrever(clubeId, async (tx) => {
       const atual = await this.exigirItemAtivo(tx, clubeId, id)
-      if (!atual.capaId) return { saida: this.saidaDoItem(clubeId, atual), antiga: null }
+      if (!atual.capaId) return { saida: await this.saidaComContagem(tx, clubeId, atual), antiga: null }
       await tx.itemBiblioteca.updateMany({ where: { clubeId, id, removidoEm: null }, data: { capaId: null } })
       await tx.arquivo.deleteMany({ where: { clubeId, id: atual.capaId } })
-      return { saida: this.saidaDoItem(clubeId, { ...atual, capaId: null, capa: null }), antiga: atual.capa }
+      return { saida: await this.saidaComContagem(tx, clubeId, { ...atual, capaId: null, capa: null }), antiga: atual.capa }
     })
     if (antiga) await this.apagarCapaDoDisco(antiga)
     return saida
@@ -272,19 +304,92 @@ export class BibliotecaService {
     })
   }
 
-  /** Marca como removido e só depois de gravado apaga PDF e capa; se o disco falhar, a limpeza da subida termina o serviço. */
+  /**
+   * Marca como removido e só depois de gravado apaga PDF e capa; se o disco falhar, a limpeza da subida termina o serviço.
+   * Livro físico com exemplar emprestado não sai da estante: o atraso ficaria preso sem ninguém para cobrar.
+   */
   async removerItem(sessao: SessaoLogada, id: string): Promise<void> {
     const { clubeId } = sessao
     const removido = await this.escrever(clubeId, async (tx) => {
       const atual = await this.exigirItemAtivo(tx, clubeId, id)
+      if (atual.tipo === 'FISICO') {
+        const emAberto = await tx.emprestimoBiblioteca.count({
+          where: { clubeId, devolvidoEm: null, exemplar: { is: { clubeId, itemId: id } } },
+        })
+        if (emAberto > 0) throw new ErroApp('CONFLITO', LIVRO_EMPRESTADO)
+      }
       await tx.itemBiblioteca.updateMany({
         where: { clubeId, id, removidoEm: null },
         data: { removidoEm: new Date(), removidoPorId: sessao.usuarioId },
       })
       return atual
     })
-    await this.apagarDoDisco(removido.arquivo.caminho)
+    if (removido.arquivo) await this.apagarDoDisco(removido.arquivo.caminho)
     if (removido.capa) await this.apagarCapaDoDisco(removido.capa)
+  }
+
+  /** Livro físico não tem arquivo: a capa vem depois, pela mesma rota do digital. */
+  async criarLivroFisico(sessao: SessaoLogada, corpo: unknown): Promise<ItemFisicoSaida> {
+    const entrada = lerComQuantidade(LivroFisicoEntrada, corpo)
+    const { clubeId } = sessao
+    return this.escrever(clubeId, async (tx) => {
+      await this.exigirCategoriaAtiva(tx, clubeId, entrada.categoriaId)
+      const ordem = await this.proximaOrdemDoItem(tx, clubeId, entrada.categoriaId)
+      const criado = await tx.itemBiblioteca.create({
+        data: {
+          clubeId,
+          categoriaId: entrada.categoriaId,
+          nome: entrada.nome,
+          descricao: entrada.descricao,
+          ordem,
+          tipo: 'FISICO',
+          enviadoPorId: sessao.usuarioId,
+        },
+        select: SELECAO_DO_ITEM,
+      })
+      await tx.exemplarBiblioteca.createMany({
+        data: Array.from({ length: entrada.quantidade }, (_, indice) => ({ clubeId, itemId: criado.id, numero: indice + 1 })),
+      })
+      return this.fisicoDe(tx, clubeId, criado)
+    })
+  }
+
+  /** O número novo é o maior já usado + 1, baixados incluídos, para nunca reaproveitar a etiqueta de um exemplar retirado. */
+  async acrescentarExemplares(sessao: SessaoLogada, id: string, corpo: unknown): Promise<ItemFisicoSaida> {
+    const { quantidade } = lerComQuantidade(AcrescentarExemplares, corpo)
+    const { clubeId } = sessao
+    return this.escrever(clubeId, async (tx) => {
+      const livro = await this.exigirLivroFisico(tx, clubeId, id)
+      const ativos = await tx.exemplarBiblioteca.count({ where: { clubeId, itemId: id, baixadoEm: null } })
+      if (ativos + quantidade > MAXIMO_DE_EXEMPLARES) throw new ErroApp('VALIDACAO', QUANTIDADE_INVALIDA, { quantidade: QUANTIDADE_INVALIDA })
+      const ultimo = await tx.exemplarBiblioteca.aggregate({ where: { clubeId, itemId: id }, _max: { numero: true } })
+      const primeiro = (ultimo._max.numero ?? 0) + 1
+      await tx.exemplarBiblioteca.createMany({
+        data: Array.from({ length: quantidade }, (_, indice) => ({ clubeId, itemId: id, numero: primeiro + indice })),
+      })
+      return this.fisicoDe(tx, clubeId, livro)
+    })
+  }
+
+  /** Baixa nunca apaga: preenche `baixadoEm` e a linha fica para o histórico. */
+  async darBaixa(sessao: SessaoLogada, id: string, exemplarId: string): Promise<ItemFisicoSaida> {
+    const { clubeId } = sessao
+    return this.escrever(clubeId, async (tx) => {
+      const livro = await this.exigirLivroFisico(tx, clubeId, id)
+      const exemplar = await tx.exemplarBiblioteca.findFirst({
+        where: { clubeId, id: exemplarId, itemId: id },
+        select: { id: true, baixadoEm: true },
+      })
+      if (!exemplar) throw new ErroApp('NAO_ENCONTRADO', LIVRO_NAO_ENCONTRADO)
+      if (exemplar.baixadoEm) throw new ErroApp('CONFLITO', EXEMPLAR_JA_BAIXADO)
+      const emAberto = await tx.emprestimoBiblioteca.count({ where: { clubeId, exemplarId, devolvidoEm: null } })
+      if (emAberto > 0) throw new ErroApp('CONFLITO', EXEMPLAR_EMPRESTADO)
+      await tx.exemplarBiblioteca.updateMany({
+        where: { clubeId, id: exemplarId, baixadoEm: null },
+        data: { baixadoEm: new Date(), baixadoPorId: sessao.usuarioId },
+      })
+      return this.fisicoDe(tx, clubeId, livro)
+    })
   }
 
   private async gravarItem(sessao: SessaoLogada, corpo: unknown, arquivo: ArquivoEmDisco): Promise<ItemBibliotecaSaida> {
@@ -364,7 +469,7 @@ export class BibliotecaService {
           await tx.itemBiblioteca.updateMany({ where: { clubeId, id, removidoEm: null }, data: { capaId } })
           // A FK é `Restrict`: a linha antiga só sai depois de o item apontar para a nova.
           if (atual.capaId) await tx.arquivo.deleteMany({ where: { clubeId, id: atual.capaId } })
-          return { saida: this.saidaDoItem(clubeId, await this.exigirItemAtivo(tx, clubeId, id)), antiga: atual.capa }
+          return { saida: await this.saidaComContagem(tx, clubeId, await this.exigirItemAtivo(tx, clubeId, id)), antiga: atual.capa }
         }),
       (destino) => this.apagarDoDisco(destino),
     )
@@ -404,8 +509,44 @@ export class BibliotecaService {
 
   private async exigirItemAtivo(banco: Banco, clubeId: string, id: string): Promise<LinhaDoItem> {
     const item = await banco.itemBiblioteca.findFirst({ where: { clubeId, id, removidoEm: null }, select: SELECAO_DO_ITEM })
-    if (!item) throw new ErroApp('NAO_ENCONTRADO', ITEM_NAO_ENCONTRADO)
-    return item
+    if (item) return item
+    const fisico = await banco.itemBiblioteca.findFirst({ where: { clubeId, id, tipo: 'FISICO' }, select: { id: true } })
+    throw new ErroApp('NAO_ENCONTRADO', fisico ? LIVRO_NAO_ENCONTRADO : ITEM_NAO_ENCONTRADO)
+  }
+
+  /** Livro físico ativo do clube; digital, removido, de outro clube ou inexistente são o mesmo 404. */
+  private async exigirLivroFisico(banco: Banco, clubeId: string, id: string): Promise<LinhaDoItem> {
+    const livro = await banco.itemBiblioteca.findFirst({ where: { clubeId, id, tipo: 'FISICO', removidoEm: null }, select: SELECAO_DO_ITEM })
+    if (!livro) throw new ErroApp('NAO_ENCONTRADO', LIVRO_NAO_ENCONTRADO)
+    return livro
+  }
+
+  /** `total` são os exemplares não baixados; `disponiveis` os que não têm empréstimo aberto. Nunca traz nome de pessoa. */
+  private async contarExemplares(banco: Banco, clubeId: string, itemIds: string[]): Promise<Map<string, Contagem>> {
+    const contagens = new Map<string, Contagem>()
+    if (itemIds.length === 0) return contagens
+    const exemplares = await banco.exemplarBiblioteca.findMany({
+      where: { clubeId, itemId: { in: itemIds }, baixadoEm: null },
+      select: { itemId: true, emprestimos: { where: { clubeId, devolvidoEm: null }, select: { id: true } } },
+    })
+    for (const exemplar of exemplares) {
+      const atual = contagens.get(exemplar.itemId) ?? { total: 0, disponiveis: 0 }
+      atual.total += 1
+      if (exemplar.emprestimos.length === 0) atual.disponiveis += 1
+      contagens.set(exemplar.itemId, atual)
+    }
+    return contagens
+  }
+
+  private async saidaComContagem(banco: Banco, clubeId: string, linha: LinhaDoItem): Promise<ItemBibliotecaSaida> {
+    const contagens = await this.contarExemplares(banco, clubeId, idsDosFisicos([linha]))
+    return this.saidaDoItem(clubeId, linha, contagens.get(linha.id))
+  }
+
+  private async fisicoDe(banco: Banco, clubeId: string, linha: LinhaDoItem): Promise<ItemFisicoSaida> {
+    const saida = await this.saidaComContagem(banco, clubeId, linha)
+    if (saida.tipo !== 'FISICO') throw new Error(`O item ${linha.id} não é um livro físico.`)
+    return saida
   }
 
   /** Nome único entre as categorias ativas do clube, sem diferença de maiúsculas; `exceto` é a que está sendo renomeada. */
@@ -452,16 +593,24 @@ export class BibliotecaService {
     }
   }
 
-  private saidaDoItem(clubeId: string, linha: LinhaDoItem): ItemBibliotecaSaida {
-    return {
+  private saidaDoItem(clubeId: string, linha: LinhaDoItem, contagem?: Contagem): ItemBibliotecaSaida {
+    const base = {
       id: linha.id,
       categoriaId: linha.categoriaId,
       nome: linha.nome,
       descricao: linha.descricao,
+      capaUrl: linha.capaId ? this.arquivos.urlAssinada(clubeId, linha.capaId, 'miniatura') : null,
+    }
+    if (linha.tipo === 'FISICO') {
+      return { ...base, tipo: 'FISICO', total: contagem?.total ?? 0, disponiveis: contagem?.disponiveis ?? 0 }
+    }
+    if (!linha.arquivo || !linha.arquivoId) throw new Error(`O livro digital ${linha.id} está sem arquivo.`)
+    return {
+      ...base,
+      tipo: 'DIGITAL',
       bytes: linha.arquivo.bytes,
       urlLer: this.arquivos.urlAssinada(clubeId, linha.arquivoId, 'original'),
       urlBaixar: this.arquivos.urlAssinada(clubeId, linha.arquivoId, 'baixar'),
-      capaUrl: linha.capaId ? this.arquivos.urlAssinada(clubeId, linha.capaId, 'miniatura') : null,
     }
   }
 }

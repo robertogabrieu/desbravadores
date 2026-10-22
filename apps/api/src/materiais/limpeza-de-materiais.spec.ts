@@ -113,6 +113,31 @@ describe('limpeza na subida: biblioteca', () => {
     expect(armazenamento.removidos).toEqual(expect.arrayContaining([removido.capa, removido.miniatura]))
   })
 
+  it('livro fisico removido, sem PDF: nao quebra, apaga a capa e ainda limpa os itens que vem depois', async () => {
+    const base = await cenario()
+    const capaId = randomUUID()
+    const capa = caminhoDaBiblioteca(base.clubeId, capaId, 'jpg')
+    const miniatura = caminhoDaBiblioteca(base.clubeId, capaId, 'jpg', true)
+    await prismaDeTeste().arquivo.create({
+      data: { id: capaId, clubeId: base.clubeId, criadoPorId: base.enviadoPorId, bytes: 10, caminho: capa, miniaturaCaminho: miniatura, mime: 'image/jpeg' },
+    })
+    await prismaDeTeste().itemBiblioteca.create({
+      data: {
+        clubeId: base.clubeId, categoriaId: base.categoriaId, nome: 'Fisico removido', ordem: 1, tipo: 'FISICO',
+        capaId, enviadoPorId: base.enviadoPorId, removidoEm: new Date(), removidoPorId: base.enviadoPorId,
+      },
+    })
+    await prismaDeTeste().itemBiblioteca.create({
+      data: {
+        clubeId: base.clubeId, categoriaId: base.categoriaId, nome: 'Fisico sem capa', ordem: 2, tipo: 'FISICO',
+        enviadoPorId: base.enviadoPorId, removidoEm: new Date(), removidoPorId: base.enviadoPorId,
+      },
+    })
+    const digital = await item({ ...base, removido: true, comCapa: false })
+    await limpeza.limpar()
+    expect(armazenamento.removidos).toEqual(expect.arrayContaining([capa, miniatura, digital.pdf]))
+  })
+
   it('mais de um lote (100) de itens removidos: todos saem', async () => {
     const base = await cenario()
     const caminhos: { pdf: string }[] = []

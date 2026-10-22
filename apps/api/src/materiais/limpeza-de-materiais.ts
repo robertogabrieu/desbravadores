@@ -67,7 +67,7 @@ export class LimpezaDeMateriais implements OnApplicationBootstrap {
         },
       })
       for (const item of lote) {
-        await this.apagar(item.arquivo.caminho)
+        if (item.arquivo) await this.apagar(item.arquivo.caminho)
         if (item.capa) await this.apagar(item.capa.caminho)
         if (item.capa?.miniaturaCaminho) await this.apagar(item.capa.miniaturaCaminho)
       }

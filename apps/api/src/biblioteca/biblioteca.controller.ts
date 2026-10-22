@@ -85,6 +85,24 @@ export class BibliotecaController {
   }
 
   @Pode('biblioteca.gerenciar')
+  @Post('itens-fisicos')
+  criarLivroFisico(@SessaoDoClube() sessao: SessaoLogada, @Body() corpo: unknown) {
+    return this.biblioteca.criarLivroFisico(sessao, corpo)
+  }
+
+  @Pode('biblioteca.gerenciar')
+  @Post('itens/:id/exemplares')
+  acrescentarExemplares(@SessaoDoClube() sessao: SessaoLogada, @Param('id', IdDaRota) id: string, @Body() corpo: unknown) {
+    return this.biblioteca.acrescentarExemplares(sessao, id, corpo)
+  }
+
+  @Pode('biblioteca.gerenciar')
+  @Post('itens/:id/exemplares/:exemplarId/baixa')
+  darBaixa(@SessaoDoClube() sessao: SessaoLogada, @Param('id', IdDaRota) id: string, @Param('exemplarId', IdDaRota) exemplarId: string) {
+    return this.biblioteca.darBaixa(sessao, id, exemplarId)
+  }
+
+  @Pode('biblioteca.gerenciar')
   @Patch('itens/:id')
   editarItem(
     @SessaoDoClube() sessao: SessaoLogada,
