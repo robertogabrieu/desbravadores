@@ -1,5 +1,5 @@
 # Contexto de build: a raiz do repositorio (docker-compose.prod.yml aponta para ela).
-FROM node:22-alpine AS build
+FROM node:22.23.4-alpine AS build
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -18,7 +18,7 @@ RUN npm run build -w packages/shared \
   && npx -w api prisma generate \
   && npm run build -w api
 
-FROM node:22-alpine
+FROM node:22.23.4-alpine
 RUN apk add --no-cache openssl
 WORKDIR /app/apps/api
 ENV NODE_ENV=production CARGA_DIR=/app/dados ARQUIVOS_DIR=/app/arquivos
