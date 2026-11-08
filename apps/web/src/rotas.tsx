@@ -14,6 +14,7 @@ import { rotasAdmUsuarios } from './modulos/adm/usuarios/rotas'
 import { rotasAdmVisaoGeral } from './modulos/adm/visao-geral/rotas'
 import { rotasAdmCronogramas, rotasCronogramaMontagem } from './modulos/cronograma-montagem/rotas'
 import { rotasAdmBiblioteca, rotasBiblioteca } from './modulos/biblioteca/rotas'
+import { rotasAdmVendas } from './modulos/vendas/rotas'
 import { rotaDaAgendaPublica } from './modulos/agenda-publica/rotas'
 import { TelaConectar } from './modulos/conectar/TelaConectar'
 import { rotasConta } from './modulos/conta/rotas'
@@ -106,6 +107,7 @@ export const rotas: RouteObject[] = [
           ...rotasAdmReunioes,
           ...rotasAdmCronogramas,
           ...rotasAdmBiblioteca,
+          ...rotasAdmVendas,
           ...rotasAdmClasseBiblica,
           ...rotasAdmConfiguracoes,
           ...rotasAdmRankingRegras,

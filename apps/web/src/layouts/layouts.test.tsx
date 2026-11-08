@@ -123,13 +123,13 @@ describe('marca do app', () => {
 })
 
 describe('LayoutAdm', () => {
-  it('o menu tem 8 entradas no topo (7 mais Minha conta); os grupos abrem e fecham e só o da tela aberta já vem aberto', async () => {
+  it('o menu tem 9 entradas no topo (8 mais Minha conta); os grupos abrem e fecham e só o da tela aberta já vem aberto', async () => {
     servidor.use(...handlersSessao([criarVinculo('ADM')]))
     renderizarRotas(rotasAdm, '/adm/desbravadores')
     await screen.findByText('lista')
     const menu = within(screen.getByRole('navigation', { name: 'Menu do Adm' }))
 
-    const topo = ['Visão geral', 'Membros', 'Classes', 'Calendário do clube', 'Ranking', 'Biblioteca', 'Configurações do clube', 'Minha conta']
+    const topo = ['Visão geral', 'Membros', 'Classes', 'Calendário do clube', 'Ranking', 'Biblioteca', 'Vendas', 'Configurações do clube', 'Minha conta']
     for (const rotulo of topo) expect(menu.getByText(rotulo)).toBeInTheDocument()
     expect(menu.getByRole('button', { name: 'Membros' })).toHaveAttribute('aria-expanded', 'true')
     expect(menu.getByRole('button', { name: 'Classes' })).toHaveAttribute('aria-expanded', 'false')
@@ -167,6 +167,7 @@ describe('LayoutAdm', () => {
       ['Calendário do clube', '/adm/calendario'],
       ['Regras de pontuação', '/adm/ranking/regras'],
       ['Biblioteca', '/adm/biblioteca'],
+      ['Vendas', '/adm/vendas'],
       ['Configurações do clube', '/adm/configuracoes'],
       ['Minha conta', '/conta'],
     ]

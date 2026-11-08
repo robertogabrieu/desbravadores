@@ -98,6 +98,30 @@ describe('rotas da biblioteca', () => {
   })
 })
 
+describe('rotas de vendas', () => {
+  it.each([
+    ['/adm/vendas', 'Vendas'],
+    ['/adm/vendas/nova', 'Nova venda'],
+    ['/adm/vendas/v1', 'Painel da venda'],
+    ['/adm/vendas/v1/editar', 'Editar venda'],
+    ['/adm/vendas/v1/pedidos/novo', 'Lançar pedido'],
+    ['/adm/vendas/v1/pedidos/p1', 'Resumo do pedido'],
+    ['/adm/vendas/v1/pedidos/p1/editar', 'Lançar pedido'],
+  ])('%s abre a tela para ADM', async (rota, titulo) => {
+    entrar('ADM')
+    const { roteador } = renderizarRotas(rotas, rota)
+    expect(await screen.findByRole('heading', { level: 1, name: titulo })).toBeInTheDocument()
+    expect(roteador.state.location.pathname).toBe(rota)
+  })
+
+  it('conselheiro não entra em /adm/vendas: volta para o início', async () => {
+    entrar('CONSELHEIRO')
+    const { roteador } = renderizarRotas(rotas, '/adm/vendas')
+    await waitFor(() => expect(roteador.state.location.pathname).toBe('/inicio'))
+    expect(screen.queryByRole('heading', { level: 1, name: 'Vendas' })).not.toBeInTheDocument()
+  })
+})
+
 describe('rotas da Classe Bíblica', () => {
   it('o Adm abre a lista de edições pelo menu', async () => {
     entrar('ADM')

@@ -41,6 +41,7 @@ import { TarefasModule } from './tarefas/tarefas.module'
 import { UnidadesModule } from './unidades/unidades.module'
 import { UsuariosModule } from './usuarios/usuarios.module'
 import { VisaoGeralModule } from './visao-geral/visao-geral.module'
+import { VendasModule } from './vendas/vendas.module'
 
 // Um módulo por linha: cada pacote (e cada fase) preenche a pasta do seu sem editar este arquivo.
 @Module({
@@ -87,6 +88,7 @@ import { VisaoGeralModule } from './visao-geral/visao-geral.module'
     ClasseBiblicaModule,
     SubstituicoesModule,
     BibliotecaModule,
+    VendasModule,
   ],
 })
 export class AppModule {}

@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { CHAVES_PERMISSAO, permissaoSeAplica, permissoesEfetivas } from './permissoes'
 
 describe('permissoesEfetivas', () => {
-  it('o catálogo tem 26 chaves e o ADM tem todas', () => {
-    expect(CHAVES_PERMISSAO).toHaveLength(26)
-    expect(permissoesEfetivas('ADM', [])).toHaveLength(26)
+  it('o catálogo tem 27 chaves e o ADM tem todas', () => {
+    expect(CHAVES_PERMISSAO).toHaveLength(27)
+    expect(permissoesEfetivas('ADM', [])).toHaveLength(27)
   })
 
   it('CONSELHEIRO recebe classebiblica.chamada por ajuste; classebiblica.gerenciar não se aplica a ele', () => {

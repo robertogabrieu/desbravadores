@@ -69,7 +69,7 @@ const WHERES_ACEITOS: [string, unknown][] = [
 ]
 
 describe('guarda de clube: modelos de clube', () => {
-  it('a lista de modelos de clube e a do SPEC 5.1 mais os 14 das Fases 2 e 3 o convite de acesso, a tarefa para casa, a substituicao e a biblioteca', () => {
+  it('a lista de modelos de clube e a do SPEC 5.1 mais os 14 das Fases 2 e 3 o convite de acesso, a tarefa para casa, a substituicao, a biblioteca e as vendas', () => {
     expect([...MODELOS_DE_CLUBE].sort()).toEqual(
       [
         'Album',
@@ -120,6 +120,11 @@ describe('guarda de clube: modelos de clube', () => {
         'ItemBiblioteca',
         'ExemplarBiblioteca',
         'EmprestimoBiblioteca',
+        'VendaArrecadacao',
+        'ProdutoVenda',
+        'FormaPagamentoVenda',
+        'PedidoVenda',
+        'ItemPedidoVenda',
       ].sort(),
     )
     expect([...MODELOS_MISTOS].sort()).toEqual(['Classe', 'Especialidade'])
