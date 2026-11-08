@@ -75,11 +75,12 @@ describe('Resumo do pedido: imagem e envio', () => {
     expect(blocos.map((bloco) => bloco.id)).toContain('pagar')
   })
 
-  it('mostra o instante do lançamento no fuso do clube e passa o nome do clube à imagem', async () => {
+  it('mostra o instante do lançamento no fuso de São Paulo e passa o nome do clube à imagem', async () => {
     abrir()
     expect(await screen.findByText(/Marlene Prado · lançado em 21\/10 às 09h00/)).toBeInTheDocument()
     await screen.findByRole('img', { name: /Resumo do pedido nº 3/ })
-    expect(JSON.stringify(desenho.desenharImagem.mock.calls[0]?.[0])).toContain('Clube Teste')
+    const cabecalho = () => (desenho.desenharImagem.mock.calls.at(-1)?.[0] as { id: string; linhas: { texto: string }[] }[] | undefined)?.find((bloco) => bloco.id === 'venda')?.linhas.map((linha) => linha.texto)
+    await waitFor(() => expect(cabecalho()).toEqual(['Lasanhas — 2ª edição', 'Clube Teste']))
   })
 
   it('pedido pago gera a imagem sem "Como pagar"', async () => {

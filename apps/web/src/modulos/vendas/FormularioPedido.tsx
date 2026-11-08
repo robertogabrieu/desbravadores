@@ -18,7 +18,7 @@ import { ResumoDosErros, useErrosAVista } from '../../ui/ErrosDoFormulario'
 import { Selecao } from '../../ui/Selecao'
 import { lerErroDaApi } from '../adm/desbravadores/erros'
 import { formasAceitasPela, opcoesDeForma } from './DialogoPagarPedido'
-import { formatarReais } from './formatos'
+import { formatarReais, formatarReaisComCentavos } from './formatos'
 import { ResumoAoVivo } from './ResumoAoVivo'
 
 const SEM_INTERNET = 'Salvar o pedido precisa de internet. Conecte-se para continuar.'
@@ -186,7 +186,7 @@ export function FormularioPedido({ venda, pedido, voltar, aoConcluir }: Propried
                   <div key={linha.produtoId} className="py-3">
                     <CampoComPasso
                       rotulo={linha.nome}
-                      ajuda={`${formatarReais(linha.preco)} cada`}
+                      ajuda={`${formatarReaisComCentavos(linha.preco)} cada`}
                       unidade={linha.nomeCurto}
                       minimo={0}
                       maximo={QUANTIDADE_MAXIMA_POR_ITEM}

@@ -1,5 +1,6 @@
 import { PEDIDOS_POR_PAGINA, rotuloDaSituacao, situacaoDoPedido } from '@desbravadores/shared'
 import type { FormaDoPedido } from '@desbravadores/shared'
+import { Check } from 'lucide-react'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
@@ -44,7 +45,13 @@ function Pagamento({ pedido }: { pedido: Pedido }) {
 
 function Situacao({ pedido }: { pedido: Pedido }) {
   if (pedido.canceladoEm) return <Selo tom="neutro">Cancelado</Selo>
-  return <Selo tom={pedido.entregueEm ? 'sucesso' : 'neutro'}>{situacaoDaEntrega(pedido)}</Selo>
+  if (!pedido.entregueEm) return <Selo tom="alerta">{situacaoDaEntrega(pedido)}</Selo>
+  return (
+    <Selo tom="sucesso">
+      <Check aria-hidden className="size-4" />
+      {situacaoDaEntrega(pedido)}
+    </Selo>
+  )
 }
 
 /** Pedidos da venda, com as ações que o estado de cada um permite; venda encerrada só deixa abrir o resumo. */

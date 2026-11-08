@@ -60,7 +60,7 @@ export function montarImagemDoPedido(venda: Venda, pedido: Pedido, nomeDoClube: 
   const formasAtivas = venda.formas.filter((forma) => forma.ativo)
 
   const blocos: (BlocoDaImagem | null)[] = [
-    { id: 'venda', titulo: null, linhas: [{ texto: venda.nome, enfase: 'titulo' }, ...(nomeDoClube ? [{ texto: `Clube ${nomeDoClube}`, enfase: 'suave' as const }] : [])] },
+    { id: 'venda', titulo: null, linhas: [{ texto: venda.nome, enfase: 'titulo' }, ...(nomeDoClube ? [{ texto: nomeDoClube, enfase: 'suave' as const }] : [])] },
     { id: 'pedido', titulo: null, linhas: [{ texto: `Pedido nº ${pedido.numero} — ${pedido.comprador}`, enfase: 'titulo' }] },
     blocoDosItens(pedido),
     { id: 'situacao', titulo: null, linhas: [{ texto: rotuloDaSituacao(situacao, pedido.forma), enfase: 'selo', tom }] },

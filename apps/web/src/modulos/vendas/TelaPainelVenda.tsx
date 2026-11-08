@@ -141,7 +141,10 @@ function PedidosDaVenda({ venda, painel, aoLancar }: PropriedadesDosPedidos) {
     />
   )
 
+  // Página vazia com pedidos no filtro: o efeito acima já está voltando à última página válida.
+  const voltandoDePagina = pedidos.data !== undefined && pedidos.data.itens.length === 0 && pedidos.data.total > 0
   const corpo = (() => {
+    if (voltandoDePagina) return <Carregando rotulo="Carregando os pedidos" />
     if (pedidos.data) return <TabelaDePedidos venda={venda} pedidos={pedidos.data.itens} pagina={pagina} total={pedidos.data.total} aoMudarPagina={setPagina} vazio={vazio} />
     if (pedidos.isError) return <ErroDeCarga erro={pedidos.error} aoTentarDeNovo={() => void pedidos.refetch()} />
     return <Carregando rotulo="Carregando os pedidos" />
@@ -164,7 +167,7 @@ function PedidosDaVenda({ venda, painel, aoLancar }: PropriedadesDosPedidos) {
         </div>
       </div>
       {corpo}
-      {pedidos.data && pedidos.data.total > 0 && (
+      {pedidos.data && pedidos.data.total > 0 && !voltandoDePagina && (
         <span className="text-sm text-texto-2">
           Mostrando {pedidos.data.itens.length} de {pedidos.data.total} pedidos, do mais novo para o mais antigo.
         </span>
@@ -175,7 +178,8 @@ function PedidosDaVenda({ venda, painel, aoLancar }: PropriedadesDosPedidos) {
 
 function descricaoDaVenda(venda: Venda): string {
   const taxa = venda.taxaEntrega > 0 ? `Entrega +${formatarReais(venda.taxaEntrega)}` : null
-  return [descricaoDaRetirada(venda), taxa].filter(Boolean).join(' · ')
+  const retirada = descricaoDaRetirada(venda)
+  return [retirada ? `Retirada ${retirada}` : null, taxa].filter(Boolean).join(' · ')
 }
 
 export function TelaPainelVenda() {

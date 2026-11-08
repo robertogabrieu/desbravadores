@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { HttpResponse, http } from 'msw'
+import { HttpResponse, delay, http } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ModoConexao } from '../../offline'
 import { criarListaDePedidos, criarPainel, criarPedido, criarProdutoDaVenda, criarVenda, handlerPedidos, handlersVendas } from '../../testes/handlers/vendas'
@@ -225,6 +225,28 @@ describe('Painel da venda: filtros, busca e vazios', () => {
     await waitFor(() => expect(consultas.at(-1)?.get('pagina')).toBe('1'))
     expect(await screen.findByText('Marlene Prado')).toBeInTheDocument()
     expect(screen.queryByText(/estão pagos/)).not.toBeInTheDocument()
+  })
+
+  it('em "A pagar", página 2 esvaziada: mostra carregando, sem a mensagem falsa nem o rodapé, até a página 1 chegar', async () => {
+    abrir()
+    const consultas: URLSearchParams[] = []
+    servidor.use(
+      http.get('/api/vendas/:id/pedidos', async ({ request }) => {
+        const consulta = new URL(request.url).searchParams
+        consultas.push(consulta)
+        if (consulta.get('pagina') === '2') return HttpResponse.json(criarListaDePedidos([], { total: 20, pagina: 2 }))
+        if (consultas.length > 2) await delay(400)
+        return HttpResponse.json(criarListaDePedidos([A_PAGAR], { total: 21 }))
+      }),
+    )
+    const usuario = userEvent.setup()
+    await usuario.click(await screen.findByRole('tab', { name: 'A pagar 3' }))
+    await screen.findByText('Marlene Prado')
+    await usuario.click(screen.getByRole('button', { name: 'Próxima página' }))
+    await screen.findByRole('status', { name: 'Carregando os pedidos' })
+    expect(screen.queryByText(/estão pagos/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Mostrando 0 de/)).not.toBeInTheDocument()
+    expect(await screen.findByText('Marlene Prado')).toBeInTheDocument()
   })
 
   it('filtro sem resultado oferece ver todos', async () => {
