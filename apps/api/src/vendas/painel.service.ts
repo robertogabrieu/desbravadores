@@ -32,7 +32,8 @@ export class PainelService {
       unidadesPorPedido.set(item.pedidoId, (unidadesPorPedido.get(item.pedidoId) ?? 0) + item.quantidade)
       unidadesPorProduto.set(item.produtoId, (unidadesPorProduto.get(item.produtoId) ?? 0) + item.quantidade)
     }
-    const itensPorPedido = Map.groupBy(itens, (item) => item.pedidoId)
+    const itensPorPedido = new Map<string, typeof itens>()
+    for (const item of itens) itensPorPedido.set(item.pedidoId, [...(itensPorPedido.get(item.pedidoId) ?? []), item])
 
     let vendido = 0
     let recebido = 0
