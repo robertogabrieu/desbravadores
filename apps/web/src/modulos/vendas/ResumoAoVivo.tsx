@@ -4,7 +4,7 @@ import { Check } from 'lucide-react'
 import { useId } from 'react'
 import { Cartao } from '../../ui/Cartao'
 import { Selo } from '../../ui/Selo'
-import { formatarReais } from './formatos'
+import { formatarReaisComCentavos } from './formatos'
 
 export interface LinhaDoResumo extends ItemParaTotal {
   produtoId: string
@@ -37,19 +37,19 @@ export function ResumoAoVivo({ itens, entrega, taxaEntrega, pago }: Propriedades
             <span>
               {item.quantidade} {item.nomeCurto}
             </span>
-            <span className="tabular-nums">{formatarReais(item.quantidade * item.precoGravado)}</span>
+            <span className="tabular-nums">{formatarReaisComCentavos(item.quantidade * item.precoGravado)}</span>
           </div>
         ))}
         {entrega && (
           <div className="flex items-center justify-between gap-3 text-base text-texto">
             <span>Entrega</span>
-            <span className="tabular-nums">{formatarReais(taxa)}</span>
+            <span className="tabular-nums">{formatarReaisComCentavos(taxa)}</span>
           </div>
         )}
         <div className="flex items-center justify-between gap-3 border-t border-divisor pt-3">
           <b className="text-base text-texto">Total</b>
           <output aria-label="Total do pedido" className="font-titulo text-3xl font-extrabold text-texto tabular-nums">
-            {formatarReais(totalDoPedido(escolhidos, taxa))}
+            {formatarReaisComCentavos(totalDoPedido(escolhidos, taxa))}
           </output>
         </div>
         {pago && (

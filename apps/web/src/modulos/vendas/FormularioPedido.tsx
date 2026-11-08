@@ -42,9 +42,10 @@ interface LinhaDeProduto {
 
 /** Produtos ativos da venda; o pedido existente mantém também os que foram desativados depois, para não perdê-los ao salvar. */
 function linhasDoPedido(venda: Venda, pedido?: Pedido): LinhaDeProduto[] {
-  const doPedido = new Map((pedido?.itens ?? []).map((item) => [item.produtoId, item]))
+  // Item que voltou de zero é item novo: vale o preço de agora, como a API grava (D14).
+  const doPedido = new Map((pedido?.itens ?? []).filter((item) => item.quantidade > 0).map((item) => [item.produtoId, item]))
   return venda.produtos
-    .filter((produto) => produto.ativo || (doPedido.get(produto.id)?.quantidade ?? 0) > 0)
+    .filter((produto) => produto.ativo || doPedido.has(produto.id))
     .map((produto) => ({ produtoId: produto.id, nome: produto.nome, nomeCurto: produto.nomeCurto, preco: doPedido.get(produto.id)?.precoGravado ?? produto.preco }))
 }
 
@@ -209,7 +210,7 @@ export function FormularioPedido({ venda, pedido, voltar, aoConcluir }: Propried
             legenda="Como recebe"
             opcoes={[
               { valor: 'RETIRADA', rotulo: 'Retirada' },
-              { valor: 'ENTREGA', rotulo: `Entrega +${formatarReais(venda.taxaEntrega)}` },
+              { valor: 'ENTREGA', rotulo: `Entrega +${formatarReais(taxaEntrega)}` },
             ]}
             valor={recebimento}
             aoEscolher={setRecebimento}

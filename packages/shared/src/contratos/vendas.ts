@@ -12,15 +12,17 @@ import { DataCivil, InstanteIso, pagina, Uuid } from './comum'
 const Centavos = z.number().int()
 const Taxa = Centavos.min(0, 'A taxa não pode ser negativa').max(TAXA_MAXIMA_CENTAVOS, 'Taxa de entrega acima do limite')
 const Preco = Centavos.min(PRECO_MINIMO_CENTAVOS, 'Informe um preço').max(PRECO_MAXIMO_CENTAVOS, 'Preço acima do limite')
-const Quantidade = z.number().int().min(0).max(QUANTIDADE_MAXIMA_POR_ITEM, 'Quantidade acima do limite')
+const Quantidade = z.number().int('Use só números inteiros, como 2').min(0, 'A quantidade não pode ser negativa').max(QUANTIDADE_MAXIMA_POR_ITEM, 'Quantidade acima do limite')
 
-const Obrigatorio = (maximo: number, mensagem: string) => z.string().trim().min(1, mensagem).max(maximo)
+const acimaDoLimite = (maximo: number): string => `Use no máximo ${maximo} caracteres`
+
+const Obrigatorio = (maximo: number, mensagem: string) => z.string().trim().min(1, mensagem).max(maximo, acimaDoLimite(maximo))
 /** Texto opcional: vazio vira nulo. */
 const Opcional = (maximo: number) =>
   z
     .string()
     .trim()
-    .max(maximo)
+    .max(maximo, acimaDoLimite(maximo))
     .nullish()
     .transform((texto) => (texto ? texto : null))
 

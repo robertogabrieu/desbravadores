@@ -161,3 +161,32 @@ describe('PagarPedidoEntrada e PedidosQuery', () => {
     expect(PedidosQuery.safeParse({ pagina: '0' }).success).toBe(false)
   })
 })
+
+describe('mensagens de limite em português', () => {
+  it('texto acima do limite diz o limite, na venda e no pedido', () => {
+    const venda = VendaEntrada.safeParse({ ...vendaValida, nome: 'x'.repeat(121), instrucoes: 'x'.repeat(1001) })
+    expect(mensagens(venda)).toEqual(expect.arrayContaining(['Use no máximo 120 caracteres', 'Use no máximo 1000 caracteres']))
+    const pedido = PedidoEntrada.safeParse({ ...pedidoValido, comprador: 'x'.repeat(121), observacao: 'x'.repeat(501), endereco: 'x'.repeat(301), vendedor: 'x'.repeat(121) })
+    expect(mensagens(pedido)).toEqual(expect.arrayContaining(['Use no máximo 120 caracteres', 'Use no máximo 500 caracteres', 'Use no máximo 300 caracteres']))
+  })
+
+  it('nenhuma recusa de texto, produto ou forma sai em inglês', () => {
+    const venda = VendaEntrada.safeParse({
+      ...vendaValida,
+      retiradaHorario: 'x'.repeat(61),
+      retiradaLocal: 'x'.repeat(201),
+      produtos: [{ nome: 'x'.repeat(121), nomeCurto: 'x'.repeat(41), preco: 3000 }],
+      formas: [{ tipo: 'PIX', chave: 'x'.repeat(141), favorecido: 'x'.repeat(121) }, { tipo: 'SETE_ME', orientacao: 'x'.repeat(501) }],
+    })
+    const textos = mensagens(venda)
+    expect(textos).toHaveLength(7)
+    expect(textos.every((texto) => texto.startsWith('Use no máximo '))).toBe(true)
+  })
+
+  it('quantidade negativa ou quebrada tem mensagem em português', () => {
+    const negativa = PedidoEntrada.safeParse({ ...pedidoValido, itens: [{ produtoId: P1, quantidade: -1 }] })
+    expect(mensagens(negativa)).toContain('A quantidade não pode ser negativa')
+    const quebrada = PedidoEntrada.safeParse({ ...pedidoValido, itens: [{ produtoId: P1, quantidade: 1.5 }] })
+    expect(mensagens(quebrada)).toContain('Use só números inteiros, como 2')
+  })
+})

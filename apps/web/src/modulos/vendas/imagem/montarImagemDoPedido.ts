@@ -1,7 +1,7 @@
 import { rotuloDaSituacao, situacaoDoPedido } from '@desbravadores/shared'
 import type { FormaPagamentoVendaSaida } from '@desbravadores/shared'
 import type { Pedido, Venda } from '../../../api/vendas'
-import { dataDaRetirada, formatarReais } from '../formatos'
+import { dataDaRetirada, formatarReaisComCentavos } from '../formatos'
 
 export type TomDaLinha = 'sucesso' | 'alerta' | 'neutro'
 
@@ -35,9 +35,9 @@ function linhasDaForma(forma: FormaPagamentoVendaSaida): LinhaDaImagem[] {
 function blocoDosItens(pedido: Pedido): BlocoDaImagem {
   const itens = pedido.itens
     .filter((item) => item.quantidade > 0)
-    .map<LinhaDaImagem>((item) => ({ texto: `${item.quantidade} × ${item.nome}`, valor: formatarReais(item.quantidade * item.precoGravado) }))
-  const taxa: LinhaDaImagem[] = pedido.taxaEntrega > 0 ? [{ texto: 'Entrega', valor: formatarReais(pedido.taxaEntrega) }] : []
-  return { id: 'itens', titulo: null, linhas: [...itens, ...taxa, { texto: 'Total', valor: formatarReais(pedido.total), enfase: 'total' }] }
+    .map<LinhaDaImagem>((item) => ({ texto: `${item.quantidade} × ${item.nome}`, valor: formatarReaisComCentavos(item.quantidade * item.precoGravado) }))
+  const taxa: LinhaDaImagem[] = pedido.taxaEntrega > 0 ? [{ texto: 'Entrega', valor: formatarReaisComCentavos(pedido.taxaEntrega) }] : []
+  return { id: 'itens', titulo: null, linhas: [...itens, ...taxa, { texto: 'Total', valor: formatarReaisComCentavos(pedido.total), enfase: 'total' }] }
 }
 
 function blocoDoLocal(venda: Venda, pedido: Pedido): BlocoDaImagem | null {
@@ -53,14 +53,14 @@ function blocoDoLocal(venda: Venda, pedido: Pedido): BlocoDaImagem | null {
  * O conteúdo da imagem do pedido, na ordem em que ele é desenhado. Preço e taxa vêm do que está gravado
  * no pedido e o total é o que o servidor calculou com `totalDoPedido`; nada de uso interno entra.
  */
-export function montarImagemDoPedido(venda: Venda, pedido: Pedido): BlocoDaImagem[] {
+export function montarImagemDoPedido(venda: Venda, pedido: Pedido, nomeDoClube: string): BlocoDaImagem[] {
   const situacao = situacaoDoPedido(pedido)
   const tom: TomDaLinha = situacao === 'PAGO' ? 'sucesso' : situacao === 'A_PAGAR' ? 'alerta' : 'neutro'
   const instrucoes = venda.instrucoes?.trim()
   const formasAtivas = venda.formas.filter((forma) => forma.ativo)
 
   const blocos: (BlocoDaImagem | null)[] = [
-    { id: 'venda', titulo: null, linhas: [{ texto: venda.nome, enfase: 'titulo' }] },
+    { id: 'venda', titulo: null, linhas: [{ texto: venda.nome, enfase: 'titulo' }, ...(nomeDoClube ? [{ texto: `Clube ${nomeDoClube}`, enfase: 'suave' as const }] : [])] },
     { id: 'pedido', titulo: null, linhas: [{ texto: `Pedido nº ${pedido.numero} — ${pedido.comprador}`, enfase: 'titulo' }] },
     blocoDosItens(pedido),
     { id: 'situacao', titulo: null, linhas: [{ texto: rotuloDaSituacao(situacao, pedido.forma), enfase: 'selo', tom }] },

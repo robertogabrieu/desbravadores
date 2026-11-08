@@ -1,4 +1,4 @@
-import { FILTROS_DO_PEDIDO, rotuloDoFiltro } from '@desbravadores/shared'
+import { FILTROS_DO_PEDIDO, PEDIDOS_POR_PAGINA, rotuloDoFiltro } from '@desbravadores/shared'
 import type { FiltroDoPedido } from '@desbravadores/shared'
 import { Plus } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -111,6 +111,13 @@ function PedidosDaVenda({ venda, painel, aoLancar }: PropriedadesDosPedidos) {
     }, ATRASO_DA_BUSCA_MS)
     return () => clearTimeout(espera)
   }, [busca])
+
+  // A última página esvaziou (o único pedido dela saiu do filtro): volta à última que ainda tem pedido.
+  const total = pedidos.data?.total
+  const itensDaPagina = pedidos.data?.itens.length
+  useEffect(() => {
+    if (total !== undefined && total > 0 && itensDaPagina === 0 && pagina > 1) setPagina(Math.ceil(total / PEDIDOS_POR_PAGINA))
+  }, [total, itensDaPagina, pagina])
 
   const verTodos = () => {
     setFiltro('TODOS')

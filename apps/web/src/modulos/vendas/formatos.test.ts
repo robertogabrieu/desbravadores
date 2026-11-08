@@ -1,7 +1,19 @@
 import { describe, expect, it } from 'vitest'
-import { centavosParaTexto, descricaoDaRetirada, formatarReais, reaisParaCentavos } from './formatos'
+import { centavosParaTexto, descricaoDaRetirada, formatarReais, formatarReaisComCentavos, reaisParaCentavos, situacaoDaEntrega } from './formatos'
 
 describe('formatos da venda', () => {
+  it('formatarReaisComCentavos mostra sempre os centavos', () => {
+    expect(formatarReaisComCentavos(7500)).toBe('R$ 75,00')
+    expect(formatarReaisComCentavos(393_050)).toBe('R$ 3.930,50')
+  })
+
+  it('situacaoDaEntrega fala em retirada quando o pedido é de retirada', () => {
+    expect(situacaoDaEntrega({ entrega: false, entregueEm: null })).toBe('A retirar')
+    expect(situacaoDaEntrega({ entrega: false, entregueEm: '2026-11-14T13:00:00.000Z' })).toBe('Retirado')
+    expect(situacaoDaEntrega({ entrega: true, entregueEm: null })).toBe('A entregar')
+    expect(situacaoDaEntrega({ entrega: true, entregueEm: '2026-11-14T13:00:00.000Z' })).toBe('Entregue')
+  })
+
   it('formatarReais tira os centavos quando são zero', () => {
     expect(formatarReais(393_000)).toBe('R$ 3.930')
     expect(formatarReais(2550)).toBe('R$ 25,50')

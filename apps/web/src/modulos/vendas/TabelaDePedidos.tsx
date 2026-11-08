@@ -13,7 +13,7 @@ import type { ColunaTabela } from '../../ui/Tabela'
 import { lerErroDaApi } from '../adm/desbravadores/erros'
 import { DialogoCancelarPedido } from './DialogoCancelarPedido'
 import { DialogoPagarPedido, formasAceitasPela } from './DialogoPagarPedido'
-import { formatarReais } from './formatos'
+import { formatarReaisComCentavos, situacaoDaEntrega } from './formatos'
 
 const SEM_INTERNET = 'Marcar pago, entregue e cancelar precisam de internet. Conecte-se para continuar.'
 const ACAO_DE_TEXTO = 'min-h-[var(--touch-min)] px-2'
@@ -44,7 +44,7 @@ function Pagamento({ pedido }: { pedido: Pedido }) {
 
 function Situacao({ pedido }: { pedido: Pedido }) {
   if (pedido.canceladoEm) return <Selo tom="neutro">Cancelado</Selo>
-  return <span>{pedido.entregueEm ? 'Entregue' : 'A entregar'}</span>
+  return <Selo tom={pedido.entregueEm ? 'sucesso' : 'neutro'}>{situacaoDaEntrega(pedido)}</Selo>
 }
 
 /** Pedidos da venda, com as ações que o estado de cada um permite; venda encerrada só deixa abrir o resumo. */
@@ -96,6 +96,8 @@ export function TabelaDePedidos({ venda, pedidos, pagina, total, aoMudarPagina, 
         Resumo
       </Link>
     )
+    const recebimento = pedido.entrega ? 'entrega' : 'retirada'
+    const recebido = pedido.entrega ? 'entregue' : 'retirado'
     if (encerrada) return <div className="flex flex-wrap items-center">{resumo}</div>
     if (pedido.canceladoEm) {
       return (
@@ -116,8 +118,8 @@ export function TabelaDePedidos({ venda, pedidos, pagina, total, aoMudarPagina, 
               setAPagar(pedido)
             })}
         {pedido.entregueEm
-          ? acao('Desmarcar entrega', 'Desmarcar entrega', () => void executar(() => desentregar.mutateAsync(ids(pedido))))
-          : acao('Marcar como entregue', 'Marcar como entregue', () => void executar(() => entregar.mutateAsync(ids(pedido))))}
+          ? acao(`Desmarcar ${recebimento}`, `Desmarcar ${recebimento}`, () => void executar(() => desentregar.mutateAsync(ids(pedido))))
+          : acao(`Marcar como ${recebido}`, `Marcar como ${recebido}`, () => void executar(() => entregar.mutateAsync(ids(pedido))))}
         {!pedido.entregueEm &&
           acao(
             'Cancelar',
@@ -157,7 +159,7 @@ export function TabelaDePedidos({ venda, pedidos, pagina, total, aoMudarPagina, 
         </div>
       ),
     },
-    { chave: 'total', titulo: 'Total', celula: (pedido) => <b className="tabular-nums">{formatarReais(pedido.total)}</b> },
+    { chave: 'total', titulo: 'Total', celula: (pedido) => <b className="tabular-nums">{formatarReaisComCentavos(pedido.total)}</b> },
     { chave: 'pagamento', titulo: 'Pagamento', celula: (pedido) => <Pagamento pedido={pedido} /> },
     { chave: 'situacao', titulo: 'Situação', celula: (pedido) => <Situacao pedido={pedido} /> },
     { chave: 'acoes', titulo: 'Ações', celula: (pedido) => acoesDoPedido(pedido) },
@@ -186,7 +188,7 @@ export function TabelaDePedidos({ venda, pedidos, pagina, total, aoMudarPagina, 
               <b>
                 {pedido.numero} · {pedido.comprador}
               </b>
-              <b className="tabular-nums">{formatarReais(pedido.total)}</b>
+              <b className="tabular-nums">{formatarReaisComCentavos(pedido.total)}</b>
             </div>
             <span className="text-sm text-texto-2">{itensDoPedido(pedido)}</span>
             {acoesDoPedido(pedido)}

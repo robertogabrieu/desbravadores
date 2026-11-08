@@ -7,6 +7,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useCancelarPedido, useDesentregarPedido, useDespagarPedido, useEntregarPedido, usePagarPedido, usePedido, useReativarPedido, useVenda } from '../../api/vendas'
 import type { Pedido, Venda } from '../../api/vendas'
 import { useConexao } from '../../offline'
+import { useSessao } from '../../sessao/useSessao'
 import { Botao, estiloDoBotao } from '../../ui/Botao'
 import { CabecalhoDaPagina } from '../../ui/CabecalhoDaPagina'
 import { Cartao } from '../../ui/Cartao'
@@ -16,9 +17,11 @@ import { Selo } from '../../ui/Selo'
 import { lerErroDaApi } from '../adm/desbravadores/erros'
 import { DialogoCancelarPedido } from './DialogoCancelarPedido'
 import { DialogoPagarPedido, formasAceitasPela } from './DialogoPagarPedido'
+import { diaEHora } from '../progresso/formatos'
 import { arquivoDaImagem, baixarImagem, compartilharImagem, nomeDoArquivoDoPedido, podeCompartilhar } from './imagem/compartilhar'
 import { desenharImagem } from './imagem/desenharImagem'
 import { montarImagemDoPedido } from './imagem/montarImagemDoPedido'
+import { situacaoDaEntrega } from './formatos'
 
 const SEM_INTERNET = 'Marcar pago, entregue, cancelar e editar precisam de internet. Conecte-se para continuar.'
 const VENDA_ENCERRADA = 'Esta venda foi encerrada. Reabra a venda para alterar o pedido; o resumo continua disponível para baixar.'
@@ -34,7 +37,7 @@ type ImagemDoPedido =
  * Desenha a imagem no navegador sempre que o pedido ou a venda mudam. Enquanto a nova não fica pronta
  * a anterior continua na tela, mas sem valer para baixar ou compartilhar.
  */
-function useImagemDoPedido(venda: Venda, pedido: Pedido) {
+function useImagemDoPedido(venda: Venda, pedido: Pedido, nomeDoClube: string) {
   const [imagem, setImagem] = useState<ImagemDoPedido>({ situacao: 'preparando' })
   const [tentativa, setTentativa] = useState(0)
   const enderecoAtual = useRef<string | null>(null)
@@ -42,7 +45,7 @@ function useImagemDoPedido(venda: Venda, pedido: Pedido) {
   useEffect(() => {
     let vigente = true
     setImagem((anterior) => (anterior.situacao === 'pronta' ? anterior : { situacao: 'preparando' }))
-    desenharImagem(montarImagemDoPedido(venda, pedido))
+    desenharImagem(montarImagemDoPedido(venda, pedido, nomeDoClube))
       .then((blob) => {
         if (!vigente) return
         if (enderecoAtual.current) URL.revokeObjectURL(enderecoAtual.current)
@@ -56,7 +59,7 @@ function useImagemDoPedido(venda: Venda, pedido: Pedido) {
     return () => {
       vigente = false
     }
-  }, [venda, pedido, tentativa])
+  }, [venda, pedido, nomeDoClube, tentativa])
 
   useEffect(
     () => () => {
@@ -95,15 +98,11 @@ function LinhaDaSituacao({ rotulo, children }: { rotulo: string; children: React
   )
 }
 
-const situacaoDaEntrega = (pedido: Pedido): string => {
-  if (pedido.entrega) return pedido.entregueEm ? 'Entregue' : 'A entregar'
-  return pedido.entregueEm ? 'Retirado' : 'A retirar'
-}
-
 function ResumoDoPedido({ venda, pedido }: { venda: Venda; pedido: Pedido }) {
   const { modo } = useConexao()
+  const { vinculoAtivo } = useSessao()
   const online = modo === 'ONLINE'
-  const { imagem, pronta, tentarDeNovo } = useImagemDoPedido(venda, pedido)
+  const { imagem, pronta, tentarDeNovo } = useImagemDoPedido(venda, pedido, vinculoAtivo?.clube.nome ?? '')
   const pagar = usePagarPedido()
   const despagar = useDespagarPedido()
   const entregar = useEntregarPedido()
@@ -224,7 +223,9 @@ function ResumoDoPedido({ venda, pedido }: { venda: Venda; pedido: Pedido }) {
           <>
             {cancelado && <Selo>Cancelado</Selo>}
             {encerrada && <Selo>Encerrada</Selo>}
-            <span>{pedido.comprador}</span>
+            <span>
+              {pedido.comprador} · lançado em {diaEHora(pedido.criadoEm)}
+            </span>
           </>
         }
       />

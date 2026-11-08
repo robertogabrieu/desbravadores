@@ -58,7 +58,7 @@ describe('vendas de arrecadação', () => {
     return corpo<VendaSaida>(resposta)
   }
 
-  /** Pedido direto no banco, para o resumo da lista; o lançamento pela API é do próximo pacote. */
+  /** Pedido direto no banco, para conferir o resumo da lista sem passar pelo lançamento. */
   async function pedidoDireto(venda: VendaSaida, clubeId: string, dados: { numero: number; quantidade: number; pago?: boolean; cancelado?: boolean; taxa?: number }) {
     const pedido = await prismaDeTeste().pedidoVenda.create({
       data: {

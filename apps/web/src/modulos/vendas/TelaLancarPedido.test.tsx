@@ -80,15 +80,15 @@ describe('Lançar pedido', () => {
     await usuario.click(screen.getByRole('button', { name: 'Aumentar 1 Frango' }))
     const itens = [{ quantidade: 2, precoGravado: 2500 }, { quantidade: 1, precoGravado: 2500 }]
     expect(total()).toHaveTextContent(formatarReais(totalDoPedido(itens, 0)))
-    expect(total()).toHaveTextContent('R$ 75')
+    expect(total()).toHaveTextContent('R$ 75,00')
 
     await usuario.click(screen.getByRole('radio', { name: 'Entrega +R$ 5' }))
     expect(total()).toHaveTextContent(formatarReais(totalDoPedido(itens, 500)))
-    expect(total()).toHaveTextContent('R$ 80')
+    expect(total()).toHaveTextContent('R$ 80,00')
     expect(screen.getByLabelText('Endereço da entrega')).toBeInTheDocument()
 
     await usuario.click(screen.getByRole('radio', { name: 'Retirada' }))
-    expect(total()).toHaveTextContent('R$ 75')
+    expect(total()).toHaveTextContent('R$ 75,00')
     expect(screen.queryByLabelText('Endereço da entrega')).not.toBeInTheDocument()
   })
 
@@ -198,13 +198,25 @@ describe('Editar pedido', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Editar pedido' })).toBeInTheDocument()
     await waitFor(() => expect(screen.getByLabelText('Comprador')).toHaveValue('Marlene Prado'))
     expect(screen.getByLabelText('Observação')).toHaveValue('sem queijo')
-    expect(total()).toHaveTextContent('R$ 40')
+    expect(total()).toHaveTextContent('R$ 40,00')
     expect(screen.queryByRole('radio', { name: 'Pago' })).not.toBeInTheDocument()
     expect(screen.queryByRole('group', { name: 'Forma de pagamento' })).not.toBeInTheDocument()
 
     const usuario = userEvent.setup()
     await usuario.click(screen.getByRole('button', { name: 'Aumentar 1 Frango' }))
-    expect(total()).toHaveTextContent('R$ 65')
+    expect(total()).toHaveTextContent('R$ 65,00')
+  })
+
+  it('item que voltou de zero entra no total com o preço de agora, como a API grava', async () => {
+    const zerado = criarPedido(8, {
+      comprador: 'Marlene Prado',
+      itens: [{ produtoId: FRANGO, nome: 'Frango assado', nomeCurto: 'Frango', quantidade: 0, precoGravado: 1000 }],
+    })
+    abrir({ editar: zerado })
+    const usuario = userEvent.setup()
+    await waitFor(() => expect(screen.getByLabelText('Comprador')).toHaveValue('Marlene Prado'))
+    await usuario.click(screen.getByRole('button', { name: 'Aumentar 1 Frango' }))
+    expect(total()).toHaveTextContent(formatarReais(totalDoPedido([{ quantidade: 1, precoGravado: 2500 }], 0)))
   })
 
   it('salva por PATCH sem pago nem forma', async () => {
@@ -227,7 +239,7 @@ describe('Editar pedido', () => {
     expect(screen.getByRole('radio', { name: 'Retirada' })).toBeDisabled()
     expect(screen.getByRole('radio', { name: 'Entrega +R$ 5' })).toBeDisabled()
     expect(screen.getByLabelText('Vendedor')).toBeEnabled()
-    expect(total()).toHaveTextContent('R$ 40')
+    expect(total()).toHaveTextContent('R$ 40,00')
   })
 
   it('pedido que não existe mostra o estado de não encontrado', async () => {

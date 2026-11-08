@@ -6,7 +6,7 @@ import { Confirmacao } from '../../ui/Confirmacao'
 import { EscolhaUnica } from '../../ui/EscolhaUnica'
 import type { OpcaoDaEscolha } from '../../ui/EscolhaUnica'
 
-/** Os tipos de forma que a venda aceita hoje, na ordem em que ela os cadastrou. */
+/** Os tipos de forma que a venda aceita hoje. */
 export const formasAceitasPela = (venda: Pick<Venda, 'formas'>): TipoDeFormaDaVenda[] => venda.formas.filter((forma) => forma.ativo).map((forma) => forma.tipo)
 
 /** As formas aceitas mais "Misto", que não é cadastrado na venda: o comprador combina as que ela aceita. */

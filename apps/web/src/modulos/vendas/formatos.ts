@@ -1,12 +1,22 @@
 import type { VendaSaida } from '@desbravadores/shared'
+import type { Pedido } from '../../api/vendas'
 
 const SEPARADOR = ' · '
 
-/** "R$ 3.930" quando não há centavos, "R$ 3.930,50" quando há. */
+/** "R$ 3.930" quando não há centavos, "R$ 3.930,50" quando há. Para os números do painel e da lista. */
 export function formatarReais(centavos: number): string {
   const inteiro = centavos % 100 === 0
   const valor = (centavos / 100).toLocaleString('pt-BR', { minimumFractionDigits: inteiro ? 0 : 2, maximumFractionDigits: 2 })
   return `R$ ${valor}`
+}
+
+/** "R$ 75,00": o valor de um pedido, sempre com centavos. */
+export const formatarReaisComCentavos = (centavos: number): string => `R$ ${(centavos / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+/** "Entregue", "A entregar", "Retirado" ou "A retirar", conforme o pedido seja de entrega ou de retirada. */
+export const situacaoDaEntrega = (pedido: Pick<Pedido, 'entrega' | 'entregueEm'>): string => {
+  if (pedido.entrega) return pedido.entregueEm ? 'Entregue' : 'A entregar'
+  return pedido.entregueEm ? 'Retirado' : 'A retirar'
 }
 
 /** "25,00": o valor como se digita no campo de preço. */

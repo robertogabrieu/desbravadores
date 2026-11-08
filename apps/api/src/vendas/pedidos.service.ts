@@ -223,8 +223,8 @@ export class PedidosService {
       const produtos = await produtosDaVenda(tx, clubeId, vendaId)
       const mudancas = mudancasDeItens(existentes, entrada.itens)
 
-      // Item que o pedido já tinha segue válido mesmo com o produto desativado (D13).
-      const novos = mudancas.filter((mudanca) => !mudanca.existente && mudanca.quantidade > 0)
+      // Item que o pedido já tinha segue válido mesmo com o produto desativado (D13); o que voltou de zero conta como item novo (D14).
+      const novos = mudancas.filter((mudanca) => !mudanca.existente?.quantidade && mudanca.quantidade > 0)
       if (novos.some((mudanca) => !produtos.get(mudanca.produtoId)?.ativo)) throw new ErroApp('NAO_ENCONTRADO', PRODUTO_NAO_ENCONTRADO)
       const entregaMudou = entrada.entrega !== pedido.entrega
       const itensMudaram = mudancas.some((mudanca) => mudanca.quantidade !== (mudanca.existente?.quantidade ?? 0))
@@ -245,7 +245,10 @@ export class PedidosService {
         },
       })
       for (const { produtoId, quantidade, existente } of mudancas) {
-        if (existente && existente.quantidade !== quantidade) {
+        if (existente && existente.quantidade === 0 && quantidade > 0) {
+          const precoGravado = produtos.get(produtoId)?.preco ?? 0
+          await tx.itemPedidoVenda.updateMany({ where: { clubeId, pedidoId, id: existente.id }, data: { quantidade, precoGravado } })
+        } else if (existente && existente.quantidade !== quantidade) {
           await tx.itemPedidoVenda.updateMany({ where: { clubeId, pedidoId, id: existente.id }, data: { quantidade } })
         } else if (!existente && quantidade > 0) {
           const precoGravado = produtos.get(produtoId)?.preco ?? 0

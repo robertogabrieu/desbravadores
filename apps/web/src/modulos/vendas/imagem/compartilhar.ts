@@ -1,3 +1,5 @@
+import { semAcento } from '../../progresso/formatos'
+
 const TIPO_DA_IMAGEM = 'image/png'
 const TAMANHO_MAXIMO_DO_NOME = 60
 
@@ -9,10 +11,7 @@ export interface Compartilhador {
 
 /** "pedido-3-marlene-prado.png": o comprador sem acento, espaço nem símbolo, para o arquivo abrir em qualquer aparelho. */
 export function nomeDoArquivoDoPedido(numero: number, comprador: string): string {
-  const seguro = comprador
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase()
+  const seguro = semAcento(comprador)
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
   const base = [`pedido-${numero}`, seguro].filter(Boolean).join('-')

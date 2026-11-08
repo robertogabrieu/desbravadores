@@ -70,7 +70,7 @@ export function criarListaDePedidos(itens: PedidoSaida[], parcial: Partial<Pedid
 
 export interface RecusaDaApi {
   status: number
-  codigo: 'CONFLITO' | 'NAO_ENCONTRADO' | 'VALIDACAO' | 'SEM_PERMISSAO' | 'ERRO_INTERNO'
+  codigo: 'CONFLITO' | 'NAO_ENCONTRADO' | 'VALIDACAO' | 'REGRA' | 'SEM_PERMISSAO' | 'ERRO_INTERNO'
   mensagem: string
 }
 
@@ -127,11 +127,11 @@ export const handlersEscritaVendas = (chamadas: ChamadaDeVenda[], respostas: Res
   return [
     escrita('post', '/api/vendas', venda, 201),
     escrita('patch', '/api/vendas/:id', venda),
-    escrita('post', '/api/vendas/:id/encerrar', venda),
-    escrita('post', '/api/vendas/:id/reabrir', venda),
+    escrita('post', '/api/vendas/:id/encerrar', venda, 201),
+    escrita('post', '/api/vendas/:id/reabrir', venda, 201),
     escrita('post', '/api/vendas/:id/pedidos', pedido, 201),
     escrita('patch', '/api/vendas/:id/pedidos/:pedidoId', pedido),
-    ...['pagar', 'despagar', 'entregar', 'desentregar', 'cancelar', 'reativar'].map((acao) => escrita('post', `/api/vendas/:id/pedidos/:pedidoId/${acao}`, pedido)),
+    ...['pagar', 'despagar', 'entregar', 'desentregar', 'cancelar', 'reativar'].map((acao) => escrita('post', `/api/vendas/:id/pedidos/:pedidoId/${acao}`, pedido, 201)),
   ]
 }
 

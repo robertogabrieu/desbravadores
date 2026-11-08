@@ -198,7 +198,7 @@ describe('pedidos da venda', () => {
       expect(retirada).toMatchObject({ entrega: false, taxaEntrega: 0, endereco: null })
     })
 
-    it('item que zera fica com quantidade 0, some da saída e volta com o preço gravado', async () => {
+    it('item que zera fica com quantidade 0, some da saída e volta como item novo, com o preço de agora', async () => {
       const c = await cenario()
       const pedido = await lancar(c, { itens: [{ produtoId: c.carne.id, quantidade: 2 }, { produtoId: c.frango.id, quantidade: 1 }] })
       const zerado = corpo<PedidoSaida>(await editar(c, pedido, edicao(c, { itens: [{ produtoId: c.carne.id, quantidade: 2 }] })))
@@ -207,7 +207,17 @@ describe('pedidos da venda', () => {
       expect(linha.quantidade).toBe(0)
       await prismaDeTeste().produtoVenda.update({ where: { id: c.frango.id }, data: { preco: 9900 } })
       const volta = corpo<PedidoSaida>(await editar(c, pedido, edicao(c, { itens: [{ produtoId: c.carne.id, quantidade: 2 }, { produtoId: c.frango.id, quantidade: 4 }] })))
-      expect(volta.itens.find((i) => i.nomeCurto === 'Frango')).toMatchObject({ quantidade: 4, precoGravado: 3200 })
+      expect(volta.itens.find((i) => i.nomeCurto === 'Frango')).toMatchObject({ quantidade: 4, precoGravado: 9900 })
+    })
+
+    it('item que volta de zero com o produto desativado é recusado', async () => {
+      const c = await cenario()
+      const pedido = await lancar(c, { itens: [{ produtoId: c.carne.id, quantidade: 2 }, { produtoId: c.frango.id, quantidade: 1 }] })
+      await editar(c, pedido, edicao(c, { itens: [{ produtoId: c.carne.id, quantidade: 2 }] }))
+      await prismaDeTeste().produtoVenda.update({ where: { id: c.frango.id }, data: { ativo: false } })
+      const volta = await editar(c, pedido, edicao(c, { itens: [{ produtoId: c.carne.id, quantidade: 2 }, { produtoId: c.frango.id, quantidade: 4 }] }))
+      expect(volta.status).toBe(404)
+      expect(mensagem(volta)).toBe('Produto não encontrado nesta venda.')
     })
 
     it('produto desativado: o item que o pedido já tinha continua; item novo é recusado', async () => {

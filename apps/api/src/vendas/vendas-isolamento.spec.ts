@@ -77,17 +77,6 @@ describe('vendas: pedidos e painel entre clubes e entre vendas', () => {
     })
   }
 
-  testarIsolamento({
-    titulo: 'GET pedidos não devolve pedido do outro clube',
-    app: () => app,
-    papel: 'ADM',
-    semear: async (clubeB) => {
-      const { venda, pedido } = await semear(clubeB)
-      return { metodo: 'get', caminho: `/api/vendas/${venda.id}/pedidos`, idsDoOutroClube: [pedido.id] }
-    },
-    esperado: { tipo: 'NAO_ENCONTRADO' },
-  })
-
   describe('pedido da venda A pela URL da venda B (mesmo clube)', () => {
     it.each(rotas.filter(([titulo]) => !['GET painel', 'GET pedidos', 'POST pedidos'].includes(titulo)))('%s responde 404 e não muda nada', async (_titulo, montar) => {
       const clube = await criarClube()
@@ -114,11 +103,18 @@ describe('vendas: pedidos e painel entre clubes e entre vendas', () => {
       expect(await prismaDeTeste().pedidoVenda.count({ where: { vendaId: a.venda.id } })).toBe(1)
     })
 
-    it('a saída do pedido só traz itens e nome de unidade do próprio clube', async () => {
-      const clube = await criarClube()
-      const { dono, venda, pedido } = await semear(clube)
-      const lido = corpo<PedidoSaida>(await com(dono, 'get', `/api/vendas/${venda.id}/pedidos/${pedido.id}`))
-      expect(lido.itens.map((i) => i.produtoId)).toEqual([venda.produtos[0].id])
+    it('editar com produto de outra venda ou unidade de outro clube respondem 404, sem mudar o pedido', async () => {
+      const a = await semear(await criarClube())
+      const outraVenda = corpo<VendaSaida>(await com(a.dono, 'post', '/api/vendas', vendaValida))
+      const clubeB = await criarClube()
+      const unidadeB = await criarUnidade({ clubeId: clubeB.id })
+      const caminho = `/api/vendas/${a.venda.id}/pedidos/${a.pedido.id}`
+      const produto = await com(a.dono, 'patch', caminho, { ...corpoDoPedido(a.venda.produtos[0].id), itens: [{ produtoId: outraVenda.produtos[0].id, quantidade: 1 }] })
+      expect(produto.status).toBe(404)
+      const unidade = await com(a.dono, 'patch', caminho, { ...corpoDoPedido(a.venda.produtos[0].id), unidadeId: unidadeB.id })
+      expect(unidade.status).toBe(404)
+      await intacto(a.pedido.id)
+      expect(await prismaDeTeste().itemPedidoVenda.count({ where: { pedidoId: a.pedido.id } })).toBe(1)
     })
   })
 })
