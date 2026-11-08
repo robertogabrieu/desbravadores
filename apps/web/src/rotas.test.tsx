@@ -4,6 +4,7 @@ import type { ModoConexao } from './offline'
 import { handlerBiblioteca } from './testes/handlers/biblioteca'
 import { handlersClasseBiblica } from './testes/handlers/classe-biblica'
 import { criarVinculo, handlersSessao } from './testes/handlers/sessao'
+import { handlersVendas } from './testes/handlers/vendas'
 import { renderizarRotas } from './testes/renderizar'
 import { servidor } from './testes/servidor'
 import type { Papel } from '@desbravadores/shared'
@@ -109,6 +110,7 @@ describe('rotas de vendas', () => {
     ['/adm/vendas/v1/pedidos/p1/editar', 'Lançar pedido'],
   ])('%s abre a tela para ADM', async (rota, titulo) => {
     entrar('ADM')
+    servidor.use(...handlersVendas())
     const { roteador } = renderizarRotas(rotas, rota)
     expect(await screen.findByRole('heading', { level: 1, name: titulo })).toBeInTheDocument()
     expect(roteador.state.location.pathname).toBe(rota)
