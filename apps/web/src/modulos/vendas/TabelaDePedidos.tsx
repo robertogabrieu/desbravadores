@@ -7,7 +7,6 @@ import { Link } from 'react-router-dom'
 import { useCancelarPedido, useDesentregarPedido, useDespagarPedido, useEntregarPedido, usePagarPedido, useReativarPedido } from '../../api/vendas'
 import type { Pedido, Venda } from '../../api/vendas'
 import { useConexao } from '../../offline'
-import { Botao } from '../../ui/Botao'
 import { Selo } from '../../ui/Selo'
 import { Tabela } from '../../ui/Tabela'
 import type { ColunaTabela } from '../../ui/Tabela'
@@ -15,9 +14,10 @@ import { lerErroDaApi } from '../adm/desbravadores/erros'
 import { DialogoCancelarPedido } from './DialogoCancelarPedido'
 import { DialogoPagarPedido, formasAceitasPela } from './DialogoPagarPedido'
 import { formatarReaisComCentavos, situacaoDaEntrega } from './formatos'
+import { MenuDeAcoes } from './MenuDeAcoes'
+import type { AcaoDoMenu } from './MenuDeAcoes'
 
 const SEM_INTERNET = 'Marcar pago, entregue e cancelar precisam de internet. Conecte-se para continuar.'
-const ACAO_DE_TEXTO = 'min-h-[var(--touch-min)] px-2'
 
 interface Propriedades {
   venda: Venda
@@ -93,53 +93,27 @@ export function TabelaDePedidos({ venda, pedidos, pagina, total, aoMudarPagina, 
 
   const acoesDoPedido = (pedido: Pedido): ReactNode => {
     const desligada = !online || ocupado
-    const acao = (rotulo: string, aria: string, aoClicar: () => void, perigo = false) => (
-      <Botao variante="texto" className={perigo ? `${ACAO_DE_TEXTO} text-perigo` : ACAO_DE_TEXTO} aria-label={`${aria}, pedido ${pedido.numero}`} disabled={desligada} onClick={aoClicar}>
-        {rotulo}
-      </Botao>
-    )
-    const resumo = (
-      <Link to={`/adm/vendas/${venda.id}/pedidos/${pedido.id}`} aria-label={`Resumo, pedido ${pedido.numero}`} className="inline-flex min-h-[var(--touch-min)] items-center px-2 text-base font-semibold text-marca focus-visible:outline-2 focus-visible:outline-marca">
-        Resumo
-      </Link>
-    )
+    const resumo: AcaoDoMenu = { rotulo: 'Resumo', para: `/adm/vendas/${venda.id}/pedidos/${pedido.id}` }
+    const escrita = (rotulo: string, aoEscolher: () => void, perigo = false): AcaoDoMenu => ({ rotulo, aoEscolher, desligada, perigo })
     const recebimento = pedido.entrega ? 'entrega' : 'retirada'
     const recebido = pedido.entrega ? 'entregue' : 'retirado'
-    if (encerrada) return <div className="flex flex-wrap items-center">{resumo}</div>
-    if (pedido.canceladoEm) {
-      return (
-        <div className="flex flex-wrap items-center">
-          <Botao variante="texto" className={ACAO_DE_TEXTO} aria-label={`Reativar pedido ${pedido.numero}`} disabled={desligada} onClick={() => void executar(() => reativar.mutateAsync(ids(pedido)))}>
-            Reativar
-          </Botao>
-          {resumo}
-        </div>
-      )
+    const abrirDialogo = (abrir: (pedido: Pedido) => void) => () => {
+      setErro(null)
+      abrir(pedido)
     }
-    return (
-      <div className="flex flex-wrap items-center">
-        {pedido.pago
-          ? acao('Desmarcar pago', 'Desmarcar pago', () => void executar(() => despagar.mutateAsync(ids(pedido))))
-          : acao('Marcar como pago', 'Marcar como pago', () => {
-              setErro(null)
-              setAPagar(pedido)
-            })}
-        {pedido.entregueEm
-          ? acao(`Desmarcar ${recebimento}`, `Desmarcar ${recebimento}`, () => void executar(() => desentregar.mutateAsync(ids(pedido))))
-          : acao(`Marcar como ${recebido}`, `Marcar como ${recebido}`, () => void executar(() => entregar.mutateAsync(ids(pedido))))}
-        {!pedido.entregueEm &&
-          acao(
-            'Cancelar',
-            'Cancelar',
-            () => {
-              setErro(null)
-              setACancelar(pedido)
-            },
-            true,
-          )}
-        {resumo}
-      </div>
-    )
+    let acoes: AcaoDoMenu[]
+    if (encerrada) acoes = [resumo]
+    else if (pedido.canceladoEm) acoes = [escrita('Reativar', () => void executar(() => reativar.mutateAsync(ids(pedido)))), resumo]
+    else
+      acoes = [
+        pedido.pago ? escrita('Desmarcar pago', () => void executar(() => despagar.mutateAsync(ids(pedido)))) : escrita('Marcar como pago', abrirDialogo(setAPagar)),
+        pedido.entregueEm
+          ? escrita(`Desmarcar ${recebimento}`, () => void executar(() => desentregar.mutateAsync(ids(pedido))))
+          : escrita(`Marcar como ${recebido}`, () => void executar(() => entregar.mutateAsync(ids(pedido)))),
+        resumo,
+        ...(pedido.entregueEm ? [] : [escrita('Cancelar', abrirDialogo(setACancelar), true)]),
+      ]
+    return <MenuDeAcoes rotuloAcessivel={`Ações do pedido nº ${pedido.numero}`} acoes={acoes} />
   }
 
   const colunas: ColunaTabela<Pedido>[] = [
@@ -166,7 +140,7 @@ export function TabelaDePedidos({ venda, pedidos, pagina, total, aoMudarPagina, 
         </div>
       ),
     },
-    { chave: 'total', titulo: 'Total', celula: (pedido) => <b className="tabular-nums">{formatarReaisComCentavos(pedido.total)}</b> },
+    { chave: 'total', titulo: 'Total', celula: (pedido) => <b className="tabular-nums whitespace-nowrap">{formatarReaisComCentavos(pedido.total)}</b> },
     { chave: 'pagamento', titulo: 'Pagamento', celula: (pedido) => <Pagamento pedido={pedido} /> },
     { chave: 'situacao', titulo: 'Situação', celula: (pedido) => <Situacao pedido={pedido} /> },
     { chave: 'acoes', titulo: 'Ações', celula: (pedido) => acoesDoPedido(pedido) },
