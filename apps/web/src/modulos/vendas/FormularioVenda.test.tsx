@@ -246,7 +246,8 @@ describe('Editar venda', () => {
     await usuario.type(screen.getByLabelText('Como pagar pelo 7me'), 'Ofertas > Desbravadores')
     await usuario.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() => expect(chamadas).toHaveLength(1))
-    expect(chamadas[0]?.corpo).toMatchObject({ formas: expect.arrayContaining([{ id: VENDA.formas[1]?.id, tipo: 'SETE_ME', orientacao: 'Ofertas > Desbravadores' }]) })
+    const formas: unknown = (chamadas[0]?.corpo as { formas?: unknown } | undefined)?.formas
+    expect(formas).toContainEqual({ id: VENDA.formas[1]?.id, tipo: 'SETE_ME', orientacao: 'Ofertas > Desbravadores' })
   })
 
   it('desmarcar a última forma erra no grupo e não grava', async () => {

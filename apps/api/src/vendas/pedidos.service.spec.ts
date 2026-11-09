@@ -171,7 +171,9 @@ describe('pedidos da venda', () => {
 
   describe('editar', () => {
     const edicao = (c: Cenario, sobrescrever: Partial<PedidoEntrada> = {}) => {
-      const { pago: _pago, forma: _forma, ...resto } = entrada(c, sobrescrever)
+      const resto: Partial<PedidoEntrada> = entrada(c, sobrescrever)
+      delete resto.pago
+      delete resto.forma
       return resto
     }
     const editar = (c: Cenario, pedido: PedidoSaida, dados: object) => com(c.acesso, 'patch', `${base(c)}/${pedido.id}`, dados)

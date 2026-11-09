@@ -269,28 +269,28 @@ export class PedidosService {
   }
 
   despagar(clubeId: string, vendaId: string, pedidoId: string): Promise<PedidoSaida> {
-    return this.mudarPedido(clubeId, vendaId, pedidoId, async (_tx, pedido) => {
+    return this.mudarPedido(clubeId, vendaId, pedidoId, (_tx, pedido) => {
       exigirNaoCancelado(pedido)
       return { pago: false, forma: null }
     })
   }
 
   entregar(clubeId: string, vendaId: string, pedidoId: string): Promise<PedidoSaida> {
-    return this.mudarPedido(clubeId, vendaId, pedidoId, async (_tx, pedido) => {
+    return this.mudarPedido(clubeId, vendaId, pedidoId, (_tx, pedido) => {
       exigirNaoCancelado(pedido)
       return { entregueEm: pedido.entregueEm ?? new Date() }
     })
   }
 
   desentregar(clubeId: string, vendaId: string, pedidoId: string): Promise<PedidoSaida> {
-    return this.mudarPedido(clubeId, vendaId, pedidoId, async (_tx, pedido) => {
+    return this.mudarPedido(clubeId, vendaId, pedidoId, (_tx, pedido) => {
       exigirNaoCancelado(pedido)
       return { entregueEm: null }
     })
   }
 
   cancelar(clubeId: string, vendaId: string, pedidoId: string): Promise<PedidoSaida> {
-    return this.mudarPedido(clubeId, vendaId, pedidoId, async (_tx, pedido) => {
+    return this.mudarPedido(clubeId, vendaId, pedidoId, (_tx, pedido) => {
       if (pedido.canceladoEm) throw new ErroApp('CONFLITO', JA_CANCELADO)
       if (pedido.entregueEm) throw new ErroApp('CONFLITO', PEDIDO_ENTREGUE)
       return { canceladoEm: new Date() }
@@ -298,7 +298,7 @@ export class PedidosService {
   }
 
   reativar(clubeId: string, vendaId: string, pedidoId: string): Promise<PedidoSaida> {
-    return this.mudarPedido(clubeId, vendaId, pedidoId, async () => ({ canceladoEm: null }))
+    return this.mudarPedido(clubeId, vendaId, pedidoId, () => ({ canceladoEm: null }))
   }
 
   /** Venda aberta, pedido da venda da URL, regra do estado (em `decidir`) e só então a gravação. */
@@ -306,7 +306,10 @@ export class PedidosService {
     clubeId: string,
     vendaId: string,
     pedidoId: string,
-    decidir: (tx: Prisma.TransactionClient, pedido: PedidoVenda) => Promise<Prisma.PedidoVendaUncheckedUpdateManyInput>,
+    decidir: (
+      tx: Prisma.TransactionClient,
+      pedido: PedidoVenda,
+    ) => Prisma.PedidoVendaUncheckedUpdateManyInput | Promise<Prisma.PedidoVendaUncheckedUpdateManyInput>,
   ): Promise<PedidoSaida> {
     return this.vendas.escrever(clubeId, vendaId, async (tx, venda) => {
       exigirVendaAberta(venda)

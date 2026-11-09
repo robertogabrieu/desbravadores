@@ -35,7 +35,7 @@ describe('TelaVendas', () => {
     const cartoes = await screen.findAllByRole('link', { name: /Lasanhas/ })
     expect(cartoes.map((cartao) => cartao.getAttribute('href'))).toEqual([`/adm/vendas/${ABERTA.id}`, `/adm/vendas/${ENCERRADA.id}`])
 
-    const aberta = within(cartoes[0] as HTMLElement)
+    const aberta = within(cartoes[0])
     expect(aberta.getByText('Em andamento')).toBeInTheDocument()
     expect(aberta.getByText('Sábado, 14/11 · 9h às 12h · Salão da igreja')).toBeInTheDocument()
     expect(aberta.getByText('47')).toBeInTheDocument()
@@ -44,7 +44,7 @@ describe('TelaVendas', () => {
     expect(aberta.getByText('a receber')).toBeInTheDocument()
 
     expect(screen.getByText('Encerradas')).toBeInTheDocument()
-    const encerrada = within(cartoes[1] as HTMLElement)
+    const encerrada = within(cartoes[1])
     expect(encerrada.getByText('Encerrada')).toBeInTheDocument()
     expect(encerrada.getByText('R$ 4.075')).toBeInTheDocument()
     expect(encerrada.queryByText('a receber')).not.toBeInTheDocument()
