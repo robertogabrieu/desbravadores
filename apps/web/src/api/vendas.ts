@@ -48,7 +48,7 @@ export function usePainelDaVenda(vendaId: string | undefined, habilitada = true)
   })
 }
 
-/** GET /vendas/:id/pedidos?filtro=&busca=&pagina=: nº decrescente, uma página por vez. */
+/** GET /vendas/:id/pedidos?filtro=&busca=&pagina=: do mais novo para o mais antigo, uma página por vez. */
 export function usePedidos(vendaId: string | undefined, consulta: PedidosQuery = {}, habilitada = true) {
   const filtro = consulta.filtro ?? 'TODOS'
   const busca = consulta.busca?.trim() ?? ''
