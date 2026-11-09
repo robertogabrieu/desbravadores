@@ -48,6 +48,12 @@ function abrir(dados: Parameters<typeof handlersVendas>[0] = {}, antes: Paramete
   )
 }
 
+/** Abre o menu de ações do pedido e devolve o menu, onde ficam os itens. */
+async function abrirMenu(usuario: ReturnType<typeof userEvent.setup>, numero: number) {
+  await usuario.click(await screen.findByRole('button', { name: `Ações do pedido nº ${numero}` }))
+  return within(screen.getByRole('menu'))
+}
+
 const linhaDe = async (comprador: string) => within((await screen.findByText(comprador)).closest('tr') as HTMLElement)
 
 describe('Painel da venda: números', () => {
@@ -114,8 +120,10 @@ describe('Painel da venda: tabela e ações', () => {
     const retirada = await linhaDe('Paulo Souza')
     expect(retirada.getByText('Pago · Pix')).toBeInTheDocument()
     expect(retirada.getByText('A retirar')).toBeInTheDocument()
-    expect(retirada.getByRole('button', { name: 'Marcar como retirado, pedido 2' })).toBeInTheDocument()
-    expect(retirada.queryByRole('button', { name: /Marcar como entregue/ })).not.toBeInTheDocument()
+    const menu = await abrirMenu(usuario, 2)
+    expect(menu.getByRole('menuitem', { name: 'Marcar como retirado' })).toBeInTheDocument()
+    expect(menu.queryByRole('menuitem', { name: /Marcar como entregue/ })).not.toBeInTheDocument()
+    await usuario.keyboard('{Escape}')
     expect((await linhaDe('Ivo Lima')).getByText('Cancelado')).toBeInTheDocument()
     await usuario.click(screen.getByRole('link', { name: 'Marlene Prado' }))
     expect(roteador.state.location.pathname).toBe(`/adm/vendas/${VENDA.id}/pedidos/${A_PAGAR.id}`)
@@ -124,7 +132,7 @@ describe('Painel da venda: tabela e ações', () => {
   it('marcar como pago pede a forma entre as da venda mais Misto, e só confirma com uma escolhida', async () => {
     abrir()
     const usuario = userEvent.setup()
-    await usuario.click(await screen.findByRole('button', { name: 'Marcar como pago, pedido 3' }))
+    await usuario.click((await abrirMenu(usuario, 3)).getByRole('menuitem', { name: 'Marcar como pago' }))
     const dialogo = screen.getByRole('dialog')
     expect(within(dialogo).getAllByRole('radio').map((opcao) => opcao.parentElement?.textContent)).toEqual(['Pix', 'Dinheiro', 'Misto'])
     const confirmar = within(dialogo).getByRole('button', { name: 'Marcar como pago' })
@@ -138,10 +146,10 @@ describe('Painel da venda: tabela e ações', () => {
   it('pedido pago desmarca o pago; pedido a pagar marca entregue sem diálogo', async () => {
     abrir()
     const usuario = userEvent.setup()
-    await usuario.click(await screen.findByRole('button', { name: 'Desmarcar pago, pedido 2' }))
+    await usuario.click((await abrirMenu(usuario, 2)).getByRole('menuitem', { name: 'Desmarcar pago' }))
     await waitFor(() => expect(chamadas).toHaveLength(1))
     expect(chamadas[0]?.caminho).toBe(`/api/vendas/${VENDA.id}/pedidos/${PAGO.id}/despagar`)
-    await usuario.click(screen.getByRole('button', { name: 'Marcar como entregue, pedido 3' }))
+    await usuario.click((await abrirMenu(usuario, 3)).getByRole('menuitem', { name: 'Marcar como entregue' }))
     await waitFor(() => expect(chamadas).toHaveLength(2))
     expect(chamadas[1]?.caminho).toBe(`/api/vendas/${VENDA.id}/pedidos/${A_PAGAR.id}/entregar`)
   })
@@ -150,9 +158,10 @@ describe('Painel da venda: tabela e ações', () => {
     abrir()
     const usuario = userEvent.setup()
     const linha = await linhaDe('Rita Alves')
-    expect(linha.queryByRole('button', { name: /Cancelar/ })).not.toBeInTheDocument()
     expect(linha.getByText('Retirado')).toBeInTheDocument()
-    await usuario.click(linha.getByRole('button', { name: 'Desmarcar retirada, pedido 4' }))
+    const menu = await abrirMenu(usuario, 4)
+    expect(menu.queryByRole('menuitem', { name: 'Cancelar' })).not.toBeInTheDocument()
+    await usuario.click(menu.getByRole('menuitem', { name: 'Desmarcar retirada' }))
     await waitFor(() => expect(chamadas).toHaveLength(1))
     expect(chamadas[0]?.caminho).toBe(`/api/vendas/${VENDA.id}/pedidos/${ENTREGUE.id}/desentregar`)
   })
@@ -160,12 +169,12 @@ describe('Painel da venda: tabela e ações', () => {
   it('cancelar pede confirmação com o número e o comprador', async () => {
     abrir()
     const usuario = userEvent.setup()
-    await usuario.click(await screen.findByRole('button', { name: 'Cancelar, pedido 3' }))
+    await usuario.click((await abrirMenu(usuario, 3)).getByRole('menuitem', { name: 'Cancelar' }))
     const dialogo = screen.getByRole('dialog')
     expect(within(dialogo).getByText(/Marlene Prado/)).toBeInTheDocument()
     await usuario.click(within(dialogo).getByRole('button', { name: 'Voltar' }))
     expect(chamadas).toHaveLength(0)
-    await usuario.click(screen.getByRole('button', { name: 'Cancelar, pedido 3' }))
+    await usuario.click((await abrirMenu(usuario, 3)).getByRole('menuitem', { name: 'Cancelar' }))
     await usuario.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancelar pedido' }))
     await waitFor(() => expect(chamadas).toHaveLength(1))
     expect(chamadas[0]?.caminho).toBe(`/api/vendas/${VENDA.id}/pedidos/${A_PAGAR.id}/cancelar`)
@@ -174,9 +183,9 @@ describe('Painel da venda: tabela e ações', () => {
   it('pedido cancelado só oferece Reativar', async () => {
     abrir()
     const usuario = userEvent.setup()
-    const linha = await linhaDe('Ivo Lima')
-    expect(linha.queryByRole('button', { name: /pago|entreg|Cancelar/ })).not.toBeInTheDocument()
-    await usuario.click(linha.getByRole('button', { name: 'Reativar pedido 1' }))
+    const menu = await abrirMenu(usuario, 1)
+    expect(menu.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Reativar', 'Resumo'])
+    await usuario.click(menu.getByRole('menuitem', { name: 'Reativar' }))
     await waitFor(() => expect(chamadas).toHaveLength(1))
     expect(chamadas[0]?.caminho).toBe(`/api/vendas/${VENDA.id}/pedidos/${CANCELADO.id}/reativar`)
   })
@@ -185,15 +194,54 @@ describe('Painel da venda: tabela e ações', () => {
     abrir()
     const usuario = userEvent.setup()
     servidor.use(http.post('/api/vendas/:id/pedidos/:pedidoId/entregar', () => HttpResponse.json({ codigo: 'CONFLITO', mensagem: 'Esta venda foi encerrada.' }, { status: 409 })))
-    await usuario.click(await screen.findByRole('button', { name: 'Marcar como entregue, pedido 3' }))
+    await usuario.click((await abrirMenu(usuario, 3)).getByRole('menuitem', { name: 'Marcar como entregue' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Esta venda foi encerrada.')
+  })
+
+  it('cada pedido tem um só botão de ações, e o menu lista as ações do estado, com Cancelar por último', async () => {
+    abrir()
+    const usuario = userEvent.setup()
+    const linha = await linhaDe('Marlene Prado')
+    expect(linha.getAllByRole('button')).toHaveLength(1)
+    const menu = await abrirMenu(usuario, 3)
+    expect(menu.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Marcar como pago', 'Marcar como entregue', 'Resumo', 'Cancelar'])
+    expect(menu.getByRole('menuitem', { name: 'Cancelar' })).toHaveClass('text-perigo')
+    await usuario.keyboard('{Escape}')
+    await usuario.click(await screen.findByRole('button', { name: 'Ações do pedido nº 4' }))
+    expect(within(screen.getByRole('menu')).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Desmarcar pago', 'Desmarcar retirada', 'Resumo'])
+  })
+
+  it('o menu abre pelo teclado, Esc fecha e devolve o foco ao botão, clique fora fecha e só um fica aberto', async () => {
+    abrir()
+    const usuario = userEvent.setup()
+    const botao = await screen.findByRole('button', { name: 'Ações do pedido nº 3' })
+    botao.focus()
+    await usuario.keyboard('{Enter}')
+    expect(botao).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('menuitem', { name: 'Marcar como pago' })).toHaveFocus()
+    await usuario.keyboard('{Escape}')
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    expect(botao).toHaveFocus()
+    await usuario.click(botao)
+    await usuario.click(screen.getByRole('button', { name: 'Ações do pedido nº 2' }))
+    expect(screen.getAllByRole('menu')).toHaveLength(1)
+    await usuario.click(screen.getByText('Lançar pedido'))
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  it('o menu de Resumo leva ao resumo do pedido', async () => {
+    const { roteador } = abrir()
+    const usuario = userEvent.setup()
+    await usuario.click((await abrirMenu(usuario, 3)).getByRole('menuitem', { name: 'Resumo' }))
+    expect(roteador.state.location.pathname).toBe(`/adm/vendas/${VENDA.id}/pedidos/${A_PAGAR.id}`)
   })
 
   it('sem conexão as ações de escrita ficam desligadas e dizem o motivo', async () => {
     estado.modo = 'SEM_CONEXAO'
     abrir()
-    expect(await screen.findByRole('button', { name: 'Marcar como pago, pedido 3' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Cancelar, pedido 3' })).toBeDisabled()
+    const menu = await abrirMenu(userEvent.setup(), 3)
+    expect(menu.getByRole('menuitem', { name: 'Marcar como pago' })).toBeDisabled()
+    expect(menu.getByRole('menuitem', { name: 'Cancelar' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Encerrar venda' })).toBeDisabled()
     expect(screen.getAllByText(/precisam de internet/).length).toBeGreaterThan(0)
   })
@@ -278,13 +326,19 @@ describe('Painel da venda: filtros, busca e vazios', () => {
 describe('Painel da venda encerrada', () => {
   it('não tem ação de escrita, desliga Lançar com o motivo e mantém o resumo', async () => {
     abrir({ venda: criarVenda(1, { nome: 'Lasanhas — 2ª edição', encerradaEm: '2026-11-15T12:00:00.000Z' }) })
-    const linha = await linhaDe('Marlene Prado')
-    expect(linha.queryByRole('button')).not.toBeInTheDocument()
-    expect(linha.getByRole('link', { name: 'Resumo, pedido 3' })).toBeInTheDocument()
+    const menu = await abrirMenu(userEvent.setup(), 3)
+    expect(menu.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Resumo'])
+    expect(menu.getByRole('menuitem', { name: 'Resumo' })).toHaveAttribute('href', `/adm/vendas/${VENDA.id}/pedidos/${A_PAGAR.id}`)
     expect(screen.getByRole('button', { name: 'Lançar pedido' })).toBeDisabled()
     expect(screen.getByText(/Esta venda foi encerrada/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Encerrar venda' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Editar venda' })).not.toBeInTheDocument()
+  })
+
+  it('pedido cancelado em venda encerrada ainda oferece o Resumo', async () => {
+    abrir({ venda: criarVenda(1, { nome: 'Lasanhas — 2ª edição', encerradaEm: '2026-11-15T12:00:00.000Z' }) })
+    const menu = await abrirMenu(userEvent.setup(), 1)
+    expect(menu.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Resumo'])
   })
 
   it('Reabrir venda chama a API', async () => {
