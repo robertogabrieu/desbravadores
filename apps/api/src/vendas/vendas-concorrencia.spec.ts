@@ -41,12 +41,13 @@ describe('vendas: escritas simultâneas', () => {
   const lancar = (acesso: Acesso, venda: VendaSaida, comprador: string) =>
     com(acesso, `/api/vendas/${venda.id}/pedidos`, { comprador, itens: [{ produtoId: venda.produtos[0].id, quantidade: 1 }] })
 
-  it('dez lançamentos juntos geram números distintos e consecutivos', async () => {
+  it('dez lançamentos juntos geram códigos distintos e todos no formato', async () => {
     const { acesso, venda } = await novaVenda()
     const respostas = await Promise.all(Array.from({ length: 10 }, (_, i) => lancar(acesso, venda, `Comprador ${i}`)))
     expect(respostas.map((r) => r.status)).toEqual(Array(10).fill(201))
-    const numeros = respostas.map((r) => corpo<{ numero: number }>(r).numero).sort((a, b) => a - b)
-    expect(numeros).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    const codigos = respostas.map((r) => corpo<{ codigo: string }>(r).codigo)
+    expect(new Set(codigos).size).toBe(10)
+    for (const codigo of codigos) expect(codigo).toMatch(/^[A-HJ-NP-Z2-9]{6}$/)
   })
 
   it('lançar e encerrar em corrida: ou o pedido entra antes de encerrar, ou é recusado e não grava', async () => {

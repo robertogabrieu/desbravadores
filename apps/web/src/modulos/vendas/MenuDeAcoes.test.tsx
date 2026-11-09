@@ -18,13 +18,13 @@ const ACOES: AcaoDoMenu[] = [
 function abrir(acoes: AcaoDoMenu[] = ACOES) {
   render(
     <MemoryRouter>
-      <MenuDeAcoes rotuloAcessivel="Ações do pedido nº 7" acoes={acoes} />
+      <MenuDeAcoes rotuloAcessivel="Ações do pedido COD007" acoes={acoes} />
     </MemoryRouter>,
   )
   return userEvent.setup()
 }
 
-const botao = (numero = 7) => screen.getByRole('button', { name: `Ações do pedido nº ${numero}` })
+const botao = (numero = 7) => screen.getByRole('button', { name: `Ações do pedido COD00${numero}` })
 
 describe('MenuDeAcoes', () => {
   it('só leva o foco ao primeiro item depois de o menu estar posicionado', async () => {
@@ -70,7 +70,7 @@ describe('MenuDeAcoes', () => {
     const usuario = userEvent.setup()
     render(
       <MemoryRouter>
-        <MenuDeAcoes rotuloAcessivel="Ações do pedido nº 7" acoes={ACOES} />
+        <MenuDeAcoes rotuloAcessivel="Ações do pedido COD007" acoes={ACOES} />
         <button type="button">Depois</button>
       </MemoryRouter>,
     )
@@ -109,7 +109,7 @@ describe('MenuDeAcoes', () => {
   it('o menu tem o botão como nome', async () => {
     const usuario = abrir()
     await usuario.click(botao())
-    expect(screen.getByRole('menu', { name: 'Ações do pedido nº 7' })).toBeInTheDocument()
+    expect(screen.getByRole('menu', { name: 'Ações do pedido COD007' })).toBeInTheDocument()
   })
 
   it('sem nenhuma ação não mostra o botão', () => {
@@ -121,8 +121,8 @@ describe('MenuDeAcoes', () => {
     const usuario = userEvent.setup()
     render(
       <MemoryRouter>
-        <MenuDeAcoes rotuloAcessivel="Ações do pedido nº 7" acoes={ACOES} />
-        <MenuDeAcoes rotuloAcessivel="Ações do pedido nº 8" acoes={[{ rotulo: 'Outra', aoEscolher: escolhida }]} />
+        <MenuDeAcoes rotuloAcessivel="Ações do pedido COD007" acoes={ACOES} />
+        <MenuDeAcoes rotuloAcessivel="Ações do pedido COD008" acoes={[{ rotulo: 'Outra', aoEscolher: escolhida }]} />
       </MemoryRouter>,
     )
     await usuario.click(botao(7))

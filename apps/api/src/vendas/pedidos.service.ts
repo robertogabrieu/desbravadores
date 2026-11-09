@@ -15,6 +15,7 @@ import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { paginar, semAcento } from '../desbravadores/apoio'
 import type { ItemPedidoVenda, PedidoVenda, Prisma, ProdutoVenda } from '../generated/prisma/client.js'
+import { codigoLivreDoPedido } from './codigo-do-pedido'
 import { exigirVendaAberta, VENDA_NAO_ENCONTRADA } from './constantes'
 import { VendasService } from './vendas.service'
 
@@ -81,7 +82,7 @@ async function saidasDosPedidos(banco: Banco, clubeId: string, vendaId: string, 
     const ordem = (item: ItemPedidoVenda) => produtos.get(item.produtoId)?.ordem ?? 0
     return {
       id: pedido.id,
-      numero: pedido.numero,
+      codigo: pedido.codigo,
       comprador: pedido.comprador,
       vendedor: pedido.vendedor,
       unidadeId: pedido.unidadeId,
@@ -151,15 +152,15 @@ export class PedidosService {
     await this.exigirVenda(clubeId, vendaId)
     const candidatos = await this.prisma.pedidoVenda.findMany({
       where: { clubeId, vendaId, ...filtroDoPedido(consulta.filtro) },
-      orderBy: { numero: 'desc' },
-      select: { id: true, numero: true, comprador: true },
+      orderBy: [{ criadoEm: 'desc' }, { id: 'desc' }],
+      select: { id: true, codigo: true, comprador: true },
     })
     const termo = consulta.busca ? semAcento(consulta.busca) : ''
     const achados = termo
-      ? candidatos.filter((pedido) => String(pedido.numero) === termo || semAcento(pedido.comprador).includes(termo))
+      ? candidatos.filter((pedido) => semAcento(pedido.codigo).includes(termo) || semAcento(pedido.comprador).includes(termo))
       : candidatos
     const ids = paginar(achados, consulta.pagina, PEDIDOS_POR_PAGINA).map((pedido) => pedido.id)
-    const pedidos = await this.prisma.pedidoVenda.findMany({ where: { clubeId, vendaId, id: { in: ids } }, orderBy: { numero: 'desc' } })
+    const pedidos = await this.prisma.pedidoVenda.findMany({ where: { clubeId, vendaId, id: { in: ids } }, orderBy: [{ criadoEm: 'desc' }, { id: 'desc' }] })
     return {
       itens: await saidasDosPedidos(this.prisma, clubeId, vendaId, pedidos),
       total: achados.length,
@@ -173,7 +174,7 @@ export class PedidosService {
     return this.saidaAtual(this.prisma, clubeId, vendaId, pedidoId)
   }
 
-  /** O número é MAX+1 da venda, dentro da trava: cancelados contam, então nunca se reaproveita. */
+  /** O código é sorteado dentro da trava da venda: cancelados contam, então nunca se reaproveita. */
   lancar(clubeId: string, vendaId: string, entrada: Entrada): Promise<PedidoSaida> {
     return this.vendas.escrever(clubeId, vendaId, async (tx, venda) => {
       exigirVendaAberta(venda)
@@ -183,12 +184,12 @@ export class PedidosService {
       if (entrada.unidadeId) await exigirUnidadeAtiva(tx, clubeId, entrada.unidadeId)
       const forma = entrada.pago ? await exigirFormaAceita(tx, clubeId, vendaId, entrada.forma) : null
 
-      const maior = await tx.pedidoVenda.aggregate({ where: { clubeId, vendaId }, _max: { numero: true } })
+      const codigo = await codigoLivreDoPedido(tx, clubeId, vendaId)
       const pedido = await tx.pedidoVenda.create({
         data: {
           clubeId,
           vendaId,
-          numero: (maior._max.numero ?? 0) + 1,
+          codigo,
           comprador: entrada.comprador,
           vendedor: entrada.vendedor,
           unidadeId: entrada.unidadeId,

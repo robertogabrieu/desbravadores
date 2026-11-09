@@ -163,7 +163,7 @@ function PedidosDaVenda({ venda, painel, aoLancar }: PropriedadesDosPedidos) {
           }}
         />
         <div className="w-full sm:w-72">
-          <Campo type="search" rotulo="Buscar comprador ou nº" value={busca} onChange={(evento) => setBusca(evento.target.value)} />
+          <Campo type="search" rotulo="Buscar comprador ou código" value={busca} onChange={(evento) => setBusca(evento.target.value)} />
         </div>
       </div>
       {corpo}

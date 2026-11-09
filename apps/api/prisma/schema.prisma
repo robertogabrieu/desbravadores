@@ -1677,7 +1677,7 @@ model PedidoVenda {
   id          String                @id @default(uuid(7)) @db.Uuid
   clubeId     String                @db.Uuid
   vendaId     String                @db.Uuid
-  numero      Int
+  codigo      String
   comprador   String
   vendedor    String?
   unidadeId   String?               @db.Uuid
@@ -1698,7 +1698,7 @@ model PedidoVenda {
   itens   ItemPedidoVenda[]
 
   @@unique([clubeId, id])
-  @@unique([vendaId, numero])
+  @@unique([vendaId, codigo])
   @@index([clubeId, vendaId])
   @@index([clubeId, unidadeId])
 }

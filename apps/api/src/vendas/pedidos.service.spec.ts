@@ -68,12 +68,16 @@ describe('pedidos da venda', () => {
   const campos = (resposta: request.Response) => corpo<{ campos: Record<string, string> }>(resposta).campos
 
   describe('lançar', () => {
-    it('retirada: número 1, preço e total gravados, taxa zero', async () => {
+    it('retirada: código aleatório no formato, preço e total gravados, taxa zero', async () => {
       const c = await cenario()
       const pedido = await lancar(c)
-      expect(pedido).toMatchObject({ numero: 1, comprador: 'Maria', entrega: false, taxaEntrega: 0, pago: false, forma: null, total: 7000 })
+      expect(pedido).toMatchObject({ comprador: 'Maria', entrega: false, taxaEntrega: 0, pago: false, forma: null, total: 7000 })
       expect(pedido.itens).toEqual([{ produtoId: c.carne.id, nome: 'Lasanha de carne', nomeCurto: 'Carne', quantidade: 2, precoGravado: 3500 }])
-      expect((await lancar(c)).numero).toBe(2)
+      expect(pedido.codigo).toMatch(/^[A-HJ-NP-Z2-9]{6}$/)
+      expect(pedido).not.toHaveProperty('numero')
+      const outro = await lancar(c)
+      expect(outro.codigo).toMatch(/^[A-HJ-NP-Z2-9]{6}$/)
+      expect(outro.codigo).not.toBe(pedido.codigo)
     })
 
     it('entrega grava a taxa da venda e o endereço; item de quantidade zero não é gravado', async () => {
@@ -87,11 +91,13 @@ describe('pedidos da venda', () => {
       expect(await prismaDeTeste().itemPedidoVenda.count({ where: { pedidoId: pedido.id } })).toBe(1)
     })
 
-    it('número nunca é reaproveitado: cancelado conta', async () => {
+    it('código de pedido cancelado não é reaproveitado', async () => {
       const c = await cenario()
       const primeiro = await lancar(c)
       await acao(c, primeiro, 'cancelar')
-      expect((await lancar(c)).numero).toBe(2)
+      const segundo = await lancar(c)
+      expect(segundo.codigo).not.toBe(primeiro.codigo)
+      expect(await prismaDeTeste().pedidoVenda.count({ where: { vendaId: c.venda.id } })).toBe(2)
     })
 
     it('lança já pago com forma; MISTO vale', async () => {
@@ -347,7 +353,7 @@ describe('pedidos da venda', () => {
   })
 
   describe('listar', () => {
-    it('filtros, busca sem acento ou por número, ordem decrescente e paginação de 20', async () => {
+    it('filtros, busca sem acento ou por código, mais novo primeiro e paginação de 20', async () => {
       const c = await cenario()
       const nomes = ['José', 'Ana', 'Beatriz']
       const pedidos: PedidoSaida[] = []
@@ -357,19 +363,22 @@ describe('pedidos da venda', () => {
       await acao(c, pedidos[2], 'cancelar')
       const listar = async (consulta: string) => corpo<PedidoListaSaida>(await com(c.acesso, 'get', `${base(c)}?${consulta}`))
 
+      const [jose, ana, beatriz] = pedidos
+      const codigos = (resposta: PedidoListaSaida) => resposta.itens.map((p) => p.codigo)
       const todos = await listar('')
-      expect(todos.itens.map((p) => p.numero)).toEqual([3, 2, 1])
+      expect(codigos(todos)).toEqual([beatriz.codigo, ana.codigo, jose.codigo])
       expect(todos).toMatchObject({ total: 3, pagina: 1, porPagina: 20 })
-      expect((await listar('filtro=A_PAGAR')).itens.map((p) => p.numero)).toEqual([2])
-      expect((await listar('filtro=A_ENTREGAR')).itens.map((p) => p.numero)).toEqual([1])
-      expect((await listar('filtro=ENTREGUES')).itens.map((p) => p.numero)).toEqual([2])
-      expect((await listar('busca=jose')).itens.map((p) => p.numero)).toEqual([1])
-      expect((await listar('busca=2')).itens.map((p) => p.numero)).toEqual([2])
+      expect(codigos(await listar('filtro=A_PAGAR'))).toEqual([ana.codigo])
+      expect(codigos(await listar('filtro=A_ENTREGAR'))).toEqual([jose.codigo])
+      expect(codigos(await listar('filtro=ENTREGUES'))).toEqual([ana.codigo])
+      expect(codigos(await listar('busca=jose'))).toEqual([jose.codigo])
+      expect(codigos(await listar(`busca=${ana.codigo}`))).toEqual([ana.codigo])
+      expect(codigos(await listar(`busca=${beatriz.codigo.toLowerCase()}`))).toEqual([beatriz.codigo])
 
       for (let i = 0; i < 20; i += 1) await lancar(c, { comprador: `Extra ${i}` })
       const segunda = await listar('pagina=2')
       expect(segunda).toMatchObject({ total: 23, pagina: 2 })
-      expect(segunda.itens.map((p) => p.numero)).toEqual([3, 2, 1])
+      expect(codigos(segunda)).toEqual([beatriz.codigo, ana.codigo, jose.codigo])
     })
 
     it('total da saída e o painel batem com totalDoPedido, mesmo depois de mudar o preço da venda', async () => {

@@ -69,8 +69,8 @@ function permitirCompartilhar(aceita: boolean) {
 describe('Resumo do pedido: imagem e envio', () => {
   it('mostra o título, a imagem gerada e o conteúdo do pedido pendente com "Como pagar"', async () => {
     abrir()
-    expect(await screen.findByRole('heading', { level: 1, name: 'Pedido nº 3' })).toBeInTheDocument()
-    expect(await screen.findByRole('img', { name: /Resumo do pedido nº 3/ })).toHaveAttribute('src', 'blob:imagem-do-pedido')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Pedido COD003' })).toBeInTheDocument()
+    expect(await screen.findByRole('img', { name: /Resumo do pedido COD003/ })).toHaveAttribute('src', 'blob:imagem-do-pedido')
     const blocos = desenho.desenharImagem.mock.calls[0]?.[0] as { id: string }[]
     expect(blocos.map((bloco) => bloco.id)).toContain('pagar')
   })
@@ -78,19 +78,19 @@ describe('Resumo do pedido: imagem e envio', () => {
   it('mostra o instante do lançamento no fuso de São Paulo e passa o nome do clube à imagem', async () => {
     abrir()
     expect(await screen.findByText(/Marlene Prado · lançado em 21\/10 às 09h00/)).toBeInTheDocument()
-    await screen.findByRole('img', { name: /Resumo do pedido nº 3/ })
+    await screen.findByRole('img', { name: /Resumo do pedido COD003/ })
     const cabecalho = () => (desenho.desenharImagem.mock.calls.at(-1)?.[0] as { id: string; linhas: { texto: string }[] }[] | undefined)?.find((bloco) => bloco.id === 'venda')?.linhas.map((linha) => linha.texto)
     await waitFor(() => expect(cabecalho()).toEqual(['Lasanhas — 2ª edição', 'Clube Teste']))
   })
 
   it('pedido pago gera a imagem sem "Como pagar"', async () => {
     abrir(PAGO)
-    await screen.findByRole('img', { name: /Resumo do pedido nº 3/ })
+    await screen.findByRole('img', { name: /Resumo do pedido COD003/ })
     const blocos = desenho.desenharImagem.mock.calls[0]?.[0] as { id: string }[]
     expect(blocos.map((bloco) => bloco.id)).not.toContain('pagar')
   })
 
-  it('Baixar fica desligado até a imagem ficar pronta e então entrega pedido-<n>-<comprador>.png', async () => {
+  it('Baixar fica desligado até a imagem ficar pronta e então entrega pedido-<código>-<comprador>.png', async () => {
     let pronta: (blob: Blob) => void = () => undefined
     desenho.desenharImagem.mockImplementation(() => new Promise<Blob>((resolver) => (pronta = resolver)))
     const baixados: string[] = []
@@ -102,7 +102,7 @@ describe('Resumo do pedido: imagem e envio', () => {
     pronta(new Blob(['png'], { type: 'image/png' }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Baixar imagem' })).toBeEnabled())
     await userEvent.setup().click(screen.getByRole('button', { name: 'Baixar imagem' }))
-    expect(baixados).toEqual(['pedido-3-marlene-prado.png'])
+    expect(baixados).toEqual(['pedido-cod003-marlene-prado.png'])
   })
 
   it('se o desenho falhar, avisa e deixa tentar de novo', async () => {
@@ -110,7 +110,7 @@ describe('Resumo do pedido: imagem e envio', () => {
     abrir()
     expect(await screen.findByText('Não foi possível preparar a imagem.')).toBeInTheDocument()
     await userEvent.setup().click(screen.getByRole('button', { name: 'Tentar de novo' }))
-    expect(await screen.findByRole('img', { name: /Resumo do pedido nº 3/ })).toBeInTheDocument()
+    expect(await screen.findByRole('img', { name: /Resumo do pedido COD003/ })).toBeInTheDocument()
   })
 
   it('Compartilhar só aparece quando o aparelho aceita o arquivo, e abre o menu do aparelho', async () => {
@@ -119,7 +119,7 @@ describe('Resumo do pedido: imagem e envio', () => {
     const compartilhar = await botao('Compartilhar')
     await waitFor(() => expect(compartilhar).toBeEnabled())
     await userEvent.setup().click(compartilhar)
-    expect(share).toHaveBeenCalledWith(expect.objectContaining({ title: 'Pedido nº 3', files: [expect.any(File)] }))
+    expect(share).toHaveBeenCalledWith(expect.objectContaining({ title: 'Pedido COD003', files: [expect.any(File)] }))
   })
 
   it('sem suporte a compartilhar, só Baixar e a nota manda baixar', async () => {

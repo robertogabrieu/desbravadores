@@ -50,7 +50,7 @@ function abrir(dados: Parameters<typeof handlersVendas>[0] = {}, antes: Paramete
 
 /** Abre o menu de ações do pedido e devolve o menu, onde ficam os itens. */
 async function abrirMenu(usuario: ReturnType<typeof userEvent.setup>, numero: number) {
-  await usuario.click(await screen.findByRole('button', { name: `Ações do pedido nº ${numero}` }))
+  await usuario.click(await screen.findByRole('button', { name: `Ações do pedido COD00${numero}` }))
   return within(screen.getByRole('menu'))
 }
 
@@ -207,14 +207,14 @@ describe('Painel da venda: tabela e ações', () => {
     expect(menu.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Marcar como pago', 'Marcar como entregue', 'Resumo', 'Cancelar'])
     expect(menu.getByRole('menuitem', { name: 'Cancelar' })).toHaveClass('text-perigo')
     await usuario.keyboard('{Escape}')
-    await usuario.click(await screen.findByRole('button', { name: 'Ações do pedido nº 4' }))
+    await usuario.click(await screen.findByRole('button', { name: 'Ações do pedido COD004' }))
     expect(within(screen.getByRole('menu')).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Desmarcar pago', 'Desmarcar retirada', 'Resumo'])
   })
 
   it('o menu abre pelo teclado, Esc fecha e devolve o foco ao botão, clique fora fecha e só um fica aberto', async () => {
     abrir()
     const usuario = userEvent.setup()
-    const botao = await screen.findByRole('button', { name: 'Ações do pedido nº 3' })
+    const botao = await screen.findByRole('button', { name: 'Ações do pedido COD003' })
     botao.focus()
     await usuario.keyboard('{Enter}')
     expect(botao).toHaveAttribute('aria-expanded', 'true')
@@ -223,7 +223,7 @@ describe('Painel da venda: tabela e ações', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
     expect(botao).toHaveFocus()
     await usuario.click(botao)
-    await usuario.click(screen.getByRole('button', { name: 'Ações do pedido nº 2' }))
+    await usuario.click(screen.getByRole('button', { name: 'Ações do pedido COD002' }))
     expect(screen.getAllByRole('menu')).toHaveLength(1)
     await usuario.click(screen.getByText('Lançar pedido'))
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
@@ -258,7 +258,7 @@ describe('Painel da venda: filtros, busca e vazios', () => {
     await usuario.click(screen.getByRole('tab', { name: 'A pagar 3' }))
     await waitFor(() => expect(consultas.at(-1)?.get('filtro')).toBe('A_PAGAR'))
     expect(consultas.at(-1)?.get('pagina')).toBe('1')
-    await usuario.type(screen.getByRole('searchbox', { name: 'Buscar comprador ou nº' }), 'mar')
+    await usuario.type(screen.getByRole('searchbox', { name: 'Buscar comprador ou código' }), 'mar')
     await waitFor(() => expect(consultas.at(-1)?.get('busca')).toBe('mar'))
   })
 

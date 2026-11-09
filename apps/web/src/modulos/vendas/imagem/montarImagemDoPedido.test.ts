@@ -29,7 +29,7 @@ describe('montarImagemDoPedido', () => {
     const blocos = montarImagemDoPedido(VENDA, criarPedido(45, { comprador: 'Marlene Prado', itens: ITENS }), 'Clube Aurora')
     expect(ids(blocos)).toEqual(['venda', 'pedido', 'itens', 'situacao', 'pagar', 'local', 'instrucoes', 'rodape'])
     expect(bloco(blocos, 'venda')?.linhas[0]?.texto).toBe('Lasanhas — 2ª edição')
-    expect(bloco(blocos, 'pedido')?.linhas[0]?.texto).toBe('Pedido nº 45 — Marlene Prado')
+    expect(bloco(blocos, 'pedido')?.linhas[0]?.texto).toBe('Pedido COD045 — Marlene Prado')
   })
 
   it('lista os itens com quantidade e valor e deixa de fora o item com quantidade zero', () => {
