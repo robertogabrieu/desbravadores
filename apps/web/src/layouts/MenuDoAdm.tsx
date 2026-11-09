@@ -1,4 +1,4 @@
-import { BookOpen, CalendarDays, ChevronDown, CircleUserRound, ClipboardList, Flag, GraduationCap, LayoutDashboard, Library, ListChecks, Settings, Trophy, UserRound, Users } from 'lucide-react'
+import { BookOpen, CalendarDays, ChevronDown, CircleUserRound, ClipboardList, Flag, GraduationCap, LayoutDashboard, Library, ListChecks, Settings, ShoppingBag, Trophy, UserRound, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useId, useState } from 'react'
 import { matchPath, useLocation } from 'react-router-dom'
@@ -44,6 +44,7 @@ const ENTRADAS_ADM: EntradaDoMenu[] = [
     ],
   },
   { rotulo: 'Biblioteca', icone: Library, para: '/adm/biblioteca' },
+  { rotulo: 'Vendas', icone: ShoppingBag, para: '/adm/vendas' },
   { rotulo: 'Configurações do clube', icone: Settings, para: '/adm/configuracoes' },
   { rotulo: 'Minha conta', icone: CircleUserRound, para: '/conta' },
 ]

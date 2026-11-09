@@ -33,6 +33,7 @@ export const CATALOGO_PERMISSOES = {
     rotulo: 'Emprestar e receber livros físicos',
     padrao: { ADM: true, CONSELHEIRO: true, INSTRUTOR: true },
   },
+  'venda.gerenciar': { rotulo: 'Gerenciar as vendas de arrecadação', padrao: { ADM: true } },
   'ranking.configurar': { rotulo: 'Configurar o ranking', padrao: { ADM: true } },
   'relatorio.geral': { rotulo: 'Ver relatórios gerais', padrao: { ADM: true } },
   'clube.configurar': { rotulo: 'Configurar o clube', padrao: { ADM: true } },

@@ -1,0 +1,247 @@
+<title>Vendas de Arrecadação</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: seletor de telas no topo; cada tela é um quadro do tamanho real do desktop (1280 px), com rolagem própria. Tokens copiados de docs/design/tokens.css e do mockup da Biblioteca física (só estrutura e cores, nunca CSS do app). Visual único e claro, como o app. */
+:root{
+  --fundo:#F4F1EA; --papel:#fff; --tinta:#1B221F; --tinta2:#5B645F; --marca:#1F4D3A; --marca-esc:#163828; --marca-suave:#E3F0E8;
+  --borda:#8A8375; --borda2:#D9D3C5; --perigo:#B42318; --perigo-suave:#FCE8E6; --aviso:#7A4B00; --aviso-suave:#FBEFD5; --menu:#CFE0D6; --creme:#F3E3C8;
+  --titulo:'Bricolage Grotesque',system-ui,sans-serif; --corpo:'Figtree',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fundo);color:var(--tinta);font-family:var(--corpo);font-size:16px;padding-block:24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.t{font-family:var(--titulo)}
+.topo{max-width:1280px;margin:0 auto 16px;display:flex;flex-direction:column;gap:12px}
+.topo h1{font-family:var(--titulo);font-size:26px;font-weight:800;margin:0;text-wrap:balance}
+.topo p{margin:0;color:var(--tinta2);max-width:62rem}
+.seletor{display:flex;flex-wrap:wrap;gap:8px}
+.seletor button{font:600 15px var(--corpo);min-height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--borda);background:var(--papel);color:var(--tinta);cursor:pointer}
+.seletor button[aria-selected=true]{background:var(--marca);color:#fff;border-color:var(--marca)}
+.seletor button:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
+.nota{max-width:1280px;margin:0 auto 12px;font-size:14px;color:var(--tinta2);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.etiqueta{display:inline-block;border-radius:999px;padding:4px 12px;font-size:13px;font-weight:700;letter-spacing:.04em;color:#fff}
+.nova{background:var(--marca)}.alt{background:#9A3412}
+.moldura{max-width:1280px;margin:0 auto;overflow-x:auto;border:1px solid var(--borda2);border-radius:12px}
+.quadro{position:relative;background:var(--fundo)}
+.d{width:1280px;display:flex;min-height:800px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 20px;border-radius:12px;font:600 16px var(--corpo);border:0;white-space:nowrap;cursor:default;text-decoration:none}
+.pri{background:var(--marca);color:#fff}.sec{background:#fff;color:var(--tinta);border:1px solid var(--borda)}.out{background:#fff;color:var(--marca);border:1px solid var(--marca)}.txt{background:transparent;color:var(--marca);padding:0 10px}
+.off{background:#E8E3D7;color:#5B645F;border:1px solid var(--borda2)}
+.cartao{background:#fff;border:1px solid var(--borda);border-radius:16px}
+aside{width:248px;flex-shrink:0;background:var(--marca);color:#fff}
+.nav{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:12px;color:var(--menu);font-weight:600}
+.nav.on{background:var(--marca-esc);color:#fff}
+.h2{font-family:var(--titulo);font-size:18px;font-weight:700;margin:0}
+.conta{font-size:14px;color:var(--tinta2)}
+.seg{display:flex;background:#E8E3D7;border-radius:12px;padding:4px;gap:2px}
+.seg span{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 12px;border-radius:9px;font-weight:600;color:var(--tinta2);white-space:nowrap}
+.seg span.on{background:#fff;color:var(--marca);box-shadow:0 1px 3px rgba(27,34,31,.2)}
+.pilula{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font-size:14px;font-weight:700;white-space:nowrap}
+.ok{background:var(--marca-suave);color:var(--marca)}.tudo{background:var(--aviso-suave);color:var(--aviso)}.atr{background:var(--perigo-suave);color:var(--perigo)}.cinza{background:#E8E3D7;color:#4A524E}
+.lbl{font-size:14px;font-weight:600}.ajuda{font-size:14px;color:var(--tinta2);margin:0}
+.campo{display:flex;flex-direction:column;gap:6px;min-width:0}
+.in{display:flex;align-items:center;gap:8px;min-height:44px;border:1px solid var(--borda);border-radius:9px;background:#fff;padding:0 14px;min-width:0}
+.in.area{align-items:flex-start;padding:10px 14px;min-height:112px;line-height:1.45}
+.in .ph{color:var(--tinta2)}
+.in .pre{color:var(--tinta2);font-weight:600}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--tinta2);padding:10px 14px;border-bottom:1px solid var(--borda2);white-space:nowrap}
+td{padding:12px 14px;border-bottom:1px solid var(--borda2);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+.tabnum{font-variant-numeric:tabular-nums}
+.chip{display:flex;flex-direction:column;gap:2px;padding:14px 18px;flex:1;min-width:200px}
+.chip b{font-family:var(--titulo);font-size:28px;line-height:1.1;font-variant-numeric:tabular-nums}
+.passo{max-width:1280px;margin:16px auto 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.passo div{padding:14px 16px;font-size:15px;min-width:0}
+.passo b{display:block;margin-bottom:4px}
+main.m{padding:32px 48px;display:flex;flex-direction:column;gap:24px;flex:1;min-width:0}
+.cabp{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px}
+.cabp h1{margin:0;font-family:var(--titulo);font-size:24px;font-weight:700}
+.cabp p{margin:4px 0 0;color:var(--tinta2)}
+.mig{font-size:14px;color:var(--tinta2);display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.step{display:inline-flex;align-items:center;border:1px solid var(--borda);border-radius:12px;background:#fff}
+.step span{display:flex;align-items:center;justify-content:center;width:44px;height:44px;color:var(--marca)}
+.step b{min-width:36px;text-align:center;font-size:18px;font-variant-numeric:tabular-nums}
+.step.zero span:first-child{color:#9A9486}
+.linha{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.img{width:440px;background:#fff;border-radius:16px;overflow:hidden;border:1px solid var(--borda2);box-shadow:0 12px 30px rgba(27,34,31,.18);color:var(--tinta);flex-shrink:0}
+.img .fx{padding:14px 22px}
+.img hr{border:0;border-top:1px dashed var(--borda2);margin:0}
+.vazio{padding:24px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.rot{font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--tinta2)}
+</style>
+
+<div class="topo">
+  <h1>Vendas de arrecadação</h1>
+  <p>Mockup da spec <code>docs/fases/venda-arrecadacao/SPEC.md</code> (rascunho 1). Desktop do Adm, com o mesmo menu, cartões e botões da Biblioteca. Nomes, valores e datas são fictícios; produtos e preço (R$ 25, entrega R$ 5) vêm da planilha de lasanhas. Totais de cada pedido são calculados pela mesma regra da spec (D4).</p>
+  <div class="seletor" role="tablist" id="seletor"></div>
+</div>
+<div class="nota" id="nota"></div>
+<div class="moldura"><div class="quadro" id="quadro"></div></div>
+<div class="passo" id="passo"></div>
+
+<script>
+(function(){
+var I={
+ pl:'<path d="M5 12h14"/><path d="M12 5v14"/>',
+ mn:'<path d="M5 12h14"/>',
+ lf:'<path d="m15 18-6-6 6-6"/>',
+ rt:'<path d="m9 18 6-6-6-6"/>',
+ dn:'<path d="m6 9 6 6 6-6"/>',
+ bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+ dash:'<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',
+ us:'<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>',
+ gp:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+ cal:'<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+ bk:'<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+ bag:'<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>',
+ sr:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+ ck:'<path d="M20 6 9 17l-5-5"/>',
+ x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+ dl:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+ sh:'<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>',
+ pin:'<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>'
+};
+function ic(n,s){s=s||20;return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+I[n]+'</svg>'}
+var logo='<svg width="28" height="32" viewBox="0 0 28 32" aria-hidden="true"><path d="M2 3h24L14 30z" fill="#E8701A" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 7h12l-6 13z" fill="#fff" opacity=".9"/><path d="M11 9h6l-3 7z" fill="#E8701A"/></svg>';
+
+/* ---------- dados e regra de valor (D4) ---------- */
+var PROD=[{n:'Lasanha de carne',c:'Carne',p:2500},{n:'Lasanha de frango',c:'Frango',p:2500},{n:'Lasanha de PVT',c:'PVT',p:2500}];
+var TAXA=500;
+function brl(c){return (c/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
+function total(o){var s=0;o.q.forEach(function(q,i){s+=q*PROD[i].p});return s+(o.ent?TAXA:0)}
+function itens(o){var a=[];o.q.forEach(function(q,i){if(q)a.push(q+' '+PROD[i].c)});return a.join(' · ')}
+var PED=[
+ {n:47,c:'Marlene Prado',v:'Giovana',u:'Tigresas',q:[2,1,0],ent:false,pago:true,f:'Pix',st:0},
+ {n:46,c:'Heitor Salles',v:'WhatsApp',u:'',q:[3,0,0],ent:true,end:'Rua das Acácias, 120, ap. 32',pago:true,f:'Dinheiro',st:0},
+ {n:45,c:'Olga Tavares',v:'Luquinhas',u:'Búfalos',q:[2,0,1],ent:false,pago:false,st:0},
+ {n:44,c:'Família Nery',v:'Gêmeas',u:'Panteras',q:[4,2,0],ent:false,pago:true,f:'7me',st:1},
+ {n:43,c:'Rui Cardoso',v:'Pietra',u:'Tigresas',q:[1,1,1],ent:false,pago:true,f:'Pix',st:1},
+ {n:42,c:'Dione Matos',v:'WhatsApp',u:'',q:[0,0,2],ent:true,end:'Av. Júlio Buono, 3408',pago:true,f:'Pix',st:0},
+ {n:41,c:'Cleide Barros',v:'Riane',u:'Diretoria',q:[5,3,0],ent:false,pago:false,st:0}
+];
+function pg(o){return o.pago?'<span class="pilula ok">'+ic('ck',16)+'Pago · '+o.f+'</span>':'<span class="pilula atr">A pagar</span>'}
+function sit(o){if(o.st)return '<span class="pilula ok">'+ic('ck',16)+(o.ent?'Entregue':'Retirado')+'</span>';return '<span class="pilula tudo">'+(o.ent?'A entregar':'A retirar')+'</span>'}
+
+/* ---------- peças comuns ---------- */
+function menu(){
+ var it=[['dash','Visão geral'],['us','Desbravadores'],['gp','Usuários'],['cal','Calendário do clube'],['bk','Biblioteca'],['bag','Vendas']];
+ return '<aside><div style="display:flex;align-items:center;gap:8px;padding:20px">'+logo+'<span class="t" style="font-size:18px;font-weight:700;line-height:1.25">App do<br>Desbravador</span></div><nav style="display:flex;flex-direction:column;gap:4px;padding:8px">'+it.map(function(x){return '<span class="nav'+(x[1]==='Vendas'?' on':'')+'">'+ic(x[0])+x[1]+'</span>'}).join('')+'</nav></aside>'}
+function topoAdm(){return '<header style="display:flex;align-items:center;justify-content:flex-end;gap:4px;padding:8px 32px;background:#fff;border-bottom:1px solid var(--borda2);min-height:61px"><span class="btn txt">'+ic('bell',22)+'</span><span class="btn txt">Ana Paula Ribeiro '+ic('dn',16)+'</span></header>'}
+function pagina(corpo){return '<div class="d">'+menu()+'<div style="flex:1;min-width:0;display:flex;flex-direction:column">'+topoAdm()+corpo+'</div></div>'}
+function migalha(txt){return '<div class="mig">'+ic('lf',18)+txt+'</div>'}
+function ck(){return '<span style="width:22px;height:22px;border-radius:6px;background:var(--marca);color:#fff;display:inline-flex;align-items:center;justify-content:center">'+ic('ck',16)+'</span>'}
+function campo(l,c,a){return '<div class="campo"><span class="lbl">'+l+'</span>'+c+(a?'<p class="ajuda">'+a+'</p>':'')+'</div>'}
+function inp(v,ph){return '<div class="in">'+(v?'<span>'+v+'</span>':'<span class="ph">'+ph+'</span>')+'</div>'}
+
+var S={};
+
+/* 1. Lista de vendas */
+S.lista={t:'Vendas (lista)',nota:['nova','Item novo no menu do Adm. A venda em andamento vem primeiro e a única ação em destaque é criar outra.'],
+ passo:[['Um destaque','Nova venda é o único botão cheio. Abrir uma venda é o cartão inteiro.'],['A venda em andamento primeiro','Quem abre o módulo quase sempre quer lançar pedido da edição de agora; a encerrada fica abaixo, mais clara.'],['Quando e onde','O cartão mostra retirada e o andamento (pedidos, a receber), as duas coisas que o Adm confere ao abrir.']],
+ h:function(){
+  function cart(nome,pill,cls,linha,ns,enc){return '<div class="cartao" style="padding:20px 24px;display:flex;flex-direction:column;gap:14px'+(enc?';background:#FBF9F4':'')+'"><div class="linha"><h2 class="h2" style="font-size:20px">'+nome+'</h2><span class="pilula '+cls+'">'+pill+'</span></div><span style="display:flex;gap:8px;align-items:center;color:var(--tinta2)">'+ic('pin',18)+linha+'</span><div style="display:flex;gap:32px;flex-wrap:wrap">'+ns.map(function(x){return '<div style="display:flex;flex-direction:column"><b class="t tabnum" style="font-size:24px">'+x[0]+'</b><span class="conta">'+x[1]+'</span></div>'}).join('')+'</div></div>'}
+  return pagina('<main class="m"><header class="cabp"><div><h1>Vendas</h1><p>2 vendas · 1 em andamento</p></div><span class="btn pri">'+ic('pl')+'Nova venda</span></header>'+
+   '<div style="display:flex;flex-direction:column;gap:16px;max-width:860px">'+
+   cart('Lasanhas — 2ª edição','Em andamento','ok','Sábado, 14/11 · 9h às 12h · Salão da igreja',[['47','pedidos'],['171','unidades'],['R$ 3.930','recebido'],['R$ 375','a receber']])+
+   '<span class="rot" style="margin-top:8px">Encerradas</span>'+
+   cart('Lasanhas — 1ª edição','Encerrada','cinza','Sábado, 11/04 · 9h às 12h · Salão da igreja',[['46','pedidos'],['162','unidades'],['R$ 4.075','recebido']],true)+
+   '</div></main>')}};
+
+/* 2. Painel da venda */
+S.painel={t:'Painel da venda',nota:['nova','Tela de trabalho do Adm durante a venda: números primeiro, pedidos depois, ação primária no topo.'],
+ passo:[['Resumo antes do detalhe','Quatro números respondem "como estamos?". "A receber" usa o aviso (texto e cor), porque é o que pede ação.'],['Lançar pedido é o destaque','Editar venda é botão secundário. Filtros e busca ficam em cima da tabela, onde o olho já está.'],['Por unidade ao lado','Substitui a aba Dashboard da planilha. Usa as unidades cadastradas, então não depende de grafia.'],['Resumo em cada linha','"Resumo" abre a imagem do pedido, a tarefa que mais se repete depois de lançar.']],
+ h:function(){
+  var rows=PED.map(function(o){return '<tr><td class="tabnum"><b>'+o.n+'</b></td><td><b>'+o.c+'</b><br><span class="conta">'+o.v+(o.u?' · '+o.u:'')+'</span></td><td>'+itens(o)+(o.ent?'<br><span class="conta">Entrega · '+o.end+'</span>':'')+'</td><td class="tabnum"><b>'+brl(total(o))+'</b></td><td>'+pg(o)+'</td><td>'+sit(o)+'</td><td><span class="btn txt">Resumo</span></td></tr>'}).join('');
+  var un=[['Diretoria',62],['Panteras',41],['Tigresas',33],['Búfalos',20],['Lobos',9],['Sem unidade',6]];
+  return pagina('<main class="m"><div>'+migalha('Vendas')+'<header class="cabp"><div><h1>Lasanhas — 2ª edição</h1><p>Retirada sábado, 14/11 · 9h às 12h · Salão da igreja · Entrega +R$ 5</p></div><span style="display:flex;gap:8px"><span class="btn txt">Encerrar venda</span><span class="btn sec">Editar venda</span><span class="btn pri">'+ic('pl')+'Lançar pedido</span></span></header></div>'+
+   '<div style="display:flex;gap:12px;flex-wrap:wrap"><div class="cartao chip"><b>171</b><span class="conta">Unidades vendidas</span><span class="conta">98 Carne · 52 Frango · 21 PVT</span></div><div class="cartao chip"><b>R$ 3.930</b><span class="conta">Recebido</span><span class="conta">de R$ 4.305 vendidos</span></div><div class="cartao chip" style="border-color:var(--aviso)"><b style="color:var(--aviso)">R$ 375</b><span class="conta" style="color:var(--aviso);font-weight:600">A receber · 3 pedidos</span></div><div class="cartao chip"><b>31</b><span class="conta">Pedidos a retirar ou entregar</span><span class="conta">16 já foram</span></div></div>'+
+   '<div style="display:flex;gap:24px;align-items:flex-start">'+
+   '<section style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px"><div class="linha" style="flex-wrap:wrap"><div class="seg" style="min-width:420px"><span class="on">Todos 47</span><span>A pagar 3</span><span>A entregar 31</span><span>Entregues 16</span></div><div class="in" style="width:280px">'+ic('sr',18)+'<span class="ph">Buscar comprador</span></div></div>'+
+   '<div class="cartao" style="overflow:hidden"><table><thead><tr><th>Nº</th><th>Comprador</th><th>Itens</th><th>Total</th><th>Pagamento</th><th>Situação</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div><span class="conta">Mostrando 7 de 47 pedidos, do mais novo para o mais antigo.</span></section>'+
+   '<section class="cartao" style="width:280px;flex-shrink:0;padding:18px 20px;display:flex;flex-direction:column;gap:12px"><h2 class="h2">Unidades vendidas por unidade</h2>'+un.map(function(x){return '<div style="display:flex;flex-direction:column;gap:4px"><div class="linha"><span>'+x[0]+'</span><b class="tabnum">'+x[1]+'</b></div><div style="height:8px;border-radius:99px;background:#E8E3D7"><div style="height:8px;border-radius:99px;background:var(--marca);width:'+Math.round(x[1]/62*100)+'%"></div></div></div>'}).join('')+'<span class="conta">Total: 171 unidades</span></section>'+
+   '</div></main>')}};
+
+/* 3. Lançar pedido */
+S.pedido={t:'Lançar pedido',nota:['nova','Formulário na ordem em que o Adm recebe o pedido. O valor soma ao vivo no resumo ao lado. Aqui está preenchido como entrega, para mostrar o endereço e a taxa.'],
+ passo:[['Ordem da conversa','Quem compra, o que leva, como recebe, como paga. Observação por último, porque quase sempre fica vazia.'],['Valor ao vivo, ao lado','O Adm confere o total antes de salvar, sem somar de cabeça. É a mesma função que gera a imagem.'],['Campo só quando serve','Endereço só aparece em Entrega. A forma de pagamento só aparece em Pago.'],['Um destaque','Salvar e ver resumo leva direto à imagem, que é o que se faz depois de lançar.']],
+ h:function(){
+  var o={q:[2,1,0],ent:true};
+  function pas(n,v,pr){return '<div class="linha" style="padding:6px 0"><div><b>'+n+'</b><br><span class="conta">'+brl(pr)+' cada</span></div><span class="step'+(v?'':' zero')+'"><span>'+ic('mn',20)+'</span><b>'+v+'</b><span>'+ic('pl',20)+'</span></span></div>'}
+  var form='<div class="cartao" style="flex:1;min-width:0;padding:24px;display:flex;flex-direction:column;gap:20px">'+
+   '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">'+campo('Comprador',inp('Marlene Prado',''))+campo('Vendedor',inp('Giovana',''),'Quem vendeu. Pode ser um nome ou "WhatsApp".')+'</div>'+
+   '<div style="max-width:calc(50% - 8px)">'+campo('Unidade do vendedor',inp('Tigresas','')+'<span style="display:none"></span>','Opcional. Entra na soma por unidade do painel.')+'</div>'+
+   '<div class="campo"><span class="lbl">Quantidade</span><div style="border:1px solid var(--borda2);border-radius:12px;padding:6px 16px">'+pas('Lasanha de carne',2,2500)+'<hr style="border:0;border-top:1px solid var(--borda2);margin:0">'+pas('Lasanha de frango',1,2500)+'<hr style="border:0;border-top:1px solid var(--borda2);margin:0">'+pas('Lasanha de PVT',0,2500)+'</div></div>'+
+   '<div class="campo"><span class="lbl">Como recebe</span><div class="seg" style="max-width:360px"><span>Retirada</span><span class="on">Entrega +R$ 5</span></div></div>'+
+   '<div class="campo">'+'<span class="lbl">Endereço da entrega</span>'+inp('Rua das Acácias, 120, ap. 32','')+'</div>'+
+   '<div class="campo"><span class="lbl">Pagamento</span><div class="seg" style="max-width:360px"><span class="on">Pago</span><span>A pagar</span></div></div>'+
+   '<div class="campo"><span class="lbl">Forma de pagamento</span><div class="seg" style="max-width:520px"><span class="on">Pix</span><span>Dinheiro</span><span>7me</span><span>Misto</span></div></div>'+
+   '<div class="campo"><span class="lbl">Observação</span>'+inp('','Ex.: sem queijo, deixar na geladeira da igreja')+'</div></div>';
+  var res='<aside style="all:unset;width:320px;flex-shrink:0"><div class="cartao" style="padding:20px;display:flex;flex-direction:column;gap:12px;position:sticky;top:16px"><h2 class="h2">Resumo do pedido</h2>'+
+   '<div class="linha"><span>2 Carne</span><span class="tabnum">'+brl(5000)+'</span></div><div class="linha"><span>1 Frango</span><span class="tabnum">'+brl(2500)+'</span></div><div class="linha"><span>Entrega</span><span class="tabnum">'+brl(500)+'</span></div><hr style="border:0;border-top:1px solid var(--borda2);width:100%;margin:0">'+
+   '<div class="linha"><b>Total</b><b class="t tabnum" style="font-size:28px">'+brl(total(o))+'</b></div><span class="pilula ok" style="align-self:flex-start">'+ic('ck',16)+'Pago · Pix</span></div></aside>';
+  return pagina('<main class="m"><div>'+migalha('Lasanhas — 2ª edição')+'<header class="cabp"><div><h1>Lançar pedido</h1><p>Pedido nº 48</p></div></header></div>'+
+   '<div style="display:flex;gap:24px;align-items:flex-start">'+form+res+'</div>'+
+   '<div style="display:flex;gap:8px;justify-content:flex-end"><span class="btn sec">Voltar</span><span class="btn pri">Salvar e ver resumo</span></div></main>')}};
+
+/* 4. Resumo do pedido (a imagem) */
+S.resumo={t:'Resumo do pedido (imagem)',nota:['nova','A imagem é gerada no navegador, em PNG, em formato vertical para o WhatsApp. Nada fica guardado no servidor. À esquerda a prévia; à direita o que o Adm faz com ela.'],
+ passo:[['O que o comprador precisa','O pedido, quanto pagou, quando e onde buscar e como conservar. Nada de uso interno (vendedor, unidade, número da linha) entra.'],['Tarefa do Adm','Baixar imagem é o destaque. Compartilhar abre o menu do aparelho e, onde ele não existe, vira só Baixar.'],['Como pagar, só se falta pagar','Pedido a pagar mostra as formas aceitas pela venda, com a chave Pix e a orientação do 7me. Pedido pago mostra só a situação. Retirada mostra data, horário e local; entrega mostra o endereço.'],['Marcar como pago e como retirado','Ficam na mesma tela porque são os passos depois de enviar a imagem e entregar a lasanha. Aqui está um pedido de retirada ainda a pagar.']],
+ h:function(){
+  var o=PED[2];
+  var img='<div class="img"><div style="background:var(--marca);color:#fff;padding:22px;display:flex;align-items:center;gap:12px">'+logo+'<div><div class="t" style="font-size:22px;font-weight:800;line-height:1.1">Lasanhas — 2ª edição</div><div style="color:var(--menu);font-size:14px">Clube [Nome do Clube]</div></div></div>'+
+   '<div class="fx"><div class="rot">Pedido nº 45</div><div class="t" style="font-size:22px;font-weight:700">'+o.c+'</div></div><hr>'+
+   '<div class="fx" style="display:flex;flex-direction:column;gap:8px"><div class="linha"><span>2 × Lasanha de carne</span><span class="tabnum">'+brl(5000)+'</span></div><div class="linha"><span>1 × Lasanha de PVT</span><span class="tabnum">'+brl(2500)+'</span></div><div class="linha" style="margin-top:4px"><b>Total</b><b class="t tabnum" style="font-size:26px">'+brl(total(o))+'</b></div><span class="pilula atr" style="align-self:flex-start">A pagar</span></div><hr>'+'<div class="fx" style="display:flex;flex-direction:column;gap:8px"><div class="rot">Como pagar</div><div><b>Pix</b> · chave CNPJ 00.000.000/0001-00<br><span class="conta">Favorecido: [Nome do Clube]</span></div><div><b>7me</b> · <span>Ofertas &gt; Outras ofertas &gt; Ofertas para a minha igreja &gt; Desbravadores</span></div></div><hr>'+
+   '<div class="fx" style="display:flex;gap:10px"><span style="color:var(--marca);margin-top:2px">'+ic('pin',20)+'</span><div><div class="rot">Retirada</div><b>Sábado, 14/11 · 9h às 12h</b><br><span>Salão da igreja, Rua [endereço]</span></div></div><hr>'+
+   '<div class="fx" style="background:var(--creme)"><div class="rot" style="color:#5B4A22">Como conservar e aquecer</div><div style="font-size:15px;line-height:1.45;margin-top:4px">Guarde na geladeira e consuma em até 3 dias. Não congele. Para aquecer: forno a 180 °C por 20 minutos, tampada com papel-alumínio.</div></div>'+
+   '<div class="fx" style="text-align:center;font-size:14px;color:var(--tinta2)">Obrigado por apoiar o nosso clube!</div></div>';
+  var lado='<div style="display:flex;flex-direction:column;gap:16px;width:360px;flex-shrink:0"><div class="cartao" style="padding:20px;display:flex;flex-direction:column;gap:12px"><h2 class="h2">Enviar ao comprador</h2><span class="btn pri">'+ic('dl')+'Baixar imagem</span><span class="btn out">'+ic('sh')+'Compartilhar</span><p class="ajuda">Compartilhar abre os aplicativos do seu aparelho, como o WhatsApp. Se o aparelho não permitir, use Baixar.</p></div>'+
+   '<div class="cartao" style="padding:20px;display:flex;flex-direction:column;gap:12px"><h2 class="h2">Situação</h2><div class="linha"><span>Pagamento</span>'+pg(o)+'</div><div class="linha"><span>Retirada</span>'+sit(o)+'</div><span class="btn out">'+ic('ck')+'Marcar como pago</span><span class="btn sec">'+ic('ck')+'Marcar como retirado</span></div>'+
+   '<div class="linha" style="flex-wrap:wrap"><span class="btn txt" style="padding:0">Editar pedido</span><span class="btn txt" style="padding:0;color:var(--perigo)">Cancelar pedido</span></div></div>';
+  return pagina('<main class="m"><div>'+migalha('Lasanhas — 2ª edição')+'<header class="cabp"><div><h1>Pedido nº 45</h1><p>'+o.c+' · lançado hoje</p></div></header></div><div style="display:flex;gap:32px;align-items:flex-start;flex-wrap:wrap">'+img+lado+'</div></main>')}};
+
+/* 5. Nova venda */
+S.venda={t:'Nova venda',nota:['nova','Onde o Adm define o que está à venda e o que sai na imagem. Preenchida com os dados da 2ª edição.'],
+ passo:[['Como o comprador paga','Cada venda diz quais formas aceita e os dados para pagar (chave Pix, orientação do 7me). Esses dados vão na imagem dos pedidos ainda não pagos, e ao lançar um pedido só essas formas aparecem.'],['Tudo que muda entre vendas','Produtos, preço, taxa, retirada e instruções. É o que torna o módulo reaproveitável além da lasanha.'],['Aviso junto do campo','"Sai na imagem do pedido" está embaixo do campo de instruções e do de retirada, onde afeta a decisão.'],['Preço mudou depois?','Pedidos já lançados guardam o preço do dia (D3). A tela avisa isto ao editar uma venda com pedidos.']],
+ h:function(){
+  var prods='<div class="campo"><span class="lbl">Produtos e preços</span><div style="border:1px solid var(--borda2);border-radius:12px;padding:6px 16px">'+PROD.map(function(p,i){return (i?'<hr style="border:0;border-top:1px solid var(--borda2);margin:0">':'')+'<div class="linha" style="padding:8px 0"><div class="in" style="flex:1">'+p.n+'</div><div class="in" style="width:140px"><span class="pre">R$</span>25,00</div><span class="btn txt" style="padding:0 8px" aria-label="Remover">'+ic('x',20)+'</span></div>'}).join('')+'</div><span class="btn out" style="align-self:flex-start">'+ic('pl')+'Adicionar produto</span></div>';
+  var form='<div class="cartao" style="padding:24px;display:flex;flex-direction:column;gap:20px;max-width:760px;width:100%">'+
+   campo('Nome da venda',inp('Lasanhas — 2ª edição',''))+prods+
+   '<div style="max-width:calc(50% - 8px)">'+campo('Taxa de entrega',inp('<span class="pre">R$</span> 5,00',''),'Somada ao pedido que for entregue. Deixe 0 se não houver entrega.')+'</div>'+
+   '<div class="campo"><span class="lbl">Formas de pagamento aceitas</span><div style="border:1px solid var(--borda2);border-radius:12px;padding:6px 16px">'+[
+    '<div style="display:flex;flex-direction:column;gap:8px;padding:10px 0"><span style="display:flex;align-items:center;gap:10px;font-weight:600">'+ck()+'Pix</span><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'+campo('Chave Pix',inp('00.000.000/0001-00',''))+campo('Favorecido',inp('[Nome do Clube]',''))+'</div></div>',
+    '<div style="display:flex;flex-direction:column;gap:8px;padding:10px 0"><span style="display:flex;align-items:center;gap:10px;font-weight:600">'+ck()+'7me</span>'+campo('Como pagar pelo 7me',inp('Ofertas &gt; Outras ofertas &gt; Ofertas para a minha igreja &gt; Desbravadores',''))+'</div>',
+    '<div style="display:flex;align-items:center;gap:10px;font-weight:600;padding:12px 0">'+ck()+'Dinheiro<span class="conta" style="font-weight:400">Sem dados a informar</span></div>'
+   ].join('<hr style="border:0;border-top:1px solid var(--borda2);margin:0">')+'</div><p class="ajuda">Aparecem na imagem dos pedidos que ainda não foram pagos. Ao lançar um pedido, só estas formas podem ser escolhidas.</p></div>'+
+   '<div class="campo"><span class="lbl">Retirada</span><div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">'+inp('Sábado, 14/11/2026','')+inp('9h às 12h','')+'</div><div class="in">'+ic('pin',18)+'<span>Salão da igreja, Rua [endereço]</span></div><p class="ajuda">Sai na imagem do pedido, no lugar de "Entrega" quando o comprador vai buscar.</p></div>'+
+   '<div class="campo"><span class="lbl">Instruções de consumo</span><div class="in area">Guarde na geladeira e consuma em até 3 dias. Não congele. Para aquecer: forno a 180 °C por 20 minutos, tampada com papel-alumínio.</div><p class="ajuda">Sai na imagem de todos os pedidos desta venda.</p></div>'+
+   '</div>';
+  return pagina('<main class="m"><div>'+migalha('Vendas')+'<header class="cabp"><div><h1>Nova venda</h1><p>Você muda tudo isto depois, em Editar venda.</p></div></header></div>'+form+'<div style="display:flex;gap:8px;max-width:760px;justify-content:flex-end"><span class="btn sec">Voltar</span><span class="btn pri">Salvar venda</span></div></main>')}};
+
+/* 6. Estados */
+S.est={t:'Estados e bloqueios',nota:['nova','Vazio que ensina, bloqueio com saída, filtro sem resultado e venda encerrada.'],
+ passo:[['Sem venda','Explica o que o módulo faz e oferece o único próximo passo.'],['Sem produto','Pedido precisa de produto: o botão Lançar pedido fica desligado e o motivo traz o caminho (Editar venda).'],['Encerrada','Pedidos continuam visíveis e o resumo continua gerando; só lançar fica desligado, com o motivo.'],['Filtro sem resultado','Oferece limpar, não criar.']],
+ h:function(){
+  function est(t,x){return '<div class="cartao vazio"><span class="rot">'+t+'</span>'+x+'</div>'}
+  return pagina('<main class="m"><header class="cabp"><div><h1>Estados</h1><p>O que cada tela mostra quando não há dado ou a ação não vale.</p></div></header><div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:980px">'+
+   est('Lista · nenhuma venda','<b>Nenhuma venda ainda.</b><span class="conta">Crie uma venda com seus produtos, preços e o local de retirada. Depois é só lançar os pedidos.</span><span class="btn pri">'+ic('pl')+'Nova venda</span>')+
+   est('Painel · venda sem produto','<b>Falta cadastrar os produtos.</b><span class="conta">Para lançar pedidos, a venda precisa de ao menos um produto com preço.</span><span style="display:flex;gap:8px;flex-wrap:wrap"><span class="btn off">Lançar pedido</span><span class="btn out">Editar venda</span></span>')+
+   est('Painel · nenhum pedido','<b>Nenhum pedido lançado.</b><span class="conta">Os números e a lista aparecem aqui assim que você lançar o primeiro.</span><span class="btn pri">'+ic('pl')+'Lançar pedido</span>')+
+   est('Painel · filtro sem resultado','<b>Nenhum pedido a pagar.</b><span class="conta">Todos os pedidos desta venda estão pagos.</span><span class="btn sec">Ver todos os pedidos</span>')+
+   est('Painel · venda encerrada','<span class="pilula cinza">Encerrada</span><b>Esta venda foi encerrada.</b><span class="conta">Os pedidos continuam aqui e os resumos podem ser baixados. Para lançar novos pedidos, reabra a venda.</span><span style="display:flex;gap:8px;flex-wrap:wrap"><span class="btn off">Lançar pedido</span><span class="btn out">Reabrir venda</span></span>')+
+   est('Resumo · sem conexão','<b>Salvar e marcar como pago ou retirado precisam de internet.</b><span class="conta">A imagem ainda pode ser baixada, com a fonte padrão do aparelho se a da marca não carregar. Sem conexão, os botões que gravam ficam desligados e dizem o motivo.</span><span class="btn off">Marcar como entregue</span>')+
+   '</div></main>')}};
+
+var ordem=['lista','painel','pedido','resumo','venda','est'];
+var sel=document.getElementById('seletor'),q=document.getElementById('quadro'),nt=document.getElementById('nota'),ps=document.getElementById('passo');
+function mostrar(k){
+ var s=S[k];q.innerHTML=s.h();
+ nt.innerHTML='<span class="etiqueta '+s.nota[0]+'">'+(s.nota[0]==='nova'?'NOVA':'ALTERADA')+'</span><span>'+s.nota[1]+'</span>';
+ ps.innerHTML=s.passo.map(function(p){return '<div class="cartao"><b>'+p[0]+'</b>'+p[1]+'</div>'}).join('');
+ Array.prototype.forEach.call(sel.children,function(b){b.setAttribute('aria-selected',b.dataset.k===k)});
+ try{history.replaceState(null,'','#'+k)}catch(e){}
+}
+ordem.forEach(function(k,i){var b=document.createElement('button');b.type='button';b.setAttribute('role','tab');b.dataset.k=k;b.textContent=(i+1)+'. '+S[k].t;b.onclick=function(){mostrar(k)};sel.appendChild(b)});
+var h=(location.hash||'').slice(1);mostrar(S[h]?h:'lista');
+})();
+</script>

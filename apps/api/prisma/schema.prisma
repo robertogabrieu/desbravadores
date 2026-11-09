@@ -253,6 +253,11 @@ model Clube {
   categoriasBiblioteca     CategoriaBiblioteca[]
   itensBiblioteca          ItemBiblioteca[]
   exemplaresBiblioteca     ExemplarBiblioteca[]
+  vendasArrecadacao        VendaArrecadacao[]
+  produtosVenda            ProdutoVenda[]
+  formasPagamentoVenda     FormaPagamentoVenda[]
+  pedidosVenda             PedidoVenda[]
+  itensPedidoVenda         ItemPedidoVenda[]
 }
 
 model ConfiguracaoClube {
@@ -546,6 +551,7 @@ model Unidade {
   gruposClasseBiblica     GrupoUnidadeClasseBiblica[]
   presencasClasseBiblica  PresencaClasseBiblica[]
   substituicoes           Substituicao[]
+  pedidosVenda            PedidoVenda[]
 
   @@unique([clubeId, nome])
   @@unique([clubeId, id])
@@ -1593,4 +1599,123 @@ model Substituicao {
 
   @@unique([clubeId, id])
   @@index([clubeId, tipo, unidadeId, classeId])
+}
+
+// ═════════════════════════ Vendas de arrecadação ═════════════════════════
+
+enum TipoFormaPagamentoVenda {
+  PIX
+  SETE_ME
+  DINHEIRO
+}
+
+// MISTO só existe no pedido: a venda declara as formas que aceita, e o comprador pode combiná-las.
+enum FormaPagamentoPedido {
+  PIX
+  SETE_ME
+  DINHEIRO
+  MISTO
+}
+
+model VendaArrecadacao {
+  id              String    @id @default(uuid(7)) @db.Uuid
+  clubeId         String    @db.Uuid
+  nome            String
+  taxaEntrega     Int
+  retiradaData    DateTime? @db.Date
+  retiradaHorario String?
+  retiradaLocal   String?
+  instrucoes      String?
+  encerradaEm     DateTime? @db.Timestamptz
+  criadoEm        DateTime  @default(now()) @db.Timestamptz
+
+  clube    Clube                 @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  produtos ProdutoVenda[]
+  formas   FormaPagamentoVenda[]
+  pedidos  PedidoVenda[]
+
+  @@unique([clubeId, id])
+  @@index([clubeId, encerradaEm])
+}
+
+model ProdutoVenda {
+  id        String  @id @default(uuid(7)) @db.Uuid
+  clubeId   String  @db.Uuid
+  vendaId   String  @db.Uuid
+  nome      String
+  nomeCurto String
+  preco     Int
+  ordem     Int
+  ativo     Boolean @default(true)
+
+  clube Clube             @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  venda VendaArrecadacao  @relation(fields: [clubeId, vendaId], references: [clubeId, id], onDelete: Restrict)
+  itens ItemPedidoVenda[]
+
+  @@unique([clubeId, id])
+  @@index([clubeId, vendaId])
+}
+
+model FormaPagamentoVenda {
+  id         String                  @id @default(uuid(7)) @db.Uuid
+  clubeId    String                  @db.Uuid
+  vendaId    String                  @db.Uuid
+  tipo       TipoFormaPagamentoVenda
+  chave      String?
+  favorecido String?
+  orientacao String?
+  ativo      Boolean                 @default(true)
+
+  clube Clube            @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  venda VendaArrecadacao @relation(fields: [clubeId, vendaId], references: [clubeId, id], onDelete: Restrict)
+
+  @@unique([vendaId, tipo])
+  @@index([clubeId, vendaId])
+}
+
+model PedidoVenda {
+  id          String                @id @default(uuid(7)) @db.Uuid
+  clubeId     String                @db.Uuid
+  vendaId     String                @db.Uuid
+  numero      Int
+  comprador   String
+  vendedor    String?
+  unidadeId   String?               @db.Uuid
+  daDiretoria Boolean               @default(false)
+  entrega     Boolean               @default(false)
+  endereco    String?
+  taxaEntrega Int                   @default(0)
+  observacao  String?
+  pago        Boolean               @default(false)
+  forma       FormaPagamentoPedido?
+  entregueEm  DateTime?             @db.Timestamptz
+  canceladoEm DateTime?             @db.Timestamptz
+  criadoEm    DateTime              @default(now()) @db.Timestamptz
+
+  clube   Clube             @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  venda   VendaArrecadacao  @relation(fields: [clubeId, vendaId], references: [clubeId, id], onDelete: Restrict)
+  unidade Unidade?          @relation(fields: [clubeId, unidadeId], references: [clubeId, id], onDelete: Restrict)
+  itens   ItemPedidoVenda[]
+
+  @@unique([clubeId, id])
+  @@unique([vendaId, numero])
+  @@index([clubeId, vendaId])
+  @@index([clubeId, unidadeId])
+}
+
+model ItemPedidoVenda {
+  id           String @id @default(uuid(7)) @db.Uuid
+  clubeId      String @db.Uuid
+  pedidoId     String @db.Uuid
+  produtoId    String @db.Uuid
+  quantidade   Int
+  precoGravado Int
+
+  clube   Clube        @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  pedido  PedidoVenda  @relation(fields: [clubeId, pedidoId], references: [clubeId, id], onDelete: Restrict)
+  produto ProdutoVenda @relation(fields: [clubeId, produtoId], references: [clubeId, id], onDelete: Restrict)
+
+  @@unique([pedidoId, produtoId])
+  @@index([clubeId, pedidoId])
+  @@index([clubeId, produtoId])
 }
