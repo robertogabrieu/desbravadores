@@ -31,7 +31,7 @@ function VendaEncerrada({ venda }: { venda: Venda }) {
   }
 
   return (
-    <div className="flex max-w-3xl flex-col items-center gap-2 rounded-cartao border border-borda-controle bg-superficie">
+    <div className="flex flex-col items-center gap-2 rounded-cartao border border-borda-controle bg-superficie">
       <Selo className="mt-8">Encerrada</Selo>
       <EstadoVazio
         titulo="Esta venda foi encerrada."

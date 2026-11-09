@@ -69,7 +69,7 @@ function UnidadesVendidasPorUnidade({ painel }: { painel: PainelDaVenda }) {
   const idTitulo = useId()
   const maior = Math.max(1, ...painel.porUnidade.map((linha) => linha.unidades))
   return (
-    <Cartao className="flex w-72 shrink-0 flex-col gap-3 px-5 py-4" role="region" aria-labelledby={idTitulo}>
+    <Cartao className="flex w-full shrink-0 flex-col gap-3 px-5 py-4 md:w-72" role="region" aria-labelledby={idTitulo}>
       <h2 id={idTitulo} className="font-titulo text-lg font-bold text-texto">
         Unidades vendidas por unidade
       </h2>
@@ -162,7 +162,7 @@ function PedidosDaVenda({ venda, painel, aoLancar }: PropriedadesDosPedidos) {
             setPagina(1)
           }}
         />
-        <div className="w-72">
+        <div className="w-full sm:w-72">
           <Campo type="search" rotulo="Buscar comprador ou nº" value={busca} onChange={(evento) => setBusca(evento.target.value)} />
         </div>
       </div>
@@ -273,7 +273,7 @@ export function TelaPainelVenda() {
       {consultaPainel.isError && <ErroDeCarga erro={consultaPainel.error} aoTentarDeNovo={() => void consultaPainel.refetch()} />}
       {consultaPainel.isPending && <Carregando rotulo="Carregando os números" />}
 
-      <div className="flex items-start gap-6">
+      <div className="flex flex-col gap-6 md:flex-row md:items-start">
         <PedidosDaVenda venda={venda} painel={consultaPainel.data} aoLancar={botaoLancar} />
         {consultaPainel.data && consultaPainel.data.porUnidade.length > 0 && <UnidadesVendidasPorUnidade painel={consultaPainel.data} />}
       </div>

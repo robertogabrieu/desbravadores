@@ -154,7 +154,7 @@ export function FormularioPedido({ venda, pedido, voltar, aoConcluir }: Propried
   return (
     <form ref={formulario} noValidate onSubmit={(evento) => void enviar(evento)} className="flex flex-col gap-4">
       <ResumoDosErros pendencias={pendencias} />
-      <div className="grid grid-cols-[minmax(0,1fr)_20rem] items-start gap-6">
+      <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-[minmax(0,1fr)_20rem]">
         <Cartao className="flex flex-col gap-6 p-6">
           <div className="grid grid-cols-2 gap-4">
             <Campo rotulo="Comprador" value={comprador} erro={erros['comprador']} onChange={(evento) => setComprador(evento.target.value)} />

@@ -335,6 +335,12 @@ describe('Painel da venda encerrada', () => {
     expect(screen.queryByRole('link', { name: 'Editar venda' })).not.toBeInTheDocument()
   })
 
+  it('pedido cancelado em venda encerrada ainda oferece o Resumo', async () => {
+    abrir({ venda: criarVenda(1, { nome: 'Lasanhas — 2ª edição', encerradaEm: '2026-11-15T12:00:00.000Z' }) })
+    const menu = await abrirMenu(userEvent.setup(), 1)
+    expect(menu.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Resumo'])
+  })
+
   it('Reabrir venda chama a API', async () => {
     abrir({ venda: criarVenda(1, { encerradaEm: '2026-11-15T12:00:00.000Z' }) })
     const usuario = userEvent.setup()

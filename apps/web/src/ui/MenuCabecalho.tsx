@@ -1,7 +1,7 @@
 import { Check, ChevronDown } from 'lucide-react'
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
-import type { KeyboardEvent as EventoTeclado } from 'react'
+import { useCallback, useId, useLayoutEffect, useRef, useState } from 'react'
 import { cn } from './cn'
+import { useMenuSuspenso } from './useMenuSuspenso'
 
 export interface ItemMenu {
   rotulo: string
@@ -42,6 +42,7 @@ export function MenuCabecalho({ rotulo, itens, rotuloAcessivel, cabecalho, class
   const idCabecalho = useId()
   const escolhaUnica = itens.some((item) => item.marcado !== undefined)
   const [deslocamento, definirDeslocamento] = useState(0)
+  const fechar = useCallback(() => definirAberto(false), [])
 
   // O menu se alinha pela direita do botão; botão perto da esquerda (selo no cabeçalho de 320 px) o empurraria para fora da tela.
   useLayoutEffect(() => {
@@ -51,45 +52,15 @@ export function MenuCabecalho({ rotulo, itens, rotuloAcessivel, cabecalho, class
     return () => definirDeslocamento(0)
   }, [aberto])
 
-  useEffect(() => {
-    if (!aberto) return
-    const marcado = menu.current?.querySelector<HTMLElement>('[aria-checked="true"]')
-    ;(marcado ?? menu.current?.querySelector<HTMLElement>(ITENS))?.focus()
-
-    const aoClicarFora = (evento: MouseEvent) => {
-      if (!raiz.current?.contains(evento.target as Node)) definirAberto(false)
-    }
-    const aoTeclar = (evento: KeyboardEvent) => {
-      if (evento.key !== 'Escape') return
-      definirAberto(false)
-      botao.current?.focus()
-    }
-    document.addEventListener('mousedown', aoClicarFora)
-    document.addEventListener('keydown', aoTeclar)
-    return () => {
-      document.removeEventListener('mousedown', aoClicarFora)
-      document.removeEventListener('keydown', aoTeclar)
-    }
-  }, [aberto])
-
-  const andarComTeclado = (evento: EventoTeclado<HTMLDivElement>) => {
-    if (evento.key === 'Tab') {
-      definirAberto(false)
-      return
-    }
-    const itensDoMenu = [...(menu.current?.querySelectorAll<HTMLElement>(ITENS) ?? [])]
-    const atual = itensDoMenu.findIndex((item) => item === document.activeElement)
-    const destinos: Partial<Record<string, number>> = {
-      ArrowDown: (atual + 1) % itensDoMenu.length,
-      ArrowUp: (atual - 1 + itensDoMenu.length) % itensDoMenu.length,
-      Home: 0,
-      End: itensDoMenu.length - 1,
-    }
-    const destino = destinos[evento.key]
-    if (destino === undefined) return
-    evento.preventDefault()
-    itensDoMenu[destino]?.focus()
-  }
+  const andarComTeclado = useMenuSuspenso({
+    aberto,
+    aoFechar: fechar,
+    raiz,
+    botao,
+    menu,
+    seletorDosItens: ITENS,
+    focoInicial: () => menu.current?.querySelector<HTMLElement>('[aria-checked="true"]'),
+  })
 
   return (
     // min-w-12: num cabeçalho apertado o rótulo encolhe até sumir, mas a seta e a área de toque ficam.

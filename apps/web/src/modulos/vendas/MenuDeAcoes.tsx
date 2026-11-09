@@ -1,8 +1,8 @@
 import { Ellipsis } from 'lucide-react'
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
-import type { KeyboardEvent as EventoTeclado } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { cn } from '../../ui/cn'
+import { useMenuSuspenso } from '../../ui/useMenuSuspenso'
 
 export interface AcaoDoMenu {
   rotulo: string
@@ -33,7 +33,7 @@ const CLASSE_DO_ITEM = 'flex min-h-[var(--touch-min)] w-full items-center px-4 p
 
 /**
  * Botão de reticências que abre a lista de ações de uma linha. O menu usa posição fixa para não ser cortado pela
- * rolagem da tabela: abre para baixo e alinhado à direita do botão, e vai para cima quando embaixo não cabe.
+ * rolagem da tabela: abre à esquerda do botão, alinhado ao topo dele, e sobe o quanto precisar para caber na janela.
  * Teclado: abrir leva ao primeiro item, setas e Home/End andam, Esc devolve o foco ao botão, Tab fecha.
  */
 export function MenuDeAcoes({ rotuloAcessivel, acoes }: Propriedades) {
@@ -43,62 +43,36 @@ export function MenuDeAcoes({ rotuloAcessivel, acoes }: Propriedades) {
   const botao = useRef<HTMLButtonElement>(null)
   const menu = useRef<HTMLDivElement>(null)
   const idMenu = useId()
+  const idBotao = useId()
 
   useLayoutEffect(() => {
     if (!aberto || !botao.current || !menu.current) return
     const alvo = botao.current.getBoundingClientRect()
     const { width, height } = menu.current.getBoundingClientRect()
-    const cabeEmbaixo = alvo.bottom + AFASTAMENTO + height <= window.innerHeight - MARGEM_DA_TELA
-    const top = cabeEmbaixo ? alvo.bottom + AFASTAMENTO : Math.max(MARGEM_DA_TELA, alvo.top - AFASTAMENTO - height)
-    const left = Math.max(MARGEM_DA_TELA, Math.min(alvo.right - width, window.innerWidth - width - MARGEM_DA_TELA))
+    // O menu abre ao lado do botão, nunca embaixo dele: embaixo cobriria as reticências da linha seguinte e um clique
+    // para trocar de menu cairia num item e executaria a ação.
+    const left = Math.max(MARGEM_DA_TELA, alvo.left - AFASTAMENTO - width)
+    const top = Math.max(MARGEM_DA_TELA, Math.min(alvo.top, window.innerHeight - MARGEM_DA_TELA - height))
     definirPosicao({ top, left })
     return () => definirPosicao(null)
   }, [aberto])
 
+  const fechar = useCallback(() => definirAberto(false), [])
+  const andarComTeclado = useMenuSuspenso({ aberto, aoFechar: fechar, raiz, botao, menu, seletorDosItens: ITENS, pronto: posicao !== null })
+
+  // A posição é fixa na janela: rolar a página ou a tabela, ou redimensionar, a deixaria solta do botão.
   useEffect(() => {
     if (!aberto) return
-    menu.current?.querySelector<HTMLElement>(ITENS)?.focus()
-
-    const aoClicarFora = (evento: MouseEvent) => {
-      if (!raiz.current?.contains(evento.target as Node)) definirAberto(false)
+    const aoRolar = (evento: Event) => {
+      if (!menu.current?.contains(evento.target as Node)) fechar()
     }
-    const aoTeclar = (evento: KeyboardEvent) => {
-      if (evento.key !== 'Escape') return
-      definirAberto(false)
-      botao.current?.focus()
-    }
-    // A posição é fixa na janela: rolar ou redimensionar a deixaria solta do botão.
-    const fechar = () => definirAberto(false)
-    document.addEventListener('mousedown', aoClicarFora)
-    document.addEventListener('keydown', aoTeclar)
-    window.addEventListener('scroll', fechar, true)
+    window.addEventListener('scroll', aoRolar, true)
     window.addEventListener('resize', fechar)
     return () => {
-      document.removeEventListener('mousedown', aoClicarFora)
-      document.removeEventListener('keydown', aoTeclar)
-      window.removeEventListener('scroll', fechar, true)
+      window.removeEventListener('scroll', aoRolar, true)
       window.removeEventListener('resize', fechar)
     }
-  }, [aberto])
-
-  const andarComTeclado = (evento: EventoTeclado<HTMLDivElement>) => {
-    if (evento.key === 'Tab') {
-      definirAberto(false)
-      return
-    }
-    const itens = [...(menu.current?.querySelectorAll<HTMLElement>(ITENS) ?? [])]
-    const atual = itens.findIndex((item) => item === document.activeElement)
-    const destinos: Partial<Record<string, number>> = {
-      ArrowDown: (atual + 1) % itens.length,
-      ArrowUp: (atual - 1 + itens.length) % itens.length,
-      Home: 0,
-      End: itens.length - 1,
-    }
-    const destino = destinos[evento.key]
-    if (destino === undefined) return
-    evento.preventDefault()
-    itens[destino]?.focus()
-  }
+  }, [aberto, fechar])
 
   const escolher = (acao: AcaoDoMenu) => {
     definirAberto(false)
@@ -106,10 +80,14 @@ export function MenuDeAcoes({ rotuloAcessivel, acoes }: Propriedades) {
     acao.aoEscolher?.()
   }
 
+  // Sem ação não há o que abrir: um menu vazio seria só um botão que não responde.
+  if (acoes.length === 0) return null
+
   return (
     <div ref={raiz} className="relative inline-block">
       <button
         ref={botao}
+        id={idBotao}
         type="button"
         aria-label={rotuloAcessivel}
         aria-haspopup="menu"
@@ -125,7 +103,7 @@ export function MenuDeAcoes({ rotuloAcessivel, acoes }: Propriedades) {
           ref={menu}
           id={idMenu}
           role="menu"
-          aria-label={rotuloAcessivel}
+          aria-labelledby={idBotao}
           onKeyDown={andarComTeclado}
           style={{ position: 'fixed', top: posicao?.top ?? 0, left: posicao?.left ?? 0, visibility: posicao ? 'visible' : 'hidden' }}
           className="z-40 w-max max-w-[calc(100vw-1rem)] min-w-48 rounded-cartao border border-borda-controle bg-superficie py-1 text-texto shadow-lg"

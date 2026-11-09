@@ -153,7 +153,7 @@ export function FormularioVenda({ venda, voltar, aoConcluir }: Propriedades) {
   const aoRemover = venda ? 'Remover tira o produto da venda; os pedidos antigos o mantêm.' : undefined
 
   return (
-    <form ref={formulario} noValidate onSubmit={(evento) => void enviar(evento)} className="flex max-w-3xl flex-col gap-4">
+    <form ref={formulario} noValidate onSubmit={(evento) => void enviar(evento)} className="flex flex-col gap-4">
       <ResumoDosErros pendencias={pendencias} />
       <Cartao className="flex flex-col gap-6 p-6">
         <Campo rotulo="Nome da venda" value={nome} erro={erros['nome']} onChange={(evento) => setNome(evento.target.value)} />
@@ -162,8 +162,10 @@ export function FormularioVenda({ venda, voltar, aoConcluir }: Propriedades) {
           <legend className="mb-1.5 text-sm font-semibold text-texto">Produtos e preços</legend>
           {aoRemover && <p className="text-sm text-texto-2">{aoRemover}</p>}
           {produtos.map((linha, posicao) => (
-            <div key={linha.chave} className="grid grid-cols-[1fr_10rem_9rem_auto] items-start gap-3 rounded-controle border border-divisor p-3">
-              <Campo rotulo={`Nome do produto ${posicao + 1}`} value={linha.nome} erro={erros[`produto.${linha.chave}.nome`]} onChange={(evento) => mudarProduto(linha.chave, { nome: evento.target.value })} />
+            <div key={linha.chave} className="grid grid-cols-1 sm:grid-cols-2 items-start gap-3 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)_minmax(0,2fr)_auto] rounded-controle border border-divisor p-3">
+              <div className="min-w-0 sm:col-span-2 xl:col-span-1">
+                <Campo rotulo={`Nome do produto ${posicao + 1}`} value={linha.nome} erro={erros[`produto.${linha.chave}.nome`]} onChange={(evento) => mudarProduto(linha.chave, { nome: evento.target.value })} />
+              </div>
               <Campo rotulo={`Nome curto do produto ${posicao + 1}`} value={linha.nomeCurto} erro={erros[`produto.${linha.chave}.nomeCurto`]} onChange={(evento) => mudarProduto(linha.chave, { nomeCurto: evento.target.value })} />
               <Campo
                 rotulo={`Preço do produto ${posicao + 1} (R$)`}
@@ -177,7 +179,7 @@ export function FormularioVenda({ venda, voltar, aoConcluir }: Propriedades) {
                 type="button"
                 aria-label={`Remover produto ${posicao + 1}`}
                 onClick={() => setProdutos((atuais) => atuais.filter((outra) => outra.chave !== linha.chave))}
-                className="mt-6 flex size-[var(--touch-min)] items-center justify-center rounded-botao text-texto-2 hover:bg-superficie-suave focus-visible:outline-2 focus-visible:outline-marca"
+                className="flex sm:col-span-2 size-[var(--touch-min)] items-center justify-self-end xl:col-span-1 xl:mt-6 xl:justify-self-auto justify-center rounded-botao text-texto-2 hover:bg-superficie-suave focus-visible:outline-2 focus-visible:outline-marca"
               >
                 <X aria-hidden className="size-5" />
               </button>
@@ -215,7 +217,7 @@ export function FormularioVenda({ venda, voltar, aoConcluir }: Propriedades) {
 
         <fieldset className="m-0 flex flex-col gap-3 border-0 p-0">
           <legend className="mb-1.5 text-sm font-semibold text-texto">Retirada</legend>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <CampoData rotulo="Data da retirada" value={retiradaData} onChange={setRetiradaData} erro={erros['retiradaData']} />
             <Campo rotulo="Horário da retirada" placeholder="9h às 12h" value={retiradaHorario} erro={erros['retiradaHorario']} onChange={(evento) => setRetiradaHorario(evento.target.value)} />
           </div>
@@ -281,7 +283,7 @@ function CampoDaForma({ tipo, forma, erros, aoMudar }: PropriedadesDaForma) {
     <div className="flex flex-col gap-2 py-2">
       <CaixaMarcacao rotulo={rotuloDaForma(tipo)} checked={forma.marcada} onChange={(evento) => aoMudar({ marcada: evento.target.checked })} className="font-semibold" />
       {forma.marcada && tipo === 'PIX' && (
-        <div className="grid grid-cols-2 gap-3 pb-2">
+        <div className="grid grid-cols-1 gap-3 pb-2 sm:grid-cols-2">
           <Campo rotulo="Chave Pix" value={forma.chave} erro={erroDe('chave')} onChange={(evento) => aoMudar({ chave: evento.target.value })} />
           <Campo rotulo="Favorecido" value={forma.favorecido} erro={erroDe('favorecido')} onChange={(evento) => aoMudar({ favorecido: evento.target.value })} />
         </div>

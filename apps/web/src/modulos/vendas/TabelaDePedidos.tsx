@@ -40,14 +40,14 @@ const origemDoPedido = (pedido: Pedido): string => [pedido.vendedor, pedido.daDi
 function Pagamento({ pedido }: { pedido: Pedido }) {
   const situacao = situacaoDoPedido(pedido)
   if (situacao === 'CANCELADO') return <span className="text-texto-2">—</span>
-  return <Selo tom={situacao === 'PAGO' ? 'sucesso' : 'alerta'}>{rotuloDaSituacao(situacao, pedido.forma)}</Selo>
+  return <Selo tom={situacao === 'PAGO' ? 'sucesso' : 'alerta'} className="whitespace-nowrap">{rotuloDaSituacao(situacao, pedido.forma)}</Selo>
 }
 
 function Situacao({ pedido }: { pedido: Pedido }) {
-  if (pedido.canceladoEm) return <Selo tom="neutro">Cancelado</Selo>
-  if (!pedido.entregueEm) return <Selo tom="alerta">{situacaoDaEntrega(pedido)}</Selo>
+  if (pedido.canceladoEm) return <Selo tom="neutro" className="whitespace-nowrap">Cancelado</Selo>
+  if (!pedido.entregueEm) return <Selo tom="alerta" className="whitespace-nowrap">{situacaoDaEntrega(pedido)}</Selo>
   return (
-    <Selo tom="sucesso">
+    <Selo tom="sucesso" className="whitespace-nowrap">
       <Check aria-hidden className="size-4" />
       {situacaoDaEntrega(pedido)}
     </Selo>
@@ -166,13 +166,15 @@ export function TabelaDePedidos({ venda, pedidos, pagina, total, aoMudarPagina, 
         cartao={(pedido) => (
           <div className="flex flex-col gap-2 rounded-cartao border border-borda-controle bg-superficie p-4">
             <div className="flex items-center justify-between gap-3">
-              <b>
+              <b className="min-w-0 break-words">
                 {pedido.numero} · {pedido.comprador}
               </b>
-              <b className="tabular-nums">{formatarReaisComCentavos(pedido.total)}</b>
+              <div className="flex items-center gap-1">
+                <b className="tabular-nums whitespace-nowrap">{formatarReaisComCentavos(pedido.total)}</b>
+                {acoesDoPedido(pedido)}
+              </div>
             </div>
             <span className="text-sm text-texto-2">{itensDoPedido(pedido)}</span>
-            {acoesDoPedido(pedido)}
           </div>
         )}
       />
