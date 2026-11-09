@@ -48,7 +48,7 @@ async function preencherOBasico(usuario: ReturnType<typeof userEvent.setup>) {
   await usuario.type(await screen.findByLabelText('Nome da venda'), 'Lasanhas — 3ª edição')
   await usuario.type(screen.getByLabelText(/Nome do produto 1/), 'Lasanha de carne')
   await usuario.type(screen.getByLabelText(/Nome curto do produto 1/), 'Carne')
-  await usuario.type(screen.getByLabelText(/Preço do produto 1/), '25')
+  await usuario.type(screen.getByLabelText(/Preço do produto 1/), '2500')
   await usuario.click(screen.getByRole('checkbox', { name: 'Dinheiro' }))
 }
 
@@ -88,15 +88,16 @@ describe('Nova venda', () => {
     expect(screen.getByLabelText('Chave Pix')).toHaveAttribute('aria-invalid', 'true')
   })
 
-  it('preço ou taxa que não é dinheiro erra no campo, em português', async () => {
+  it('preço e taxa ganham máscara de dinheiro: letras somem e os dígitos enchem da direita', async () => {
     abrirNova()
     const usuario = userEvent.setup()
     await preencherOBasico(usuario)
+    expect(screen.getByLabelText(/Preço do produto 1/)).toHaveValue('25,00')
     await usuario.clear(screen.getByLabelText(/Preço do produto 1/))
-    await usuario.type(screen.getByLabelText(/Preço do produto 1/), 'abc')
-    await usuario.type(screen.getByLabelText(/Taxa de entrega/), '5,555')
-    await usuario.click(screen.getByRole('button', { name: 'Salvar venda' }))
-    expect(await screen.findAllByText('Use só números, como 25,00')).toHaveLength(2)
+    await usuario.type(screen.getByLabelText(/Preço do produto 1/), 'abc125050')
+    expect(screen.getByLabelText(/Preço do produto 1/)).toHaveValue('1.250,50')
+    await usuario.type(screen.getByLabelText(/Taxa de entrega/), '5')
+    expect(screen.getByLabelText(/Taxa de entrega/)).toHaveValue('0,05')
   })
 
   it('preenchida, grava em centavos com as formas marcadas e vai ao painel da venda', async () => {
@@ -105,7 +106,7 @@ describe('Nova venda', () => {
     const { roteador } = abrirNova()
     const usuario = userEvent.setup()
     await preencherOBasico(usuario)
-    await usuario.type(screen.getByLabelText(/Taxa de entrega/), '5')
+    await usuario.type(screen.getByLabelText(/Taxa de entrega/), '500')
     await usuario.type(screen.getByLabelText('Data da retirada'), '14112026')
     await usuario.type(screen.getByLabelText('Horário da retirada'), '9h às 12h')
     await usuario.type(screen.getByLabelText('Local da retirada'), 'Salão da igreja')

@@ -2,7 +2,7 @@ import { Confirmacao } from '../../ui/Confirmacao'
 
 interface Propriedades {
   aberto: boolean
-  numero: number
+  codigo: string
   comprador: string
   /** Fechar o diálogo depois de gravar é de quem o abriu. */
   aoConfirmar: () => void
@@ -13,11 +13,11 @@ interface Propriedades {
 }
 
 /** Confirma Cancelar pedido: o pedido sai dos totais, mas não é apagado e pode ser reativado. */
-export function DialogoCancelarPedido({ aberto, numero, comprador, aoConfirmar, aoCancelar, ocupado, erro }: Propriedades) {
+export function DialogoCancelarPedido({ aberto, codigo, comprador, aoConfirmar, aoCancelar, ocupado, erro }: Propriedades) {
   return (
     <Confirmacao
       aberta={aberto}
-      titulo={`Cancelar o pedido nº ${numero}?`}
+      titulo={`Cancelar o pedido ${codigo}?`}
       rotuloConfirmar="Cancelar pedido"
       rotuloCancelar="Voltar"
       perigo

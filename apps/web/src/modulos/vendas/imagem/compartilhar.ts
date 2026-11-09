@@ -9,12 +9,12 @@ export interface Compartilhador {
   share?: (dados: ShareData) => Promise<void>
 }
 
-/** "pedido-3-marlene-prado.png": o comprador sem acento, espaço nem símbolo, para o arquivo abrir em qualquer aparelho. */
-export function nomeDoArquivoDoPedido(numero: number, comprador: string): string {
+/** "pedido-k7q2xm-marlene-prado.png": o comprador sem acento, espaço nem símbolo, para o arquivo abrir em qualquer aparelho. */
+export function nomeDoArquivoDoPedido(codigo: string, comprador: string): string {
   const seguro = semAcento(comprador)
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
-  const base = [`pedido-${numero}`, seguro].filter(Boolean).join('-')
+  const base = [`pedido-${codigo.toLowerCase()}`, seguro].filter(Boolean).join('-')
   return `${base.slice(0, TAMANHO_MAXIMO_DO_NOME - '.png'.length).replace(/-+$/, '')}.png`
 }
 

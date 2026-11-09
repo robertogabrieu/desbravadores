@@ -113,11 +113,11 @@ export function TabelaDePedidos({ venda, pedidos, pagina, total, aoMudarPagina, 
         resumo,
         ...(pedido.entregueEm ? [] : [escrita('Cancelar', abrirDialogo(setACancelar), true)]),
       ]
-    return <MenuDeAcoes rotuloAcessivel={`Ações do pedido nº ${pedido.numero}`} acoes={acoes} />
+    return <MenuDeAcoes rotuloAcessivel={`Ações do pedido ${pedido.codigo}`} acoes={acoes} />
   }
 
   const colunas: ColunaTabela<Pedido>[] = [
-    { chave: 'numero', titulo: 'Nº', celula: (pedido) => <b className="tabular-nums">{pedido.numero}</b> },
+    { chave: 'codigo', titulo: 'Código', celula: (pedido) => <b className="font-mono">{pedido.codigo}</b> },
     {
       chave: 'comprador',
       titulo: 'Comprador',
@@ -167,7 +167,7 @@ export function TabelaDePedidos({ venda, pedidos, pagina, total, aoMudarPagina, 
           <div className="flex flex-col gap-2 rounded-cartao border border-borda-controle bg-superficie p-4">
             <div className="flex items-center justify-between gap-3">
               <b className="min-w-0 break-words">
-                {pedido.numero} · {pedido.comprador}
+                {pedido.codigo} · {pedido.comprador}
               </b>
               <div className="flex items-center gap-1">
                 <b className="tabular-nums whitespace-nowrap">{formatarReaisComCentavos(pedido.total)}</b>
@@ -184,7 +184,7 @@ export function TabelaDePedidos({ venda, pedidos, pagina, total, aoMudarPagina, 
         }} />
       <DialogoCancelarPedido
         aberto={aCancelar !== null}
-        numero={aCancelar?.numero ?? 0}
+        codigo={aCancelar?.codigo ?? ''}
         comprador={aCancelar?.comprador ?? ''}
         ocupado={cancelar.isPending}
         erro={erro}

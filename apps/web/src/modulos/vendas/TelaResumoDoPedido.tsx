@@ -51,7 +51,7 @@ function useImagemDoPedido(venda: Venda, pedido: Pedido, nomeDoClube: string) {
         if (enderecoAtual.current) URL.revokeObjectURL(enderecoAtual.current)
         const endereco = URL.createObjectURL(blob)
         enderecoAtual.current = endereco
-        setImagem({ situacao: 'pronta', venda, pedido, endereco, arquivo: arquivoDaImagem(blob, nomeDoArquivoDoPedido(pedido.numero, pedido.comprador)) })
+        setImagem({ situacao: 'pronta', venda, pedido, endereco, arquivo: arquivoDaImagem(blob, nomeDoArquivoDoPedido(pedido.codigo, pedido.comprador)) })
       })
       .catch(() => {
         if (vigente) setImagem({ situacao: 'falhou' })
@@ -74,7 +74,7 @@ function useImagemDoPedido(venda: Venda, pedido: Pedido, nomeDoClube: string) {
 
 function Previa({ pedido, imagem, aoTentarDeNovo }: { pedido: Pedido; imagem: ImagemDoPedido; aoTentarDeNovo: () => void }) {
   if (imagem.situacao === 'pronta') {
-    return <img src={imagem.endereco} alt={`Resumo do pedido nº ${pedido.numero} de ${pedido.comprador}`} className="w-full rounded-cartao border border-borda-controle" />
+    return <img src={imagem.endereco} alt={`Resumo do pedido ${pedido.codigo} de ${pedido.comprador}`} className="w-full rounded-cartao border border-borda-controle" />
   }
   if (imagem.situacao === 'falhou') {
     return (
@@ -146,7 +146,7 @@ function ResumoDoPedido({ venda, pedido }: { venda: Venda; pedido: Pedido }) {
   async function compartilhar() {
     if (!pronta) return
     try {
-      await compartilharImagem(pronta.arquivo, `Pedido nº ${pedido.numero}`)
+      await compartilharImagem(pronta.arquivo, `Pedido ${pedido.codigo}`)
     } catch {
       setErro('Não foi possível compartilhar. Use Baixar imagem.')
     }
@@ -218,7 +218,7 @@ function ResumoDoPedido({ venda, pedido }: { venda: Venda; pedido: Pedido }) {
     <div className="flex flex-col gap-6">
       <CabecalhoDaPagina
         voltar={{ para: `/adm/vendas/${venda.id}`, rotulo: venda.nome }}
-        titulo={`Pedido nº ${pedido.numero}`}
+        titulo={`Pedido ${pedido.codigo}`}
         apoio={
           <>
             {cancelado && <Selo>Cancelado</Selo>}
@@ -282,7 +282,7 @@ function ResumoDoPedido({ venda, pedido }: { venda: Venda; pedido: Pedido }) {
       <DialogoPagarPedido aberto={pagando} formas={formasAceitasPela(venda)} ocupado={pagar.isPending} erro={erro} aoConfirmar={(forma) => void confirmarPagamento(forma)} aoCancelar={() => setPagando(false)} />
       <DialogoCancelarPedido
         aberto={cancelando}
-        numero={pedido.numero}
+        codigo={pedido.codigo}
         comprador={pedido.comprador}
         ocupado={cancelar.isPending}
         erro={erro}

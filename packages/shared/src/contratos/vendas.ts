@@ -207,7 +207,7 @@ export type PedidoEdicao = z.input<typeof PedidoEdicao>
 export const PagarPedidoEntrada = z.object({ forma: FormaDoPedidoContrato })
 export type PagarPedidoEntrada = z.input<typeof PagarPedidoEntrada>
 
-/** GET /vendas/:id/pedidos: nº decrescente, `PEDIDOS_POR_PAGINA` por página; busca por nome do comprador ou nº. */
+/** GET /vendas/:id/pedidos: mais novo primeiro, `PEDIDOS_POR_PAGINA` por página; busca por nome do comprador ou código. */
 export const PedidosQuery = z.object({
   filtro: FiltroDoPedidoContrato.default('TODOS'),
   busca: z.string().trim().max(120).optional(),
@@ -227,7 +227,7 @@ export type ItemDoPedidoSaida = z.infer<typeof ItemDoPedidoSaida>
 /** `total` vem de `totalDoPedido`: a tela nunca recalcula. */
 export const PedidoSaida = z.object({
   id: Uuid,
-  numero: z.number().int().min(1),
+  codigo: z.string(),
   comprador: z.string(),
   vendedor: z.string().nullable(),
   unidadeId: Uuid.nullable(),

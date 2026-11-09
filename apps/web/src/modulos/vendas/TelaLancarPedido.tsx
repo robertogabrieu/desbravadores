@@ -50,7 +50,7 @@ export function TelaLancarPedido() {
 
   return (
     <div className="flex flex-col gap-6">
-      <CabecalhoDaPagina voltar={{ para: venda ? painel : '/adm/vendas', rotulo: venda?.nome ?? 'Vendas' }} titulo={editando ? 'Editar pedido' : 'Lançar pedido'} apoio={editando && pedido ? `Pedido nº ${pedido.numero}` : venda?.nome} />
+      <CabecalhoDaPagina voltar={{ para: venda ? painel : '/adm/vendas', rotulo: venda?.nome ?? 'Vendas' }} titulo={editando ? 'Editar pedido' : 'Lançar pedido'} apoio={editando && pedido ? `Pedido ${pedido.codigo}` : venda?.nome} />
       {corpo}
     </div>
   )

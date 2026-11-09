@@ -15,6 +15,7 @@ import { CampoData } from '../../ui/CampoData'
 import { Cartao } from '../../ui/Cartao'
 import { ResumoDosErros, useErrosAVista } from '../../ui/ErrosDoFormulario'
 import { lerErroDaApi } from '../adm/desbravadores/erros'
+import { mascararReais } from '../../ui/mascaraReais'
 import { centavosParaTexto, reaisParaCentavos } from './formatos'
 
 const SEM_INTERNET = 'Salvar a venda precisa de internet. Conecte-se para continuar.'
@@ -169,11 +170,11 @@ export function FormularioVenda({ venda, voltar, aoConcluir }: Propriedades) {
               <Campo rotulo={`Nome curto do produto ${posicao + 1}`} value={linha.nomeCurto} erro={erros[`produto.${linha.chave}.nomeCurto`]} onChange={(evento) => mudarProduto(linha.chave, { nomeCurto: evento.target.value })} />
               <Campo
                 rotulo={`Preço do produto ${posicao + 1} (R$)`}
-                inputMode="decimal"
+                inputMode="numeric"
                 placeholder="0,00"
                 value={linha.preco}
                 erro={erros[`produto.${linha.chave}.preco`]}
-                onChange={(evento) => mudarProduto(linha.chave, { preco: evento.target.value })}
+                onChange={(evento) => mudarProduto(linha.chave, { preco: mascararReais(evento.target.value) })}
               />
               <button
                 type="button"
@@ -195,12 +196,12 @@ export function FormularioVenda({ venda, voltar, aoConcluir }: Propriedades) {
         <div className="max-w-xs">
           <Campo
             rotulo="Taxa de entrega (R$)"
-            inputMode="decimal"
+            inputMode="numeric"
             placeholder="0,00"
             ajuda="Somada ao pedido que for entregue. Deixe 0 se não houver entrega."
             value={taxa}
             erro={erros['taxaEntrega']}
-            onChange={(evento) => setTaxa(evento.target.value)}
+            onChange={(evento) => setTaxa(mascararReais(evento.target.value))}
           />
         </div>
 

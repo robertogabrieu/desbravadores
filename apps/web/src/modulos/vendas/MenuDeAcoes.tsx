@@ -15,7 +15,7 @@ export interface AcaoDoMenu {
 }
 
 interface Propriedades {
-  /** Nome do botão para o leitor de tela, ex.: "Ações do pedido nº 7". */
+  /** Nome do botão para o leitor de tela, ex.: "Ações do pedido K7Q2XM". */
   rotuloAcessivel: string
   acoes: AcaoDoMenu[]
 }

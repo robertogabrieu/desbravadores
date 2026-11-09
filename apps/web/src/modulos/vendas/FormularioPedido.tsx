@@ -156,11 +156,11 @@ export function FormularioPedido({ venda, pedido, voltar, aoConcluir }: Propried
       <ResumoDosErros pendencias={pendencias} />
       <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-[minmax(0,1fr)_20rem]">
         <Cartao className="flex flex-col gap-6 p-6">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Campo rotulo="Comprador" value={comprador} erro={erros['comprador']} onChange={(evento) => setComprador(evento.target.value)} />
             <Campo rotulo="Vendedor" ajuda={'Quem vendeu. Pode ser um nome ou "WhatsApp".'} value={vendedor} erro={erros['vendedor']} onChange={(evento) => setVendedor(evento.target.value)} />
           </div>
-          <div className="max-w-[calc(50%-0.5rem)]">
+          <div className="sm:max-w-[calc(50%-0.5rem)]">
             <Selecao rotulo="Unidade do vendedor" ajuda="Opcional. Entra na soma por unidade do painel." value={unidade} erro={erros['unidadeId']} onChange={(evento) => setUnidade(evento.target.value)}>
               <option value="">Sem unidade</option>
               <option value={DIRETORIA}>Diretoria</option>

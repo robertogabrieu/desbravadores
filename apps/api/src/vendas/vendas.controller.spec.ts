@@ -64,7 +64,7 @@ describe('vendas de arrecadação', () => {
       data: {
         clubeId,
         vendaId: venda.id,
-        numero: dados.numero,
+        codigo: `COD00${dados.numero}`,
         comprador: `Comprador ${dados.numero}`,
         taxaEntrega: dados.taxa ?? 0,
         pago: dados.pago ?? false,

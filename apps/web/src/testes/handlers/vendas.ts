@@ -56,7 +56,7 @@ export function criarPedido(n: number, parcial: Partial<PedidoSaida> = {}): Pedi
   const itens = parcial.itens ?? [{ produtoId: uuid(9101), nome: 'Lasanha de carne', nomeCurto: 'Carne', quantidade: 2, precoGravado: 2500 }]
   const taxaEntrega = parcial.taxaEntrega ?? 0
   return {
-    id: uuid(9300 + n), numero: n, comprador: `Comprador ${n}`, vendedor: null, unidadeId: null, unidadeNome: null, daDiretoria: false, entrega: false, endereco: null,
+    id: uuid(9300 + n), codigo: `COD${String(n).padStart(3, '0')}`, comprador: `Comprador ${n}`, vendedor: null, unidadeId: null, unidadeNome: null, daDiretoria: false, entrega: false, endereco: null,
     taxaEntrega, observacao: null, pago: false, forma: null, entregueEm: null, canceladoEm: null, criadoEm: '2026-10-21T12:00:00.000Z',
     total: totalDoPedido(itens, taxaEntrega),
     ...parcial,
@@ -75,7 +75,7 @@ export interface RecusaDaApi {
 }
 
 const recusa = ({ status, codigo, mensagem }: RecusaDaApi) => HttpResponse.json({ codigo, mensagem }, { status })
-const ehRecusa = (resposta: object): resposta is RecusaDaApi => 'codigo' in resposta
+const ehRecusa = (resposta: object): resposta is RecusaDaApi => 'status' in resposta && 'mensagem' in resposta
 
 /** Devolve o que `resposta` guarda; é uma função para o teste trocar o conteúdo entre uma leitura e outra. */
 const leitura = <T extends object>(caminho: string, resposta: () => T | RecusaDaApi) =>

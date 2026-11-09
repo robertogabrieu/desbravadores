@@ -163,7 +163,7 @@ function PedidosDaVenda({ venda, painel, aoLancar }: PropriedadesDosPedidos) {
           }}
         />
         <div className="w-full sm:w-72">
-          <Campo type="search" rotulo="Buscar comprador ou nº" value={busca} onChange={(evento) => setBusca(evento.target.value)} />
+          <Campo type="search" rotulo="Buscar comprador ou código" value={busca} onChange={(evento) => setBusca(evento.target.value)} />
         </div>
       </div>
       {corpo}
@@ -203,12 +203,12 @@ export function TelaPainelVenda() {
   const semProduto = !venda.produtos.some((produto) => produto.ativo)
   const lancarPedido = `/adm/vendas/${venda.id}/pedidos/novo`
   const botaoLancar = encerrada || semProduto ? (
-    <Botao disabled>
+    <Botao disabled className="order-first w-full sm:order-none sm:w-auto">
       <Plus aria-hidden className="size-5" />
       Lançar pedido
     </Botao>
   ) : (
-    <Link to={lancarPedido} className={estiloDoBotao()}>
+    <Link to={lancarPedido} className={cn(estiloDoBotao(), 'order-first w-full sm:order-none sm:w-auto')}>
       <Plus aria-hidden className="size-5" />
       Lançar pedido
     </Link>
@@ -226,17 +226,17 @@ export function TelaPainelVenda() {
 
   const acoes = encerrada ? (
     <>
-      <Botao variante="secundario" carregando={reabrir.isPending} disabled={!online} onClick={() => void gravar(() => reabrir.mutateAsync(venda.id))}>
+      <Botao variante="secundario" className="w-full sm:w-auto" carregando={reabrir.isPending} disabled={!online} onClick={() => void gravar(() => reabrir.mutateAsync(venda.id))}>
         Reabrir venda
       </Botao>
       {botaoLancar}
     </>
   ) : (
     <>
-      <Botao variante="texto" disabled={!online} onClick={() => setConfirmandoEncerrar(true)}>
+      <Botao variante="texto" disabled={!online} onClick={() => setConfirmandoEncerrar(true)} className="order-last w-full sm:order-none sm:w-auto">
         Encerrar venda
       </Botao>
-      <Link to={`/adm/vendas/${venda.id}/editar`} className={estiloDoBotao({ variante: 'secundario' })}>
+      <Link to={`/adm/vendas/${venda.id}/editar`} className={cn(estiloDoBotao({ variante: 'secundario' }), 'w-full sm:w-auto')}>
         Editar venda
       </Link>
       {botaoLancar}
