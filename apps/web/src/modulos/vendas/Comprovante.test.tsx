@@ -144,7 +144,7 @@ describe('Comprovante na janela "Como o pedido foi pago?"', () => {
     const dialogo = await abrirDialogoDePagamento(usuario)
     await usuario.upload(campoDeArquivo(dialogo), pdf())
     await usuario.click(within(dialogo).getByRole('button', { name: 'Marcar como pago' }))
-    expect(await screen.findByText(/o pedido foi marcado como pago, mas o comprovante não foi enviado/i)).toBeInTheDocument()
+    expect(await screen.findByText(/o pedido foi marcado como pago, mas o comprovante não foi enviado\. Falhou\./i)).toBeInTheDocument()
     expect(chamadas.map((c) => c.caminho)).toEqual([caminhoDe('pagar'), caminhoDe('comprovante')])
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })

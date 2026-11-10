@@ -110,8 +110,11 @@ export function TabelaDePedidos({ venda, pedidos, pagina, total, aoMudarPagina, 
     if (!aPagar || !(await executar(() => pagar.mutateAsync({ ...ids(aPagar), entrada: { forma } })))) return
     const pedido = aPagar
     setAPagar(null)
-    if (comprovante && !(await executar(() => enviarComprovante.mutateAsync({ ...ids(pedido), arquivo: comprovante })))) {
-      setErro(`${AVISO_COMPROVANTE_NAO_ENVIADO} Pedido ${pedido.codigo}: abra o resumo e tente de novo.`)
+    if (!comprovante) return
+    try {
+      await enviarComprovante.mutateAsync({ ...ids(pedido), arquivo: comprovante })
+    } catch (falha) {
+      setErro([AVISO_COMPROVANTE_NAO_ENVIADO, lerErroDaApi(falha).geral, `Pedido ${pedido.codigo}: abra o resumo e tente de novo.`].filter(Boolean).join(' '))
     }
   }
 

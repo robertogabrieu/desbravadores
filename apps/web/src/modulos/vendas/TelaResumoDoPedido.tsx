@@ -142,8 +142,11 @@ function ResumoDoPedido({ venda, pedido }: { venda: Venda; pedido: Pedido }) {
   async function confirmarPagamento(forma: FormaDoPedido, comprovante: File | null) {
     if (!(await executar(() => pagar.mutateAsync({ ...ids, entrada: { forma } })))) return
     setPagando(false)
-    if (comprovante && !(await executar(() => enviarComprovante.mutateAsync({ ...ids, arquivo: comprovante })))) {
-      setErro(`${AVISO_COMPROVANTE_NAO_ENVIADO} Use "Anexar comprovante" para tentar de novo.`)
+    if (!comprovante) return
+    try {
+      await enviarComprovante.mutateAsync({ ...ids, arquivo: comprovante })
+    } catch (falha) {
+      setErro([AVISO_COMPROVANTE_NAO_ENVIADO, lerErroDaApi(falha).geral, 'Use "Anexar comprovante" para tentar de novo.'].filter(Boolean).join(' '))
     }
   }
 
