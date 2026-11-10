@@ -324,7 +324,7 @@ describe('Painel da venda: filtros, busca e vazios', () => {
     await waitFor(() => expect(consultas.at(-1)?.get('filtro')).toBe('CANCELADOS'))
     expect(linha.getByRole('link', { name: 'Ivo Lima' })).toHaveClass('text-texto-2')
     expect(linha.getByText('R$ 50,00')).toHaveClass('line-through', 'text-texto-2')
-    expect(linha.getByText('Cancelado')).toBeInTheDocument()
+    expect(linha.getByText('Cancelado')).toHaveAttribute('data-tom', 'apagado')
   })
 
   it('no celular, o cartão do cancelado tem comprador esmaecido, valor riscado e selo', async () => {

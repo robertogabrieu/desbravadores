@@ -232,7 +232,7 @@ function ResumoDoPedido({ venda, pedido }: { venda: Venda; pedido: Pedido }) {
         titulo={`Pedido ${pedido.codigo}`}
         apoio={
           <>
-            {cancelado && <Selo>Cancelado</Selo>}
+            {cancelado && <Selo tom="apagado">Cancelado</Selo>}
             {encerrada && <Selo>Encerrada</Selo>}
             <span>
               {pedido.comprador} · lançado em {diaEHora(pedido.criadoEm)}
@@ -265,7 +265,7 @@ function ResumoDoPedido({ venda, pedido }: { venda: Venda; pedido: Pedido }) {
             <h2 className="font-titulo text-lg font-bold text-texto">Situação</h2>
             {cancelado ? (
               <LinhaDaSituacao rotulo="Pedido">
-                <Selo>Cancelado</Selo>
+                <Selo tom="apagado">Cancelado</Selo>
               </LinhaDaSituacao>
             ) : (
               <>

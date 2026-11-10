@@ -65,7 +65,7 @@ function Pagamento({ pedido }: { pedido: Pedido }) {
 }
 
 function Situacao({ pedido }: { pedido: Pedido }) {
-  if (pedido.canceladoEm) return <Selo tom="neutro" className="whitespace-nowrap">Cancelado</Selo>
+  if (pedido.canceladoEm) return <Selo tom="apagado" className="whitespace-nowrap">Cancelado</Selo>
   if (!pedido.entregueEm) return <Selo tom="alerta" className="whitespace-nowrap">{situacaoDaEntrega(pedido)}</Selo>
   return (
     <Selo tom="sucesso" className="whitespace-nowrap">
@@ -209,7 +209,7 @@ export function TabelaDePedidos({ venda, pedidos, pagina, total, aoMudarPagina, 
               </div>
             </div>
             <span className="text-sm text-texto-2">{itensDoPedido(pedido)}</span>
-            {pedido.canceladoEm && <Selo tom="neutro" className="self-start">Cancelado</Selo>}
+            {pedido.canceladoEm && <Selo tom="apagado" className="self-start">Cancelado</Selo>}
           </div>
         )}
       />

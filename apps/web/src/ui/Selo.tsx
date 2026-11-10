@@ -1,13 +1,15 @@
 import type { HTMLAttributes } from 'react'
 import { cn } from './cn'
 
-export type TomDoSelo = 'neutro' | 'alerta' | 'sucesso' | 'perigo'
+export type TomDoSelo = 'neutro' | 'alerta' | 'sucesso' | 'perigo' | 'apagado'
 
 const TONS: Record<TomDoSelo, string> = {
   neutro: 'bg-marca-suave text-marca',
   alerta: 'bg-alerta-fundo text-alerta',
   sucesso: 'bg-marca-suave text-sucesso',
   perigo: 'bg-perigo text-white',
+  /** O que deixou de valer, como pedido cancelado: cinza, para não parecer sucesso. */
+  apagado: 'bg-superficie-suave text-texto-2 ring-1 ring-inset ring-divisor',
 }
 
 interface Propriedades extends HTMLAttributes<HTMLSpanElement> {
