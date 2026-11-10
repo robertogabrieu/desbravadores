@@ -862,6 +862,7 @@ model Arquivo {
   gruposClasseBiblica GrupoClasseBiblica[]
   itemBiblioteca      ItemBiblioteca?      @relation("PdfDoItem")
   capaDeItem          ItemBiblioteca?      @relation("CapaDoItem")
+  pedidosComComprovante PedidoVenda[]      @relation("ComprovanteDoPedido")
 
   @@unique([clubeId, id])
 }
@@ -1691,16 +1692,20 @@ model PedidoVenda {
   entregueEm  DateTime?             @db.Timestamptz
   canceladoEm DateTime?             @db.Timestamptz
   criadoEm    DateTime              @default(now()) @db.Timestamptz
+  // Foto ou PDF do comprovante de pagamento; só aparece enquanto o pedido está pago.
+  comprovanteId String?             @db.Uuid
 
-  clube   Clube             @relation(fields: [clubeId], references: [id], onDelete: Restrict)
-  venda   VendaArrecadacao  @relation(fields: [clubeId, vendaId], references: [clubeId, id], onDelete: Restrict)
-  unidade Unidade?          @relation(fields: [clubeId, unidadeId], references: [clubeId, id], onDelete: Restrict)
-  itens   ItemPedidoVenda[]
+  clube       Clube             @relation(fields: [clubeId], references: [id], onDelete: Restrict)
+  venda       VendaArrecadacao  @relation(fields: [clubeId, vendaId], references: [clubeId, id], onDelete: Restrict)
+  unidade     Unidade?          @relation(fields: [clubeId, unidadeId], references: [clubeId, id], onDelete: Restrict)
+  comprovante Arquivo?          @relation("ComprovanteDoPedido", fields: [clubeId, comprovanteId], references: [clubeId, id], onDelete: Restrict)
+  itens       ItemPedidoVenda[]
 
   @@unique([clubeId, id])
   @@unique([vendaId, codigo])
   @@index([clubeId, vendaId])
   @@index([clubeId, unidadeId])
+  @@index([clubeId, comprovanteId])
 }
 
 model ItemPedidoVenda {

@@ -65,13 +65,13 @@ describe('painel da venda', () => {
       pedidosAPagar: 0,
       aEntregar: 0,
       entregues: 0,
-      contadores: { todos: 0, aPagar: 0, aEntregar: 0, entregues: 0 },
+      contadores: { todos: 0, aPagar: 0, aEntregar: 0, entregues: 0, cancelados: 0 },
     })
     expect(painel.porProduto.map((p) => [p.nomeCurto, p.unidades])).toEqual([['Carne', 0], ['Frango', 0]])
     expect(painel.porUnidade.map((l) => l.tipo)).toEqual(['DIRETORIA', 'SEM_UNIDADE'])
   })
 
-  it('números do glossário: cancelado fica fora de tudo e só conta em "Todos"', async () => {
+  it('números do glossário: cancelado fica fora de tudo, inclusive de "Todos", e só conta em "Cancelados"', async () => {
     const c = await cenario()
     const [carne, frango] = c.venda.produtos
     const pago = await lancar(c, { entrega: true, endereco: 'Rua', itens: [{ produtoId: carne.id, quantidade: 2 }, { produtoId: frango.id, quantidade: 1 }] })
@@ -92,7 +92,7 @@ describe('painel da venda', () => {
       pedidosAPagar: 2,
       aEntregar: 2,
       entregues: 1,
-      contadores: { todos: 4, aPagar: 2, aEntregar: 2, entregues: 1 },
+      contadores: { todos: 3, aPagar: 2, aEntregar: 2, entregues: 1, cancelados: 1 },
     })
     expect(painel.porProduto.map((p) => [p.nomeCurto, p.unidades])).toEqual([['Carne', 3], ['Frango', 3]])
   })

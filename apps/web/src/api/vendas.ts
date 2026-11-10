@@ -1,7 +1,7 @@
 import { PedidoListaSaida, PedidoSaida, VendaListaSaida, VendaPainelSaida, VendaSaida } from '@desbravadores/shared'
 import type { PagarPedidoEntrada, PedidoEdicao, PedidoEntrada, PedidosQuery, VendaEntrada } from '@desbravadores/shared'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { montarConsulta, requisitar } from './cliente'
+import { ErroDaApi, erroDeResposta, lerTokenAcesso, montarConsulta, renovarSessao, requisitar } from './cliente'
 
 export type Venda = VendaSaida
 export type ResumoDeVenda = VendaListaSaida['vendas'][number]
@@ -129,3 +129,50 @@ export const useDesentregarPedido = () => useAcaoDoPedido('desentregar')
 export const useCancelarPedido = () => useAcaoDoPedido('cancelar')
 /** POST …/reativar. */
 export const useReativarPedido = () => useAcaoDoPedido('reativar')
+
+/** XHR, como o envio de materiais: o navegador monta o multipart e o `Content-Type` com a fronteira. */
+function enviarComprovanteUmaVez(vendaId: string, pedidoId: string, arquivo: File): Promise<{ status: number; corpo: unknown }> {
+  return new Promise((resolver) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', `${caminhoDoPedido(vendaId, pedidoId)}/comprovante`)
+    xhr.setRequestHeader('Accept', 'application/json')
+    const token = lerTokenAcesso()
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+    xhr.onload = () => {
+      let corpo: unknown = null
+      try {
+        corpo = JSON.parse(xhr.responseText)
+      } catch {
+        corpo = null
+      }
+      resolver({ status: xhr.status, corpo })
+    }
+    const semResposta = () => resolver({ status: 0, corpo: null })
+    xhr.onerror = semResposta
+    xhr.ontimeout = semResposta
+    xhr.onabort = semResposta
+    const formulario = new FormData()
+    formulario.append('arquivo', arquivo, arquivo.name)
+    xhr.send(formulario)
+  })
+}
+
+async function enviarComprovante({ vendaId, pedidoId, arquivo }: IdsDoPedido & { arquivo: File }): Promise<Pedido> {
+  let resposta = await enviarComprovanteUmaVez(vendaId, pedidoId, arquivo)
+  if (resposta.status === 401) {
+    await renovarSessao()
+    resposta = await enviarComprovanteUmaVez(vendaId, pedidoId, arquivo)
+  }
+  if (resposta.status === 0) throw new ErroDaApi(0, { codigo: 'ERRO_INTERNO', mensagem: 'Sem conexão. Confira a internet e tente de novo.' })
+  if (resposta.status < 200 || resposta.status >= 300) throw erroDeResposta(resposta.status, resposta.corpo)
+  const lido = PedidoSaida.safeParse(resposta.corpo)
+  if (!lido.success) throw erroDeResposta(resposta.status, null)
+  return lido.data
+}
+
+/** POST …/comprovante (multipart): enviar de novo troca o comprovante. */
+export const useEnviarComprovante = () => useEscritaDeVenda(enviarComprovante)
+
+/** DELETE …/comprovante. */
+export const useRemoverComprovante = () =>
+  useEscritaDeVenda(({ vendaId, pedidoId }: IdsDoPedido) => requisitar(`${caminhoDoPedido(vendaId, pedidoId)}/comprovante`, PedidoSaida, { metodo: 'DELETE' }))

@@ -1,12 +1,13 @@
 import { PEDIDOS_POR_PAGINA, rotuloDaSituacao, situacaoDoPedido } from '@desbravadores/shared'
 import type { FormaDoPedido } from '@desbravadores/shared'
-import { Check } from 'lucide-react'
+import { Check, Paperclip } from 'lucide-react'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { useCancelarPedido, useDesentregarPedido, useDespagarPedido, useEntregarPedido, usePagarPedido, useReativarPedido } from '../../api/vendas'
+import { useCancelarPedido, useDesentregarPedido, useDespagarPedido, useEntregarPedido, useEnviarComprovante, usePagarPedido, useReativarPedido } from '../../api/vendas'
 import type { Pedido, Venda } from '../../api/vendas'
 import { useConexao } from '../../offline'
+import { cn } from '../../ui/cn'
 import { Selo } from '../../ui/Selo'
 import { Tabela } from '../../ui/Tabela'
 import type { ColunaTabela } from '../../ui/Tabela'
@@ -17,6 +18,7 @@ import { formatarReaisComCentavos, situacaoDaEntrega } from './formatos'
 import { MenuDeAcoes } from './MenuDeAcoes'
 import type { AcaoDoMenu } from './MenuDeAcoes'
 
+const AVISO_COMPROVANTE_NAO_ENVIADO = 'O pedido foi marcado como pago, mas o comprovante não foi enviado.'
 const SEM_INTERNET = 'Marcar pago, entregue e cancelar precisam de internet. Conecte-se para continuar.'
 
 interface Propriedades {
@@ -37,10 +39,29 @@ const itensDoPedido = (pedido: Pedido): string =>
 
 const origemDoPedido = (pedido: Pedido): string => [pedido.vendedor, pedido.daDiretoria ? 'Diretoria' : pedido.unidadeNome].filter(Boolean).join(' · ')
 
+/** Pedido cancelado fica com o texto secundário e o valor riscado; o selo "Cancelado" vem da situação. */
+const ESMAECIDO = 'text-texto-2'
+const classeDoValor = (pedido: Pedido): string => cn('tabular-nums whitespace-nowrap', pedido.canceladoEm && 'text-texto-2 line-through')
+
+/** Ícone discreto de quem tem comprovante; o texto vai para leitor de tela e dica do mouse. */
+function IconeDeComprovante({ pedido }: { pedido: Pedido }) {
+  if (!pedido.comprovante) return null
+  return (
+    <span role="img" aria-label="Tem comprovante" title="Tem comprovante" className="inline-flex text-texto-2">
+      <Paperclip aria-hidden className="size-4" />
+    </span>
+  )
+}
+
 function Pagamento({ pedido }: { pedido: Pedido }) {
   const situacao = situacaoDoPedido(pedido)
   if (situacao === 'CANCELADO') return <span className="text-texto-2">—</span>
-  return <Selo tom={situacao === 'PAGO' ? 'sucesso' : 'alerta'} className="whitespace-nowrap">{rotuloDaSituacao(situacao, pedido.forma)}</Selo>
+  return (
+    <span className="inline-flex items-center gap-2">
+      <Selo tom={situacao === 'PAGO' ? 'sucesso' : 'alerta'} className="whitespace-nowrap">{rotuloDaSituacao(situacao, pedido.forma)}</Selo>
+      <IconeDeComprovante pedido={pedido} />
+    </span>
+  )
 }
 
 function Situacao({ pedido }: { pedido: Pedido }) {
@@ -68,7 +89,8 @@ export function TabelaDePedidos({ venda, pedidos, pagina, total, aoMudarPagina, 
   const desentregar = useDesentregarPedido()
   const cancelar = useCancelarPedido()
   const reativar = useReativarPedido()
-  const ocupado = [pagar, despagar, entregar, desentregar, cancelar, reativar].some((escrita) => escrita.isPending)
+  const enviarComprovante = useEnviarComprovante()
+  const ocupado = [pagar, despagar, entregar, desentregar, cancelar, reativar, enviarComprovante].some((escrita) => escrita.isPending)
   const ids = (pedido: Pedido) => ({ vendaId: venda.id, pedidoId: pedido.id })
 
   /** Roda a escrita e guarda a recusa da API na tela; devolve se deu certo, para o diálogo saber se fecha. */
@@ -83,8 +105,14 @@ export function TabelaDePedidos({ venda, pedidos, pagina, total, aoMudarPagina, 
     }
   }
 
-  async function confirmarPagamento(forma: FormaDoPedido) {
-    if (aPagar && (await executar(() => pagar.mutateAsync({ ...ids(aPagar), entrada: { forma } })))) setAPagar(null)
+  /** O pagamento grava primeiro; se só o comprovante falhar, o pedido fica pago e a tela avisa onde tentar de novo. */
+  async function confirmarPagamento(forma: FormaDoPedido, comprovante: File | null) {
+    if (!aPagar || !(await executar(() => pagar.mutateAsync({ ...ids(aPagar), entrada: { forma } })))) return
+    const pedido = aPagar
+    setAPagar(null)
+    if (comprovante && !(await executar(() => enviarComprovante.mutateAsync({ ...ids(pedido), arquivo: comprovante })))) {
+      setErro(`${AVISO_COMPROVANTE_NAO_ENVIADO} Pedido ${pedido.codigo}: abra o resumo e tente de novo.`)
+    }
   }
 
   async function confirmarCancelamento() {
@@ -117,13 +145,13 @@ export function TabelaDePedidos({ venda, pedidos, pagina, total, aoMudarPagina, 
   }
 
   const colunas: ColunaTabela<Pedido>[] = [
-    { chave: 'codigo', titulo: 'Código', celula: (pedido) => <b className="font-mono">{pedido.codigo}</b> },
+    { chave: 'codigo', titulo: 'Código', celula: (pedido) => <b className={cn('font-mono', pedido.canceladoEm && ESMAECIDO)}>{pedido.codigo}</b> },
     {
       chave: 'comprador',
       titulo: 'Comprador',
       celula: (pedido) => (
         <div className="flex flex-col">
-          <Link to={`/adm/vendas/${venda.id}/pedidos/${pedido.id}`} className="font-semibold text-texto hover:underline focus-visible:outline-2 focus-visible:outline-marca">
+          <Link to={`/adm/vendas/${venda.id}/pedidos/${pedido.id}`} className={cn('font-semibold hover:underline focus-visible:outline-2 focus-visible:outline-marca', pedido.canceladoEm ? ESMAECIDO : 'text-texto')}>
             {pedido.comprador}
           </Link>
           <span className="text-sm text-texto-2">{origemDoPedido(pedido)}</span>
@@ -135,12 +163,12 @@ export function TabelaDePedidos({ venda, pedidos, pagina, total, aoMudarPagina, 
       titulo: 'Itens',
       celula: (pedido) => (
         <div className="flex flex-col">
-          <span>{itensDoPedido(pedido)}</span>
+          <span className={cn(pedido.canceladoEm && ESMAECIDO)}>{itensDoPedido(pedido)}</span>
           {pedido.entrega && <span className="text-sm text-texto-2">Entrega · {pedido.endereco}</span>}
         </div>
       ),
     },
-    { chave: 'total', titulo: 'Total', celula: (pedido) => <b className="tabular-nums whitespace-nowrap">{formatarReaisComCentavos(pedido.total)}</b> },
+    { chave: 'total', titulo: 'Total', celula: (pedido) => <b className={classeDoValor(pedido)}>{formatarReaisComCentavos(pedido.total)}</b> },
     { chave: 'pagamento', titulo: 'Pagamento', celula: (pedido) => <Pagamento pedido={pedido} /> },
     { chave: 'situacao', titulo: 'Situação', celula: (pedido) => <Situacao pedido={pedido} /> },
     { chave: 'acoes', titulo: 'Ações', celula: (pedido) => acoesDoPedido(pedido) },
@@ -166,19 +194,23 @@ export function TabelaDePedidos({ venda, pedidos, pagina, total, aoMudarPagina, 
         cartao={(pedido) => (
           <div className="flex flex-col gap-2 rounded-cartao border border-borda-controle bg-superficie p-4">
             <div className="flex items-center justify-between gap-3">
-              <b className="min-w-0 break-words">
-                {pedido.codigo} · {pedido.comprador}
-              </b>
+              <span className="flex min-w-0 items-center gap-2">
+                <b className={cn('min-w-0 break-words', pedido.canceladoEm && ESMAECIDO)}>
+                  {pedido.codigo} · {pedido.comprador}
+                </b>
+                {pedido.pago && <IconeDeComprovante pedido={pedido} />}
+              </span>
               <div className="flex items-center gap-1">
-                <b className="tabular-nums whitespace-nowrap">{formatarReaisComCentavos(pedido.total)}</b>
+                <b className={classeDoValor(pedido)}>{formatarReaisComCentavos(pedido.total)}</b>
                 {acoesDoPedido(pedido)}
               </div>
             </div>
             <span className="text-sm text-texto-2">{itensDoPedido(pedido)}</span>
+            {pedido.canceladoEm && <Selo tom="neutro" className="self-start">Cancelado</Selo>}
           </div>
         )}
       />
-      <DialogoPagarPedido aberto={aPagar !== null} formas={formasAceitasPela(venda)} ocupado={pagar.isPending} erro={erro} aoConfirmar={(forma) => void confirmarPagamento(forma)} aoCancelar={() => {
+      <DialogoPagarPedido aberto={aPagar !== null} formas={formasAceitasPela(venda)} ocupado={pagar.isPending} erro={erro} aoConfirmar={(forma, comprovante) => void confirmarPagamento(forma, comprovante)} aoCancelar={() => {
           setErro(null)
           setAPagar(null)
         }} />

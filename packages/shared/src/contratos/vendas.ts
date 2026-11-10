@@ -141,6 +141,7 @@ export const ContadoresDosFiltros = z.object({
   aPagar: z.number().int().min(0),
   aEntregar: z.number().int().min(0),
   entregues: z.number().int().min(0),
+  cancelados: z.number().int().min(0),
 })
 export type ContadoresDosFiltros = z.infer<typeof ContadoresDosFiltros>
 
@@ -224,6 +225,14 @@ export const ItemDoPedidoSaida = z.object({
 })
 export type ItemDoPedidoSaida = z.infer<typeof ItemDoPedidoSaida>
 
+/** O comprovante do pedido: nunca o caminho, só o id, o tipo e a URL assinada de 10 minutos. */
+export const ComprovanteSaida = z.object({
+  arquivoId: Uuid,
+  tipo: z.enum(['FOTO', 'PDF']),
+  url: z.string(),
+})
+export type ComprovanteSaida = z.infer<typeof ComprovanteSaida>
+
 /** `total` vem de `totalDoPedido`: a tela nunca recalcula. */
 export const PedidoSaida = z.object({
   id: Uuid,
@@ -244,6 +253,8 @@ export const PedidoSaida = z.object({
   criadoEm: InstanteIso,
   itens: z.array(ItemDoPedidoSaida),
   total: Centavos,
+  /** Só com o pedido pago; desmarcar o pagamento esconde o comprovante sem apagá-lo. */
+  comprovante: ComprovanteSaida.nullable(),
 })
 export type PedidoSaida = z.infer<typeof PedidoSaida>
 

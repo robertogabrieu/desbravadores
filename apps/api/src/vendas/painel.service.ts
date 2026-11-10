@@ -9,7 +9,7 @@ import { VENDA_NAO_ENCONTRADA } from './constantes'
 export class PainelService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Pedido cancelado fica fora de tudo, menos do contador "Todos". */
+  /** Pedido cancelado fica fora de tudo, inclusive do contador "Todos"; só o contador "Cancelados" os conta. */
   async obter(clubeId: string, vendaId: string): Promise<VendaPainelSaida> {
     const venda = await this.prisma.vendaArrecadacao.findFirst({ where: { clubeId, id: vendaId }, select: { id: true } })
     if (!venda) throw new ErroApp('NAO_ENCONTRADO', VENDA_NAO_ENCONTRADA)
@@ -62,7 +62,7 @@ export class PainelService {
       aEntregar: ativos.length - entregues,
       entregues,
       porUnidade: linhasPorUnidade(ativos, unidades, unidadesPorPedido),
-      contadores: { todos: pedidos.length, aPagar, aEntregar: ativos.length - entregues, entregues },
+      contadores: { todos: ativos.length, aPagar, aEntregar: ativos.length - entregues, entregues, cancelados: pedidos.length - ativos.length },
     }
   }
 }

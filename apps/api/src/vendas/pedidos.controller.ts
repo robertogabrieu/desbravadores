@@ -1,19 +1,45 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common'
-import { PagarPedidoEntrada, PedidoEdicao, PedidoEntrada, PedidosQuery, Uuid } from '@desbravadores/shared'
+import { mkdirSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFile, UseFilters, UseInterceptors } from '@nestjs/common'
+import { FileInterceptor } from '@nestjs/platform-express'
+import {
+  LIMITE_BYTES_COMPROVANTE,
+  MENSAGEM_COMPROVANTE_GRANDE,
+  PagarPedidoEntrada,
+  PedidoEdicao,
+  PedidoEntrada,
+  PedidosQuery,
+  Uuid,
+} from '@desbravadores/shared'
+import { diskStorage } from 'multer'
 import type { z } from 'zod'
 import { Pode } from '../comum/decorators/pode.decorator'
 import { SessaoDoClube, type SessaoLogada } from '../comum/decorators/sessao.decorator'
 import { ZodValidationPipe } from '../comum/pipes/zod-validation.pipe'
+import { FiltroArquivoGrande } from '../materiais/filtro-arquivo-grande'
+import type { ArquivoEmDisco } from '../materiais/materiais.service'
+import { ComprovanteService } from './comprovante.service'
 import { PainelService } from './painel.service'
 import { PedidosService } from './pedidos.service'
 
 const IdDaRota = new ZodValidationPipe(Uuid)
+
+export const PASTA_TEMPORARIA_DE_COMPROVANTES = join(tmpdir(), 'desbravadores-comprovantes')
+
+const ARMAZENAMENTO_TEMPORARIO = diskStorage({
+  destination: (_requisicao, _arquivo, concluir) => {
+    mkdirSync(PASTA_TEMPORARIA_DE_COMPROVANTES, { recursive: true })
+    concluir(null, PASTA_TEMPORARIA_DE_COMPROVANTES)
+  },
+})
 
 @Controller('vendas/:id')
 export class PedidosController {
   constructor(
     private readonly pedidos: PedidosService,
     private readonly painel: PainelService,
+    private readonly comprovante: ComprovanteService,
   ) {}
 
   @Pode('venda.gerenciar')
@@ -98,5 +124,25 @@ export class PedidosController {
   @Post('pedidos/:pedidoId/reativar')
   reativar(@SessaoDoClube() sessao: SessaoLogada, @Param('id', IdDaRota) id: string, @Param('pedidoId', IdDaRota) pedidoId: string) {
     return this.pedidos.reativar(sessao.clubeId, id, pedidoId)
+  }
+
+  /** Foto ou PDF; enviar de novo troca o comprovante. */
+  @Pode('venda.gerenciar')
+  @Post('pedidos/:pedidoId/comprovante')
+  @UseFilters(new FiltroArquivoGrande(MENSAGEM_COMPROVANTE_GRANDE))
+  @UseInterceptors(FileInterceptor('arquivo', { storage: ARMAZENAMENTO_TEMPORARIO, limits: { fileSize: LIMITE_BYTES_COMPROVANTE, files: 1 } }))
+  enviarComprovante(
+    @SessaoDoClube() sessao: SessaoLogada,
+    @Param('id', IdDaRota) id: string,
+    @Param('pedidoId', IdDaRota) pedidoId: string,
+    @UploadedFile() arquivo: ArquivoEmDisco | undefined,
+  ) {
+    return this.comprovante.enviar(sessao.clubeId, sessao.usuarioId, id, pedidoId, arquivo)
+  }
+
+  @Pode('venda.gerenciar')
+  @Delete('pedidos/:pedidoId/comprovante')
+  removerComprovante(@SessaoDoClube() sessao: SessaoLogada, @Param('id', IdDaRota) id: string, @Param('pedidoId', IdDaRota) pedidoId: string) {
+    return this.comprovante.remover(sessao.clubeId, id, pedidoId)
   }
 }
