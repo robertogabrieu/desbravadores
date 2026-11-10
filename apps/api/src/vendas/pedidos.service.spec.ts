@@ -366,19 +366,21 @@ describe('pedidos da venda', () => {
       const [jose, ana, beatriz] = pedidos
       const codigos = (resposta: PedidoListaSaida) => resposta.itens.map((p) => p.codigo)
       const todos = await listar('')
-      expect(codigos(todos)).toEqual([beatriz.codigo, ana.codigo, jose.codigo])
-      expect(todos).toMatchObject({ total: 3, pagina: 1, porPagina: 20 })
+      expect(codigos(todos)).toEqual([ana.codigo, jose.codigo])
+      expect(todos).toMatchObject({ total: 2, pagina: 1, porPagina: 20 })
+      expect(codigos(await listar('filtro=CANCELADOS'))).toEqual([beatriz.codigo])
       expect(codigos(await listar('filtro=A_PAGAR'))).toEqual([ana.codigo])
       expect(codigos(await listar('filtro=A_ENTREGAR'))).toEqual([jose.codigo])
       expect(codigos(await listar('filtro=ENTREGUES'))).toEqual([ana.codigo])
       expect(codigos(await listar('busca=jose'))).toEqual([jose.codigo])
       expect(codigos(await listar(`busca=${ana.codigo}`))).toEqual([ana.codigo])
-      expect(codigos(await listar(`busca=${beatriz.codigo.toLowerCase()}`))).toEqual([beatriz.codigo])
+      expect(codigos(await listar(`busca=${beatriz.codigo.toLowerCase()}&filtro=CANCELADOS`))).toEqual([beatriz.codigo])
+      expect(codigos(await listar(`busca=${beatriz.codigo.toLowerCase()}`))).toEqual([])
 
       for (let i = 0; i < 20; i += 1) await lancar(c, { comprador: `Extra ${i}` })
       const segunda = await listar('pagina=2')
-      expect(segunda).toMatchObject({ total: 23, pagina: 2 })
-      expect(codigos(segunda)).toEqual([beatriz.codigo, ana.codigo, jose.codigo])
+      expect(segunda).toMatchObject({ total: 22, pagina: 2 })
+      expect(codigos(segunda)).toEqual([ana.codigo, jose.codigo])
     })
 
     it('total da saída e o painel batem com totalDoPedido, mesmo depois de mudar o preço da venda', async () => {

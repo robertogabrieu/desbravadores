@@ -23,7 +23,11 @@ export function rotuloDaForma(forma: FormaDoPedido): string {
   return ROTULOS_DA_FORMA[forma]
 }
 
-export const FILTROS_DO_PEDIDO = ['TODOS', 'A_PAGAR', 'A_ENTREGAR', 'ENTREGUES'] as const
+/** Cabe no limite padrão do nginx (3 MB) com o multipart; a foto é reduzida no aparelho para caber. */
+export const LIMITE_BYTES_COMPROVANTE = 2.5 * 1024 * 1024
+export const MENSAGEM_COMPROVANTE_GRANDE = 'O comprovante passa de 2,5 MB. Tire um print menor ou envie o PDF do banco.'
+
+export const FILTROS_DO_PEDIDO = ['TODOS', 'A_PAGAR', 'A_ENTREGAR', 'ENTREGUES', 'CANCELADOS'] as const
 export type FiltroDoPedido = (typeof FILTROS_DO_PEDIDO)[number]
 
 const ROTULOS_DO_FILTRO: Record<FiltroDoPedido, string> = {
@@ -31,6 +35,7 @@ const ROTULOS_DO_FILTRO: Record<FiltroDoPedido, string> = {
   A_PAGAR: 'A pagar',
   A_ENTREGAR: 'A entregar',
   ENTREGUES: 'Entregues',
+  CANCELADOS: 'Cancelados',
 }
 
 export function rotuloDoFiltro(filtro: FiltroDoPedido): string {

@@ -58,8 +58,8 @@ describe('situação e rótulos', () => {
 
 describe('filtros do painel', () => {
   it('são quatro, na ordem da tela, cada um com rótulo', () => {
-    expect(FILTROS_DO_PEDIDO).toEqual(['TODOS', 'A_PAGAR', 'A_ENTREGAR', 'ENTREGUES'])
-    expect(FILTROS_DO_PEDIDO.map(rotuloDoFiltro)).toEqual(['Todos', 'A pagar', 'A entregar', 'Entregues'])
+    expect(FILTROS_DO_PEDIDO).toEqual(['TODOS', 'A_PAGAR', 'A_ENTREGAR', 'ENTREGUES', 'CANCELADOS'])
+    expect(FILTROS_DO_PEDIDO.map(rotuloDoFiltro)).toEqual(['Todos', 'A pagar', 'A entregar', 'Entregues', 'Cancelados'])
   })
   it('a página tem 20 pedidos', () => {
     expect(PEDIDOS_POR_PAGINA).toBe(20)

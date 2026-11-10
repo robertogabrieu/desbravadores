@@ -34,6 +34,7 @@ const CONTADOR_DO_FILTRO: Record<FiltroDoPedido, keyof PainelDaVenda['contadores
   A_PAGAR: 'aPagar',
   A_ENTREGAR: 'aEntregar',
   ENTREGUES: 'entregues',
+  CANCELADOS: 'cancelados',
 }
 
 const SEM_RESULTADO: Record<FiltroDoPedido, { titulo: string; descricao: string }> = {
@@ -41,6 +42,7 @@ const SEM_RESULTADO: Record<FiltroDoPedido, { titulo: string; descricao: string 
   A_PAGAR: { titulo: 'Nenhum pedido a pagar.', descricao: 'Todos os pedidos desta venda estão pagos.' },
   A_ENTREGAR: { titulo: 'Nenhum pedido a entregar.', descricao: 'Todos os pedidos já foram retirados ou entregues.' },
   ENTREGUES: { titulo: 'Nenhum pedido entregue ainda.', descricao: 'Os pedidos aparecem aqui quando forem marcados como entregues.' },
+  CANCELADOS: { titulo: 'Nenhum pedido cancelado.', descricao: 'Os pedidos cancelados aparecem aqui e podem ser reativados.' },
 }
 
 function Numero({ valor, rotulo, detalhe, aviso = false }: { valor: string; rotulo: string; detalhe?: string; aviso?: boolean }) {
@@ -126,7 +128,7 @@ function PedidosDaVenda({ venda, painel, aoLancar }: PropriedadesDosPedidos) {
     setPagina(1)
   }
 
-  const semPedidoNenhum = painel !== undefined && painel.contadores.todos === 0
+  const semPedidoNenhum = painel !== undefined && painel.contadores.todos + painel.contadores.cancelados === 0
   const vazio = semPedidoNenhum ? (
     <EstadoVazio titulo="Nenhum pedido lançado." descricao="Os números e a lista aparecem aqui assim que você lançar o primeiro." acao={aoLancar} />
   ) : (

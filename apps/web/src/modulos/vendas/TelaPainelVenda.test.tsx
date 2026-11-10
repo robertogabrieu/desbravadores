@@ -6,6 +6,7 @@ import type { ModoConexao } from '../../offline'
 import { criarListaDePedidos, criarPainel, criarPedido, criarProdutoDaVenda, criarVenda, handlerPedidos, handlersVendas } from '../../testes/handlers/vendas'
 import type { ChamadaDeVenda } from '../../testes/handlers/vendas'
 import { criarVinculo, handlersSessao } from '../../testes/handlers/sessao'
+import { simularLargura } from '../../testes/midia'
 import { renderizarRotas } from '../../testes/renderizar'
 import { servidor } from '../../testes/servidor'
 import { TelaPainelVenda } from './TelaPainelVenda'
@@ -22,6 +23,7 @@ let chamadas: ChamadaDeVenda[] = []
 beforeEach(() => {
   estado.modo = 'ONLINE'
   chamadas = []
+  simularLargura(1280)
 })
 
 const VENDA = criarVenda(1, { nome: 'Lasanhas — 2ª edição' })
@@ -64,6 +66,7 @@ describe('Painel da venda: números', () => {
           { produtoId: VENDA.produtos[0]?.id ?? '', nome: 'Lasanha de carne', nomeCurto: 'Carne', unidades: 98 },
           { produtoId: VENDA.produtos[1]?.id ?? '', nome: 'Lasanha de frango', nomeCurto: 'Frango', unidades: 73 },
         ],
+        contadores: { todos: 47, aPagar: 3, aEntregar: 31, entregues: 16, cancelados: 2 },
         porUnidade: [
           { tipo: 'DIRETORIA', unidadeId: null, nome: 'Diretoria', ativa: true, unidades: 62 },
           { tipo: 'UNIDADE', unidadeId: null, nome: 'Panteras', ativa: false, unidades: 41 },
@@ -84,6 +87,8 @@ describe('Painel da venda: números', () => {
     expect(screen.getByRole('tab', { name: 'A pagar 3' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'A entregar 31' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Entregues 16' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Cancelados 2' })).toBeInTheDocument()
+    expect(screen.getAllByRole('tab').map((aba) => aba.textContent?.split(' ')[0])).toEqual(['Todos', 'A', 'A', 'Entregues', 'Cancelados'])
     const unidades = screen.getByRole('region', { name: 'Unidades vendidas por unidade' })
     expect(within(unidades).getByText('Panteras (inativa)')).toBeInTheDocument()
     expect(within(unidades).getByText('Sem unidade')).toBeInTheDocument()
@@ -309,8 +314,63 @@ describe('Painel da venda: filtros, busca e vazios', () => {
     expect(screen.getByRole('tab', { name: 'Todos 47' })).toHaveAttribute('aria-selected', 'true')
   })
 
+  it('aba Cancelados pede o filtro ao servidor e mostra o pedido esmaecido, com valor riscado e selo', async () => {
+    const consultas: URLSearchParams[] = []
+    abrir({ painel: criarPainel({ contadores: { todos: 47, aPagar: 3, aEntregar: 31, entregues: 16, cancelados: 1 } }) })
+    servidor.use(handlerPedidos(() => criarListaDePedidos([CANCELADO]), consultas))
+    const usuario = userEvent.setup()
+    await usuario.click(await screen.findByRole('tab', { name: 'Cancelados 1' }))
+    const linha = await linhaDe('Ivo Lima')
+    await waitFor(() => expect(consultas.at(-1)?.get('filtro')).toBe('CANCELADOS'))
+    expect(linha.getByRole('link', { name: 'Ivo Lima' })).toHaveClass('text-texto-2')
+    expect(linha.getByText('R$ 50,00')).toHaveClass('line-through', 'text-texto-2')
+    expect(linha.getByText('Cancelado')).toHaveAttribute('data-tom', 'apagado')
+  })
+
+  it('no celular, o cartão do cancelado tem comprador esmaecido, valor riscado e selo', async () => {
+    simularLargura(390)
+    abrir({ painel: criarPainel({ contadores: { todos: 47, aPagar: 3, aEntregar: 31, entregues: 16, cancelados: 1 } }) })
+    servidor.use(handlerPedidos(() => criarListaDePedidos([CANCELADO])))
+    await userEvent.setup().click(await screen.findByRole('tab', { name: 'Cancelados 1' }))
+    expect(await screen.findByText('COD001 · Ivo Lima')).toHaveClass('text-texto-2')
+    expect(screen.getByText('R$ 50,00')).toHaveClass('line-through', 'text-texto-2')
+    expect(screen.getByText('Cancelado')).toBeInTheDocument()
+  })
+
+  it('só o pedido pago com comprovante ganha o ícone "Tem comprovante", na tabela e no cartão', async () => {
+    const comprovante = { arquivoId: '0190aaaa-0000-7000-8000-000000000001', tipo: 'FOTO' as const, url: '/api/arquivos/x?c=1&v=original&exp=1&sig=abc' }
+    const comAnexo = criarPedido(5, { comprador: 'Lia Mota', pago: true, forma: 'PIX', comprovante })
+    abrir({ pedidos: [A_PAGAR, comAnexo] })
+    const linha = await linhaDe('Lia Mota')
+    expect(linha.getByRole('img', { name: 'Tem comprovante' })).toBeInTheDocument()
+    expect((await linhaDe('Marlene Prado')).queryByRole('img', { name: 'Tem comprovante' })).not.toBeInTheDocument()
+  })
+
+  it('no celular, o cartão do pedido com comprovante também mostra o ícone', async () => {
+    simularLargura(390)
+    const comprovante = { arquivoId: '0190aaaa-0000-7000-8000-000000000001', tipo: 'PDF' as const, url: '/api/arquivos/x?c=1&v=original&exp=1&sig=abc' }
+    abrir({ pedidos: [A_PAGAR, criarPedido(5, { comprador: 'Lia Mota', pago: true, forma: 'PIX', comprovante })] })
+    await screen.findByText(/COD005 · Lia Mota/)
+    expect(screen.getAllByRole('img', { name: 'Tem comprovante' })).toHaveLength(1)
+  })
+
+  it('aba Cancelados sem pedidos mostra o estado vazio próprio', async () => {
+    abrir({ painel: criarPainel({ contadores: { todos: 47, aPagar: 3, aEntregar: 31, entregues: 16, cancelados: 0 } }) })
+    servidor.use(handlerPedidos(() => criarListaDePedidos([])))
+    await userEvent.setup().click(await screen.findByRole('tab', { name: 'Cancelados 0' }))
+    expect(await screen.findByText('Nenhum pedido cancelado.')).toBeInTheDocument()
+  })
+
+  it('só com pedidos cancelados, a lista não diz que nenhum pedido foi lançado', async () => {
+    abrir({ painel: criarPainel({ contadores: { todos: 0, aPagar: 0, aEntregar: 0, entregues: 0, cancelados: 2 } }) })
+    servidor.use(handlerPedidos(() => criarListaDePedidos([])))
+    await screen.findByRole('tab', { name: 'Cancelados 2' })
+    expect(screen.queryByText('Nenhum pedido lançado.')).not.toBeInTheDocument()
+    expect(await screen.findByText('Nenhum pedido encontrado.')).toBeInTheDocument()
+  })
+
   it('sem nenhum pedido, oferece Lançar pedido', async () => {
-    abrir({ pedidos: [], painel: criarPainel({ unidadesVendidas: 0, porProduto: [], vendido: 0, recebido: 0, aReceber: 0, pedidosAPagar: 0, aEntregar: 0, entregues: 0, contadores: { todos: 0, aPagar: 0, aEntregar: 0, entregues: 0 } }) })
+    abrir({ pedidos: [], painel: criarPainel({ unidadesVendidas: 0, porProduto: [], vendido: 0, recebido: 0, aReceber: 0, pedidosAPagar: 0, aEntregar: 0, entregues: 0, contadores: { todos: 0, aPagar: 0, aEntregar: 0, entregues: 0, cancelados: 0 } }) })
     expect(await screen.findByText('Nenhum pedido lançado.')).toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: 'Lançar pedido' }).length).toBeGreaterThan(0)
   })

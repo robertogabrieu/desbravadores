@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import {
   PEDIDOS_POR_PAGINA,
+  type ComprovanteSaida,
   totalDoPedido,
   type FormaDoPedido,
   type PagarPedidoEntrada,
@@ -15,6 +16,7 @@ import { ErroApp } from '../comum/erros'
 import { PrismaService } from '../comum/prisma/prisma.service'
 import { paginar, semAcento } from '../desbravadores/apoio'
 import type { ItemPedidoVenda, PedidoVenda, Prisma, ProdutoVenda } from '../generated/prisma/client.js'
+import { ServicoArquivos } from '../arquivos/servico-arquivos'
 import { codigoLivreDoPedido } from './codigo-do-pedido'
 import { exigirVendaAberta, VENDA_NAO_ENCONTRADA } from './constantes'
 import { VendasService } from './vendas.service'
@@ -29,7 +31,7 @@ const PEDIDO_ENTREGUE = 'Pedido já entregue. Desmarque a entrega antes de cance
 const PEDIDO_CANCELADO = 'Pedido cancelado. Reative para alterar.'
 const JA_CANCELADO = 'Este pedido já está cancelado.'
 
-type Banco = Pick<PrismaService, 'pedidoVenda' | 'itemPedidoVenda' | 'produtoVenda' | 'unidade' | 'formaPagamentoVenda'>
+type Banco = Pick<PrismaService, 'pedidoVenda' | 'itemPedidoVenda' | 'produtoVenda' | 'unidade' | 'formaPagamentoVenda' | 'arquivo'>
 type Entrada = z.output<typeof PedidoEntrada>
 type Edicao = z.output<typeof PedidoEdicao>
 type Consulta = z.output<typeof PedidosQuery>
@@ -56,24 +58,47 @@ async function exigirFormaAceita(banco: Banco, clubeId: string, vendaId: string,
   return forma
 }
 
-async function pedidoDaVenda(banco: Banco, clubeId: string, vendaId: string, id: string): Promise<PedidoVenda> {
+export async function pedidoDaVenda(banco: Banco, clubeId: string, vendaId: string, id: string): Promise<PedidoVenda> {
   const pedido = await banco.pedidoVenda.findFirst({ where: { clubeId, vendaId, id } })
   if (!pedido) throw new ErroApp('NAO_ENCONTRADO', PEDIDO_NAO_ENCONTRADO)
   return pedido
 }
 
-function exigirNaoCancelado(pedido: PedidoVenda): void {
+export function exigirNaoCancelado(pedido: PedidoVenda): void {
   if (pedido.canceladoEm) throw new ErroApp('CONFLITO', PEDIDO_CANCELADO)
 }
 
+/** Comprovante por pedido, só dos pagos: desmarcar o pagamento esconde o arquivo, que continua guardado. */
+async function comprovantesDosPedidos(banco: Banco, arquivos: ServicoArquivos, clubeId: string, pedidos: PedidoVenda[]): Promise<Map<string, ComprovanteSaida>> {
+  const comPagamento = pedidos.filter((pedido) => pedido.pago && pedido.comprovanteId)
+  if (comPagamento.length === 0) return new Map()
+  const linhas = await banco.arquivo.findMany({
+    where: { clubeId, id: { in: comPagamento.flatMap((pedido) => (pedido.comprovanteId ? [pedido.comprovanteId] : [])) } },
+    select: { id: true, mime: true },
+  })
+  const mimeDoArquivo = new Map(linhas.map((linha) => [linha.id, linha.mime]))
+  const saidas = new Map<string, ComprovanteSaida>()
+  for (const pedido of comPagamento) {
+    const mime = pedido.comprovanteId ? mimeDoArquivo.get(pedido.comprovanteId) : undefined
+    if (!pedido.comprovanteId || !mime) continue
+    saidas.set(pedido.id, {
+      arquivoId: pedido.comprovanteId,
+      tipo: mime === 'application/pdf' ? 'PDF' : 'FOTO',
+      url: arquivos.urlAssinada(clubeId, pedido.comprovanteId, 'original'),
+    })
+  }
+  return saidas
+}
+
 /** Monta a saída de vários pedidos com consultas diretas (cada uma com `clubeId`), sem `include`. */
-async function saidasDosPedidos(banco: Banco, clubeId: string, vendaId: string, pedidos: PedidoVenda[]): Promise<PedidoSaida[]> {
+async function saidasDosPedidos(banco: Banco, arquivos: ServicoArquivos, clubeId: string, vendaId: string, pedidos: PedidoVenda[]): Promise<PedidoSaida[]> {
   if (pedidos.length === 0) return []
   const itens = await banco.itemPedidoVenda.findMany({ where: { clubeId, pedidoId: { in: pedidos.map((pedido) => pedido.id) } } })
   const produtos = await produtosDaVenda(banco, clubeId, vendaId)
   const idsDasUnidades = [...new Set(pedidos.flatMap((pedido) => (pedido.unidadeId ? [pedido.unidadeId] : [])))]
   const unidades = await banco.unidade.findMany({ where: { clubeId, id: { in: idsDasUnidades } }, select: { id: true, nome: true } })
   const nomeDaUnidade = new Map(unidades.map((unidade) => [unidade.id, unidade.nome]))
+  const comprovantes = await comprovantesDosPedidos(banco, arquivos, clubeId, pedidos)
   const itensDoPedido = new Map<string, ItemPedidoVenda[]>()
   for (const item of itens) itensDoPedido.set(item.pedidoId, [...(itensDoPedido.get(item.pedidoId) ?? []), item])
 
@@ -110,16 +135,18 @@ async function saidasDosPedidos(banco: Banco, clubeId: string, vendaId: string, 
           }
         }),
       total: totalDoPedido(doPedido, pedido.taxaEntrega),
+      comprovante: comprovantes.get(pedido.id) ?? null,
     }
   })
 }
 
-/** Filtro da aba: só "Todos" inclui os cancelados. */
+/** Filtro da aba: cancelado só aparece em "Cancelados". */
 function filtroDoPedido(filtro: Consulta['filtro']): Prisma.PedidoVendaWhereInput {
   if (filtro === 'A_PAGAR') return { canceladoEm: null, pago: false }
   if (filtro === 'A_ENTREGAR') return { canceladoEm: null, entregueEm: null }
   if (filtro === 'ENTREGUES') return { canceladoEm: null, entregueEm: { not: null } }
-  return {}
+  if (filtro === 'CANCELADOS') return { canceladoEm: { not: null } }
+  return { canceladoEm: null }
 }
 
 interface MudancaDeItem {
@@ -146,6 +173,7 @@ export class PedidosService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly vendas: VendasService,
+    private readonly arquivos: ServicoArquivos,
   ) {}
 
   async listar(clubeId: string, vendaId: string, consulta: Consulta): Promise<PedidoListaSaida> {
@@ -162,7 +190,7 @@ export class PedidosService {
     const ids = paginar(achados, consulta.pagina, PEDIDOS_POR_PAGINA).map((pedido) => pedido.id)
     const pedidos = await this.prisma.pedidoVenda.findMany({ where: { clubeId, vendaId, id: { in: ids } }, orderBy: [{ criadoEm: 'desc' }, { id: 'desc' }] })
     return {
-      itens: await saidasDosPedidos(this.prisma, clubeId, vendaId, pedidos),
+      itens: await saidasDosPedidos(this.prisma, this.arquivos, clubeId, vendaId, pedidos),
       total: achados.length,
       pagina: consulta.pagina,
       porPagina: PEDIDOS_POR_PAGINA,
@@ -328,7 +356,7 @@ export class PedidosService {
 
   private async saidaAtual(banco: Banco, clubeId: string, vendaId: string, pedidoId: string): Promise<PedidoSaida> {
     const pedido = await pedidoDaVenda(banco, clubeId, vendaId, pedidoId)
-    const [saida] = await saidasDosPedidos(banco, clubeId, vendaId, [pedido])
+    const [saida] = await saidasDosPedidos(banco, this.arquivos, clubeId, vendaId, [pedido])
     return saida
   }
 }

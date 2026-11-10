@@ -4,7 +4,7 @@ import { Download, Share2 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { useCancelarPedido, useDesentregarPedido, useDespagarPedido, useEntregarPedido, usePagarPedido, usePedido, useReativarPedido, useVenda } from '../../api/vendas'
+import { useCancelarPedido, useDesentregarPedido, useDespagarPedido, useEntregarPedido, useEnviarComprovante, usePagarPedido, usePedido, useReativarPedido, useVenda } from '../../api/vendas'
 import type { Pedido, Venda } from '../../api/vendas'
 import { useConexao } from '../../offline'
 import { useSessao } from '../../sessao/useSessao'
@@ -15,6 +15,7 @@ import { EstadoNaoEncontrado, ehNaoEncontrado } from '../../ui/EstadoNaoEncontra
 import { Carregando, ErroDeCarga } from '../../ui/EstadosDeCarga'
 import { Selo } from '../../ui/Selo'
 import { lerErroDaApi } from '../adm/desbravadores/erros'
+import { BlocoDoComprovante } from './BlocoDoComprovante'
 import { DialogoCancelarPedido } from './DialogoCancelarPedido'
 import { DialogoPagarPedido, formasAceitasPela } from './DialogoPagarPedido'
 import { diaEHora } from '../progresso/formatos'
@@ -23,6 +24,7 @@ import { desenharImagem } from './imagem/desenharImagem'
 import { montarImagemDoPedido } from './imagem/montarImagemDoPedido'
 import { situacaoDaEntrega } from './formatos'
 
+const AVISO_COMPROVANTE_NAO_ENVIADO = 'O pedido foi marcado como pago, mas o comprovante não foi enviado.'
 const SEM_INTERNET = 'Marcar pago, entregue, cancelar e editar precisam de internet. Conecte-se para continuar.'
 const VENDA_ENCERRADA = 'Esta venda foi encerrada. Reabra a venda para alterar o pedido; o resumo continua disponível para baixar.'
 const NOTA_COM_COMPARTILHAR = 'Compartilhar abre os aplicativos do seu aparelho, como o WhatsApp. Se o aparelho não permitir, use Baixar.'
@@ -109,6 +111,7 @@ function ResumoDoPedido({ venda, pedido }: { venda: Venda; pedido: Pedido }) {
   const desentregar = useDesentregarPedido()
   const cancelar = useCancelarPedido()
   const reativar = useReativarPedido()
+  const enviarComprovante = useEnviarComprovante()
   const [pagando, setPagando] = useState(false)
   const [cancelando, setCancelando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
@@ -116,7 +119,7 @@ function ResumoDoPedido({ venda, pedido }: { venda: Venda; pedido: Pedido }) {
   const encerrada = venda.encerradaEm !== null
   const cancelado = pedido.canceladoEm !== null
   const situacao = situacaoDoPedido(pedido)
-  const ocupado = [pagar, despagar, entregar, desentregar, cancelar, reativar].some((escrita) => escrita.isPending)
+  const ocupado = [pagar, despagar, entregar, desentregar, cancelar, reativar, enviarComprovante].some((escrita) => escrita.isPending)
   const desligada = !online || ocupado
   const ids = { vendaId: venda.id, pedidoId: pedido.id }
   const compartilhavel = podeCompartilhar(new File([], 'pedido.png', { type: 'image/png' }))
@@ -135,8 +138,16 @@ function ResumoDoPedido({ venda, pedido }: { venda: Venda; pedido: Pedido }) {
     }
   }
 
-  async function confirmarPagamento(forma: FormaDoPedido) {
-    if (await executar(() => pagar.mutateAsync({ ...ids, entrada: { forma } }))) setPagando(false)
+  /** O pagamento grava primeiro; se só o comprovante falhar, o pedido fica pago e o bloco "Comprovante" deixa tentar de novo. */
+  async function confirmarPagamento(forma: FormaDoPedido, comprovante: File | null) {
+    if (!(await executar(() => pagar.mutateAsync({ ...ids, entrada: { forma } })))) return
+    setPagando(false)
+    if (!comprovante) return
+    try {
+      await enviarComprovante.mutateAsync({ ...ids, arquivo: comprovante })
+    } catch (falha) {
+      setErro([AVISO_COMPROVANTE_NAO_ENVIADO, lerErroDaApi(falha).geral, 'Use "Anexar comprovante" para tentar de novo.'].filter(Boolean).join(' '))
+    }
   }
 
   async function confirmarCancelamento() {
@@ -221,7 +232,7 @@ function ResumoDoPedido({ venda, pedido }: { venda: Venda; pedido: Pedido }) {
         titulo={`Pedido ${pedido.codigo}`}
         apoio={
           <>
-            {cancelado && <Selo>Cancelado</Selo>}
+            {cancelado && <Selo tom="apagado">Cancelado</Selo>}
             {encerrada && <Selo>Encerrada</Selo>}
             <span>
               {pedido.comprador} · lançado em {diaEHora(pedido.criadoEm)}
@@ -254,7 +265,7 @@ function ResumoDoPedido({ venda, pedido }: { venda: Venda; pedido: Pedido }) {
             <h2 className="font-titulo text-lg font-bold text-texto">Situação</h2>
             {cancelado ? (
               <LinhaDaSituacao rotulo="Pedido">
-                <Selo>Cancelado</Selo>
+                <Selo tom="apagado">Cancelado</Selo>
               </LinhaDaSituacao>
             ) : (
               <>
@@ -275,11 +286,13 @@ function ResumoDoPedido({ venda, pedido }: { venda: Venda; pedido: Pedido }) {
             )}
           </Cartao>
 
+          {pedido.pago && <BlocoDoComprovante vendaId={venda.id} pedido={pedido} somenteLeitura={encerrada || cancelado} />}
+
           {!encerrada && outrasAcoes}
         </aside>
       </div>
 
-      <DialogoPagarPedido aberto={pagando} formas={formasAceitasPela(venda)} ocupado={pagar.isPending} erro={erro} aoConfirmar={(forma) => void confirmarPagamento(forma)} aoCancelar={() => setPagando(false)} />
+      <DialogoPagarPedido aberto={pagando} formas={formasAceitasPela(venda)} ocupado={pagar.isPending} erro={erro} aoConfirmar={(forma, comprovante) => void confirmarPagamento(forma, comprovante)} aoCancelar={() => setPagando(false)} />
       <DialogoCancelarPedido
         aberto={cancelando}
         codigo={pedido.codigo}

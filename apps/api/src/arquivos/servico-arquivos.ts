@@ -17,6 +17,11 @@ export function caminhoDoMaterial(clubeId: string, arquivoId: string, ext: strin
   return `clube/${clubeId}/materiais/${ano}/${arquivoId}.${ext}`
 }
 
+/** Comprovante de pedido de venda, foto ou PDF; `ext` vem da conferência dos bytes, nunca do cliente. */
+export function caminhoDoComprovante(clubeId: string, arquivoId: string, ext: string, ano: number = new Date().getUTCFullYear()): string {
+  return `clube/${clubeId}/comprovantes/${ano}/${arquivoId}.${ext}`
+}
+
 /** PDF ou capa de item da biblioteca; `ext` vem do servidor (`pdf` ou `jpg`), nunca do cliente. */
 export function caminhoDaBiblioteca(clubeId: string, arquivoId: string, ext: 'pdf' | 'jpg', miniatura = false): string {
   return `clube/${clubeId}/biblioteca/${arquivoId}${miniatura ? '-min' : ''}.${ext}`

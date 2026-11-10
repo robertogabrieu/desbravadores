@@ -26,7 +26,7 @@ export function DialogoCancelarPedido({ aberto, codigo, comprador, aoConfirmar, 
       aoConfirmar={aoConfirmar}
       aoCancelar={aoCancelar}
     >
-      O pedido de {comprador} deixa de contar nos números da venda. Ele continua na lista, em "Todos", e você pode reativá-lo depois.
+      O pedido de {comprador} deixa de contar nos números da venda. Ele sai da lista principal e fica na aba "Cancelados", de onde você pode reativá-lo depois.
     </Confirmacao>
   )
 }

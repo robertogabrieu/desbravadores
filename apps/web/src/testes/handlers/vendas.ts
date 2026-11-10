@@ -46,7 +46,7 @@ export function criarPainel(parcial: Partial<VendaPainelSaida> = {}): VendaPaine
   return {
     unidadesVendidas: 171, porProduto: [{ produtoId: uuid(9101), nome: 'Lasanha de carne', nomeCurto: 'Carne', unidades: 171 }],
     vendido: 430_500, recebido: 393_000, aReceber: 37_500, pedidosAPagar: 3, aEntregar: 31, entregues: 16, porUnidade: [],
-    contadores: { todos: 47, aPagar: 3, aEntregar: 31, entregues: 16 },
+    contadores: { todos: 47, aPagar: 3, aEntregar: 31, entregues: 16, cancelados: 0 },
     ...parcial,
   }
 }
@@ -59,6 +59,7 @@ export function criarPedido(n: number, parcial: Partial<PedidoSaida> = {}): Pedi
     id: uuid(9300 + n), codigo: `COD${String(n).padStart(3, '0')}`, comprador: `Comprador ${n}`, vendedor: null, unidadeId: null, unidadeNome: null, daDiretoria: false, entrega: false, endereco: null,
     taxaEntrega, observacao: null, pago: false, forma: null, entregueEm: null, canceladoEm: null, criadoEm: '2026-10-21T12:00:00.000Z',
     total: totalDoPedido(itens, taxaEntrega),
+    comprovante: null,
     ...parcial,
     itens,
   }
@@ -125,6 +126,10 @@ export const handlersEscritaVendas = (chamadas: ChamadaDeVenda[], respostas: Res
       return HttpResponse.json(corpo(), { status })
     })
   return [
+    http.delete('/api/vendas/:id/pedidos/:pedidoId/comprovante', async ({ request }) => {
+      await registrar(chamadas, request)
+      return HttpResponse.json(pedido())
+    }),
     escrita('post', '/api/vendas', venda, 201),
     escrita('patch', '/api/vendas/:id', venda),
     escrita('post', '/api/vendas/:id/encerrar', venda, 201),
