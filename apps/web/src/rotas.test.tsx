@@ -107,7 +107,7 @@ describe('rotas de vendas', () => {
     ['/adm/vendas/v1', 'Lasanhas 1'],
     ['/adm/vendas/v1/editar', 'Editar venda'],
     ['/adm/vendas/v1/pedidos/novo', 'Lançar pedido'],
-    ['/adm/vendas/v1/pedidos/p1', 'Pedido nº 1'],
+    ['/adm/vendas/v1/pedidos/p1', 'Pedido COD001'],
     ['/adm/vendas/v1/pedidos/p1/editar', 'Editar pedido'],
   ])('%s abre a tela para ADM', async (rota, titulo) => {
     entrar('ADM')
